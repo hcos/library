@@ -10,7 +10,7 @@
 -- Usage
 -- -----
 --
---       local tags = require "cosy.lang.data.tags"
+--       local tags = require "cosy.lang.tags"
 --       local TAG = tags.TAG -- Uppercase by convention for tags
 --       print (TAG)          -- Prints "[TAG]"
 
