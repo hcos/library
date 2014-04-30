@@ -5,19 +5,19 @@
 -- The replacement allows to define new type names and associate them with
 -- detection functions. The new type names can only be used for tables.
 
--- Usage
--- -----
---
---       local itype = require "cosy.util.type"
---       itype.my_type_name = function (x) ... end
---       local name = itype (a_data)
-
 -- Design
 -- ------
 --
 -- This module returns a single object, that acts both as a mapping from
 -- type names to detector functions, and as a function with the same
 -- interface as the standard Lua `type` function.
+
+-- Usage
+-- -----
+--
+--       local itype = require "cosy.util.type"
+--       itype.my_type_name = function (x) ... end
+--       local name = itype (a_data)
 
 -- Implementation
 -- --------------

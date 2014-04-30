@@ -7,6 +7,12 @@
 -- Internal attributes are identified using special keys, named __tags__.
 -- They are obtained using this module.
 
+-- Design
+-- ------
+--
+-- this module returns a single object that acts as a repository for tags. A
+-- tag can be created or retrieved in a Lua friendly way.
+
 -- Usage
 -- -----
 --
@@ -14,21 +20,15 @@
 --       local TAG = tags.TAG -- Uppercase by convention for tags
 --       print (TAG)          -- Prints "[TAG]"
 
--- Design
--- ------
---
--- this module returns a single object that acts as a repository for tags. A
--- tag can be created or retrieved in a Lua friendly way.
-
 -- Implementation
 -- --------------
 --
 -- The implementation relies on overriding the `__index` behavior. Whenever
 -- a non existing tag is accessed, it is created on the fly.
 
-local tag_mt = {}
+local tag_mt  = {}
 local tags_mt = {}
-local tags = setmetatable ({}, tags_mt)
+local tags    = setmetatable ({}, tags_mt)
 
 -- __Trick:__ the newly created tag is added as early as possible to the
 -- `tags`. This is required to avoid infinite loops when defining the three
