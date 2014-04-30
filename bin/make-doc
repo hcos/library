@@ -1,4 +1,4 @@
 #! /bin/bash
 
 rm -rf docs/
-docco $(find . -name "*.lua")
+docco --layout linear $(find . -name "*.lua")
