@@ -115,33 +115,33 @@ end
 --   otherwise.
 --
 local function walk (data, args)
-  local args = args or {}
-  assert (luatype (args) == "table")
   local config = {
-    visit_once   = args.visit_once   or true,
-    in_component = args.in_component or true,
+    visit_once  = true,
+    in_component = true,
   }
+  if args and luatype (args) == "table" then
+    if args.visit_once == false then
+      config.visit_once = false
+    end
+    if args.in_component == false then
+      config.in_component = false
+    end
+  end
 
   local function iterate (data, view, visited)
-    if luatype (data) ~= "table"
-    or type (data) == "tag"
-    or visited [data] then
-      return
-    end
     coroutine.yield (view (data))
-    local function subcall (x)
-      if config.in_component and owner (x) ~= owner (data) then
-        return
-      end
+    if not visited [data] then
       visited [data] = true
-      iterate (x, visited)
-      visited [data] = not config.visit_once
-    end
-    if luatype (data) == "table" then
       for k, v in pairs (data) do
-        subcall (k)
-        subcall (v)
+        local t = type (v)
+        if type (k) ~= "tag"
+        and (t == "component" or t == "data" or t == "table")
+        and not (config.visit_once and visited [v])
+        and not (config.in_component and owner (v) ~= owner (data)) then
+          iterate (v, view, visited)
+        end
       end
+      visited [data] = config.visit_once or nil
     end
   end
 
@@ -166,21 +166,22 @@ end
 --   the above constraints.
 
 -- A tag is a data, the owner of which is `tags`.
-type.tag = function (x)
-  return data [OWNER] == tags
+type.tag = function (data)
+  return owner (data) == tags
 end
 
 -- A component is a data, the owner of which is itself.
-type.component = function (x)
-  return data [OWNER] == data [RAW]
+type.component = function (data)
+  return owner (data) == raw (data)
 end
 
 -- A data is any data with an owner, that is both not a tag and not a
 -- component.
-type.data = function (x)
-  return data [OWNER]
-     and data [OWNER] ~= data [RAW]
-     and data [OWNER] ~= tags
+type.data = function (data)
+  local o = owner (data)
+  return o
+     and o ~= raw (data)
+     and o ~= tags
 end
 
 -- Every other table is considered as a raw table.
