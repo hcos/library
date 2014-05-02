@@ -1,5 +1,9 @@
 #! /bin/bash
 
 cd src
-tsc $(find . -name "*.spec")
+for file in $(find . -name "*.test.lua")
+do
+  echo "Testing ${file}..."
+  lua ${file}
+done
 cd ..
