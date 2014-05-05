@@ -2,4 +2,4 @@
 
 rm -rf docs/
 docco --layout linear --output doc $(find . -name "*.lua" ! -name '*.test.lua')
-docco --layout linear --output doc-test $(find . -name "*.test.lua")
+docco --layout linear --output doc-test $(find . -name "*.lua")
