@@ -4,20 +4,25 @@
 -- This module implements an extensible replacement for Lua `type` function.
 -- The replacement allows to define new type names and associate them with
 -- detection functions. The new type names can only be used for tables.
+--
+-- The replacement `type` function does not return a string. Instead, it
+-- returns a set of types.
 
 -- Design
 -- ------
 --
 -- This module returns a single object, that acts both as a mapping from
--- type names to detector functions, and as a function with the same
--- interface as the standard Lua `type` function.
+-- type names to detector functions, and as a function taking the object to
+-- type as parameter..
 
 -- Usage
 -- -----
 --
 --       local itype = require "cosy.util.type"
 --       itype.my_type_name = function (x) ... end
---       local name = itype (a_data)
+--       if itype (a_data).my_type_name then
+--         ...
+--       end
 
 -- Implementation
 -- --------------
@@ -35,12 +40,14 @@ local itype_mt = {}
 -- over the mapping to find the first matching detector. It then returns the
 -- corresponding type name.
 function itype_mt:__call (x)
-  local result = type (x)
-  if result == "table" then
+  local luatype = type (x)
+  local result = {
+    [luatype] = true
+  }
+  if luatype == "table" then
     for k, f in pairs (self) do
       if f (x) then
-        result = k
-        break
+        result [k] = true
       end
     end
   end

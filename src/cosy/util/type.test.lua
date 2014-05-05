@@ -15,24 +15,39 @@ local itype  = require "cosy.util.type"
 -- return exactly the same string:
 --
 -- * for `nil`:
-assert.are.equal ("nil", type (nil), itype (nil))
+assert.are.same (
+  itype (nil),
+  { [type (nil)] = true }
+)
 -- * for `boolean`:
-assert.are.equal (type (true), itype (true))
+assert.are.same (
+  itype (true),
+  { [type (true)] = true }
+)
 -- * for `number`:
-assert.are.equal (type (1   ), itype (1   ))
+assert.are.same (
+  itype (1),
+  { [type (1)] = true }
+)
 -- * for `string`:
-assert.are.equal (type (""  ), itype (""  ))
+assert.are.same (
+  itype (""),
+  { [type ("")] = true }
+)
 -- * for `table`:
-assert.are.equal (type ({}  ), itype ({}  ))
+assert.are.same (
+  itype ({}),
+  { [type ({})] = true }
+)
 -- * for `function`:
-assert.are.equal (
-  type (function () end),
-  itype (function () end)
+assert.are.same (
+  itype (function () end),
+  { [type (function () end)] = true }
 )
 -- * for `thread`:
-assert.are.equal (
-  type (coroutine.create (function () end)),
-  type (coroutine.create (function () end))
+assert.are.same (
+  itype (coroutine.create (function () end)),
+  { [type (coroutine.create (function () end))] = true }
 )
 
 
@@ -48,7 +63,13 @@ end
 
 -- A table without the `is_object` field is not recognized as an `"object"`:
 --
-assert.are.equal (itype {}, "table")
+assert.are.same (
+  itype {},
+  { table = true }
+)
 
 -- A table with the `is_object` field is recognized as an `"object"`:
-assert.are.equal (itype { is_object = true }, "object")
+assert.are.same (
+  itype { is_object = true },
+  { table = true, object = true }
+)

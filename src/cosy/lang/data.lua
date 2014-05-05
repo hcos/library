@@ -133,9 +133,7 @@ local function walk (data, args)
     if not visited [data] then
       visited [data] = true
       for k, v in pairs (data) do
-        local t = type (v)
-        if type (k) ~= "tag"
-        and (t == "component" or t == "data" or t == "table")
+        if not type (k).tag and type (v).table
         and not (config.visit_once and visited [v])
         and not (config.in_component and owner (v) ~= owner (data)) then
           iterate (v, view, visited)
@@ -145,7 +143,7 @@ local function walk (data, args)
     end
   end
 
-  assert (type (data) == "component")
+  assert (type (data).component)
   local view = data [VIEW] or function (x) return x end
   local data = raw (data)
   return coroutine.wrap (function () iterate (data, view, {}) end)
