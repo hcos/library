@@ -1,5 +1,5 @@
 #! /bin/bash
 
-rm -rf docs/
-docco --layout linear --output doc $(find . -name "*.lua" ! -name '*.test.lua')
-docco --layout linear --output doc-test $(find . -name "*.lua")
+rm -rf doc/
+docco --layout linear --output doc/src $(find . -name "*.lua" ! -name '*.test.lua')
+docco --layout linear --output doc/test $(find . -name "*.lua")
