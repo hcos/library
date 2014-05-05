@@ -129,7 +129,11 @@ local function walk (data, args)
   end
 
   local function iterate (data, view, visited)
-    coroutine.yield (view (data))
+    local data_view = data
+    for _, f in ipairs (view) do
+      data_view = f (data_view)
+    end
+    coroutine.yield (data_view)
     if not visited [data] then
       visited [data] = true
       for k, v in pairs (data) do
@@ -144,7 +148,7 @@ local function walk (data, args)
   end
 
   assert (type (data).component)
-  local view = data [VIEW] or function (x) return x end
+  local view = data [VIEW] or {}
   local data = raw (data)
   return coroutine.wrap (function () iterate (data, view, {}) end)
 end
