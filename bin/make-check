@@ -14,8 +14,8 @@ cd src
   done
 
   # Run coverage analysis:
-  rm -rf coverage/ coverage.txt
-  mkdir -p coverage/
+  rm -rf ../coverage/ ../coverage.txt
+  mkdir -p ../coverage/
   ../bin/coverage
   rm -f luacov.stats.out luacov.report.out
   echo
