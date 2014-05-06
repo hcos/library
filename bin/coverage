@@ -1,0 +1,36 @@
+#! /usr/bin/env lua
+
+local runner   = require "luacov.runner"
+local reporter = require "luacov.reporter"
+local configuration = runner.load_config ()
+reporter.report()
+
+local file  = "luacov.report.out"
+
+local lines = {}
+local output = nil
+for line in io.lines(file) do
+  if line:find ("==============================================================================") ~= 1 then
+    if line:find ("Summary") == 1 then
+      if output then
+        io.close (output)
+      end
+      output = io.open("../coverage.txt", "w")
+    elseif line:find ("./cosy/") == 1 then
+      if output then
+        io.close (output)
+      end
+      local s, e = line:find (".*/")
+      local name = "../coverage/" .. line:sub (e + 1)
+      output = io.open(name, "w")
+    else
+      if output then
+        output:write (line .. "\n")
+      end
+    end
+  end
+end
+if output then
+  io.close (output)
+end
+
