@@ -39,13 +39,13 @@ assert.are.equal (owner (coroutine.create (function () end)), nil)
 --
 local raw   = data.raw
 
--- When applied on a table, he `raw` function returns the `RAW`, or the
--- data itself if there is no such field:
-local RAW = tags.RAW
+-- When applied on a table, he `raw` function returns the raw data behind
+-- any data:
+local DATA = tags.DATA
 local a_data = {}
 assert.are.equal (raw (a_data), a_data)
 local raw_data = {}
-a_data [RAW] = raw_data
+a_data [DATA] = raw_data
 assert.are.equal (raw (a_data), raw_data)
 
 -- When applied on non table values, the `raw` function returns the value

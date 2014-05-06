@@ -33,11 +33,11 @@ local luatype = type
 local type = require "cosy.util.type"
 local tags = require "cosy.lang.tags"
 
--- Three tags are used within this module: `RAW`, `OWNER` and `VIEW`.
--- Two of them (`RAW` and `VIEW`) are required by the view mechanism.
+-- Three tags are used within this module: `DATA`, `OWNER` and `VIEW`.
+-- Two of them (`DATA` and `VIEW`) are required by the view mechanism.
 -- The third one (`OWNER`) is required by the component mechanism.
 --
-local RAW   = tags.RAW
+local DATA  = tags.DATA
 local VIEW  = tags.VIEW
 local OWNER = tags.OWNER
 
@@ -53,12 +53,17 @@ local OWNER = tags.OWNER
 -- This function is usable on all Lua values. When its parameter is a
 -- component or data, wrapped within a view, the raw component or data is
 -- returned. Otherwise, the parameter is returned unchanged.
--- `raw` should thus be preferred to direct access using the `RAW` tag
--- when the parameter can be any Lua value, even not a table.
+-- `raw` should thus be preferred to direct access using the `DATA` tag
+-- when the parameter can be any Lua value, even not a table, or when
+-- several `DATA` can be stacked.
 --
 local function raw (x)
   if luatype (x) == "table" then
-    return x [RAW] or x
+    local result = x
+    while result [DATA] do
+      result = result [DATA]
+    end
+    return result
   else
     return x
   end

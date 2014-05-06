@@ -30,13 +30,21 @@ local tag_mt  = {}
 local tags_mt = {}
 local tags    = setmetatable ({}, tags_mt)
 
+-- Two tags are created by default, as they are used internally to define
+-- tags themselves:
+--
+-- * `NAME` that holds the tag name,
+-- * `OWNER` that holds tho owner for any data, and thus also for tags.
+--
+-- Their explicit definitions is not required, as these
+-- tags will be created when necessary.
+--
 -- __Trick:__ the newly created tag is added as early as possible to the
 -- `tags`. This is required to avoid infinite loops when defining the three
 -- tags used within tags.
 function tags_mt:__index (key)
   local result = setmetatable ({}, tag_mt)
   tags [key] = result
-  result [tags.RAW  ] = result
   result [tags.NAME ] = key
   result [tags.OWNER] = tags
   return result
@@ -46,13 +54,6 @@ end
 function tag_mt:__tostring ()
   return "[" .. self [tags.NAME] .. "]"
 end
-
--- Three tags are created by default, as they are used internally to define
--- tags themselves. These definitions are not required, as these three tags
--- will be created when necessary.
-local RAW   = tags.RAW
-local NAME  = tags.NAME
-local OWNER = tags.OWNER
 
 -- The module only exports the `tags` repository.
 return tags
