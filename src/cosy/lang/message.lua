@@ -41,7 +41,7 @@ local raw = data.raw
 --
 local function custom (tag)
   return function (data, message)
-    local data = raw (data)
+    data = raw (data)
     if not data [tag] then
       data [tag] = {}
     end

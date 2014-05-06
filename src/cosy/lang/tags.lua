@@ -44,9 +44,9 @@ local tags    = setmetatable ({}, tags_mt)
 -- tags used within tags.
 function tags_mt:__index (key)
   local result = setmetatable ({}, tag_mt)
-  tags [key] = result
-  result [tags.NAME ] = key
-  result [tags.OWNER] = tags
+  self [key] = result
+  result [self.NAME ] = key
+  result [self.OWNER] = self
   return result
 end
 

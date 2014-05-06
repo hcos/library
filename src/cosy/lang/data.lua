@@ -154,8 +154,8 @@ local function walk (data, args)
 
   assert (type (data).component)
   local view = data [VIEW] or {}
-  local data = raw (data)
-  return coroutine.wrap (function () iterate (data, view, {}) end)
+  local raw_data = raw (data)
+  return coroutine.wrap (function () iterate (raw_data, view, {}) end)
 end
 
 

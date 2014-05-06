@@ -115,19 +115,21 @@ end)
 -- * `component_1` is seen once ;
 -- * `component_1.a` is also seen once;
 -- * no data in `component_2` is ever seen.
-local seen = {}
-for d in walk (component_1) do
-  if seen [d] then
-    seen [d] = seen [d] + 1
-  else
-    seen [d] = 1
+do
+  local seen = {}
+  for d in walk (component_1) do
+    if seen [d] then
+      seen [d] = seen [d] + 1
+    else
+      seen [d] = 1
+    end
   end
+  assert.are.equal (seen [component_1  ], 1)
+  assert.are.equal (seen [component_1.a], 1)
+  assert.are.equal (seen [component_2  ], nil)
+  assert.are.equal (seen [component_2.x], nil)
+  assert.are.equal (seen [component_2.y], nil)
 end
-assert.are.equal (seen [component_1  ], 1)
-assert.are.equal (seen [component_1.a], 1)
-assert.are.equal (seen [component_2  ], nil)
-assert.are.equal (seen [component_2.x], nil)
-assert.are.equal (seen [component_2.y], nil)
 
 -- With `visit_once = true` and `in_component = false`,
 --
@@ -135,19 +137,21 @@ assert.are.equal (seen [component_2.y], nil)
 -- * `component_1.a` is also seen once;
 -- * `component_2.x` is also soon once, reached from `component_1.external`;
 -- * other data in `component_2` are ever seen.
-local seen = {}
-for d in walk (component_1, { in_component = false }) do
-  if seen [d] then
-    seen [d] = seen [d] + 1
-  else
-    seen [d] = 1
+do
+  local seen = {}
+  for d in walk (component_1, { in_component = false }) do
+    if seen [d] then
+      seen [d] = seen [d] + 1
+    else
+      seen [d] = 1
+    end
   end
+  assert.are.equal (seen [component_1  ], 1)
+  assert.are.equal (seen [component_1.a], 1)
+  assert.are.equal (seen [component_2  ], nil)
+  assert.are.equal (seen [component_2.x], 1)
+  assert.are.equal (seen [component_2.y], nil)
 end
-assert.are.equal (seen [component_1  ], 1)
-assert.are.equal (seen [component_1.a], 1)
-assert.are.equal (seen [component_2  ], nil)
-assert.are.equal (seen [component_2.x], 1)
-assert.are.equal (seen [component_2.y], nil)
 
 -- With `visit_once = false` and `in_component = true`,
 --
@@ -156,19 +160,21 @@ assert.are.equal (seen [component_2.y], nil)
 -- * `component_1.a` is also seen twice (reached as `component_1.a` and
 --   `component_1.internal`);
 -- * no data in `component_2` is ever seen.
-local seen = {}
-for d in walk (component_1, { visit_once = false }) do
-  if seen [d] then
-    seen [d] = seen [d] + 1
-  else
-    seen [d] = 1
+do
+  local seen = {}
+  for d in walk (component_1, { visit_once = false }) do
+    if seen [d] then
+      seen [d] = seen [d] + 1
+    else
+      seen [d] = 1
+    end
   end
+  assert.are.equal (seen [component_1  ], 2)
+  assert.are.equal (seen [component_1.a], 2)
+  assert.are.equal (seen [component_2  ], nil)
+  assert.are.equal (seen [component_2.x], nil)
+  assert.are.equal (seen [component_2.y], nil)
 end
-assert.are.equal (seen [component_1  ], 2)
-assert.are.equal (seen [component_1.a], 2)
-assert.are.equal (seen [component_2  ], nil)
-assert.are.equal (seen [component_2.x], nil)
-assert.are.equal (seen [component_2.y], nil)
 
 -- With `visit_once = false` and `in_component = false`,
 --
@@ -178,16 +184,18 @@ assert.are.equal (seen [component_2.y], nil)
 --   `component_1.internal`);
 -- * `component_2.x` is also soon once, reached from `component_1.external`;
 -- * other data in `component_2` are ever seen.
-local seen = {}
-for d in walk (component_1, { visit_once = false, in_component = false }) do
-  if seen [d] then
-    seen [d] = seen [d] + 1
-  else
-    seen [d] = 1
+do
+  local seen = {}
+  for d in walk (component_1, { visit_once = false, in_component = false }) do
+    if seen [d] then
+      seen [d] = seen [d] + 1
+    else
+      seen [d] = 1
+    end
   end
+  assert.are.equal (seen [component_1  ], 2)
+  assert.are.equal (seen [component_1.a], 2)
+  assert.are.equal (seen [component_2  ], nil)
+  assert.are.equal (seen [component_2.x], 1)
+  assert.are.equal (seen [component_2.y], nil)
 end
-assert.are.equal (seen [component_1  ], 2)
-assert.are.equal (seen [component_1.a], 2)
-assert.are.equal (seen [component_2  ], nil)
-assert.are.equal (seen [component_2.x], 1)
-assert.are.equal (seen [component_2.y], nil)
