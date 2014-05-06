@@ -40,7 +40,7 @@ local raw = data.raw
 -- as a sequence, with insertion order preserved.
 --
 local function custom (tag)
-  return function (data, message)
+  local result = function (data, message)
     data = raw (data)
     if not data [tag] then
       data [tag] = {}
@@ -48,6 +48,7 @@ local function custom (tag)
     local messages = data [tag]
     messages [#messages + 1] = message
   end
+  return result
 end
 
 -- Usage

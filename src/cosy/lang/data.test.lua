@@ -101,6 +101,8 @@ assert.has.no.errors (function ()
 end)
 assert.has.errors (function ()
   walk (component_1.a)
+end)
+assert.has.errors (function ()
   walk (component_2.x)
 end)
 
@@ -118,11 +120,8 @@ end)
 do
   local seen = {}
   for d in walk (component_1) do
-    if seen [d] then
-      seen [d] = seen [d] + 1
-    else
-      seen [d] = 1
-    end
+    assert.are.equal (seen [d], nil)
+    seen [d] = 1
   end
   assert.are.equal (seen [component_1  ], 1)
   assert.are.equal (seen [component_1.a], 1)
@@ -140,11 +139,8 @@ end
 do
   local seen = {}
   for d in walk (component_1, { in_component = false }) do
-    if seen [d] then
-      seen [d] = seen [d] + 1
-    else
-      seen [d] = 1
-    end
+    assert.are.equal (seen [d], nil)
+    seen [d] = 1
   end
   assert.are.equal (seen [component_1  ], 1)
   assert.are.equal (seen [component_1.a], 1)
@@ -199,3 +195,26 @@ do
   assert.are.equal (seen [component_2.x], 1)
   assert.are.equal (seen [component_2.y], nil)
 end
+
+-- `walk` with a view
+-- ------------------
+--
+-- A view is a table with a `DATA` tag referring to the underlying data.
+-- The `walk` function should expose to the iteration a view of the data
+-- similar to the view of the data passed to `walk`.
+do
+  local DATA = tags.DATA
+  local VIEW = tags.VIEW
+  local function view (d)
+    return setmetatable ({
+      [VIEW] = { view },
+      [DATA ] = d,
+    }, {
+      __index = d
+    })
+  end
+  for d in walk (view (component_1)) do
+    assert.are.equal (d [DATA], raw (d))
+  end
+end
+

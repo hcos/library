@@ -166,11 +166,10 @@ end
 -- CosyVerif:
 --
 -- * `"tag"` is the type returned for all tags;
--- * `"data"` is the type returned for all data except components and tags;
+-- * `"data"` is the type returned for all data, even components and tags;
 -- * `"component"` is the type returned for all components (that is for the
 --   data at the root of a component);
--- * `"table"` is still returned for every table that does not meet one of
---   the above constraints.
+-- * `"table"` is still returned for every table that is not a data.
 
 -- A tag is a data, the owner of which is `tags`.
 type.tag = function (data)
@@ -182,13 +181,9 @@ type.component = function (data)
   return owner (data) == raw (data)
 end
 
--- A data is any data with an owner, that is both not a tag and not a
--- component.
+-- A data is any data with an owner.
 type.data = function (data)
-  local o = owner (data)
-  return o
-     and o ~= raw (data)
-     and o ~= tags
+  return owner (data) ~= nil
 end
 
 -- Every other table is considered as a raw table.

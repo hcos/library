@@ -22,20 +22,19 @@ local WARNINGS = tags.WARNINGS
 do
   -- Initially, a data does not have an `ERRORS` field:
   local data = {}
-  assert.are.equal (
-    nil,
-    data [ERRORS]
+  assert.is_true (
+    data [ERRORS] == nil
   )
   -- `error` adds a sequence of messages associated to tag `ERRORS` in a data.
   message.error (data, "error 1")
   assert.are.same (
-    { "error 1" },
-    data [ERRORS]
+    data [ERRORS],
+    { "error 1" }
   )
   message.error (data, "error 2")
   assert.are.same (
-    { "error 1", "error 2" },
-    data [ERRORS]
+    data [ERRORS],
+    { "error 1", "error 2" }
   )
 end
 
@@ -45,21 +44,20 @@ end
 do
   -- Initially, a data does not have a `WARNINGS` field:
   local data = {}
-  assert.are.equal (
-    nil,
-    data [WARNINGS]
+  assert.is_true (
+    data [WARNINGS] == nil
   )
   -- `warning` adds a sequence of messages associated to tag `WARNINGS` in a
   -- data.
   message.warning (data, "warning 1")
   assert.are.same (
-    { "warning 1" },
-    data [WARNINGS]
+    data [WARNINGS],
+    { "warning 1" }
   )
   message.warning (data, "warning 2")
   assert.are.same (
-    { "warning 1", "warning 2" },
-    data [WARNINGS]
+    data [WARNINGS],
+    { "warning 1", "warning 2" }
   )
 end
 
@@ -72,20 +70,19 @@ do
 
   -- Initially, a data does not have a `MY_TAG` field:
   local data = {}
-  assert.are.equal (
-    nil,
-    data [MY_TAG]
+  assert.is_true (
+    data [MY_TAG] == nil
   )
   -- `my_handler` adds a sequence of messages associated to tag `MY_TAG` in
   -- a data.
   my_handler (data, "1")
   assert.are.same (
-    { "1" },
-    data [MY_TAG]
+    data [MY_TAG],
+    { "1" }
   )
   my_handler (data, "2")
   assert.are.same (
-    { "1", "2" },
-    data [MY_TAG]
+    data [MY_TAG],
+    { "1", "2" }
   )
 end
