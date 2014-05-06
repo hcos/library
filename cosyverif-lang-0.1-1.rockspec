@@ -17,7 +17,8 @@ description = {
 dependencies = {
   "lua >= 5.1",
   "luassert >= 1.7",
-  "telescope >= 0.6",
+  "luacov >= 0.5",
+  "luacheck >= 0.3",
 }
 
 build = {
