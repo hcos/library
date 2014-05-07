@@ -1,5 +1,7 @@
 #! /bin/bash
 
+set -e
+
 cd src
 
   # Run check on all Lua files:
