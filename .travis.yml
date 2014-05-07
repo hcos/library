@@ -24,7 +24,7 @@ install:
   - luarocks install luassert
   - luarocks install luacov
   - luarocks install luacheck
-    luarocks install penlight
+  - luarocks install penlight
   - export $(luarocks path | tr "'" ";")
 
 script: "./bin/make-all"
