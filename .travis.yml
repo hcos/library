@@ -2,6 +2,7 @@ language: erlang
 
 env:
   - LUAROCKS_VERSION="2.1.2"
+  - PATH=${PATH}:${HOME}/bin
 
 branches:
   only:
