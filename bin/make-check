@@ -1,13 +1,12 @@
 #! /bin/bash
 
-set -e
+set +e
 
 cd src
 
   # Run check on all Lua files:
-  echo "Check"
-  echo "====="
   luacheck $(find . -name "*.lua")
+  echo
 
   # Run coverage on all test files:
   for file in $(find . -name "*.test.lua")
@@ -20,9 +19,5 @@ cd src
   mkdir -p ../coverage/
   ../bin/coverage
   rm -f luacov.stats.out luacov.report.out
-  echo
-  echo "Coverage"
-  echo "========"
-  cat ../coverage.txt
 
 cd ..

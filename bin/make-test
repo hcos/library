@@ -3,9 +3,8 @@
 set -e
 
 cd src
-for file in $(find . -name "*.test.lua")
-do
-  echo "Testing ${file}..."
-  lua ${file}
-done
+
+  ../bin/testing $(find . -name "*.test.lua")
+  echo
+
 cd ..
