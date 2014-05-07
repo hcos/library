@@ -11,6 +11,7 @@ branches:
     - master
 
 install:
+  - sudo apt-get install npm
   - sudo npm install -g docco
   - sudo apt-get install lua5.2
   - sudo apt-get install lua5.2-dev
