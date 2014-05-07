@@ -5,25 +5,24 @@ node_js:
 
 env:
   - LUAROCKS_VERSION="2.1.2"
-  - PATH=${PATH}:${HOME}/bin
 
 branches:
   only:
     - master
 
 install:
+  - sudo npm install -g docco
   - sudo apt-get install lua5.2
   - sudo apt-get install lua5.2-dev
   - wget http://luarocks.org/releases/luarocks-${LUAROCKS_VERSION}.tar.gz
   - tar zxvpf luarocks-${LUAROCKS_VERSION}.tar.gz
   - cd luarocks-${LUAROCKS_VERSION}
   - ./configure --prefix=${HOME} --lua-version=5.2 --with-lua-include="/usr/include/lua5.2"
-  - make all install
+  - make bootstrap
   - cd ..
-  - sudo luarocks install luassert
-  - sudo luarocks install luacov
-  - sudo luarocks install luacheck
-  - sudo npm install -g docco
+  - ${HOME}/bin/luarocks install luassert
+  - ${HOME}/bin/luarocks install luacov
+  - ${HOME}/bin/luarocks install luacheck
 
 script: "./bin/make-all"
 
