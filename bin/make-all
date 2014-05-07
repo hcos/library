@@ -2,7 +2,7 @@
 
 set -e
 
+export $(luarocks path | tr "'" ";")
 ./bin/make-test
 ./bin/make-check
 ./bin/make-doc > /dev/null
-
