@@ -2,7 +2,6 @@ language: erlang
 
 env:
   - LUAROCKS_VERSION="2.1.2"
-  - PATH=${PATH}:${HOME}/bin
 
 branches:
   only:
@@ -21,9 +20,11 @@ install:
   - ./configure --prefix=${HOME} --lua-version=5.2 --with-lua-include="/usr/include/lua5.2"
   - make bootstrap
   - cd ..
-  - ${HOME}/bin/luarocks install luassert
-  - ${HOME}/bin/luarocks install luacov
-  - ${HOME}/bin/luarocks install luacheck
+  - export PATH=${PATH}:${HOME}/bin
+  - luarocks install luassert
+  - luarocks install luacov
+  - luarocks install luacheck
+  - export $(luarocks path | tr "'" ";")
 
 script: "./bin/make-all"
 
