@@ -33,12 +33,12 @@ local luatype = type
 local type = require "cosy.util.type"
 local tags = require "cosy.lang.tags"
 
--- Three tags are used within this module: `DATA`, `OWNER` and `VIEW`.
--- Two of them (`DATA` and `VIEW`) are required by the view mechanism.
+-- Three tags are used within this module: `DATA`, `OWNER` and `VIEWS`.
+-- Two of them (`DATA` and `VIEWS`) are required by the view mechanism.
 -- The third one (`OWNER`) is required by the component mechanism.
 --
 local DATA  = tags.DATA
-local VIEW  = tags.VIEW
+local VIEWS = tags.VIEWS
 local OWNER = tags.OWNER
 
 -- Access to raw data
@@ -67,6 +67,24 @@ local function raw (x)
   else
     return x
   end
+end
+
+-- View of a data
+-- --------------
+--
+-- This operation is the opposite to `raw`. It builds a view over `data` by
+-- stacking view constructors stored in `views`. The `views` is a sequence
+-- of constructors to apply, from `1` to `#views`. If the data is not a
+-- table, it is returned unchanged.
+-- 
+local function view (data, views)
+  local result = data
+  if luatype (data) == "table" then
+    for _, view in ipairs (views or {}) do
+      result = view (result)
+    end
+  end
+  return result
 end
 
 -- Access to owner
@@ -133,19 +151,15 @@ local function walk (data, args)
     end
   end
 
-  local function iterate (data, view, visited)
-    local data_view = data
-    for _, f in ipairs (view) do
-      data_view = f (data_view)
-    end
-    coroutine.yield (data_view)
+  local function iterate (data, views, visited)
+    coroutine.yield (view (data, views))
     if not visited [data] then
       visited [data] = true
       for k, v in pairs (data) do
-        if not type (k).tag and type (v).table
+        if not type (k) . tag and type (v) . table
         and not (config.visit_once and visited [v])
         and not (config.in_component and owner (v) ~= owner (data)) then
-          iterate (v, view, visited)
+          iterate (v, views, visited)
         end
       end
       visited [data] = config.visit_once or nil
@@ -153,9 +167,9 @@ local function walk (data, args)
   end
 
   assert (type (data).component)
-  local view = data [VIEW] or {}
+  local views = data [VIEWS] or {}
   local raw_data = raw (data)
-  return coroutine.wrap (function () iterate (raw_data, view, {}) end)
+  return coroutine.wrap (function () iterate (raw_data, views, {}) end)
 end
 
 
@@ -186,19 +200,33 @@ type.data = function (data)
   return owner (data) ~= nil
 end
 
--- Every other table is considered as a raw table.
+-- A sequence is any data with only sequential integer keys starting from
+-- `1`.
+type.sequence = function (data)
+  local count = 0
+  for k, _ in pairs (data) do
+    if not type (k) . tag then
+      count = count + 1
+    end
+  end
+  return count == #data
+end
+
+
 
 -- Module
 -- ------
 --
--- This module exports three functions:
+-- This module exports several functions:
 --
 -- * `raw` and `owner` that allow to access respectively the raw data behind
 --   and the owner of any data;
+-- * `view` that allows to create a view over a data or another view;
 -- * `walk` that allows to iterate over the data of a component.
 --
 return {
   raw   = raw,
   owner = owner,
+  view  = view,
   walk  = walk,
 }

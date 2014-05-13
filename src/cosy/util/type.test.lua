@@ -13,43 +13,28 @@ local itype  = require "cosy.util.type"
 -- 
 -- For non objects, the Lua `type` and the extensible `type` functions
 -- return exactly the same string:
---
--- * for `nil`:
-assert.are.same (
-  itype (nil),
-  { [type (nil)] = true }
-)
--- * for `boolean`:
-assert.are.same (
-  itype (true),
-  { [type (true)] = true }
-)
--- * for `number`:
-assert.are.same (
-  itype (1),
-  { [type (1)] = true }
-)
--- * for `string`:
-assert.are.same (
-  itype (""),
-  { [type ("")] = true }
-)
--- * for `table`:
-assert.are.same (
-  itype ({}),
-  { [type ({})] = true }
-)
--- * for `function`:
-assert.are.same (
-  itype (function () end),
-  { [type (function () end)] = true }
-)
--- * for `thread`:
-assert.are.same (
-  itype (coroutine.create (function () end)),
-  { [type (coroutine.create (function () end))] = true }
-)
 
+local a_table = {}
+local cases = {
+  true,
+  1,
+  "",
+  a_table,
+  function () end,
+  coroutine.create (function () end),
+}
+
+assert.is_true (
+  itype (nil) [type (nil)]
+)
+for _, c in pairs (cases) do
+  assert.is_true (
+    itype (c) [type (c)]
+  )
+  assert.is_false (
+    itype (c) . something
+  )
+end
 
 -- Compare `type` and `itype` for objects
 -- --------------------------------------
@@ -62,14 +47,11 @@ itype.object = function (x)
 end
 
 -- A table without the `is_object` field is not recognized as an `"object"`:
---
-assert.are.same (
-  itype {},
-  { table = true }
+assert.is_false (
+  itype {} . object
 )
 
 -- A table with the `is_object` field is recognized as an `"object"`:
-assert.are.same (
-  itype { is_object = true },
-  { table = true, object = true }
+assert.is_true (
+  itype { is_object = true } . object
 )

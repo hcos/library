@@ -13,7 +13,7 @@
 --
 -- This module returns a single object, that acts both as a mapping from
 -- type names to detector functions, and as a function taking the object to
--- type as parameter..
+-- type as parameter.
 
 -- Usage
 -- -----
@@ -28,31 +28,41 @@
 -- --------------
 
 -- Used functions are stored in locals.
-local pairs = pairs
 local type  = type
 
 -- The `type` replacement is a table acting also as a function. The latter
 -- requires a metatable with the `__call` function.
-local itype_mt = {}
+local type_mt = {}
+local compute_mt = {}
+
+local data = {}
+local itype = setmetatable ({}, type_mt)
 
 -- The function uses the standard Lua `type` function internally, and
--- overrides its result in the case of tables. In this case, it iterates
--- over the mapping to find the first matching detector. It then returns the
--- corresponding type name.
-function itype_mt:__call (x)
+-- overrides its result in the case of tables. In this case, it returns a
+-- table that maps each type name to the result of the corresponding
+-- detection function.
+--
+function type_mt:__call (x)
+  local _ = self
   local luatype = type (x)
-  local result = {
-    [luatype] = true
-  }
-  if luatype == "table" then
-    for k, f in pairs (self) do
-      if f (x) then
-        result [k] = true
-      end
+  return setmetatable ({ [data] = x, [luatype] = true }, compute_mt)
+end
+
+-- The mapping from type names to results of detection functions is done on
+-- the fly in this `__index`. Results are stored to avoid useless
+-- computations.
+--
+function compute_mt:__index (k)
+  local x = self [data]
+  if type (x) == "table" then
+    local f = itype [k]
+    if f and type (f) == "function" then
+      rawset (self, k, f (x))
     end
   end
-  return result
+  return rawget (self, k) or false
 end
 
 -- The module only exports the replacement for `type`.
-return setmetatable ({}, itype_mt)
+return itype
