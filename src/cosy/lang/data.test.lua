@@ -273,7 +273,7 @@ end
 -- Types
 -- -----
 --
--- The exntensible type function must return correct results for components,
+-- The extensible type function must return correct results for components,
 -- data, tags, sequences and non sequences.
 --
 local type = require "cosy.util.type"
