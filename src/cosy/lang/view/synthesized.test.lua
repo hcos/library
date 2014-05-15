@@ -65,21 +65,3 @@ do
   )
   assert.are.equal (view [TAG], 0)
 end
-
--- The same applies in Lua 5.1, without the `table.pack` and `table.unpack`
--- functions.
-do
-  table.pack   = nil
-  table.unpack = nil
-  package.loaded ["cosy.lang.view.synthesized"] = nil
-  synthesized = require "cosy.lang.view.synthesized"
-  synthesized [TAG] = handler
-  local data = {}
-  local view = synthesized (synthesized (data))
-  assert.are.same (
-    view [VIEWS],
-    { synthesized, synthesized }
-  )
-  assert.are.equal (view [TAG], 0)
-end
-

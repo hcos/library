@@ -70,37 +70,7 @@ local view_mt = {}
 -- It uses internally a `clone` function to copy and extend the `VIEWS` of
 -- the underlying data or view.
 --
--- This `clone` function performs a shallow copy of `views`. If this
--- parameter is `nil`, it returns an empty table.
---
--- __Trick:__ This function contains two implementations of the shallow
--- copy: one for Lua 5.2 using `table.[un]pack`, the other one for previous
--- Lua versions, performing a table copy through iteration. The Lua 5.2
--- version is more efficient.
-local clone
-if table.pack and table.unpack then -- Lua 5.2
-  clone = function (views)
-    if views == nil then
-      return {}
-    else
-      local result = table.pack (table.unpack (views))
-      result.n = nil
-      return result
-    end
-  end
-else
-  clone = function (views)
-    if views == nil then
-      return {}
-    else
-      local result = {}
-      for k, v in pairs (views) do
-        result[k] = v
-      end
-      return result
-    end
-  end
-end
+local clone = require "cosy.util.shallow_copy"
 
 -- A view is a proxy above a raw data or another view. Its construction
 -- has to set two tags:
@@ -114,7 +84,7 @@ end
 -- `__newindex` calls and compute the synthesized fields on demand.
 --
 function synthesized_mt:__call (data)
-  local views = clone (data [VIEWS])
+  local views = clone (data [VIEWS] or {})
   views [#views + 1] = self
   local result = {}
   result [DATA ] = data
