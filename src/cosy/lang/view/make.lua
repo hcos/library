@@ -56,7 +56,6 @@ local function make ()
   local mt = {}
   local result   = setmetatable ({}, mt)
   mt.__call      = constructor
-  mt.__index     = mt
   return result
 end
 
