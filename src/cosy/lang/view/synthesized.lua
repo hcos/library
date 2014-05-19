@@ -45,11 +45,13 @@ local DATA  = tags.DATA
 -- data.
 local VIEWS = tags.VIEWS
 
--- Metatables
--- ----------
+-- Constructor
+-- -----------
 --
--- The `synthesized` object has a metatable to allow begin called like a
--- function, for the construction of a view from a data or view.
+-- The `synthesized` object acts as a constructor for views.
+--
+--        local view = synthesized (data)
+----
 local synthesized = require "cosy.lang.view.make" ()
 
 -- Read a field
