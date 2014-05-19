@@ -29,7 +29,7 @@
 -- Implementation
 -- --------------
 
--- This module makes use of `tags`, `data.raw` and `message.error`.
+-- This module makes use of the following tags and functions.
 local tags  = require "cosy.lang.tags"
 local raw   = require "cosy.lang.data" . raw
 local view  = require "cosy.lang.data" . view
@@ -50,47 +50,7 @@ local VIEWS = tags.VIEWS
 --
 -- The `synthesized` object has a metatable to allow begin called like a
 -- function, for the construction of a view from a data or view.
-local synthesized_mt = {}
-local synthesized = setmetatable ({}, synthesized_mt)
-
--- All synthesized views have the `view_mt` metatable. It redefines
--- `__index` and `__newindex` in order to perform automatic computation of
--- synthesized fields.
-local view_mt = {}
-
--- View constructor
--- ----------------
---
--- A view handling synthesized attributes is created over a data by calling
--- the `synthesized` object on the data:
---
---        local view = synthesized (data)
---
--- The view automatically computes values for the registered tags.
--- It uses internally a `clone` function to copy and extend the `VIEWS` of
--- the underlying data or view.
---
-local clone = require "cosy.util.shallow_copy"
-
--- A view is a proxy above a raw data or another view. Its construction
--- has to set two tags:
---
--- * `DATA` that stores the underlying raw data or view, if views are
---   stacked;
--- * `VIEWS` that stores a sequence of view constructors, used to build
---   similar views for other data accessed through any field.
---
--- It also sets the `view_mt` metatable in order to intercept `__index` and
--- `__newindex` calls and compute the synthesized fields on demand.
---
-function synthesized_mt:__call (data)
-  local views = clone (data [VIEWS] or {})
-  views [#views + 1] = self
-  local result = {}
-  result [DATA ] = data
-  result [VIEWS] = views
-  return setmetatable (result, view_mt)
-end
+local synthesized = require "cosy.lang.view.make" ()
 
 -- Read a field
 -- ------------
@@ -101,7 +61,7 @@ end
 -- future uses.
 --
 -- TODO
-function view_mt:__index (key)
+function synthesized:__index (key)
   local data = self [DATA]
   if not data [key] and synthesized [key] then
     synthesized [key] (raw (data))
@@ -118,7 +78,7 @@ end
 -- case, write is forbidden, as it could interfere with other computed
 -- fields.
 --
-function view_mt:__newindex (key, value)
+function synthesized:__newindex (key, value)
   local data = self [DATA]
   if synthesized [key] then
     error (data,
