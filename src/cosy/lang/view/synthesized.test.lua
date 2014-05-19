@@ -8,7 +8,6 @@ local assert = require "luassert"
 local synthesized = require "cosy.lang.view.synthesized"
 local tags = require "cosy.lang.tags"
 
-local VIEWS  = tags.VIEWS
 local ERRORS = tags.ERRORS
 
 -- For the tests, we define a tag (`TAG`) and a handler that computes a
@@ -50,18 +49,4 @@ do
   assert.are.equal (view.something, 1)
   view [TAG] = 0
   assert.are.equal (# (data [ERRORS]), 1)
-end
-
--- Views
--- -----
---
--- Synthesized views are stackable.
-do
-  local data = {}
-  local view = synthesized (synthesized (data))
-  assert.are.same (
-    view [VIEWS],
-    { synthesized, synthesized }
-  )
-  assert.are.equal (view [TAG], 0)
 end
