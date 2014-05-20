@@ -92,5 +92,15 @@ function synthesized:__newindex (key, value)
   end
 end
 
+-- Length
+-- ------
+--
+-- The length operator is simply forwarded to the underlying data or view.
+--
+function synthesized:__len ()
+  return # (self [DATA])
+end
+
+
 -- The module only exports the `synthesized` object.
 return synthesized

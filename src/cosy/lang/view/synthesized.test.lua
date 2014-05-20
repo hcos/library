@@ -49,4 +49,5 @@ do
   assert.are.equal (view.something, 1)
   view [TAG] = 0
   assert.are.equal (# (data [ERRORS]), 1)
+  assert.are.equal (# (view [ERRORS]), 1)
 end
