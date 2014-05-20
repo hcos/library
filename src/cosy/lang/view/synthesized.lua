@@ -81,14 +81,13 @@ end
 -- fields.
 --
 function synthesized:__newindex (key, value)
-  local data = self [DATA]
   if synthesized [key] then
-    error (data,
+    error (self,
       "Trying to insert " .. tostring (key) ..
       ", but it is marked as synthesized."
     )
   else
-    data [key] = value
+    self [DATA] [key] = value
   end
 end
 
