@@ -54,7 +54,7 @@ end
 -- computations.
 --
 function compute_mt:__index (k)
-  local x = self [data]
+  local x = rawget (self, data)
   if type (x) == "table" then
     local f = itype [k]
     if f and type (f) == "function" then
