@@ -87,7 +87,7 @@ function synthesized:__newindex (key, value)
       ", but it is marked as synthesized."
     )
   else
-    self [DATA] [key] = value
+    self [DATA] [key] = raw (value)
   end
 end
 

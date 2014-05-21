@@ -62,6 +62,7 @@
 -- The module depends on `tags`, `view` and `error`.
 --
 local tags  = require "cosy.lang.tags"
+local raw   = require "cosy.lang.data" . raw
 local view  = require "cosy.lang.data" . view
 local error = require "cosy.lang.message" . error
 
@@ -114,6 +115,7 @@ local function nonwritable_newindex (self, key, _)
 end
 
 local function writable_newindex (self, key, value)
+  value = raw (value)
   local data = self [DATA]
   local running = {}
   observed.__newindex = nonwritable_newindex

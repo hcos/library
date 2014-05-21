@@ -63,3 +63,14 @@ do
   view.x = 1
   assert.are.equal (#(view [ERRORS]), 1)
 end
+
+-- The value written is stored as raw data instead of a view, if it was a
+-- view.
+do
+  local value = {}
+  local value_view = observed (value)
+  local data = {}
+  local view = observed (data)
+  view.something = value_view
+  assert.are.equal (data.something, value)
+end

@@ -51,3 +51,14 @@ do
   assert.are.equal (# (data [ERRORS]), 1)
   assert.are.equal (# (view [ERRORS]), 1)
 end
+
+-- The value written to a non synthesized field is stored as raw data
+-- instead of a view, if it was a view.
+do
+  local value = {}
+  local value_view = synthesized (value)
+  local data = {}
+  local view = synthesized (data)
+  view.something = value_view
+  assert.are.equal (data.something, value)
+end
