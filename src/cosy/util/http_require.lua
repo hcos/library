@@ -10,8 +10,8 @@ local https = require 'ssl.https'
 
 -- The searcher function loads the required URL and uses it as a Lua module.
 local function http_searcher (url)
-  local body = nil
-  local status = nil
+  local body
+  local status
   if url:find ("http://") == 1 then
     body, status = http.request (url)
   elseif url:find ("https://") == 1 then
