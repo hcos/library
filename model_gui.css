@@ -1,0 +1,49 @@
+path.link {
+    fill: none;
+    stroke: #666;
+    stroke-width: 1.5px;
+}
+marker#licensing {
+    fill: black;
+}
+marker#resolved{
+    fill: blue;
+}
+
+path.link.licensing {
+    stroke: black;
+}
+path.link.resolved {
+    stroke-dasharray: 0, 2 1;
+}
+path.link.elliptic {
+    stroke: orange;
+}
+circle {
+    fill: #fff;
+    stroke: #333;
+    stroke-width: 1.5px;
+}
+rect {
+    fill : #fff;
+    stroke : #333;
+    stroke-width: 1.5px;
+}
+text {
+    font: 12px sans-serif;
+    pointer-events: none;
+}
+text.shadow {
+    stroke: #fff;
+    stroke-width: 3px;
+    stroke-opacity: .8;
+}
+.node {
+  cursor: move;
+  fill: #ccc;
+  stroke: #000;
+  stroke-width: 1.5px;
+}
+.node.fixed {
+  fill: #f00;
+}
