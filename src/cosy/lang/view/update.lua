@@ -1,5 +1,4 @@
 local cosy      = require "cosy.lang.cosy"
-
 local raw       = require "cosy.lang.data" . raw
 local tags      = require "cosy.lang.tags"
 local type      = require "cosy.util.type"
@@ -73,36 +72,19 @@ local function path_for (path)
   return result
 end
 
-local handler_mt = {}
-local handler = setmetatable ({
-  updates = {}
-}, handler_mt)
-
-function handler_mt:__call (data, key)
+function handler (data, key)
   if key == tags.PARENTS then
     return
   end
   coroutine.yield ()
-  local lhs = path_for (path_to (data, key))
+  local lhs_path = path_to (data, key)
+  local lhs = path_for (lhs_path)
   local rhs = path_for (path_to (data [key]))
-  self.updates [#(self.updates) + 1] = lhs .. " = " .. rhs
+  if lhs_path [1] == cosy and #lhs_path > 2 then
+    local x = cosy [lhs_path [2]]
+    x.updates = x.updates or {}
+    x.updates [#(x.updates) + 1] = lhs .. " = " .. rhs
+  end
 end
 
 return handler
-
---[[
-observed [#observed + 1] = handler
-observed [#observed + 1] = parent
-
-
-view = observed (cosy)
-view.a = 1
-view.b = {}
-
-view.b [tags.TAG] = 1
-view.d = view.b
-view.c = { 1, 2, 3 }
-view [view.b] = view.b
-
-print (serpent.block (handler.updates))
---]]
