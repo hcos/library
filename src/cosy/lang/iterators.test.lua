@@ -12,9 +12,10 @@ local iterators = require "cosy.lang.iterators"
 -- prevent iterating of these data.
 --
 do
-  for _, f in pairs (iterators) do
+  for _, f in pairs { iterators.map, iterators.seq, iterators.set } do
     assert.is_true (f (nil) () == nil)
   end
+  assert.is_true (iterators.is_empty (nil) == nil)
   for _, x in ipairs {
     true,
     0,
@@ -22,9 +23,10 @@ do
     function () end,
     coroutine.create (function () end),
   } do
-    for _, f in pairs (iterators) do
+    for _, f in pairs { iterators.map, iterators.seq, iterators.set } do
       assert.is_true (f (x) () == nil)
     end
+    assert.is_true (iterators.is_empty (x) == nil)
   end
 end
 
@@ -48,6 +50,14 @@ local data = {
   b   = "four",
   z   = false,
 }
+
+-- ### `is_empty`
+
+do
+  assert.is_true  (iterators.is_empty {})
+  assert.is_false (iterators.is_empty { "some key"})
+  assert.is_false (iterators.is_empty (data))
+end
 
 -- ### `map` Iterator
 --

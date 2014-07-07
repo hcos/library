@@ -104,6 +104,26 @@ local function set (data)
   return f
 end
 
+-- Test for emptiness
+-- ------------------
+--
+-- This function is not an iterator but can be useful when dealing with
+-- collections.
+--
+-- Its usage is:
+--
+--      if [not] is_empty (data) then
+--        ...
+--      end
+
+local function is_empty (data)
+  if type (data) ~= "table" then
+    return nil
+  end
+  data = raw (data)
+  return pairs (data) (data) == nil
+end
+
 -- Module
 -- ------
 --
@@ -113,4 +133,5 @@ return {
   map = map,
   seq = seq,
   set = set,
+  is_empty = is_empty,
 }
