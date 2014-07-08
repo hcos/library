@@ -7,6 +7,8 @@ local serpent   = require "serpent"
 
 local NAME    = tags.NAME
 local PARENTS = tags.PARENTS
+local UPDATES = tags.UPDATES
+UPDATES.persistent = false
 
 local function path_to (data, key)
   local path
@@ -73,7 +75,7 @@ local function path_for (path)
 end
 
 function handler (data, key)
-  if key == tags.PARENTS then
+  if type (key) . tag and not key.persistent then
     return
   end
   coroutine.yield ()
@@ -81,9 +83,9 @@ function handler (data, key)
   local lhs = path_for (lhs_path)
   local rhs = path_for (path_to (data [key]))
   if lhs_path [1] == cosy and #lhs_path > 2 then
-    local x = cosy [lhs_path [2]]
-    x.updates = x.updates or {}
-    x.updates [#(x.updates) + 1] = lhs .. " = " .. rhs
+    local model = cosy [lhs_path [2]]
+    model.updates = model.updates or {}
+    model.updates [#(model.updates) + 1] = lhs .. " = " .. rhs
   end
 end
 
