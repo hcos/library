@@ -115,6 +115,7 @@ local function nonwritable_newindex (self, key, _)
 end
 
 local function writable_newindex (self, key, value)
+  key = raw (key)
   value = raw (value)
   local data = self [DATA]
   local running = {}
