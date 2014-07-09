@@ -94,7 +94,7 @@ local observed = require "cosy.lang.view.make" ()
 -- raw data.
 --
 function observed:__index (key)
-  return view (self [DATA] [key], self [VIEWS])
+  return view (self [DATA] [raw (key)], self [VIEWS])
 end
 
 -- Write a field
@@ -124,13 +124,19 @@ local function writable_newindex (self, key, value)
     if type (handler) ~= "string" or handler:find ("__") ~= 1 then
       local c = coroutine.create (function() f (self, key) end)
       running [handler] = c
-      coroutine.resume (c)
+      local ok, err = coroutine.resume (c)
+      if not ok then
+--        print (err)
+      end
     end
   end
   data [key] = value
   observed.__newindex = writable_newindex
   for handler, c in pairs (running) do
-    coroutine.resume (c)
+    local ok, err = coroutine.resume (c)
+    if not ok then
+--      print (err)
+    end
     running [handler] = nil
   end
 end
