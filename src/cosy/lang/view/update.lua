@@ -4,11 +4,12 @@ local tags      = require "cosy.lang.tags"
 local type      = require "cosy.util.type"
 local map       = require "cosy.lang.iterators" . map
 local is_empty  = require "cosy.lang.iterators" . is_empty
-local serpent   = require "serpent"
 
 local NAME    = tags.NAME
 local PARENTS = tags.PARENTS
 local UPDATES = tags.UPDATES
+local WS      = tags.WS
+local TYPE    = tags.TYPE
 
 local function path_to (data, key)
   local path
@@ -56,81 +57,124 @@ local function path_for (path)
   local result
   for _, p in ipairs (path) do
     if p == raw (cosy) then
-      result = "cosy"
+      result = cosy [NAME]
     elseif type (p) . string then
       if result then
         local i, j = string.find (p, "[_%a][_%w]*")
         if i == 1 and j == #p then
           result = result .. "." .. p
         else
-          result = result .. " ['" .. p .. "']"
+          result = result .. "['" .. p .. "']"
         end
       else
         result = "'" .. p .. "'"
       end
     elseif type (p) . number then
       if result then
-        result = result .. " [" .. tostring (p) .. "]"
+        result = result .. "[" .. tostring (p) .. "]"
       else
         result = tostring (p)
       end
     elseif type (p) . boolean then
       if result then
-        result = result .. " [" .. tostring (p) .. "]"
+        result = result .. "[" .. tostring (p) .. "]"
       else
         result = tostring (p)
       end
     elseif type (p) . table then
-      result = result .. " [" .. path_for (p) .. "]"
+      result = result .. "[" .. path_for (p) .. "]"
     end
   end
   return result
 end
 
-function handler (data, key)
-  if type (key) . tag and not key.persistent then
-    return
-  end
+local function remove_parent (data, key)
+  local value = data [key]
   local raw_data = raw (data)
   local raw_key  = raw (key)
-  --
-  local old_value = raw (data [key])
-  if type (old_value) . table and old_value [PARENTS] then
-    local old_parents = old_value [PARENTS]
+  local raw_value = raw (value)
+  if type (raw_value) . table and raw_value [PARENTS] then
+    local old_parents = raw_value [PARENTS]
     local ks = old_parents [raw_data] or {}
     ks [raw_key] = nil
     if is_empty (ks) then
       old_parents [raw_data] = nil
     end
     if is_empty (old_parents) then
-      old_value [PARENTS] = nil
+      raw_value [PARENTS] = nil
     else
-      old_value [PARENTS] = old_parents
+      raw_value [PARENTS] = old_parents
     end
   end
-  --
-  coroutine.yield ()
-  local lhs_path = path_to (data, key)
-  local lhs = path_for (lhs_path)
-  local rhs_path = path_to (data [key])
-  local rhs = path_for (rhs_path)
-  if lhs_path [1] == raw (cosy) and #lhs_path > 2 then
-    local model = cosy [lhs_path [2]]
-    model [UPDATES] = model [UPDATES] or {}
-    model [UPDATES] [#(model [UPDATES]) + 1] = lhs .. " = " .. rhs
-  end
-  --
-  local new_value = data [key]
-  if type (new_value) . table then
-    local new_parents = new_value [PARENTS] or {}
+end
+
+local function insert_parent (data, key)
+  local value = data [key]
+  local raw_data = raw (data)
+  local raw_key  = raw (key)
+  local raw_value = raw (value)
+  if type (raw_value) . table then
+    local new_parents = raw_value [PARENTS] or {}
     if not new_parents [raw_data] then
       new_parents [raw_data] = {}
     end
-    new_parents [raw_data] [key] = true
-    new_value [PARENTS] = new_parents
+    new_parents [raw_data] [raw_key] = true
+    raw_value [PARENTS] = new_parents
+  end
+end
+
+local mt = {}
+
+function mt:__call (data, key)
+  if type (key) . tag and not key.persistent then
+    return
   end
   --
-  if rhs_path.new then
+  remove_parent (data, key)
+  --
+  local old_value = raw (data [key])
+  coroutine.yield ()
+  local new_value = raw (data [key])
+  if js then
+    if old_value ~= new_value then
+      if type (old_value) . table and old_value [TYPE] then
+        js.global:remove_node (old_value)
+      end
+      if type (new_value) . table and new_value [TYPE] then
+        js.global:add_node (new_value)
+      end
+    end
+    if data [TYPE] then
+      js.global:update_node (raw (data))
+    end
+  end
+  local recursive = self.from_patch
+  if not self.from_patch then
+    local lhs_path = path_to (data, key)
+    local lhs = path_for (lhs_path)
+    local rhs_path = path_to (data [key])
+    local rhs = path_for (rhs_path)
+    recursive = recursive or rhs_path.new
+    if lhs_path [1] == raw (cosy) and #lhs_path > 2 then
+      local patch_str = lhs .. " = " .. rhs
+      local model = cosy [lhs_path [2]]
+      model [UPDATES] = model [UPDATES] or {}
+      model [UPDATES] [#(model [UPDATES]) + 1] = {
+        unpatch = function ()
+          data [key] = old_value
+          insert_parent (data, key)
+        end,
+        patch = patch_str
+      }
+      if model [WS] then
+        model [WS]:patch (patch_str)
+      end
+    end
+  end
+  --
+  insert_parent (data, key)
+  --
+  if recursive then
     local r = data [key]
     for k, v in map (r) do
       r [k] = v
@@ -138,4 +182,4 @@ function handler (data, key)
   end
 end
 
-return handler
+return setmetatable ({}, mt)
