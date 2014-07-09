@@ -1,67 +1,11 @@
-cosy = require "cosy.lang.cosy"
-window.cosy = cosy
-
-local observed = require "cosy.lang.view.observed"
-
-observed [#observed + 1] = require "cosy.lang.view.update"
-cosy = observed (cosy)
+require "cosy.connexion.js"
 
 local tags = require "cosy.lang.tags"
-local raw  = require "cosy.lang.data" . raw
 local seq  = require "cosy.lang.iterators" . seq
 local map  = require "cosy.lang.iterators" . map
 
 local TYPE = tags.TYPE
 TYPE.persistent = true
-
-function window:count (x)
-  return #x
-end
-
-function window:id (x)
-  if type (x) == "table" then
-    local mt = getmetatable (x)
-    setmetatable (x, nil)
-    local result = tostring (x)
-    setmetatable (x, mt)
-    return result
-  else
-    return tostring (x)
-  end
-end
-
-function window:keys (x)
-  local result = {}
-  for key, _ in pairs (x) do
-    result [#result + 1] = key
-  end
-  return result
-end
-
-function window:elements (model)
-  local result = {}
-  for _, x in map (model) do
-    if type (x) . table and x [TYPE] then
-      result [#result + 1] = x
-    elseif type (x) . table then
-      for y in seq (window:elements (x)) do
-        result [#result + 1] = y
-      end
-    end
-  end
-  return result
-end
-
-function window:connect (editor, token, resource)
-  local connect = require "cosy.connexion.js"
-  return connect {
-    editor   = editor,
-    token    = token,
-    resource = resource,
-  }
-end
-
-
 
 function window:do_something (model)
   model.types = {
