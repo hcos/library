@@ -56,6 +56,19 @@ function window:do_something (model)
     a.valuation = 1
     model[#model + 1] = a
   end
+  do
+    p = {}
+    p [TYPE] = model.types.place
+    p.name = 'r_0'
+    p.marking = 1
+    p.x = 100
+    p.y = 100
+    p.highlighted = false
+    model['r_0'] = p
+    print "Remove p_0"
+    model['r_0'] = nil
+  end
+
   local keys = {};
   for k in map (model) do 
       keys[#keys+1] = k; 
