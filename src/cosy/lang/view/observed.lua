@@ -126,16 +126,18 @@ local function writable_newindex (self, key, value)
       running [handler] = c
       local ok, err = coroutine.resume (c)
       if not ok then
---        print (err)
+        print (err)
       end
     end
   end
   data [key] = value
   observed.__newindex = writable_newindex
   for handler, c in pairs (running) do
-    local ok, err = coroutine.resume (c)
-    if not ok then
---      print (err)
+    if coroutine.status (c) ~= "dead" then
+      local ok, err = coroutine.resume (c)
+      if not ok then
+        print (err)
+      end
     end
     running [handler] = nil
   end
