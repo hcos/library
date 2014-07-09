@@ -13,7 +13,9 @@ local TYPE    = tags.TYPE
 
 local function path_to (data, key)
   local path
-  if raw (data) == raw (cosy) then
+  if data == nil then
+    path = nil
+  elseif raw (data) == raw (cosy) then
     path = { cosy }
   elseif type (data) . string then
     path = { data }
@@ -51,7 +53,9 @@ local function path_to (data, key)
 end
 
 local function path_for (path)
-  if #path == 1 and path.new then
+  if path == nil then
+    return "nil"
+  elseif #path == 1 and path.new then
     return "{}"
   end
   local result
@@ -124,6 +128,7 @@ local function insert_parent (data, key)
 end
 
 local mt = {}
+local nodes = {}
 
 function mt:__call (data, key)
   if type (key) . tag and not key.persistent then
@@ -135,26 +140,13 @@ function mt:__call (data, key)
   local old_value = raw (data [key])
   coroutine.yield ()
   local new_value = raw (data [key])
-  if js then
-    if old_value ~= new_value then
-      if type (old_value) . table and old_value [TYPE] then
-        js.global:remove_node (old_value)
-      end
-      if type (new_value) . table and new_value [TYPE] then
-        js.global:add_node (new_value)
-      end
-    end
-    if data [TYPE] then
-      js.global:update_node (raw (data))
-    end
-  end
   local recursive = self.from_patch
   if not self.from_patch then
     local lhs_path = path_to (data, key)
     local lhs = path_for (lhs_path)
     local rhs_path = path_to (data [key])
     local rhs = path_for (rhs_path)
-    recursive = recursive or rhs_path.new
+    recursive = recursive or (rhs_path and rhs_path.new)
     if lhs_path [1] == raw (cosy) and #lhs_path > 2 then
       local patch_str = lhs .. " = " .. rhs
       local model = cosy [lhs_path [2]]
@@ -169,6 +161,17 @@ function mt:__call (data, key)
       if model [WS] then
         model [WS]:patch (patch_str)
       end
+    end
+  end
+  --
+  if js then -- FIXME: adapt also to non-js
+    if nodes [old_value] and not old_value [PARENTS] then
+      js.global:remove_node (old_value)
+    elseif data [TYPE] and nodes [raw (data)] then
+      js.global:update_node (raw (data))
+    elseif data [TYPE] and not nodes [raw (data)] then
+      js.global:add_node (raw (data))
+      nodes [raw (data)] = true
     end
   end
   --
