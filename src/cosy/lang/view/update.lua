@@ -71,7 +71,7 @@ local function path_for (path)
           result = result .. "['" .. p .. "']"
         end
       else
-        result = "'" .. p .. "'"
+        result = "[[" .. p .. "]]"
       end
     elseif type (p) . number then
       if result then

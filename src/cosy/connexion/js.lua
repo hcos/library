@@ -30,12 +30,16 @@ local function connect (parameters)
     [WS      ] = ws,
     [UPDATES ] = {},
   }
-  ws.token   = token
+  ws.token = token
   function ws:onopen ()
     ws:request {
       action   = "set-resource",
       token    = token,
       resource = resource,
+    }
+    ws:request {
+      action   = "get-patches",
+      token    = token,
     }
   end
   function ws:onclose ()
@@ -43,16 +47,16 @@ local function connect (parameters)
   end
   function ws:onmessage (event)
     local message = event.data
-    print (message)
     if not message then
       return
     end
     local command = json.decode (message)
-    if command.action == "update" then
+    if command.patches then
       update.from_patch = true
       for patch in seq (command.patches) do
-        print ("Applying patch " .. tostring (patch.data))
         pcall (loadstring, patch.data)
+        local updates = result [UPDATES]
+        updates [#updates + 1] = patch.data
       end
       update.from_patch = nil
     else
@@ -132,6 +136,11 @@ function window:elements (model)
     result [#result + 1] = x
   end
   return result
+end
+
+function window:updates (model)
+  local UPDATES = tags.UPDATES
+  return model [UPDATES]
 end
 
 function window:connect (editor, token, resource)
