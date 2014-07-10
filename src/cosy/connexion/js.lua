@@ -111,14 +111,16 @@ function window:keys (x)
 end
 
 function window:elements (model)
-  local TYPE = tags.TYPE
   local function set_of (e)
     local result = {}
-    for _, x in map (e) do
-      if type (x) . table and x [TYPE] then
-        result [raw (x)] = true
+    for k, x in map (e) do
+      if type (k) . tag and not k.persistent then
+        -- nothing
       elseif type (x) . table then
-        for y in seq (set_of (x)) do
+        if x.type then
+          result [raw (x)] = true
+        end
+        for y in set (set_of (x)) do
           result [y] = true
         end
       end
