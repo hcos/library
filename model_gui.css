@@ -33,12 +33,13 @@ text.shadow {
 }
 .node {
   cursor: move;
-/*
-  fill: #ccc;
-*/
   stroke: #000;
   stroke-width: 1.5px;
 }
 .node.fixed {
   fill: #f00;
+}
+.lua_form{
+  border-style: solid;
+  border-width: 3px;
 }
