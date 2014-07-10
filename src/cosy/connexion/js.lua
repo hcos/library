@@ -5,8 +5,8 @@ local observed = require "cosy.lang.view.observed"
 observed [#observed + 1] = require "cosy.lang.view.update"
 cosy = observed (cosy)
 
-local sha1      = require "sha1"
-local json      = require "dkjson"
+local sha1 = require "sha1"
+local json = require "dkjson"
 
 local seq    = require "cosy.lang.iterators" . seq
 local set    = require "cosy.lang.iterators" . set
@@ -54,7 +54,10 @@ local function connect (parameters)
     if command.patches then
       update.from_patch = true
       for patch in seq (command.patches) do
-        pcall (loadstring, patch.data)
+        local ok, err = pcall (loadstring (patch.data))
+        if not ok then
+          print (err)
+        end
         local updates = result [UPDATES]
         updates [#updates + 1] = patch.data
       end

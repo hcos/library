@@ -37,6 +37,10 @@ local function connect (parameters)
       token    = token,
       resource = resource,
     }
+    ws:request {
+      action   = "get-patches",
+      token    = token,
+    }
   end)
   ws:on_close (function ()
     result [WS] = nil
@@ -46,11 +50,11 @@ local function connect (parameters)
       return
     end
     local command = json.decode (message)
-    if command.action == "update" then
+    if command.patches then
       update.from_patch = true
       for patch in seq (command.patches) do
         print ("Applying patch " .. tostring (patch.data))
-        pcall (loadstring, patch.data)
+        pcall (loadstring (patch.data))
       end
       update.from_patch = nil
     else
