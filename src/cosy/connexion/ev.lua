@@ -53,8 +53,12 @@ local function connect (parameters)
     if command.patches then
       update.from_patch = true
       for patch in seq (command.patches) do
-        print ("Applying patch " .. tostring (patch.data))
-        pcall (loadstring (patch.data))
+        local ok, err = pcall (loadstring (patch.data))
+        if not ok then
+          print (err)
+        end
+        local updates = result [UPDATES]
+        updates [#updates + 1] = patch.data
       end
       update.from_patch = nil
     else
@@ -69,7 +73,7 @@ local function connect (parameters)
     local str = json.encode (command)
     command.request_id = sha1 (tostring (os.time()) .. "+" .. str)
     command.token = ws.token
-    if ws.readyState == 1 then
+    if ws.state == "OPEN" then
       ws:send (json.encode (command))
     end
   end
@@ -85,8 +89,13 @@ local function connect (parameters)
       ws:send (json.encode (command))
     end
   end
-  function ws.execute (f)
-    local co = coroutine.create (f)
+  function ws.execute (f, again)
+    local co = coroutine.create (function ()
+      local ok, err = pcall (f)
+      if not ok then
+        print (err)
+      end
+    end)
     local timer = ev.Timer.new (function (_, timer, _)
       local _, delay = coroutine.resume (co)
       if coroutine.status (co) == "dead" then
