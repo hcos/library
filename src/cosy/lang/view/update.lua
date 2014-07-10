@@ -139,6 +139,7 @@ function mt:__call (data, key)
   local old_value = raw (data [key])
   coroutine.yield ()
   local new_value = raw (data [key])
+  --
   local recursive = self.from_patch
   if not self.from_patch then
     local lhs_path = path_to (data, key)
