@@ -9,12 +9,16 @@ local sha1      = require "sha1"
 local json      = require "dkjson"
 
 local seq    = require "cosy.lang.iterators" . seq
+local set    = require "cosy.lang.iterators" . set
+local map    = require "cosy.lang.iterators" . map
+local raw    = require "cosy.lang.data" . raw
 local tags   = require "cosy.lang.tags"
 local update = require "cosy.lang.view.update"
+local type   = require "cosy.util.type"
 
-local WS      = tags.WS
-local URL     = tags.URL
-local UPDATES = tags.UPDATES
+local WS       = tags.WS
+local RESOURCE = tags.RESOURCE
+local UPDATES  = tags.UPDATES
 
 local function connect (parameters)
   local token    = parameters.token
@@ -22,9 +26,9 @@ local function connect (parameters)
   local editor   = parameters.editor
   local ws       = js.global:websocket (editor)
   local result   = {
-    [URL    ] = resource,
-    [WS     ] = ws,
-    [UPDATES] = {},
+    [RESOURCE] = resource,
+    [WS      ] = ws,
+    [UPDATES ] = {},
   }
   ws.token   = token
   function ws:onopen ()
@@ -108,15 +112,22 @@ end
 
 function window:elements (model)
   local TYPE = tags.TYPE
-  local result = {}
-  for _, x in map (model) do
-    if type (x) . table and x [TYPE] then
-      result [#result + 1] = x
-    elseif type (x) . table then
-      for y in seq (window:elements (x)) do
-        result [#result + 1] = y
+  local function set_of (e)
+    local result = {}
+    for _, x in map (e) do
+      if type (x) . table and x [TYPE] then
+        result [raw (x)] = true
+      elseif type (x) . table then
+        for y in seq (set_of (x)) do
+          result [y] = true
+        end
       end
     end
+    return result
+  end
+  local result = {}
+  for x in set (set_of (model)) do
+    result [#result + 1] = x
   end
   return result
 end
