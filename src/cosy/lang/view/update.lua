@@ -167,9 +167,9 @@ function mt:__call (data, key)
   if js then -- FIXME: adapt also to non-js
     if nodes [old_value] and not old_value [PARENTS] then
       js.global:remove_node (old_value)
-    elseif data [TYPE] and nodes [raw (data)] then
+    elseif data.type and nodes [raw (data)] then
       js.global:update_node (raw (data))
-    elseif data [TYPE] and not nodes [raw (data)] then
+    elseif data.type and not nodes [raw (data)] then
       js.global:add_node (raw (data))
       nodes [raw (data)] = true
     end
