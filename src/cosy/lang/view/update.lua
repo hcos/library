@@ -128,7 +128,6 @@ local function insert_parent (data, key)
 end
 
 local mt = {}
-local nodes = {}
 
 function mt:__call (data, key)
   if type (key) . tag and not key.persistent then
@@ -161,17 +160,6 @@ function mt:__call (data, key)
       if model [WS] then
         model [WS]:patch (patch_str)
       end
-    end
-  end
-  --
-  if js then -- FIXME: adapt also to non-js
-    if nodes [old_value] and not old_value [PARENTS] then
-      js.global:remove_node (old_value)
-    elseif data.type and nodes [raw (data)] then
-      js.global:update_node (raw (data))
-    elseif data.type and not nodes [raw (data)] then
-      js.global:add_node (raw (data))
-      nodes [raw (data)] = true
     end
   end
   --

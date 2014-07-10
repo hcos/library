@@ -93,6 +93,24 @@ local function connect (parameters)
   return cosy [resource]
 end
 
+local PARENTS = tags.PARENTS
+local nodes = {}
+
+observed [#observed + 1] = function (data, key)
+  local raw_data  = raw (data)
+  local old_value = raw (data [key])
+  coroutine.yield ()
+  local new_value = raw (data [key])
+  if nodes [old_value] and not old_value [PARENTS] then
+    js.global:remove_node (old_value)
+  elseif data.type and nodes [raw_data] then
+    js.global:update_node (raw_data)
+  elseif data.type and not nodes [raw_data] then
+    js.global:add_node (raw_data)
+    nodes [raw_data] = true
+  end
+end
+
 function window:count (x)
   return #x
 end
@@ -118,24 +136,8 @@ function window:keys (x)
 end
 
 function window:elements (model)
-  local function set_of (e)
-    local result = {}
-    for k, x in map (e) do
-      if type (k) . tag and not k.persistent then
-        -- nothing
-      elseif type (x) . table then
-        if x.type then
-          result [raw (x)] = true
-        end
-        for y in set (set_of (x)) do
-          result [y] = true
-        end
-      end
-    end
-    return result
-  end
   local result = {}
-  for x in set (set_of (model)) do
+  for x in set (nodes) do
     result [#result + 1] = x
   end
   return result
