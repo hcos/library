@@ -29,11 +29,12 @@ build = {
     ["cosy.lang.tags"             ] = "src/cosy/lang/tags.lua",
     ["cosy.lang.view.make"        ] = "src/cosy/lang/view/make.lua",
     ["cosy.lang.view.observed"    ] = "src/cosy/lang/view/observed.lua",
-    ["cosy.lang.view.parent"      ] = "src/cosy/lang/view/parent.lua",
     ["cosy.lang.view.synthesized" ] = "src/cosy/lang/view/synthesized.lua",
     ["cosy.lang.view.update"      ] = "src/cosy/lang/view/update.lua",
     ["cosy.util.http_require"     ] = "src/cosy/util/http_require.lua",
     ["cosy.util.shallow_copy"     ] = "src/cosy/util/shallow_copy.lua",
     ["cosy.util.type"             ] = "src/cosy/util/type.lua",
+    ["cosy.connexion.js"          ] = "src/cosy/connexion/js.lua",
+    ["cosy.connexion.ev"          ] = "src/cosy/connexion/ev.lua",
   },
 }
