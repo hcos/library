@@ -1,5 +1,5 @@
 package = "CosyVerif-Lang"
-version = "scm-1"
+version = "master-1"
 
 source = {
    url = "git://github.com/CosyVerif/lang",
