@@ -52,13 +52,14 @@ local function connect (parameters)
     end
     local command = json.decode (message)
     if command.patches then
+      local updates = result [UPDATES]
       update.from_patch = true
       for patch in seq (command.patches) do
         local ok, err = pcall (loadstring (patch.data))
         if not ok then
           print (err)
         end
-        local updates = result [UPDATES]
+        js.global:add_patch (patch.data)
         updates [#updates + 1] = patch.data
       end
       update.from_patch = nil
@@ -78,6 +79,7 @@ local function connect (parameters)
     end
   end
   function ws:patch (str)
+    js.global:add_patch (str)
     local command = {
       action = "add-patch",
       data   = str,
@@ -148,7 +150,7 @@ function window:updates (model)
   return model [UPDATES]
 end
 
-function window:connect (editor, token, resource)
+function window:connect (editor, resource, token)
   return connect {
     editor   = editor,
     token    = token,
