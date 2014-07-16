@@ -35,6 +35,7 @@ local function measure (functions)
   -- Perform benchmarks:
   local result = {}
   for k, f in pairs (functions) do
+    collectgarbage ()
     local start = os.clock ()
     for _=1, iterations do
       f ()

@@ -72,23 +72,58 @@ end
 --
 local DATA = {}
 
--- Proxy type
--- ----------
-
 local proxy
-local is_proxy = {}
+local IS_PROXY = {}
 
 local function is_proxy (x)
   return type (x) == "table" and
-         (getmetatable (x) or {}) [is_proxy]
+         (getmetatable (x) or {}) [IS_PROXY]
 end
+
+-- Access to raw data
+-- ------------------
+--
+-- The `raw` function returns the raw data behind any data (already a raw
+-- one or a proxy).
+--
+-- ### Usage
+--
+--       local r = raw (x)
+--
+-- This function is usable on all Lua values, even strings or numbers.
+-- When its parameter is a proxy, the raw data behind is returned.
+-- Otherwise, the parameter is returned unchanged.
+--
+-- ### Implementation
+--
+-- Implementation is trivial: we use iteratively the `DATA` field until
+-- it does not exist anymore. The raw data is then reached.
+
+local function raw (x)
+  local result = x
+  while is_proxy (result) do
+    result = rawget (result, DATA)
+  end
+  return result
+end
+
+-- Proxy type
+-- ----------
 
 do
   local function string (self)
     return tostring (rawget (self, DATA))
   end
   local function eq (lhs, rhs)
-    return rawget (lhs, DATA) or lhs == rawget (rhs, DATA) or rhs
+    local l = lhs
+    if is_proxy (lhs) then
+      l = rawget (lhs, DATA)
+    end
+    local r = rhs
+    if is_proxy (rhs) then
+      r = rawget (rhs, DATA)
+    end
+    return l == r
   end
   local function len (self)
     return # rawget (self, DATA)
@@ -141,38 +176,11 @@ do
       __newindex  = newindex,
       __call      = call_instance,
       __mode      = nil,
-      [is_proxy]  = true,
+      [IS_PROXY]  = true,
     }, {
       __call      = call_metatable,
     })
   end
-end
-
--- Access to raw data
--- ------------------
---
--- The `raw` function returns the raw data behind any data (already a raw
--- one or a proxy).
---
--- ### Usage
---
---       local r = raw (x)
---
--- This function is usable on all Lua values, even strings or numbers.
--- When its parameter is a proxy, the raw data behind is returned.
--- Otherwise, the parameter is returned unchanged.
---
--- ### Implementation
---
--- Implementation is trivial: we use iteratively the `DATA` field until
--- it does not exist anymore. The raw data is then reached.
-
-local function raw (x)
-  local result = x
-  while is_proxy (result) do
-    result = rawget (result, DATA)
-  end
-  return result
 end
 
 -- Extensible type
@@ -197,7 +205,20 @@ do
 
   local mt = getmetatable (etype)
   function mt:__call (x)
-    return compute (x)
+    local result = compute (x)
+    for _, t in ipairs {
+      "nil",
+      "boolean",
+      "number",
+      "string",
+      "function",
+      "thread",
+      "table",
+    } do
+      rawset (compute, t, false)
+    end
+    rawset (compute, type (x), true)
+    return compute
   end
 
   function mt:__newindex (key, value)
@@ -208,11 +229,7 @@ do
     local x = raw (self)
     local detector = etype [key]
     if detector then
-      if type (detector) == "function" then
-        rawset (self, key, detector (x))
-      end
-    else
-      rawset (self, type (x), true)
+      rawset (self, key, detector (x) or false)
     end
     return rawget (self, key)
   end
@@ -223,47 +240,6 @@ do
   -- detection function.
 
 end
-
---[[
--- Shallow Copy
--- ============
-
--- This `clone` function performs a shallow copy of a table. If its
--- parameter is `nil`, it returns an empty table.
---
--- __Trick:__ This function contains two implementations of the shallow
--- copy: one for Lua 5.2 using `table.(un)pack`, the other one for previous
--- Lua versions, performing a table copy through iteration. The Lua 5.2
--- version is more efficient.
---
-local shallow_copy
-
-do
-  if table.pack and table.unpack then -- Lua 5.2
-    shallow_copy = function (data)
-      if type (data) ~= "table" then
-        return data
-      else
-        local result = table.pack (table.unpack (data))
-        result.n = nil
-        return result
-      end
-    end
-  else
-    shallow_copy = function (data)
-      if type (data) ~= "table" then
-        return data
-      else
-        local result = {}
-        for k, v in pairs (data) do
-          result[k] = v
-        end
-        return result
-      end
-    end
-  end
-end
---]]
 
 -- Iterators over Data
 -- ===================
@@ -421,7 +397,6 @@ return {
   raw = raw,
   proxy = proxy,
   etype = etype,
-  shallow_copy = clone,
   map = map,
   seq = seq,
   set = set,
