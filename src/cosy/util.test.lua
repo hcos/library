@@ -15,21 +15,39 @@ do
   assert.has.no.error (f)
 end
 
+-- `tags`
+-- ------
+--
+do
+
+  local tags   = util.tags
+
+  -- A tag is returned on demand:
+  assert.are.equal (type (tags.TAG), "table")
+
+  -- The same tag is returned each time it accessed:
+  assert.are.equal (tags.TAG, tags.TAG)
+
+  -- Tags are unique:
+  assert.are_not.equal (tags.TAG, tags.OTHER_TAG)
+
+end
+
 -- `proxy` object
 -- --------------
 --
 do
   local proxy = util.proxy
-  local DATA  = util.DATA
+  local DATA  = util.tags.DATA
   local NIL = {}
   for _, value in ipairs {
     NIL,
     true,
     0,
     "",
+    { "" },
     function () end,
     coroutine.create (function () end),
-    {},
   } do
     if value == NIL then
       value = nil
@@ -88,6 +106,7 @@ end
 do
   local raw  = util.raw
   local proxy = util.proxy
+  local NIL = {}
   -- When applied on non table values, the `raw` function returns the value
   -- unchanged:
   for _, value in ipairs {
@@ -95,9 +114,9 @@ do
     true,
     0,
     "",
+    { "" },
     function () end,
     coroutine.create (function () end),
-    {},
   } do
     if value == NIL then
       value = nil
@@ -137,7 +156,6 @@ do
     function () end,
     coroutine.create (function () end),
   }
-
   assert.is_true(
     etype (nil) [type (nil)]
   )

@@ -46,34 +46,69 @@ end
 
 -- Proxies
 -- =======
-
--- In CosyVerif, data and operations are strictly separated. Data is
--- represented as raw tables, and operations are implemented either as
--- functions, or as proxies over raw data.
+--
+-- TODO: explain more on data
+--
+-- Data is represented as raw tables, and operations are implemented either
+-- as functions, or as proxies over raw data.
 -- The goal of this design decision is to allow easy exchange of data over
 -- the network, and to select the behaviors depending on the context.
 --
--- A proxy is a table that wraps another one to hide some data or to add
--- behavior to the read and write operations on its contents.
--- All proxies in CosyVerif make use the `DATA` key to store the data
--- hidden behind the proxy (that can be the raw data, or another proxy).
+-- Tags
+-- ----
+
+-- Internal mechanisms require to store some information in the data. In
+-- order to avoid name conflicts with user defined keys, we use tables as
+-- keys for internal information. Such keys are called  __tags__.
 --
+-- ### Usage
+--
+--       local tags = require "cosy.util" . tags
+--       local TAG = tags.TAG -- Uppercase by convention for tags
+
+-- ### Implementation
+--
+-- The implementation relies on overriding the `__index` behavior. Whenever
+-- a non existing tag is accessed, it is created on the fly.
+
+local tags
+do
+
+  local mt = {}
+
+  -- __Trick:__ the newly created tag is added as early as possible to the
+  -- `tags`. This is required to avoid infinite loops when defining the three
+  -- tags used within tags.
+  function mt:__index (key)
+    local result = {}
+    self [key] = result
+    result [self.IS_TAG] = true
+    return result
+  end
+
+  tags = setmetatable ({}, mt)
+
+end
+
+
+-- Proxy specific tags
+-- -------------------
+--
+-- The `DATA` tag is meant to be used only in proxies, to identify the data
+-- behind the proxy.
+--
+local DATA = tags.DATA
+
+-- The `IS_PROXY` tag is also meant to be used only as `x [IS_PROXY] =
+-- true` to identify proxies. The `DATA` tag alone is not sufficient, as
+-- proxies over the `nil` value do not define the `DATA` tag.
+--
+local IS_PROXY = tags.IS_PROXY
+
 -- ### Warning
 --
 -- Proxies can be stacked. Thus, a `DATA` field can be assigned to another
 -- proxy.
-
--- Tag for hidden data
--- -------------------
---
--- The `DATA` table is meant to be used only as a key, and only in proxies
--- to identify the data behind the proxy. It will be made available later as
--- a tag (see [Tags](#tags)).
---
-local DATA = {}
-
-local proxy
-local IS_PROXY = {}
 
 local function is_proxy (x)
   return type (x) == "table" and
@@ -110,20 +145,13 @@ end
 -- Proxy type
 -- ----------
 
+local proxy
 do
   local function string (self)
     return tostring (rawget (self, DATA))
   end
   local function eq (lhs, rhs)
-    local l = lhs
-    if is_proxy (lhs) then
-      l = rawget (lhs, DATA)
-    end
-    local r = rhs
-    if is_proxy (rhs) then
-      r = rawget (rhs, DATA)
-    end
-    return l == r
+    return raw (lhs) == raw (rhs)
   end
   local function len (self)
     return # rawget (self, DATA)
@@ -205,6 +233,7 @@ do
 
   local mt = getmetatable (etype)
   function mt:__call (x)
+    ignore (self)
     local result = compute (x)
     for _, t in ipairs {
       "nil",
@@ -215,10 +244,10 @@ do
       "thread",
       "table",
     } do
-      rawset (compute, t, false)
+      rawset (result, t, false)
     end
-    rawset (compute, type (x), true)
-    return compute
+    rawset (result, type (x), true)
+    return result
   end
 
   function mt:__newindex (key, value)
@@ -231,7 +260,7 @@ do
     if detector then
       rawset (self, key, detector (x) or false)
     end
-    return rawget (self, key)
+    return rawget (self, key) or false
   end
 
   -- The function uses the standard Lua `type` function internally, and
@@ -292,10 +321,6 @@ local function map (data)
   return f
 end
 
-etype.map = function (data)
-  return true
-end
-
 -- Iterator over Lists
 -- --------------------
 --
@@ -320,18 +345,6 @@ local function seq (data)
     end
   )
   return f
-end
-
--- A sequence is any data with only sequential integer keys starting from
--- `1`.
-etype.seq = function (data)
-  local count = 0
-  for k, _ in pairs (data) do
-    if not type (k) . tag then
-      count = count + 1
-    end
-  end
-  return count == #data
 end
 
 -- Iterator over Sets
@@ -361,15 +374,6 @@ local function set (data)
   return f
 end
 
-etype.set = function (data)
-  for _, v in pairs (data) do
-    if not v == true then
-      return false
-    end
-  end
-  return true
-end
-
 -- Test for emptiness
 -- ------------------
 --
@@ -392,7 +396,7 @@ end
 
 
 return {
-  DATA = DATA,
+  tags = tags,
   ignore = ignore,
   raw = raw,
   proxy = proxy,
