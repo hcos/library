@@ -4,6 +4,11 @@ local tags   = require "cosy.util.tags"
 local PATH   = tags.PATH
 
 do
+  local p = path ({})
+  assert.has.error (function () p [PATH] = true end)
+end
+
+do
   local data = {}
   local p = path (data)
   assert.are.same (p [PATH], { data })
