@@ -51,7 +51,7 @@ local function index (self, key)
 end
 
 local function newindex_writable (self, key, value)
-  rawget (self, DATA) [key] = value
+  rawget (self, DATA) [key] = raw (value)
 end
 
 local function newindex_readonly (self, key, value)
