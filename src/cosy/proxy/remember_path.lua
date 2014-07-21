@@ -6,22 +6,22 @@ local tags  = require "cosy.util.tags"
 local DATA  = tags.DATA
 local PATH  = tags.PATH
 
-local path = proxy {}
+local remember_path = proxy {}
 
-function path:__index (key)
+function remember_path:__index (key)
   if key == PATH then
     rawset (self, PATH, { raw (self) })
     return self [PATH]
   end
   local below  = self [DATA]
-  local result = self (below)
+  local result = self (below [key])
   local p = copy (self [PATH])
   p [#p + 1] = key
   rawset (result, PATH, p)
   return result
 end
 
-function path:__newindex (key, value)
+function remember_path:__newindex (key, value)
   if key == PATH then
     error "Trying to set the PATH attribute."
   end
@@ -33,4 +33,4 @@ function path:__newindex (key, value)
   below [key] = value
 end
 
-return path
+return remember_path, PATH
