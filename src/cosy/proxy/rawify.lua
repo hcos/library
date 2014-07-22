@@ -12,7 +12,7 @@ function rawify:__index (key)
     value = raw (value)
     rawset (raw_self, raw_key, value)
   end
-  return self (value)
+  return rawify (value)
 end
 
 function rawify:__newindex (key, value)
