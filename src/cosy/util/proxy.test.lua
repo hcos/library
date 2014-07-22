@@ -7,20 +7,32 @@ local tags   = require "cosy.util.tags"
 local raw    = require "cosy.util.raw"
 
 do
-  local DATA  = tags.DATA
   local NIL = {}
   for _, value in ipairs {
     NIL,
     true,
     0,
     "",
-    { "" },
     function () end,
     coroutine.create (function () end),
   } do
     if value == NIL then
       value = nil
     end
+    --
+    local make = proxy ()
+    assert.has.no.error (function () make (value) end)
+    -- 
+    local result = make (value)
+    assert.are.equal (result, value)
+  end
+end
+
+do
+  local DATA  = tags.DATA
+  for _, value in ipairs {
+    {""}
+  } do
     local p = proxy ()
     assert.has.no.error (function () p (value) end)
     local o = p (value)
@@ -32,16 +44,8 @@ do
       assert.has.no.error (function () return # o end)
       assert.are.equal (# o , size)
     end
-    if type (value) == "string" then
-      assert.has.no.error (function () return o [1] end)
-      assert.has.error (function () o [1] = true end)
-    elseif type (value) == "table" then
-      assert.has.no.error (function () return o [1] end)
-      assert.has.no.error (function () o [1] = true end)
-    else
-      assert.has.error (function () return o [1] end)
-      assert.has.error (function () o [1] = true end)
-    end
+    assert.has.no.error (function () return o [1] end)
+    assert.has.no.error (function () o [1] = true end)
     local p1 = proxy ()
     local p2 = proxy ()
     local r = p1 (p2 (value))
@@ -66,7 +70,7 @@ do
   end
   do
     local data = {
-      x = true
+      x = {}
     }
     local p = proxy ()
     assert.are.equal (getmetatable (p (data) . x), p)

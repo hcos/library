@@ -48,11 +48,7 @@ end
 local function index (self, key)
   local below = rawget (self, DATA)
   local mt    = getmetatable (self)
-  if type (below) ~= "table" and type (below) ~= "string" then
-    error "attempt to index a non table"
-  else
-    return mt (below [key])
-  end
+  return mt (below [key])
 end
 
 local function newindex_writable (self, key, value)
@@ -74,10 +70,12 @@ local function call_metatable (self, x)
     if not mt then
       setmetatable (x, eq_mt)
     end
+    return setmetatable ({
+      [DATA] = x,
+    }, self)
+  else
+    return x
   end
-  return setmetatable ({
-    [DATA] = x,
-  }, self)
 end
 
 local function proxy (parameters)
