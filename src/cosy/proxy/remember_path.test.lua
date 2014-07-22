@@ -66,3 +66,18 @@ do
     assert.are.same (q [PATH], { value })
   end
 end
+
+do
+  local data = {}
+  local p = make (data)
+  local _ = p [tags.TAG]
+  assert.has.no.error (function () return p [nil] end)
+  assert.has.no.error (function () return p [true] end)
+  assert.has.no.error (function () return p [1] end)
+  assert.has.no.error (function () return p [""] end)
+  assert.has.no.error (function () return p [{""}] end)
+  assert.has.no.error (function () return p [function () end] end)
+  assert.has.no.error (function () return p [coroutine.create (function () end)] end)
+  assert.has.no.error (function () return p [tags.TAG] end)
+  assert.has.no.error (function () return p [p] end)
+end

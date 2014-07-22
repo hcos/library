@@ -8,6 +8,7 @@ local function make (value)
   return guess (path (value))
 end
 
+--[[
 do
   local root = make {
     [tags.NAME] = "root",
@@ -25,6 +26,53 @@ do
     },
   }
   root.model [root.model.b] = true
-  --[[
-  --]]
+end
+--]]
+
+do
+  local root = make {
+      [tags.NAME] = "root",
+      model = {
+        [tags.PATCHES] = {},
+      },
+    }
+  local TAG = tags.TAG
+  print (raw (root.model))
+  print (raw (root.model [tags.PATCHES]))
+root.model.x = nil
+
+  assert.has.error    (function () root.model [nil] = true end)
+  assert.has.no.error (function () root.model.x = nil end)
+
+  assert.has.no.error (function () root.model [true] = true end)
+  assert.has.no.error (function () root.model.x = true end)
+
+  assert.has.no.error (function () root.model [1] = true end)
+  assert.has.no.error (function () root.model.x = 1 end)
+
+  assert.has.no.error (function () root.model [""] = true end)
+  assert.has.no.error (function () root.model.x = "" end)
+
+  assert.has.error    (function () root.model [{""}] = true end)
+  assert.has.no.error (function () root.model.x = {""} end)
+
+  assert.has.error    (function () root.model [function () end] = true end)
+  assert.has.error    (function () root.model.x = function () end end)
+
+  assert.has.error    (function () root.model [coroutine.create (function () end)] = true end)
+  assert.has.error    (function () root.model.x = coroutine.create (function () end) end)
+
+  assert.has.no.error (function () root.model [tags.TAG] = true end)
+  assert.has.no.error (function () root.model.x = tags.TAG end)
+
+  TAG.is_persistent = true
+  assert.has.no.error (function () root.model [tags.TAG] = true end)
+  assert.has.no.error (function () root.model.x = tags.TAG end)
+
+  assert.has.no.error (function () root.model [root.model] = true end)
+  assert.has.no.error (function () root.model.x = root.model end)
+
+  local t = {}
+  assert.has.no.error (function () root.model.x = { a = t, b = t } end)
+
 end

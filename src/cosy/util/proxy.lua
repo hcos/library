@@ -32,7 +32,6 @@ local IS_PROXY = tags.IS_PROXY
 -- ----------
 local raw      = require "cosy.util.raw"
 local ignore   = require "cosy.util.ignore"
-local is_tag   = require "cosy.util.is_tag"
 
 local function string (self)
   return tostring (rawget (self, DATA))
@@ -51,8 +50,6 @@ local function index (self, key)
   local mt    = getmetatable (self)
   if type (below) ~= "table" and type (below) ~= "string" then
     error "attempt to index a non table"
-  elseif is_tag (key) and not key.wrap then
-    return below [key]
   else
     return mt (below [key])
   end
