@@ -1,11 +1,12 @@
 local assert = require "luassert"
 local make   = require "cosy.proxy.remember_path"
 local tags   = require "cosy.util.tags"
+
 local PATH   = tags.PATH
 
 do
-  local p = make ({})
-  assert.has.error (function () p [PATH] = true end)
+  local p = make (nil)
+  assert.has.error (function () return p.x end)
 end
 
 do
