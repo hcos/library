@@ -30,12 +30,12 @@ local IS_PROXY = tags.IS_PROXY
 
 -- Proxy type
 -- ----------
-local is_proxy = require "cosy.util.is_proxy"
 local raw      = require "cosy.util.raw"
 local ignore   = require "cosy.util.ignore"
+local is_tag   = require "cosy.util.is_tag"
 
 local function string (self)
-  return tostring (rawget (self, DATA))
+  return "<" .. tostring (rawget (self, DATA)) .. ">"
 end
 
 local function eq (lhs, rhs)
@@ -47,7 +47,15 @@ local function len (self)
 end
 
 local function index (self, key)
-  return self (rawget (self, DATA) [key])
+  local below = rawget (self, DATA)
+  local mt    = getmetatable (self)
+  if type (below) ~= "table" then
+    error "attempt to index a non table"
+  elseif is_tag (key) and not key.wrap then
+    return below [key]
+  else
+    return mt (below [key])
+  end
 end
 
 local function newindex_writable (self, key, value)
@@ -62,18 +70,6 @@ end
 local eq_mt = {
   __eq = eq,
 }
-
-local function call_instance (self, x)
-  local below = rawget (self, DATA)
-  local mt = getmetatable (self)
-  if mt == getmetatable (x) then
-    return mt (below)
-  elseif is_proxy (below) then
-    return mt (below (x))
-  else
-    return mt (x)
-  end
-end
 
 local function call_metatable (self, x)
   if type (x) == "table" then
@@ -104,7 +100,7 @@ local function proxy (parameters)
     __len       = len,
     __index     = index,
     __newindex  = newindex,
-    __call      = call_instance,
+    __call      = nil,
     __mode      = nil,
     [IS_PROXY]  = true,
   }

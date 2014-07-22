@@ -50,10 +50,6 @@ do
     assert.are.equal (rawget (rawget (r, DATA), DATA), value)
     assert.are.equal (r, o)
     assert.are.equal (o, r)
-    local s = r (value)
-    assert.are.equal (getmetatable (s), p1)
-    assert.are.equal (getmetatable (rawget (s, DATA)), p2)
-    assert.are.equal (rawget (rawget (s, DATA), DATA), value)
   end
   do
     local value = {}
@@ -67,37 +63,6 @@ do
     local o = p (value)
     assert.has.no.error (function () o [1] = true end)
     assert.are.same (value, { true })
-  end
-  for _, lhs in ipairs {
-    NIL,
-    true,
-    0,
-    "",
-    { "" },
-    function () end,
-    coroutine.create (function () end),
-  } do
-    if lhs == NIL then
-      lhs = nil
-    end
-    for _, rhs in ipairs {
-      NIL,
-      true,
-      0,
-      "",
-      { "" },
-      function () end,
-      coroutine.create (function () end),
-    } do
-      if rhs == NIL then
-        rhs = nil
-      end
-      local p = proxy ()
-      local q = p (lhs)
-      local r = q (rhs)
-      assert.are.equal (raw (q), lhs)
-      assert.are.equal (raw (r), rhs)
-    end
   end
   do
     local data = {
