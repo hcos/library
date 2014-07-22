@@ -10,7 +10,7 @@ do
   -- triggered by the presence of a `is_object` field within.
   --
   etype.object = function (x)
-    return type (x) == "table" and x.is_object ~= nil
+    return type (x) == "table" and x.is_object
   end
 
   -- ### Compare `type` and `etype` for non objects

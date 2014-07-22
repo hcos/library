@@ -13,15 +13,17 @@
 -- Implementation
 -- --------------
 local proxy  = require "cosy.util.proxy"
-local raw    = require "cosy.util.raw"
 local ignore = require "cosy.util.ignore"
 
 local compute, _  = proxy { read_only = true  }
 local etype, mt   = proxy { read_only = false }
 
+local RAW = {}
+
 function mt:__call (x)
   ignore (self)
-  local result = compute (x)
+  local result = compute ({})
+  rawset (result, RAW, x)
   for _, t in ipairs {
     "nil",
     "boolean",
@@ -42,7 +44,7 @@ function mt:__newindex (key, value)
 end
 
 function compute:__index (key)
-  local x = raw (self)
+  local x = rawget (self, RAW)
   local detector = etype [key]
   if detector then
     rawset (self, key, detector (x) or false)
