@@ -35,7 +35,7 @@ local ignore   = require "cosy.util.ignore"
 local is_tag   = require "cosy.util.is_tag"
 
 local function string (self)
-  return "<" .. tostring (rawget (self, DATA)) .. ">"
+  return tostring (rawget (self, DATA))
 end
 
 local function eq (lhs, rhs)
@@ -49,7 +49,7 @@ end
 local function index (self, key)
   local below = rawget (self, DATA)
   local mt    = getmetatable (self)
-  if type (below) ~= "table" then
+  if type (below) ~= "table" and type (below) ~= "string" then
     error "attempt to index a non table"
   elseif is_tag (key) and not key.wrap then
     return below [key]
