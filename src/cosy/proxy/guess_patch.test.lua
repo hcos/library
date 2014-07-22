@@ -2,24 +2,29 @@ local assert = require "luassert"
 local path   = require "cosy.proxy.remember_path"
 local guess  = require "cosy.proxy.guess_patch"
 local tags   = require "cosy.util.tags"
-local PATH   = tags.PATH
-local NAME   = tags.NAME
+local raw    = require "cosy.util.raw"
 
 local function make (value)
   return guess (path (value))
 end
 
 do
-  local data = {
+  local root = make {
+    [tags.NAME] = "root",
+  }
+  root.model = {}
+  root.model = {
+    [tags.PATCHES] = {},
   }
   local t = {}
-  local p = make (data)
-  p.x = {
+  root.model.a = 1
+  root.model.x = {
     a = t,
     b = {
       y = t,
     },
   }
-  p [p.b] = true
+  root.model [root.model.b] = true
+  --[[
+  --]]
 end
-
