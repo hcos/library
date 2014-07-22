@@ -99,6 +99,13 @@ do
       assert.are.equal (raw (r), rhs)
     end
   end
+  do
+    local data = {
+      x = true
+    }
+    local p = proxy ()
+    assert.are.equal (getmetatable (p (data) . x), p)
+  end
 end
 
 

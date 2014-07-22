@@ -47,11 +47,11 @@ local function len (self)
 end
 
 local function index (self, key)
-  return rawget (self, DATA) [key]
+  return self (rawget (self, DATA) [key])
 end
 
 local function newindex_writable (self, key, value)
-  rawget (self, DATA) [key] = raw (value)
+  rawget (self, DATA) [key] = value
 end
 
 local function newindex_readonly (self, key, value)
@@ -65,10 +65,13 @@ local eq_mt = {
 
 local function call_instance (self, x)
   local below = rawget (self, DATA)
-  if is_proxy (below) then
-    return getmetatable (self) (below (x))
+  local mt = getmetatable (self)
+  if mt == getmetatable (x) then
+    return mt (below)
+  elseif is_proxy (below) then
+    return mt (below (x))
   else
-    return getmetatable (self) (x)
+    return mt (x)
   end
 end
 
