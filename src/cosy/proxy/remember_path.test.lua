@@ -16,7 +16,9 @@ do
 end
 
 do
-  local data = {}
+  local data = {
+    some_key = {}
+  }
   local p = make (data)
   local q = p.some_key
   assert.are.same (p [PATH], { data })
@@ -41,7 +43,7 @@ do
     end
     p.some_key = value
     assert.are.same (p [PATH], { data })
-    assert.are.same (p.some_key [PATH], { data, "some_key" })
+    assert.are.equal (p.some_key, value)
   end
 end
 
@@ -63,7 +65,7 @@ do
     end
     local q = make (value)
     assert.are.same (p [PATH], { data })
-    assert.are.same (q [PATH], { value })
+    assert.are.equal (q, value)
   end
 end
 
