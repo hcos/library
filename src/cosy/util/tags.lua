@@ -23,6 +23,7 @@ local mt = {}
 function mt:__index (key)
   local result = {}
   self [key] = result
+  result [self.NAME  ] = key
   result [self.IS_TAG] = true
   return result
 end
