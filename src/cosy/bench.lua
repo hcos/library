@@ -43,7 +43,7 @@ local function measure (functions)
   end
   local by_key = {}
   local size   = 0
-  for k, d in pairs (result) do
+  for k, _ in pairs (result) do
     by_key [#by_key + 1] = k
     size = math.max (size, #k)
   end
