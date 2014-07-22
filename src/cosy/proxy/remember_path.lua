@@ -5,6 +5,7 @@ local tags  = require "cosy.util.tags"
 
 local DATA  = tags.DATA
 local PATH  = tags.PATH
+PATH.wrap = false
 
 local remember_path = proxy {}
 

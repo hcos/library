@@ -61,7 +61,7 @@ do
     if value == NIL then
       value = nil
     end
-    local q = p (value)
+    local q = make (value)
     assert.are.same (p [PATH], { data })
     assert.are.same (q [PATH], { value })
   end
