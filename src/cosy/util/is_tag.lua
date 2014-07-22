@@ -1,9 +1,11 @@
 local tags = require "cosy.util.tags"
+local raw  = require "cosy.util.raw"
 
 local IS_TAG = tags.IS_TAG
 
 local function is_tag (x)
-  return type (x) == "table" and x [IS_TAG]
+  local r = raw (x)
+  return r and type (r) == "table" and r [IS_TAG]
 end
 
 return is_tag
