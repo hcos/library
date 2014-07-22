@@ -32,7 +32,7 @@ local function path_of (path)
     elseif type (p) == "table" and is_tag (p) then
       result = result .. "[tags." .. p [NAME] .. "]"
     elseif type (p) == "table" and not result then
-      result = tostring (raw (p [NAME]))
+      result = tostring (p [NAME])
     elseif type (p) == "table" then
       result = result .. "[" .. path_of (p [PATH]) .. "]"
     else
