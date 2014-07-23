@@ -31,49 +31,91 @@ local IS_PROXY = tags.IS_PROXY
 -- Proxy type
 -- ----------
 local raw      = require "cosy.util.raw"
-local ignore   = require "cosy.util.ignore"
 local is_proxy = require "cosy.util.is_proxy"
+local copy     = require "cosy.util.shallow_copy"
 
-local function string (self)
+local metatable = {}
+
+local EQ = {}
+local LT = {}
+local LE = {}
+
+function metatable:__tostring ()
   return tostring (rawget (self, DATA))
 end
 
-local function eq (lhs, rhs)
-  return raw (lhs) == raw (rhs)
-end
-
-local function len (self)
+function metatable:__len ()
   return # rawget (self, DATA)
 end
 
-local function index (self, key)
+function metatable:__index (key)
   local below = rawget (self, DATA)
   local mt    = getmetatable (self)
   return mt (below [key])
 end
 
-local function newindex_writable (self, key, value)
+function metatable:__newindex (key, value)
   rawget (self, DATA) [key] = value
 end
 
-local function newindex_readonly (self, key, value)
-  ignore (self, key, value)
-  error "Attempt to write to a read-only proxy."
+function metatable.__eq (lhs, rhs)
+  lhs = raw (lhs)
+  rhs = raw (rhs)
+  local lhs_mt = getmetatable (lhs)
+  local rhs_mt = getmetatable (rhs)
+  local lhs_back = lhs_mt.__eq
+  local rhs_back = rhs_mt.__eq
+  lhs_mt.__eq = lhs_mt [EQ]
+  rhs_mt.__eq = rhs_mt [EQ]
+  local result = lhs == rhs
+  lhs_mt.__eq = lhs_back
+  rhs_mt.__eq = rhs_back
+  return result
 end
 
-local function call (self, ...)
+function metatable.__lt (lhs, rhs)
+  lhs = raw (lhs)
+  rhs = raw (rhs)
+  local lhs_mt = getmetatable (lhs)
+  local rhs_mt = getmetatable (rhs)
+  local lhs_back = lhs_mt.__lt
+  local rhs_back = rhs_mt.__lt
+  lhs_mt.__lt = lhs_mt [LT]
+  rhs_mt.__lt = rhs_mt [LT]
+  local result = lhs < rhs
+  lhs_mt.__lt = lhs_back
+  rhs_mt.__lt = rhs_back
+  return result
+end
+
+function metatable.__le (lhs, rhs)
+  lhs = raw (lhs)
+  rhs = raw (rhs)
+  local lhs_mt = getmetatable (lhs)
+  local rhs_mt = getmetatable (rhs)
+  local lhs_back = lhs_mt.__le
+  local rhs_back = rhs_mt.__le
+  lhs_mt.__le = lhs_mt [LE]
+  rhs_mt.__le = rhs_mt [LE]
+  local result = lhs <= rhs
+  lhs_mt.__le = lhs_back
+  rhs_mt.__le = rhs_back
+  return result
+end
+
+function metatable:__call (...)
   local below = rawget (self, DATA)
   local mt    = getmetatable (self)
   return mt (below (...))
 end
 
-local function unm (self)
+function metatable:__unm ()
   local below = rawget (self, DATA)
   local mt    = getmetatable (self)
   return mt (-below)
 end
 
-local function add (lhs, rhs)
+function metatable.__add (lhs, rhs)
   if is_proxy (lhs) then
     local below = rawget (lhs, DATA)
     local mt    = getmetatable (lhs)
@@ -85,7 +127,7 @@ local function add (lhs, rhs)
   end
 end
 
-local function sub (lhs, rhs)
+function metatable.__sub (lhs, rhs)
   if is_proxy (lhs) then
     local below = rawget (lhs, DATA)
     local mt    = getmetatable (lhs)
@@ -97,7 +139,7 @@ local function sub (lhs, rhs)
   end
 end
 
-local function mul (lhs, rhs)
+function metatable.__mul (lhs, rhs)
   if is_proxy (lhs) then
     local below = rawget (lhs, DATA)
     local mt    = getmetatable (lhs)
@@ -109,7 +151,7 @@ local function mul (lhs, rhs)
   end
 end
 
-local function div (lhs, rhs)
+function metatable.__div (lhs, rhs)
   if is_proxy (lhs) then
     local below = rawget (lhs, DATA)
     local mt    = getmetatable (lhs)
@@ -121,7 +163,7 @@ local function div (lhs, rhs)
   end
 end
 
-local function mod (lhs, rhs)
+function metatable.__mod (lhs, rhs)
   if is_proxy (lhs) then
     local below = rawget (lhs, DATA)
     local mt    = getmetatable (lhs)
@@ -133,7 +175,7 @@ local function mod (lhs, rhs)
   end
 end
 
-local function pow (lhs, rhs)
+function metatable.__pow (lhs, rhs)
   if is_proxy (lhs) then
     local below = rawget (lhs, DATA)
     local mt    = getmetatable (lhs)
@@ -145,7 +187,7 @@ local function pow (lhs, rhs)
   end
 end
 
-local function concat (lhs, rhs)
+function metatable.__concat (lhs, rhs)
   if is_proxy (lhs) then
     local below = rawget (lhs, DATA)
     local mt    = getmetatable (lhs)
@@ -157,12 +199,33 @@ local function concat (lhs, rhs)
   end
 end
 
-local function call_metatable (self, x)
-  if type (x) == "table" then
-    local mt = getmetatable (x) or {}
-    assert (not mt.__eq or mt.__eq == eq)
-    mt.__eq = eq
-    setmetatable (x, mt)
+metatable.__mode     = nil
+metatable [IS_PROXY] = true
+
+local function mt_call (self, x)
+  if is_proxy (x) then
+    return setmetatable ({
+      [DATA] = x,
+    }, self)
+  elseif type (x) == "table" then
+    local mt = getmetatable (x)
+    if not mt then
+      setmetatable (x, {
+        __eq = metatable.__eq,
+        __lt = metatable.__lt,
+        __le = metatable.__le,
+      })
+    else
+      if mt.__eq ~= metatable.__eq then
+        mt [EQ], mt.__eq = mt.__eq, metatable.__eq
+      end
+      if mt.__lt ~= metatable.__lt then
+        mt [LT], mt.__lt = mt.__lt, metatable.__lt
+      end
+      if mt.__le ~= metatable.__le then
+        mt [LE], mt.__le = mt.__le, metatable.__le
+      end
+    end
     return setmetatable ({
       [DATA] = x,
     }, self)
@@ -171,36 +234,11 @@ local function call_metatable (self, x)
   end
 end
 
-local function proxy (parameters)
-  parameters = parameters or {}
-  local newindex
-  if parameters.read_only then
-    newindex = newindex_readonly
-  else
-    newindex = newindex_writable
-  end
-  local mt = {
-    __call = call_metatable,
-  }
-  local result = {
-    __tostring  = string,
-    __eq        = eq,
-    __index     = index,
-    __newindex  = newindex,
-    __len       = len,
-    __call      = call,
-    __unm       = unm,
-    __add       = add,
-    __sub       = sub,
-    __mul       = mul,
-    __div       = div,
-    __mod       = mod,
-    __pow       = pow,
-    __concat    = concat,
-    __mode      = nil,
-    [IS_PROXY]  = true,
-  }
-  return setmetatable (result, mt), mt
+local function proxy ()
+  local result = copy (metatable)
+  return setmetatable (result, {
+    __call = mt_call,
+  })
 end
 
 return proxy

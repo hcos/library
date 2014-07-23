@@ -56,19 +56,6 @@ do
     assert.are.equal (o, r)
   end
   do
-    local value = {}
-    local p = proxy { read_only = true}
-    local o = p (value)
-    assert.has.error (function () o [1] = true end)
-  end
-  do
-    local value = {}
-    local p = proxy { read_only = false }
-    local o = p (value)
-    assert.has.no.error (function () o [1] = true end)
-    assert.are.same (value, { true })
-  end
-  do
     local data = {
       x = {}
     }
@@ -92,15 +79,15 @@ do
   end
   do
     local mt = {
-      __call   = function () end,
-      __unm    = function () end,
-      __add    = function () end,
-      __sub    = function () end,
-      __mul    = function () end,
-      __div    = function () end,
-      __mod    = function () end,
-      __pow    = function () end,
-      __concat = function () end,
+      __call   = function () return "ok" end,
+      __unm    = function () return "ok" end,
+      __add    = function () return "ok" end,
+      __sub    = function () return "ok" end,
+      __mul    = function () return "ok" end,
+      __div    = function () return "ok" end,
+      __mod    = function () return "ok" end,
+      __pow    = function () return "ok" end,
+      __concat = function () return "ok" end,
     }
     local value = setmetatable ({}, mt)
     local p = proxy ()
@@ -114,18 +101,27 @@ do
     assert.has.no.error (function () return o % 1  end)
     assert.has.no.error (function () return o ^ 1  end)
     assert.has.no.error (function () return o .. 1 end)
+    assert.are.equal (o ()  , "ok")
+    assert.are.equal (-o    , "ok")
+    assert.are.equal (o + 1 , "ok")
+    assert.are.equal (o - 1 , "ok")
+    assert.are.equal (o * 1 , "ok")
+    assert.are.equal (o / 1 , "ok")
+    assert.are.equal (o % 1 , "ok")
+    assert.are.equal (o ^ 1 , "ok")
+    assert.are.equal (o .. 1, "ok")
   end
   do
     local mt = {
-      __call   = function () end,
-      __unm    = function () end,
-      __add    = function () end,
-      __sub    = function () end,
-      __mul    = function () end,
-      __div    = function () end,
-      __mod    = function () end,
-      __pow    = function () end,
-      __concat = function () end,
+      __call   = function () return "ok" end,
+      __unm    = function () return "ok" end,
+      __add    = function () return "ok" end,
+      __sub    = function () return "ok" end,
+      __mul    = function () return "ok" end,
+      __div    = function () return "ok" end,
+      __mod    = function () return "ok" end,
+      __pow    = function () return "ok" end,
+      __concat = function () return "ok" end,
     }
     local value = setmetatable ({}, mt)
     local p = proxy ()
@@ -139,6 +135,57 @@ do
     assert.has.no.error (function () return 1 % o  end)
     assert.has.no.error (function () return 1 ^ o  end)
     assert.has.no.error (function () return 1 .. o end)
+    assert.are.equal (o ()  , "ok")
+    assert.are.equal (-o    , "ok")
+    assert.are.equal (1 + o , "ok")
+    assert.are.equal (1 - o , "ok")
+    assert.are.equal (1 * o , "ok")
+    assert.are.equal (1 / o , "ok")
+    assert.are.equal (1 % o , "ok")
+    assert.are.equal (1 ^ o , "ok")
+    assert.are.equal (1 .. o, "ok")
+  end
+  do
+    local mt = {
+    }
+    local v = setmetatable ({}, mt)
+    local w = setmetatable ({}, mt)
+    local p = proxy ()
+    local p1 = p (v)
+    local p2 = p (v)
+    local p3 = p (w)
+    assert.are.equal (p1, p2)
+    assert.are_not.equal (p1, p3)
+  end
+  do
+    local mt = {
+      __eq = function () return true end,
+      __lt = function () return true end,
+      __le = function () return true end,
+    }
+    local value = setmetatable ({}, mt)
+    local p = proxy ()
+    assert.has.no.error (function () return p (value) end)
+    local o1 = p (value)
+    local o2 = p (value)
+    assert.has.no.error (function () return value == o1 end)
+    assert.has.no.error (function () return value <  o1 end)
+    assert.has.no.error (function () return value <= o1 end)
+    assert.is_true (value == o1)
+    assert.is_true (value <  o1)
+    assert.is_true (value <= o1)
+    assert.has.no.error (function () return o1 == value end)
+    assert.has.no.error (function () return o1 <  value end)
+    assert.has.no.error (function () return o1 <= value end)
+    assert.is_true (o1 == value)
+    assert.is_true (o1 <  value)
+    assert.is_true (o1 <= value)
+    assert.has.no.error (function () return o1 == o2 end)
+    assert.has.no.error (function () return o1 <  o2 end)
+    assert.has.no.error (function () return o1 <= o2 end)
+    assert.is_true (o1 == o2)
+    assert.is_true (o1 <  o2)
+    assert.is_true (o1 <= o2)
   end
 end
 
