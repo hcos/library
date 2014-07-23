@@ -80,7 +80,6 @@ local function perform (self, key, old_value, seen)
     patch_str = patch_str .. value_of (old_value)
     recursive = type (old_value) == "table" and not is_tag (old_value)
   end
---  print (patch_str)
   local model = key_path [1] [key_path [2]]
   if model and #key_path > 2 then
     local patches = model [PATCHES]
