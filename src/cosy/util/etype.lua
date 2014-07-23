@@ -15,14 +15,15 @@
 local proxy  = require "cosy.util.proxy"
 local ignore = require "cosy.util.ignore"
 
-local compute, _  = proxy { read_only = true  }
-local etype, mt   = proxy { read_only = false }
+local compute = proxy ()
+local etype   = proxy ()
 
+local mt = getmetatable (etype)
 local RAW = {}
 
 function mt:__call (x)
   ignore (self)
-  local result = compute ({})
+  local result = compute {}
   rawset (result, RAW, x)
   for _, t in ipairs {
     "nil",
@@ -52,9 +53,13 @@ function compute:__index (key)
   return rawget (self, key) or false
 end
 
+function compute.__newindex ()
+  error "read-only proxy"
+end
+
 -- The function uses the standard Lua `type` function internally, and
 -- overrides its result in the case of tables. In this case, it returns a
 -- table that maps each type name to the result of the corresponding
 -- detection function.
-
+--
 return etype

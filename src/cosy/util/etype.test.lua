@@ -53,4 +53,6 @@ do
   assert.is_truthy (
     etype { is_object = true } . object
   )
+
+  assert.has.error (function () etype {} . something = true end)
 end
