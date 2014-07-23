@@ -9,6 +9,9 @@
 -- Lua versions, performing a table copy through iteration. The Lua 5.2
 -- version is more efficient.
 --
+
+local raw = require "cosy.util.raw"
+
 local shallow_copy
 
 if table.pack and table.unpack then -- Lua 5.2
@@ -16,6 +19,7 @@ if table.pack and table.unpack then -- Lua 5.2
     if type (data) ~= "table" then
       return data
     else
+      data = raw (data)
       local result = table.pack (table.unpack (data))
       result.n = nil
       return result
@@ -26,6 +30,7 @@ else
     if type (data) ~= "table" then
       return data
     else
+      data = raw (data)
       local result = {}
       for k, v in pairs (data) do
         result[k] = v
