@@ -12,6 +12,9 @@ pre {
     overflow: auto;
     max-height: 300px;
 }
+.breakpoints {width: .8em;}
+.breakpoint { color: #822; }
+.CodeMirror {border: 2px solid #aaa;}
 
 .btn { margin: 10px;}
 ul#tabs { list-style-type: none; margin: 30px 0 0 0; padding: 0 0 0.3em 0; }
