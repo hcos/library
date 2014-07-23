@@ -12,31 +12,16 @@
 
 local raw = require "cosy.util.raw"
 
-local shallow_copy
-
-if table.pack and table.unpack then -- Lua 5.2
-  shallow_copy = function (data)
-    if type (data) ~= "table" then
-      return data
-    else
-      data = raw (data)
-      local result = table.pack (table.unpack (data))
-      result.n = nil
-      return result
+local function shallow_copy (data)
+  if type (data) ~= "table" then
+    return data
+  else
+    data = raw (data)
+    local result = {}
+    for k, v in pairs (data) do
+      result[k] = v
     end
-  end
-else
-  shallow_copy = function (data)
-    if type (data) ~= "table" then
-      return data
-    else
-      data = raw (data)
-      local result = {}
-      for k, v in pairs (data) do
-        result[k] = v
-      end
-      return result
-    end
+    return result
   end
 end
 
