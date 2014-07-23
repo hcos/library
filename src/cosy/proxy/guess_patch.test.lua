@@ -1,11 +1,11 @@
 local assert = require "luassert"
+local rawify = require "cosy.proxy.rawify"
 local path   = require "cosy.proxy.remember_path"
 local guess  = require "cosy.proxy.guess_patch"
 local tags   = require "cosy.util.tags"
-local raw    = require "cosy.util.raw"
 
 local function make (value)
-  return guess (path (value))
+  return guess (path (rawify (value)))
 end
 
 --[[
@@ -33,13 +33,13 @@ do
   local root = make {
       [tags.NAME] = "root",
       model = {
-        [tags.PATCHES] = {},
+        [tags.PATCHES] = {
+          [tags.IS_VOLATILE] = true,
+        },
       },
     }
   local TAG = tags.TAG
-  print (raw (root.model))
-  print (raw (root.model [tags.PATCHES]))
-root.model.x = nil
+  root.model.x = nil
 
   assert.has.error    (function () root.model [nil] = true end)
   assert.has.no.error (function () root.model.x = nil end)

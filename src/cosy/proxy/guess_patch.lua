@@ -4,11 +4,12 @@ local is_proxy = require "cosy.util.is_proxy"
 local is_tag   = require "cosy.util.is_tag"
 local map      = require "cosy.util.map"
 local seq      = require "cosy.util.seq"
-local raw      = require "cosy.util.raw"
+local rawify   = require "cosy.proxy.rawify"
 
 local PATH    = tags.PATH
 local PATCHES = tags.PATCHES
 local NAME    = tags.NAME
+local IS_VOLATILE = tags.IS_VOLATILE
 
 local guess_patch = proxy ()
 
@@ -35,7 +36,7 @@ local function path_of (path)
     elseif type (p) == "table" then
       result = result .. "[" .. path_of (p [PATH]) .. "]"
     else
-      assert (false)
+      error ("cannot create patch from data type " .. type (p))
     end
   end
   return result
@@ -55,40 +56,34 @@ local function value_of (value)
   elseif type (value) == "table" then
     return "{}"
   else
-    assert (false)
+    error ("cannot create patch from data type " .. type (value))
   end
 end
 
 local function perform (self, key, old_value, seen)
-  if is_tag (key) and not key.is_persistent then
+  if self [IS_VOLATILE] then
     return
   end
   local new_value = self [key]
-  local key_path  = new_value [PATH]
-  assert (key_path and #key_path ~= 0)
-  print (#key_path)
-  local viewed
-  local raw_old_value = raw (old_value)
-  if type (raw_old_value) == "table" then
-    viewed = seen [raw_old_value]
-    seen [raw_old_value] = new_value
+  local key_path  = self [PATH] .. key
+  local viewed    = seen [old_value]
+  if type (old_value) == "table" then
+    seen [old_value] = key_path
   end
   local recursive = false
   local patch_str = path_of (key_path) .. " = "
   if viewed then
-    patch_str = patch_str .. path_of (viewed [PATH])
+    patch_str = patch_str .. path_of (viewed)
   elseif is_proxy (old_value) then
     patch_str = patch_str .. path_of (old_value [PATH])
   else
     patch_str = patch_str .. value_of (old_value)
     recursive = type (old_value) == "table" and not is_tag (old_value)
   end
-  print (patch_str)
-  local model = key_path [1] [raw (key_path [2])]
-  print (raw (model))
+--  print (patch_str)
+  local model = key_path [1] [key_path [2]]
   if model and #key_path > 2 then
     local patches = model [PATCHES]
-    print (raw (patches))
     patches [#patches + 1] = {
       apply   = patch_str,
       unapply = function () self [key] = old_value end,
@@ -103,9 +98,7 @@ end
 
 function guess_patch:__newindex (key, value)
   forward (self, key, value)
-  if not is_tag (self) or raw (self).is_persistent then
-    perform (self, key, value, {})
-  end
+  perform (self, key, value, rawify {})
 end
 
 return guess_patch
