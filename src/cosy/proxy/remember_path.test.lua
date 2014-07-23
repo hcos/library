@@ -1,6 +1,7 @@
 local assert = require "luassert"
 local make   = require "cosy.proxy.remember_path"
 local tags   = require "cosy.util.tags"
+local raw    = require "cosy.util.raw"
 
 local PATH   = tags.PATH
 
@@ -12,7 +13,7 @@ end
 do
   local data = {}
   local p = make (data)
-  assert.are.same (p [PATH], { data })
+  assert.are.same (raw (p [PATH]), { data })
 end
 
 do
@@ -21,8 +22,8 @@ do
   }
   local p = make (data)
   local q = p.some_key
-  assert.are.same (p [PATH], { data })
-  assert.are.same (q [PATH], { data, "some_key" })
+  assert.are.same (raw (p [PATH]), { data })
+  assert.are.same (raw (q [PATH]), { data, "some_key" })
 end
 
 do
@@ -42,7 +43,7 @@ do
       value = nil
     end
     p.some_key = value
-    assert.are.same (p [PATH], { data })
+    assert.are.same (raw (p [PATH]), { data })
     assert.are.equal (p.some_key, value)
   end
 end
@@ -64,7 +65,7 @@ do
       value = nil
     end
     local q = make (value)
-    assert.are.same (p [PATH], { data })
+    assert.are.same (raw (p [PATH]), { data })
     assert.are.equal (q, value)
   end
 end
