@@ -75,6 +75,71 @@ do
     local p = proxy ()
     assert.are.equal (getmetatable (p (data) . x), p)
   end
+  do
+    local mt = {}
+    local value = setmetatable ({}, mt)
+    local p = proxy ()
+    local o = p (value)
+    assert.has.error (function () return o ()   end)
+    assert.has.error (function () return -o     end)
+    assert.has.error (function () return o + 1  end)
+    assert.has.error (function () return o - 1  end)
+    assert.has.error (function () return o * 1  end)
+    assert.has.error (function () return o / 1  end)
+    assert.has.error (function () return o % 1  end)
+    assert.has.error (function () return o ^ 1  end)
+    assert.has.error (function () return o .. 1 end)
+  end
+  do
+    local mt = {
+      __call   = function () end,
+      __unm    = function () end,
+      __add    = function () end,
+      __sub    = function () end,
+      __mul    = function () end,
+      __div    = function () end,
+      __mod    = function () end,
+      __pow    = function () end,
+      __concat = function () end,
+    }
+    local value = setmetatable ({}, mt)
+    local p = proxy ()
+    local o = p (value)
+    assert.has.no.error (function () return o ()   end)
+    assert.has.no.error (function () return -o     end)
+    assert.has.no.error (function () return o + 1  end)
+    assert.has.no.error (function () return o - 1  end)
+    assert.has.no.error (function () return o * 1  end)
+    assert.has.no.error (function () return o / 1  end)
+    assert.has.no.error (function () return o % 1  end)
+    assert.has.no.error (function () return o ^ 1  end)
+    assert.has.no.error (function () return o .. 1 end)
+  end
+  do
+    local mt = {
+      __call   = function () end,
+      __unm    = function () end,
+      __add    = function () end,
+      __sub    = function () end,
+      __mul    = function () end,
+      __div    = function () end,
+      __mod    = function () end,
+      __pow    = function () end,
+      __concat = function () end,
+    }
+    local value = setmetatable ({}, mt)
+    local p = proxy ()
+    local o = p (value)
+    assert.has.no.error (function () return o ()   end)
+    assert.has.no.error (function () return -o     end)
+    assert.has.no.error (function () return 1 + o  end)
+    assert.has.no.error (function () return 1 - o  end)
+    assert.has.no.error (function () return 1 * o  end)
+    assert.has.no.error (function () return 1 / o  end)
+    assert.has.no.error (function () return 1 % o  end)
+    assert.has.no.error (function () return 1 ^ o  end)
+    assert.has.no.error (function () return 1 .. o end)
+  end
 end
 
 
