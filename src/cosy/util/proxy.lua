@@ -33,6 +33,7 @@ local IS_PROXY = tags.IS_PROXY
 local raw      = require "cosy.util.raw"
 local is_proxy = require "cosy.util.is_proxy"
 local copy     = require "cosy.util.shallow_copy"
+local seq      = require "cosy.util.seq"
 
 local metatable = {}
 
@@ -199,6 +200,7 @@ function metatable.__concat (lhs, rhs)
   end
 end
 
+
 metatable.__mode     = nil
 metatable [IS_PROXY] = true
 
@@ -234,10 +236,41 @@ local function mt_call (self, x)
   end
 end
 
+local COMPONENTS = tags.COMPONENTS
+
+local function compose (self, x)
+  local result = x
+  for f in seq (self [COMPONENTS]) do
+    result = f (result)
+  end
+  return result
+end
+
+local function mt_concat (lhs, rhs)
+  local components = {}
+  for p in seq { rhs, lhs } do
+    if not (type (p) == "table" and p [COMPONENTS]) then
+      p = {
+        [COMPONENTS] = { p },
+      }
+    end
+    for f in seq (p [COMPONENTS]) do
+      components [#components + 1] = f
+    end
+  end
+  return setmetatable ({
+    [COMPONENTS] = components,
+  }, {
+    __call   = compose,
+    __concat = mt_concat,
+  })
+end
+
 local function proxy ()
   local result = copy (metatable)
   return setmetatable (result, {
-    __call = mt_call,
+    __call   = mt_call,
+    __concat = mt_concat,
   })
 end
 

@@ -189,4 +189,39 @@ do
   end
 end
 
-
+do
+  local stack = {}
+  local p1 = proxy ()
+  local p1_mt = getmetatable (p1)
+  local p1_forward = p1_mt.__call
+  p1_mt.__call = function (self, x)
+    stack [#stack + 1] = "p1"
+    return p1_forward (self, x)
+  end
+  local p2 = proxy ()
+  local p2_mt = getmetatable (p2)
+  local p2_forward = p2_mt.__call
+  p2_mt.__call = function (self, x)
+    stack [#stack + 1] = "p2"
+    return p2_forward (self, x)
+  end
+  local f1 = function (x)
+    stack [#stack + 1] = "f1"
+    return x
+  end
+  local f2 = function (x)
+    stack [#stack + 1] = "f2"
+    return x
+  end
+  local w1 = p1 .. p2
+  local w2 = f1 .. p1
+  local w3 = p1 .. f1
+  local w4 = f1 .. p1 .. p2 .. f2
+  assert.are.equal (#stack, 0)
+  w4 (1)
+  assert.are.equal (#stack, 4)
+  assert.are.equal (stack [1], "f2")
+  assert.are.equal (stack [2], "p2")
+  assert.are.equal (stack [3], "p1")
+  assert.are.equal (stack [4], "f1")
+end
