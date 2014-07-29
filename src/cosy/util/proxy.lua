@@ -236,7 +236,7 @@ local function mt_call (self, x)
   end
 end
 
-local COMPONENTS = tags.COMPONENTS
+local COMPONENTS = {}
 
 local function compose (self, x)
   local result = x
