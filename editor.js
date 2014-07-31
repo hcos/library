@@ -3,7 +3,7 @@
     var rect_size = 30,
         rect_highlighted = 40,
         radius = rect_size / 2;
-        radis_highlighted = (rect_size / 1.2);
+        radius_highlighted = (rect_size / 1.2);
     
     // Definitions of each of the shapes represented in the force layout.
     // Each new shape must be defined here
@@ -12,41 +12,63 @@
         rect : {
             d: "M " + -rect_size + " " + (-rect_size / 4) + " h " + 2 * rect_size + " v " + (rect_size / 2) + " h "+ (-2 * rect_size) + " z",
             
-            anchors:{"north" : {x:0, y:(-rect_size/4)},
-                     "east" : {x:rect_size, y:0},
-                     "south" : {x:0, y:(rect_size/4)},
-                     "west" : {x:-rect_size, y:0},
-                     "northeast" : {x:rect_size, y:-rect_size/4},
-                     "southeast" : {x:rect_size, y:rect_size/4},
-                     "southwest" : {x:-rect_size, y:rect_size/4},
-                     "northwest" : {x:-rect_size, y:-rect_size/4}}
+            anchors:{"N" : {x:0, y:(-rect_size/4)},
+                     "E" : {x:rect_size, y:0},
+                     "S" : {x:0, y:(rect_size/4)},
+                     "W" : {x:-rect_size, y:0},
+                     "NE" : {x:rect_size, y:-rect_size/4},
+                     "SE" : {x:rect_size, y:rect_size/4},
+                     "SW" : {x:-rect_size, y:rect_size/4},
+                     "NW" : {x:-rect_size, y:-rect_size/4}}
         },
         
         rect_highlighted : {
             d: "M " + -rect_highlighted + " " + (-rect_highlighted / 4) + " h " + 2 * rect_highlighted + " v " + (rect_highlighted / 2) + " h "+ (-2 * rect_highlighted) + " z",
-            anchors : {}
+            anchors : {"N" : {x:0, y:(-rect_highlighted/4)},
+                     "E" : {x:rect_highlighted, y:0},
+                     "S" : {x:0, y:(rect_highlighted/4)},
+                     "W" : {x:-rect_highlighted, y:0},
+                     "NE" : {x:rect_highlighted, y:-rect_highlighted/4},
+                     "SE" : {x:rect_highlighted, y:rect_highlighted/4},
+                     "SW" : {x:-rect_highlighted, y:rect_highlighted/4},
+                     "NW" : {x:-rect_highlighted, y:-rect_highlighted/4}}
         },
         
         vertical_rect : {
             d: "M " + (-rect_size / 4) + " " + -rect_size + " h " + (rect_size / 2) + " v " + 2 * rect_size + " h "      + (-rect_size / 2) + " z",
-            anchors : {}
+            anchors : {"N" : {x:0, y:(-rect_size/4)},
+                     "E" : {x:rect_size, y:0},
+                     "S" : {x:0, y:(rect_size/4)},
+                     "W" : {x:-rect_size, y:0},
+                     "NE" : {x:rect_size, y:-rect_size/4},
+                     "SE" : {x:rect_size, y:rect_size/4},
+                     "SW" : {x:-rect_size, y:rect_size/4},
+                     "NW" : {x:-rect_size, y:-rect_size/4}}
         },
         
         circle : {
             d: "M 0 0 m" + (-radius) +", 0 a " + radius + "," + radius + " 0 1,0 " + (radius * 2) +",0 " 
                         + "a " + radius + "," + radius + " 0 1,0 " + (-radius * 2) + ",0",
-            anchors : {"north" :    {x:Math.cos(Math.PI/2)*radius,      y:-Math.sin(Math.PI/2)*radius},
-                     "east" :       {x:Math.cos(0)*radius,              y:Math.sin(0)*radius},
-                     "south" :      {x:Math.cos(3/2*Math.PI)*radius,    y:-Math.sin(3/2*Math.PI)*radius},
-                     "west" :       {x:Math.cos(Math.PI)*radius,        y:Math.sin(Math.PI)*radius},
-                     "northeast" :  {x:Math.cos(Math.PI/4)*radius,      y:-Math.sin(Math.PI/4)*radius},
-                     "southeast" :  {x:Math.cos(7/4*Math.PI)*radius,    y:-Math.sin(7/4*Math.PI)*radius},
-                     "southwest" :  {x:Math.cos(5/4*Math.PI)*radius,    y:-Math.sin(5/4*Math.PI)*radius},
-                     "northwest" :  {x:Math.cos(3/4*Math.PI)*radius,    y:-Math.sin(3/4*Math.PI)*radius}}
+            anchors : {"N" :    {x:Math.cos(Math.PI/2)*radius,      y:-Math.sin(Math.PI/2)*radius},
+                     "E" :       {x:Math.cos(0)*radius,              y:Math.sin(0)*radius},
+                     "S" :      {x:Math.cos(3/2*Math.PI)*radius,    y:-Math.sin(3/2*Math.PI)*radius},
+                     "W" :       {x:Math.cos(Math.PI)*radius,        y:Math.sin(Math.PI)*radius},
+                     "NE" :  {x:Math.cos(Math.PI/4)*radius,      y:-Math.sin(Math.PI/4)*radius},
+                     "SE" :  {x:Math.cos(7/4*Math.PI)*radius,    y:-Math.sin(7/4*Math.PI)*radius},
+                     "SW" :  {x:Math.cos(5/4*Math.PI)*radius,    y:-Math.sin(5/4*Math.PI)*radius},
+                     "NW" :  {x:Math.cos(3/4*Math.PI)*radius,    y:-Math.sin(3/4*Math.PI)*radius}}
         },
         
         circle_highlighted : {
-            d: "M 0 0 m" + (-radis_highlighted) +", 0 a " + radis_highlighted + "," + radis_highlighted + " 0 1,0 " + (radis_highlighted * 2) +",0 " + "a " + radis_highlighted + "," + radis_highlighted + " 0 1,0 " + (-radis_highlighted * 2) + ",0"
+            d: "M 0 0 m" + (-radius_highlighted) +", 0 a " + radius_highlighted + "," + radius_highlighted + " 0 1,0 " + (radius_highlighted * 2) +",0 " + "a " + radius_highlighted + "," + radius_highlighted + " 0 1,0 " + (-radius_highlighted * 2) + ",0",
+            anchors : {"N" : {x:Math.cos(Math.PI/2)*radius_highlighted,  y:-Math.sin(Math.PI/2)*radius_highlighted},
+                     "E" : {x:Math.cos(0)*radius_highlighted,         y:Math.sin(0)*radius_highlighted},
+                     "S" : {x:Math.cos(3/2*Math.PI)*radius_highlighted,y:-Math.sin(3/2*Math.PI)*radius_highlighted},
+                     "W" : {x:Math.cos(Math.PI)*radius_highlighted,   y:Math.sin(Math.PI)*radius_highlighted},
+                     "NE" :{x:Math.cos(Math.PI/4)*radius_highlighted,     y:-Math.sin(Math.PI/4)*radius_highlighted},
+                     "SE" :{x:Math.cos(7/4*Math.PI)*radius_highlighted,   y:-Math.sin(7/4*Math.PI)*radius_highlighted},
+                     "SW" :{x:Math.cos(5/4*Math.PI)*radius_highlighted,   y:-Math.sin(5/4*Math.PI)*radius_highlighted},
+                     "NW" :{x:Math.cos(3/4*Math.PI)*radius_highlighted,   y:-Math.sin(3/4*Math.PI)*radius_highlighted}}
             
         },
     };
@@ -72,15 +94,18 @@
         .linkDistance(200)
         .on("tick", tick);
         
-    var drag = force.drag()
-        .on("dragend", dragEnd);
+    var drag = force.drag();
+        //~ .on("dragend", dragEnd)
+        //~ .on("dragstart", dragStart);
                     
     // We start to append elements to the original html.
     var svg = d3.select("#model_container").append("svg:svg")
         .attr("width", width)
         .attr("height", height)
         .attr("fill", "none")
-        .attr("stroke", "black");
+        .attr("stroke", "black")
+        //~ .call(d3.behavior.zoom().on("zoom", rescale))
+        .on("dblclick.zoom", null);
     
     d3.select("#model_container").append("div")
         .attr("id", "forms_group")
@@ -304,7 +329,6 @@
             .on("dblclick", dblclick)
             .on("click", click)
             .call(drag);
-        
         node.exit().remove();
         
         circle = circle.data(force.nodes(), function (d) {return d.id;});
@@ -333,8 +357,22 @@
     }
     
     // Event handling methods
-    function dragEnd(d) {
+    function rescale() {
+        trans=d3.event.translate;
+        scale=d3.event.scale;
+
+        svg.attr("transform",
+            "translate(" + trans + ")"
+            + " scale(" + scale + ")");
     }
+    
+    //~ function dragEnd(d) {
+        //~ svg.call(d3.behavior.zoom().on("zoom", rescale));
+    //~ }
+    //~ 
+    //~ function dragStart(d) {
+        //~ svg.call(d3.behavior.zoom().on("zoom"), null);
+    //~ }
     
     function dblclick(d) {
         d.lua_node.set("selected", false);
@@ -342,6 +380,8 @@
     }
     
     function click(d){
+        if (d3.event.defaultPrevented) return;
+        
         d.lua_node.set("selected", true);
         d3.select(this).classed("selected", d.selected = true);
     }
@@ -356,19 +396,12 @@
         
     function tick() {
         path.attr("d", function (d) {
-            var offset = {x:0, y:0};
+            var offset;
             
-            if(d.target.type == "transition"){
-                offset = shapes.rect.anchors[d.anchor];
-            }
-            if(d.target.type == "place"){
-                offset = shapes.circle.anchors[d.anchor];
-            }
-                           
-            var anchor_list = d.target.type == "place" ? shapes.circle.anchors : shapes.rect.anchors,
+            var anchor_list = d.target.type == "place" ? (d.target.highlighted ? shapes.circle_highlighted.anchors : shapes.circle.anchors) : (d.target.highlighted ? shapes.rect_highlighted.anchors : shapes.rect.anchors),
                 min = Number.MAX_VALUE, dist;
-            
-            if(!d.lock_pos) {
+                    
+            if(!d.lock_pos || '' == d.anchor) {
                 for(var key in anchor_list){
                     x_2 = Math.pow(d.source.x - (d.target.x + anchor_list[key].x), 2);
                     y_2 = Math.pow(d.source.y - (d.target.y + anchor_list[key].y), 2);
@@ -381,6 +414,8 @@
                         offset = anchor_list[key];
                     }
                 }
+            } else {
+                offset = anchor_list[d.anchor];
             }
             
             return "M" + d.source.x + "," + d.source.y + "L" + (d.target.x+ offset.x) + "," + (d.target.y+offset.y);
