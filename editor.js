@@ -91,7 +91,7 @@
         .nodes([])
         .links([])
         .gravity(0)
-        .linkDistance(200)
+        //~ .linkDistance(200)
         .on("tick", tick);
         
     var drag = force.drag();
@@ -357,14 +357,14 @@
     }
     
     // Event handling methods
-    function rescale() {
-        trans=d3.event.translate;
-        scale=d3.event.scale;
-
-        svg.attr("transform",
-            "translate(" + trans + ")"
-            + " scale(" + scale + ")");
-    }
+    //~ function rescale() {
+        //~ trans=d3.event.translate;
+        //~ scale=d3.event.scale;
+//~ 
+        //~ svg.attr("transform",
+            //~ "translate(" + trans + ")"
+            //~ + " scale(" + scale + ")");
+    //~ }
     
     //~ function dragEnd(d) {
         //~ svg.call(d3.behavior.zoom().on("zoom", rescale));
@@ -395,7 +395,7 @@
     }
         
     function tick() {
-        path.attr("d", function (d) {
+        path.transition().duration(50).attr("d", function (d) {
             var offset;
             
             var anchor_list = d.target.type == "place" ? (d.target.highlighted ? shapes.circle_highlighted.anchors : shapes.circle.anchors) : (d.target.highlighted ? shapes.rect_highlighted.anchors : shapes.rect.anchors),
@@ -420,10 +420,10 @@
             
             return "M" + d.source.x + "," + d.source.y + "L" + (d.target.x+ offset.x) + "," + (d.target.y+offset.y);
         });
-
-        node.attr("transform", transform);
-        circle.attr("transform", transform);
-        text.attr("transform", transform);
+        
+        node.transition().attr("transform", transform).duration(50);
+        circle.transition().attr("transform", transform).duration(50);
+        text.transition().attr("transform", transform).duration(50);
         
         function transform(d) {
             return "translate(" + d.x + "," + d.y + ")";
