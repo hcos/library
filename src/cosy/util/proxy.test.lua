@@ -5,6 +5,7 @@ local assert = require "luassert"
 local proxy  = require "cosy.util.proxy"
 local tags   = require "cosy.util.tags"
 local raw    = require "cosy.util.raw"
+local ignore = require "cosy.util.ignore"
 
 do
   local NIL = {}
@@ -214,8 +215,11 @@ do
     return x
   end
   local w1 = p1 .. p2
+  ignore (w1)
   local w2 = f1 .. p1
+  ignore (w2)
   local w3 = p1 .. f1
+  ignore (w3)
   local w4 = f1 .. p1 .. p2 .. f2
   assert.are.equal (#stack, 0)
   w4 (1)
