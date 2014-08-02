@@ -49,11 +49,9 @@ local data = {
 do
   local values = {}
   for v in seq (data) do
-    values [v] = true
+    values [#values + 1] = v
   end
   assert.are.same (values, {
-    ["one"] = true,
-    ["two"] = true,
-    [false] = true,
+    "one", "two", false,
   })
 end
