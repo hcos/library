@@ -74,14 +74,40 @@
     };
 
     // Position definitions and points of reference for the markers
-    var margin = {top: -5, right: -5, bottom: -5, left: -5},
-        width = 960 - margin.left - margin.right,
-        height = 600 - margin.top - margin.bottom,
+    var width = 960,
+        height = 500,
         markerWidth = 8,
         markerHeight = 8,
-        origin = {x: width/2, y: height/2};
-    
+        origin = {x: width/2, y: height/2},
+        fill = d3.scale.category20();
         
+    var outer = d3.select("#model_container").append("svg:svg")
+            .attr("width", width)
+            .attr("height", height)
+            .attr("pointer-events", "all");
+            
+    var svg = outer.append("svg:g")
+                .call(d3.behavior.zoom()
+                        .on("zoom", rescale)
+                        .on("zoomstart", zoomStart)
+                        .on("zoomend", zoomEnd))
+                .on("dblclick.zoom", null)
+                .append("svg:g")
+                .on("mousedown", mouseDown)
+                .on("mouseup", mouseUp)
+                .on("contextmenu", function(data, index) { d3.event.preventDefault(); });    
+
+    // Background color
+    svg.append('svg:rect')
+        .attr('width', width)
+        .attr('height', height)
+        .attr('fill', 'white');
+    
+    d3.select("#model_container").append("div")
+        .attr("id", "forms_group")
+        .attr("class", "span5");
+    
+            
     // The force layout from D3 is the graphical representation of the
     // model. Set gravity in 0 so that the nodes dont move in the graph and linkDistance 
     // in 300 to adjust any node without inicial position
@@ -90,27 +116,10 @@
         .size([width, height])
         .nodes([])
         .links([])
-        .gravity(0)
-        //~ .linkDistance(200)
+        //~ .charge(5)
+        //~ .linkDistance(100)
         .on("tick", tick);
-        
-    var drag = force.drag();
-        //~ .on("dragend", dragEnd)
-        //~ .on("dragstart", dragStart);
-                    
-    // We start to append elements to the original html.
-    var svg = d3.select("#model_container").append("svg:svg")
-        .attr("width", width)
-        .attr("height", height)
-        .attr("fill", "none")
-        .attr("stroke", "black")
-        //~ .call(d3.behavior.zoom().on("zoom", rescale))
-        .on("dblclick.zoom", null);
     
-    d3.select("#model_container").append("div")
-        .attr("id", "forms_group")
-        .attr("class", "span5");
-            
     // Per-type markers, as they don't inherit styles.
     svg.append("svg:defs").selectAll("marker")
         .data(["suit", "licensing", "resolved"])
@@ -124,12 +133,39 @@
         .append("svg:path")
         .attr("d", "M0,-5L10,0L0,5");
         
+    var dragInitiated;
+    var nodeDrag = d3.behavior.drag()
+        .on("dragstart", function(d, i) {
+            console.log(d3.event.sourceEvent.which);
+            if(d3.event.sourceEvent.which == 3){
+                dragInitiated = true
+                force.stop();
+            }
+        })
+        .on("drag", function(d, i) {
+            if (dragInitiated){
+                d.px += d3.event.dx;
+                d.py += d3.event.dy;
+                d.x += d3.event.dx;
+                d.y += d3.event.dy;
+                tick();
+            }
+        })
+        .on("dragend", function(d, i){ 
+            if (d3.event.sourceEvent.which == 3){
+                force.resume()                     
+                d.fixed = true
+                tick()
+                dragInitiated = false
+            }
+        });
+
     // Definitions of all the elements from the force layot.
     // the circle represents a token for each node. 
-    var path = svg.append("svg:g").selectAll("path"),
-        node = svg.append("svg:g").selectAll(".node"),
-        circle = svg.append("svg:g").selectAll("g"),
-        text = svg.append("svg:g").selectAll("g");
+    var path = svg.append("svg:g").selectAll("path").attr("id", "paths"),
+        node = svg.append("svg:g").selectAll("node").attr("id", "nodes"),
+        circle = svg.append("svg:g").selectAll("g").attr("id", "tokens"),
+        text = svg.append("svg:g").selectAll("g").attr("id", "dummy_labels");
         
     var nodes_index = {},
         links_index = {}.
@@ -213,9 +249,9 @@
                     py : y_pos,
                     highlighted : highlighted,
                     selected : selected,
-                    fixed : true,
                     lua_node :node};
             if(undefined == nodes_index[id(node)]){
+                elem.fixed = true;
                 force.nodes().push(elem);
                 nodes_index[id(node)] = force.nodes().length - 1;
             } else {
@@ -228,7 +264,6 @@
                 force.nodes()[i].px = elem.px;
                 force.nodes()[i].py = elem.py;
                 force.nodes()[i].highlighted = elem.highlighted;
-                force.nodes()[i].fixed = elem.fixed;
                 force.nodes()[i].selected = elem.selected;
                 force.nodes()[i].lua_node = elem.lua_node;
             }
@@ -326,9 +361,10 @@
         node.attr("class", "node")
             .attr("d", function(d){ return d.shape.d;})
             .attr("fill", function(d){ return d.highlighted ? "gold" : "#ccc"})
-            .on("dblclick", dblclick)
-            .on("click", click)
-            .call(drag);
+            .on('mousedown', node_mouseDown)
+            .on("click", node_click)
+            .on("dblclick", node_dblclick)
+            .call(nodeDrag);
         node.exit().remove();
         
         circle = circle.data(force.nodes(), function (d) {return d.id;});
@@ -336,7 +372,7 @@
                 .attr("class", "token")
                 .attr("r", radius/6)
                 .attr("fill", "black")
-                .call(force.drag);
+                .call(nodeDrag);
                                 
         circle.attr("visibility", function(d) {return d.marking ? "visible" : "hidden" })
         
@@ -346,7 +382,8 @@
         text.enter().append("text")
             .attr("x", function(d){ return d.type == 'transition' ? 45 : 30})
             .attr("y", ".45em")
-            .attr("size", 10);
+            .attr("size", 10)
+            .call(nodeDrag);
             
         text.text(function(d) { return d.name; });
         text.exit().remove();
@@ -356,46 +393,72 @@
         return true;
     }
     
-    // Event handling methods
-    //~ function rescale() {
-        //~ trans=d3.event.translate;
-        //~ scale=d3.event.scale;
-//~ 
-        //~ svg.attr("transform",
-            //~ "translate(" + trans + ")"
-            //~ + " scale(" + scale + ")");
-    //~ }
+    // Zoom and rescale event handling
+    function rescale() {
+        svg.attr("transform", "translate(" + d3.event.translate + ")"+ " scale(" + d3.event.scale + ")");
+    }
     
-    //~ function dragEnd(d) {
-        //~ svg.call(d3.behavior.zoom().on("zoom", rescale));
-    //~ }
-    //~ 
-    //~ function dragStart(d) {
-        //~ svg.call(d3.behavior.zoom().on("zoom"), null);
-    //~ }
+    function zoomStart(){
+        //~ console.log("ZOOM START");
+    }
     
-    function dblclick(d) {
+    function zoomEnd(){
+        //~ console.log("ZOOM END");
+    }
+    
+    // Mouse event handling
+    
+    function mouseDown(event) {
+        //~ console.log("Mouse Down code: " + d3.event.button);
+        switch(d3.event.button){
+            case 1:
+                return;
+            default:
+                /*If is not the middle button, we stop the panning event*/
+                d3.event.stopPropagation();
+        }
+    }
+
+    function mouseUp(event) {
+        //~ console.log("Code: " + d3.event.button);
+    }
+    
+    // Force nodes event handling
+    function node_dblclick(d) {
         d.lua_node.set("selected", false);
         d3.select(this).classed("selected", d.selected = false);
     }
     
-    function click(d){
+    function node_click(d){
         if (d3.event.defaultPrevented) return;
         
         d.lua_node.set("selected", true);
         d3.select(this).classed("selected", d.selected = true);
     }
     
+    function node_mouseDown(d){
+        //~ console.log("Node_mouse down event: " + d3.event.button)
+        //~ 
+        //~ d3.event.stopPropagation();
+        //~ d3.select(this).on("mousedown.drag", null);
+        //~ switch(d3.event.button){
+            //~ case 2:
+                //~ d3.select(this).on("mousedown.drag", force.drag);
+        //~ }
+    }
+
+    // Other events
+    function formTextChange(d){
+        d.set("value", this.value);
+    }
+    
     function formBtnClick(d){
         d.set("clicked", true);
     }
     
-    function formTextChange(d){
-        d.set("value", this.value);
-    }
-        
     function tick() {
-        path.transition().duration(50).attr("d", function (d) {
+        var duration = 50;
+        path.transition().duration(duration).attr("d", function (d) {
             var offset;
             
             var anchor_list = d.target.type == "place" ? (d.target.highlighted ? shapes.circle_highlighted.anchors : shapes.circle.anchors) : (d.target.highlighted ? shapes.rect_highlighted.anchors : shapes.rect.anchors),
@@ -421,9 +484,9 @@
             return "M" + d.source.x + "," + d.source.y + "L" + (d.target.x+ offset.x) + "," + (d.target.y+offset.y);
         });
         
-        node.transition().attr("transform", transform).duration(50);
-        circle.transition().attr("transform", transform).duration(50);
-        text.transition().attr("transform", transform).duration(50);
+        node.transition().duration(duration).attr("transform", transform);
+        circle.transition().duration(duration).attr("transform", transform);
+        text.transition().duration(duration).attr("transform", transform);
         
         function transform(d) {
             return "translate(" + d.x + "," + d.y + ")";
