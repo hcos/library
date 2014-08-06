@@ -94,6 +94,7 @@
                 .on("dblclick.zoom", null)
                 .append("svg:g")
                 .on("mousedown", mouseDown)
+                .on("mousemove", mouseMove)
                 .on("mouseup", mouseUp)
                 .on("contextmenu", function(data, index) { d3.event.preventDefault(); });    
 
@@ -102,7 +103,14 @@
         .attr('width', width)
         .attr('height', height)
         .attr('fill', 'white');
-    
+
+    var drag_line = svg.append("line")
+        .attr("class", "drag_line")
+        .attr("x1", 0)
+        .attr("y1", 0)
+        .attr("x2", 0)
+        .attr("y2", 0);
+        
     d3.select("#model_container").append("div")
         .attr("id", "forms_group")
         .attr("class", "span5");
@@ -134,9 +142,10 @@
         .attr("d", "M0,-5L10,0L0,5");
         
     var dragInitiated;
+    
+    // This definition of drag allows to drag only with a right click
     var nodeDrag = d3.behavior.drag()
         .on("dragstart", function(d, i) {
-            console.log(d3.event.sourceEvent.which);
             if(d3.event.sourceEvent.which == 3){
                 dragInitiated = true
                 force.stop();
@@ -151,7 +160,7 @@
                 tick();
             }
         })
-        .on("dragend", function(d, i){ 
+        .on("dragend", function(d, i){
             if (d3.event.sourceEvent.which == 3){
                 force.resume()                     
                 d.fixed = true
@@ -170,6 +179,19 @@
     var nodes_index = {},
         links_index = {}.
         forms_index = {};
+
+    // mouse event vars
+    var selected_node = null,
+        selected_link = null,
+        mousedown_link = null,
+        mousedown_node = null,
+        mouseup_node = null;
+    
+    function resetMouseVars() {
+        mousedown_node = null;
+        mouseup_node = null;
+        mousedown_link = null;
+    }
 
     // Add new node from the model 
     function add_node(node){
@@ -362,6 +384,7 @@
             .attr("d", function(d){ return d.shape.d;})
             .attr("fill", function(d){ return d.highlighted ? "gold" : "#ccc"})
             .on('mousedown', node_mouseDown)
+            .on('mouseup', node_mouseUp)
             .on("click", node_click)
             .on("dblclick", node_dblclick)
             .call(nodeDrag);
@@ -408,22 +431,85 @@
     
     // Mouse event handling
     
-    function mouseDown(event) {
-        //~ console.log("Mouse Down code: " + d3.event.button);
+    function mouseDown() {
         switch(d3.event.button){
-            case 1:
-                return;
-            default:
-                /*If is not the middle button, we stop the panning event*/
+            case 0:     /*left click*/
+                d3.event.stopPropagation();
+                break;
+            case 1:     /*middle click*/
+                 break;
+            case 2:     /*right click*/
                 d3.event.stopPropagation();
         }
     }
+    
+    function mouseMove(){
+        if (!mousedown_node) return;
 
-    function mouseUp(event) {
-        //~ console.log("Code: " + d3.event.button);
+      drag_line
+          .attr("x1", mousedown_node.x)
+          .attr("y1", mousedown_node.y)
+          .attr("x2", d3.mouse(this)[0])
+          .attr("y2", d3.mouse(this)[1]);
+    }
+    
+    function mouseUp() {
+        switch(d3.event.button){
+            case 0:     /*left click*/
+                d3.event.stopPropagation();
+                if (mousedown_node) {
+                    // hide drag line
+                    drag_line.attr("class", "drag_line_hidden")
+
+                    if (!mouseup_node) {
+                        /*TODO: create a proper LUA node and link*/
+                        
+                        var point = d3.mouse(this),
+                        node = {id : "temp_"+force.nodes().length,
+                            name : "",
+                            type : "place", 
+                            shape : shapes.circle,
+                            marking : true,
+                            x : point[0],
+                            y : point[1],
+                            highlighted : false,
+                            selected : false,
+                            lua_node : null,
+                            fixed : true};
+                        force.nodes().push(node);
+                        
+                        var temp_i = force.nodes().length - 1;
+                        nodes_index["temp_"+temp_i] = temp_i;
+
+                        // select new node
+                        selected_node = node;
+                        selected_link = null;
+
+                        force.links().push({id : "temp_"+force.links().length, 
+                                    anchor:"",
+                                    source: mousedown_node,
+                                    target: node,
+                                    type: "licensing",
+                                    lock_pos : false});
+                    
+                        temp_i = force.links().length - 1;
+                        links_index["temp_"+temp_i] = temp_i;
+                    }
+
+                }
+                // clear mouse event vars
+                resetMouseVars();
+                updateForceLayout();
+                break;
+            case 1:     /*middle click*/
+                break;
+            case 2:     /*right click*/
+                break;
+        }
     }
     
     // Force nodes event handling
+    
     function node_dblclick(d) {
         d.lua_node.set("selected", false);
         d3.select(this).classed("selected", d.selected = false);
@@ -437,14 +523,63 @@
     }
     
     function node_mouseDown(d){
-        //~ console.log("Node_mouse down event: " + d3.event.button)
-        //~ 
-        //~ d3.event.stopPropagation();
-        //~ d3.select(this).on("mousedown.drag", null);
-        //~ switch(d3.event.button){
-            //~ case 2:
-                //~ d3.select(this).on("mousedown.drag", force.drag);
-        //~ }
+        switch(d3.event.button){
+            case 0:     /*left click*/
+                d3.event.stopPropagation();
+                mousedown_node = d;
+                if (mousedown_node == selected_node) selected_node = null;
+                else selected_node = mousedown_node; 
+                selected_link = null; 
+
+                // reposition drag line
+                drag_line
+                  .attr("class", "drag_line")
+                  .attr("x1", mousedown_node.x)
+                  .attr("y1", mousedown_node.y)
+                  .attr("x2", mousedown_node.x)
+                  .attr("y2", mousedown_node.y);
+                updateForceLayout();
+                break;
+
+            case 1:     /*middle click*/
+                 break;
+            case 2:     /*right click*/
+                d3.event.stopPropagation();
+        }
+    }
+    
+    function node_mouseUp(d){
+        switch(d3.event.button){
+            case 0:     /*left click*/
+                if (mousedown_node) {
+                    mouseup_node = d; 
+                    if (mouseup_node == mousedown_node) { resetMouseVars(); return; }
+
+                    /*TODO: create a proper LUA node and link*/
+                    var link = {id : "temp_"+force.links().length, 
+                                    anchor:"",
+                                    source: mousedown_node,
+                                    target: mouseup_node,
+                                    type: "licensing",
+                                    lock_pos : false};
+                                    
+                    force.links().push(link);
+                    
+                    var temp_i = force.links().length - 1;
+                    links_index["temp_"+temp_i] = temp_i;
+
+                    // select new link
+                    selected_link = link;
+                    selected_node = null;
+                    
+                    updateForceLayout();
+                }
+                break;
+            case 1:     /*middle click*/
+                 break;
+            case 2:     /*right click*/
+                break;
+        }
     }
 
     // Other events
