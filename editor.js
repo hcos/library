@@ -371,6 +371,10 @@
     
     // GUI update
     function updateForceLayout() {
+        
+        assert(force.nodes().lenght == nodes_index.lenght, "Error: Force nodes amount diferrent from indexed nodes");
+        assert(force.links().lenght == links_index .lenght, "Error: Force links amount diferrent from indexed links");
+        
         path = path.data(force.links(), function(d){return d.id});
         
         path.enter().insert("svg:path", ".node");
@@ -435,6 +439,7 @@
         switch(d3.event.button){
             case 0:     /*left click*/
                 d3.event.stopPropagation();
+                link_added = false;
                 break;
             case 1:     /*middle click*/
                  break;
@@ -446,17 +451,18 @@
     function mouseMove(){
         if (!mousedown_node) return;
 
-      drag_line
-          .attr("x1", mousedown_node.x)
-          .attr("y1", mousedown_node.y)
-          .attr("x2", d3.mouse(this)[0])
-          .attr("y2", d3.mouse(this)[1]);
+        drag_line
+            .attr("x1", mousedown_node.x)
+            .attr("y1", mousedown_node.y)
+            .attr("x2", d3.mouse(this)[0])
+            .attr("y2", d3.mouse(this)[1]);
     }
     
     function mouseUp() {
         switch(d3.event.button){
             case 0:     /*left click*/
                 d3.event.stopPropagation();
+                
                 if (mousedown_node) {
                     // hide drag line
                     drag_line.attr("class", "drag_line_hidden")
@@ -465,8 +471,8 @@
                         /*TODO: create a proper LUA node and link*/
                         
                         var point = d3.mouse(this),
-                        node = {id : "temp_"+force.nodes().length,
-                            name : "",
+                        node = {id : "dummy_"+force.nodes().length,
+                            name : "dummy_"+force.nodes().length,
                             type : "place", 
                             shape : shapes.circle,
                             marking : true,
@@ -479,13 +485,13 @@
                         force.nodes().push(node);
                         
                         var temp_i = force.nodes().length - 1;
-                        nodes_index["temp_"+temp_i] = temp_i;
+                        nodes_index["dummy_"+temp_i] = temp_i;
 
                         // select new node
                         selected_node = node;
                         selected_link = null;
 
-                        force.links().push({id : "temp_"+force.links().length, 
+                        force.links().push({id : "dummy_"+force.links().length, 
                                     anchor:"",
                                     source: mousedown_node,
                                     target: node,
@@ -493,9 +499,25 @@
                                     lock_pos : false});
                     
                         temp_i = force.links().length - 1;
-                        links_index["temp_"+temp_i] = temp_i;
+                        links_index["dummy_"+temp_i] = temp_i;
                     }
-
+                } else if(!link_added){
+                    var point = d3.mouse(this),
+                    node = {id : "dummy_"+force.nodes().length,
+                        name : "dummy_"+force.nodes().length,
+                        type : "place", 
+                        shape : shapes.circle,
+                        marking : true,
+                        x : point[0],
+                        y : point[1],
+                        highlighted : false,
+                        selected : false,
+                        lua_node : null,
+                        fixed : true};
+                    force.nodes().push(node);
+                    
+                    var temp_i = force.nodes().length - 1;
+                    nodes_index["temp_"+temp_i] = temp_i;
                 }
                 // clear mouse event vars
                 resetMouseVars();
@@ -571,7 +593,7 @@
                     // select new link
                     selected_link = link;
                     selected_node = null;
-                    
+                    link_added = true;
                     updateForceLayout();
                 }
                 break;
@@ -625,5 +647,11 @@
         
         function transform(d) {
             return "translate(" + d.x + "," + d.y + ")";
+        }
+    }
+    
+    function assert(condition, message) {
+        if (!condition) {
+            throw message || "Assertion failed";
         }
     }
