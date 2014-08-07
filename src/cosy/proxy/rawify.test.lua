@@ -30,3 +30,13 @@ do
   assert.are.equal (data [data], true)
   assert.are.equal (raw (p [p]), true)
 end
+
+do
+  local mt = {}
+  mt.__index = mt
+  mt.x = 1
+  local data = setmetatable ({}, mt)
+  local p = make (data)
+  assert.are.equal (p.x, data.x)
+  assert.are.equal (p.x, 1)
+end

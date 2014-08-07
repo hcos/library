@@ -7,7 +7,7 @@ local rawify = proxy ()
 function rawify:__index (key)
   local raw_self  = raw (self)
   local raw_key   = raw (key)
-  local value     = rawget (raw_self, raw_key)
+  local value     = raw_self [raw_key]
   if is_proxy (value) then
     value = raw (value)
     rawset (raw_self, raw_key, value)
