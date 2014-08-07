@@ -1,5 +1,5 @@
-local json   = require "dkjson"
-
+local json       = require "dkjson"
+                   require "cosy.util.string"
 local cosy       = require "cosy.util.cosy"
 local tags       = require "cosy.util.tags"
 local protocol   = require "cosy.protocol"
@@ -13,6 +13,8 @@ local GLOBAL = _G or _ENV
 local js  = GLOBAL.js
 local env = js.global
 
+GLOBAL.cosy = cosy
+GLOBAL.tags = tags
 env.cosy = cosy
 
 local detect = proxy ()
@@ -89,16 +91,20 @@ end
 interface_mt.__index = interface_mt
 
 
-local function connect (editor, resource, token)
-  local websocket = js.new.WebSocket (editor, "cosy")
+function env:connect (editor, resource, token)
+  ignore (self)
+  local websocket =
+    js:run ([[new WebSocket ("${editor}", "cosy")]] % { editor = editor })
   local interface = setmetatable ({
     resource  = resource,
     token     = token,
     websocket = websocket,
+--    wrapper   = detect,
   }, interface_mt)
+  local model = protocol.on_connect (interface)
   function websocket:onopen ()
     ignore (self)
-    protocol.on_connect (interface)
+    protocol.on_open (model)
     interface:send {
       action   = "set-resource",
       resource = resource,
@@ -106,16 +112,15 @@ local function connect (editor, resource, token)
     interface:send {
       action   = "get-patches",
     }
-    interface.model = cosy [resource]
     cosy [resource] [NODES] = container {}
   end
   function websocket:onclose ()
     ignore (self)
-    protocol.on_close (interface)
+    protocol.on_close (model)
   end
   function websocket:onmessage (event)
     ignore (self)
-    protocol.on_message (interface, json.decode (event.data))
+    protocol.on_message (model, json.decode (event.data))
   end
   function websocket:onerror ()
     ignore (self)
@@ -149,15 +154,6 @@ function env:elements (model)
     result [#result + 1] = x
   end
   return result
-end
-
-function env:connect (editor, resource, token)
-  ignore (self)
-  connect {
-    editor   = editor,
-    token    = token,
-    resource = resource,
-  }
 end
 
 --[[
