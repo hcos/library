@@ -31,17 +31,18 @@ end
 do
   local t = {}
   local seen = {}
-  assert.are.equal (value_of (t), "{}")
-  assert.are.equal (value_of (t, seen), "{}")
-  seen [t] = { "a", "b" }
-  assert.are.equal (value_of (t, seen), "a.b")
+  assert.is_falsy (value_of (t))
+  assert.is_falsy (value_of (t, seen))
+  seen [t] = { { [tags.NAME] = "x" }, "a", "b" }
+  assert.are.equal (value_of (t, seen), "x.a.b")
 end
 
 do
-  for _, value in ipairs {
-    function () end,
-    coroutine.create (function () end),
-  } do
-    assert.has.error (function () return value_of (value) end)
-  end
+  local value = function () end
+  assert.has.no.error (function () return value_of (value) end)
+end
+
+do
+  local value = coroutine.create (function () end)
+  assert.has.error (function () return value_of (value) end)
 end
