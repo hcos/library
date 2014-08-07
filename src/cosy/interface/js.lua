@@ -8,6 +8,7 @@ local container  = require "cosy.util.container"
 local ignore     = require "cosy.util.ignore"
 local map        = require "cosy.util.map"
 local set        = require "cosy.util.set"
+local seq        = require "cosy.util.seq"
 
 local GLOBAL = _G or _ENV
 local js  = GLOBAL.js
@@ -128,14 +129,129 @@ function env:connect (editor, resource, token)
   end
 end
 
+function env:id (data)
+  ignore (self)
+  return tostring (data)
+end
+
+function env:type (data)
+  ignore (self)
+  if type (data) == "table" then
+    return data [tags.TYPE]
+  else
+    return nil
+  end
+end
+
+local function to_array (x)
+  local elements = {}
+  for element in set (x) do
+    elements [#elements + 1] = '"' .. tostring (element) .. '"'
+  end
+  table.sort (elements)
+  return js:run ("[ " .. table.concat (elements, ", ") .. " ]")
+end
+
+local function to_object (x)
+  local elements = {}
+  for key, value in map (x) do
+    elements [#elements + 1] = [["${key}": ${value}]] % {
+      key   = tostring (key),
+      value = value,
+    }
+  end
+  table.sort (elements)
+  return js:run ("{ " .. table.concat (elements, ", ") .. " }")
+end
+
+function env:selected (data)
+  ignore (self)
+  if type (data) == "table" then
+    local s = data [tags.SELECT]
+    if type (s) == "table" then
+      return to_array (s)
+    elseif type (s) == "string" then
+      return to_array { s = true }
+    else
+      return to_array {}
+    end
+  else
+    return nil
+  end
+end
+
+function env:select (data, name, value)
+  ignore (self)
+  local s = data [tags.SELECT] or {}
+  if type (s) == "string" then
+    s = { s = true }
+  end
+  s [name] = value
+  data [tags.SELECT] = s
+end
+
+function env:highlighted (data)
+  ignore (self)
+  if type (data) == "table" then
+    local s = data [tags.HIGHLIGHT]
+    if type (s) == "table" then
+      return to_array (s)
+    elseif type (s) == "string" then
+      return to_array { s = true }
+    else
+      return to_array {}
+    end
+  else
+    return nil
+  end
+end
+
+function env:highlight (data, name, value)
+  ignore (self)
+  local s = data [tags.HIGHLIGHT] or {}
+  if type (s) == "string" then
+    s = { s = true }
+  end
+  s [name] = value
+  data [HIGHLIGHT] = s
+end
+
+function env:get_position (data)
+  ignore (self)
+  if type (data) == "table" then
+    return data [tags.POSITION]
+  else
+    return nil
+  end
+end
+
+function env:set_position (data, value)
+  ignore (self)
+  data [tags.POSITION] = value
+end
+
+function get_source (data)
+end
+
+function set_source (data, node, anchor)
+end
+
+function get_target (data)
+end
+
+function set_target (data, node, anchor)
+end
+
+function types (model)
+end
+
+function instantiate (container, element_type)
+end
+
+
 function env:count (x)
   ignore (self)
   return #x
-end
-
-function env:id (x)
-  ignore (self)
-  return tostring (x)
 end
 
 function env:keys (x)
