@@ -1,182 +1,139 @@
-local GLOBAL = _G or _ENV
-
-local sha1   = require "sha1"
 local json   = require "dkjson"
-local raw    = require "cosy.util.raw"
-local seq    = require "cosy.util.seq"
-local set    = require "cosy.util.set"
-local map    = require "cosy.util.map"
-local tags   = require "cosy.util.tags"
-local ignore = require "cosy.util.ignore"
-local proxy  = require "cosy.util.proxy"
 
-local rawify        = require "cosy.proxy.rawify"
-local remember_path = require "cosy.proxy.remember_path"
-local guess_patch   = require "cosy.proxy.guess_patch"
+local cosy       = require "cosy.util.cosy"
+local tags       = require "cosy.util.tags"
+local protocol   = require "cosy.protocol"
+local proxy      = require "cosy.util.proxy"
+local container  = require "cosy.util.container"
+local ignore     = require "cosy.util.ignore"
+local map        = require "cosy.util.map"
+local set        = require "cosy.util.set"
 
-local IS_VOLATILE = tags.IS_VOLATILE
+local GLOBAL = _G or _ENV
+local js  = GLOBAL.js
+local env = js.global
 
-local WS       = tags.WS
-local RESOURCE = tags.RESOURCE
-local PATCHES  = tags.PATCHES
-local NODES    = tags.NODES
-local PATH     = tags.PATH
-local NAME     = tags.NAME
-
-WS       [IS_VOLATILE] = true
-RESOURCE [IS_VOLATILE] = true
-PATCHES  [IS_VOLATILE] = true
-NODES    [IS_VOLATILE] = true
-
-local function wrap (x)
-  return guess_patch (remember_path (rawify( raw (x))))
-end
-
-local raw_cosy = {}
-raw_cosy [NAME] = "cosy"
-
-GLOBAL.tags = tags
-
-local js     = GLOBAL.js.global
+env.cosy = cosy
 
 local detect = proxy ()
-local _detect_forward = detect.__newindex
-local TYPE = tags.TYPE
+
+local DATA    = tags.DATA
+local PATH    = tags.PATH
+local PATCHES = tags.PATCHES
+local NODES   = tags.NODES
 
 function detect:__newindex (key, value)
+  local below = self [DATA]
   local path = self [PATH] .. key
-  if #path < 2 then
-    return
-  end
+  assert (#path >= 2)
   local model = path [1] [path [2]]
---  model [PATCHES] = {}
+  model [PATCHES] = {}
   --
   local old_value = self [key]
-  _detect_forward (self, key, value)
+  below [key] = value
   local new_value = self [key]
   --
---  for patch in seq (model [PATCHES]) do
---    js:patch (patch.apply)
---  end
+  protocol.on_patch (model)
   --
   if self.type then
     if model [NODES] [self] then
-      js:update_node (wrap (self))
+      env:update_node (self)
     else
-      js:add_node (wrap (self))
+      env:add_node (self)
     end
   end
   if type (old_value) == "table" and old_value.type then
     model [NODES] [old_value] = model [NODES] [old_value] - 1
     if model [NODES] [old_value] == 0 then
       model [NODES] [old_value] = nil
-      js:remove_node (wrap (old_value))
+      env:remove_node (old_value)
     end
   end
   if type (new_value) == "table" and new_value.type then
     model [NODES] [new_value] = (model [NODES] [new_value] or 0) + 1
     if model [NODES] [new_value] == 1 then
-      js:add_node (wrap (new_value))
+      env:add_node (new_value)
     end
   end
 end
 
-local function connect (parameters)
-  local token    = parameters.token
-  local resource = parameters.resource
-  local editor   = parameters.editor
-  local ws       = js:websocket (editor)
-  local model    = {
-    [WS      ] = ws,
-    [RESOURCE] = resource,
-    [PATCHES ] = {},
-    [NODES   ] = rawify {},
-  }
-  ws.token = token
-  function ws:onopen ()
+local interface_mt = {}
+
+function interface_mt:log (message)
+  ignore (self)
+  env.console:log (message)
+end
+
+function interface_mt:err (message)
+  ignore (self)
+  env.console:error (message)
+end
+
+function interface_mt:ready ()
+  env:ready (self.resource)
+end
+
+function interface_mt:send (message)
+  if self.websocket.readyState == 1 then
+    message.token = self.token
+    self.websocket:send (json.encode (message))
+  else
+    self:log (json.encode (message))
+  end
+end
+
+function interface_mt:close ()
+  self.websocket = nil
+end
+
+interface_mt.__index = interface_mt
+
+
+local function connect (editor, resource, token)
+  local websocket = js.new.WebSocket (editor, "cosy")
+  local interface = setmetatable ({
+    resource  = resource,
+    token     = token,
+    websocket = websocket,
+  }, interface_mt)
+  function websocket:onopen ()
     ignore (self)
-    ws:request {
+    protocol.on_connect (interface)
+    interface:send {
       action   = "set-resource",
-      token    = token,
       resource = resource,
     }
-    ws:request {
+    interface:send {
       action   = "get-patches",
-      token    = token,
     }
+    interface.model = cosy [resource]
+    cosy [resource] [NODES] = container {}
   end
-  function ws:onclose ()
+  function websocket:onclose ()
     ignore (self)
-    model [WS] = nil
+    protocol.on_close (interface)
   end
-  function ws:onmessage (event)
+  function websocket:onmessage (event)
     ignore (self)
-    local message = event.data
-    if not message then
-      return
-    end
-    local command = json.decode (message)
-    if command.patches then
-      local _cosy = GLOBAL.cosy
-      GLOBAL.cosy = detect (remember_path (rawify (raw_cosy)))
-      js.cosy = GLOBAL.cosy
-      for patch in seq (command.patches) do
-        local ok, err = pcall (loadstring (patch.data))
-        if not ok then
-          print (err)
-        end
-        js:add_patch (patch.data)
-      end
-      GLOBAL.cosy = _cosy
-      js.cosy = GLOBAL.cosy
-    else
-      -- do nothing
-    end
+    protocol.on_message (interface, json.decode (event.data))
   end
-  function ws:onerror ()
+  function websocket:onerror ()
     ignore (self)
-    ws:close ()
+    websocket:close ()
   end
-  function ws:request (command)
-    ignore (self)
-    local str = json.encode (command)
-    command.request_id = sha1 (tostring (os.time()) .. "+" .. str)
-    command.token = ws.token
-    if ws.readyState == 1 then
-      ws:send (json.encode (command))
-    end
-  end
-  function ws:patch (str)
-    ignore (self)
-    js:add_patch (str)
-    local command = {
-      action = "add-patch",
-      data   = str,
-    }
-    str = json.encode (command)
-    command.request_id = sha1 (tostring (os.time()) .. "+" .. str)
-    command.token = ws.token
-    if ws.readyState == 1 then
-      ws:send (json.encode (command))
-    end
-  end
-  raw_cosy [resource] = model
-  GLOBAL.cosy = guess_patch (remember_path (rawify (raw_cosy)))
-  js.cosy = GLOBAL.cosy
-  return model
 end
 
-function js:count (x)
+function env:count (x)
   ignore (self)
   return #x
 end
 
-function js:id (x)
+function env:id (x)
   ignore (self)
   return tostring (x)
 end
 
-function js:keys (x)
+function env:keys (x)
   ignore (self)
   local result = {}
   for key, _ in map (x) do
@@ -185,7 +142,7 @@ function js:keys (x)
   return result
 end
 
-function js:elements (model)
+function env:elements (model)
   ignore (self)
   local result = {}
   for x in set (model [NODES]) do
@@ -194,20 +151,25 @@ function js:elements (model)
   return result
 end
 
-function js:connect (editor, resource, token)
+function env:connect (editor, resource, token)
   ignore (self)
-  return connect {
+  connect {
     editor   = editor,
     token    = token,
     resource = resource,
   }
 end
 
-function js:execute (code)
-  GLOBAL.cosy = detect (remember_path (rawify (raw_cosy)))
-  js.cosy = GLOBAL.cosy
-  loadstring (code) ()
-  GLOBAL.cosy = guess_patch (remember_path (rawify (raw_cosy)))
-  js.cosy = GLOBAL.cosy
+--[[
+local map = require "cosy.util.map"
+
+function js.global:map (collection)
+  local iterator = coroutine.wrap (function ()
+    for k, v in map (collection) do
+      coroutine.yield (js.new (js.global.Array, k, v))
+    end
+  end)
+  return js.global:make_iterator (iterator)
 end
+--]]
 

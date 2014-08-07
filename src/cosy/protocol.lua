@@ -1,7 +1,12 @@
 local rev    = require "cosy.util.rev"
 local seq    = require "cosy.util.seq"
 
-local cosy, tags = require "cosy.def"
+local rawify        = require "cosy.proxy.rawify"
+local remember_path = require "cosy.proxy.remember_path"
+local guess_patch   = require "cosy.proxy.guess_patch"
+
+local cosy = require "cosy.util.cosy"
+local tags = require "cosy.util.tags"
 
 local IS_VOLATILE = tags.IS_VOLATILE
 local PATCHES     = tags.PATCHES
@@ -18,14 +23,25 @@ VERSION   [IS_VOLATILE] = true
 
 local protocol = {}
 
+local function from_user (interface)
+  return interface.wrapper ..
+         guess_patch ..
+         remember_path ..
+         rawify
+end
+
+local function from_server (interface)
+  return interface.wrapper ..
+         rawify
+end
+
 -- Called by the interface:
-function protocol.on_connect (parameters)
-  local resource  = parameters.resource
-  local token     = parameters.token
-  local interface = parameters.interface
+function protocol.on_connect (interface)
+  local resource  = interface.resource
+  local token     = interface.token
   interface:log ("Connecting to resource: " .. tostring (resource) ..
                  " using token: " .. tostring (token))
-  cosy [resource] = { -- TODO: wrap resource
+  cosy [resource] = from_user (interface) {
     [PATCHES  ] = {},
     [RESOURCE ] = resource,
     [TOKEN    ] = token,
@@ -164,7 +180,7 @@ function protocol.on_message (model, message)
         interface:log ("Patch: " .. tostring (message.id) ..
                        " on resource: " .. tostring (resource) ..
                        " rejected because: " .. tostring (message.reason))
-        -- TODO: set correct cosy wrapper
+        cosy [resource] = from_server (cosy [resource])
         for patch in rev (patches) do
           if patch.status == "applied" or patch.status == "sent" then
             patch.unapply ()
@@ -172,7 +188,7 @@ function protocol.on_message (model, message)
           end
         end
         table.remove (patches, 1)
-        -- TODO: set correct cosy wrapper
+        cosy [resource] = from_user (cosy [resource])
       end
     else
       interface:err ("Edition of resource: " .. tostring (resource) ..
@@ -180,7 +196,7 @@ function protocol.on_message (model, message)
     end
   elseif message.action == "update" then
     if model [VERSION] then
-      -- TODO: set correct cosy wrapper
+      cosy [resource] = from_server (cosy [resource])
       interface:log ("Unapply patches on resource: " ..
                      tostring (resource) ..
                      " because of interleaved update: " ..
@@ -191,7 +207,6 @@ function protocol.on_message (model, message)
           patch.status = "unapplied"
         end
       end
-      -- TODO: set correct cosy wrapper
       for patch in seq (message.patches) do
         if patch.id > model [VERSION] then
           interface:log ("Applying patch: " .. tostring (patch.id) ..
@@ -208,7 +223,7 @@ function protocol.on_message (model, message)
                          tostring (resource)) 
         end
       end
-      -- TODO: set correct cosy wrapper
+      cosy [resource] = from_user (cosy [resource])
     else
       interface:log ("Receiving patches for resource: " ..
                      tostring (resource) ..
