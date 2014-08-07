@@ -110,7 +110,17 @@
         .attr("y1", 0)
         .attr("x2", 0)
         .attr("y2", 0);
-        
+    
+    d3.select(window).on("keydown", keydown);
+    
+    
+    function keydown() {
+        switch (d3.event.keyCode) {
+        case 8: // backspace
+            break;
+        }
+    }
+      
     d3.select("#model_container").append("div")
         .attr("id", "forms_group")
         .attr("class", "span5");
@@ -136,7 +146,6 @@
         .attr("viewBox", "0 -5 10 10")
         .attr("refX", markerWidth +2)
         .attr("markerWidth", markerWidth)
-        .attr("markerHeight", markerHeight)
         .attr("orient", "auto")
         .append("svg:path")
         .attr("d", "M0,-5L10,0L0,5");
@@ -147,6 +156,7 @@
     var nodeDrag = d3.behavior.drag()
         .on("dragstart", function(d, i) {
             if(d3.event.sourceEvent.which == 3){
+                d3.event.sourceEvent.stopPropagation();
                 dragInitiated = true
                 force.stop();
             }
@@ -185,14 +195,15 @@
         selected_link = null,
         mousedown_link = null,
         mousedown_node = null,
-        mouseup_node = null;
+        mouseup_node = null,
+        can_add_node = false;
     
     function resetMouseVars() {
         mousedown_node = null;
         mouseup_node = null;
-        mousedown_link = null;
+        mousedown_link = null
     }
-
+    
     // Add new node from the model 
     function add_node(node){
         updateModelNode(node);
@@ -289,7 +300,9 @@
                 force.nodes()[i].selected = elem.selected;
                 force.nodes()[i].lua_node = elem.lua_node;
             }
-        } else if("form" == node.get("type")){
+        } 
+        else if("form" == node.get("type")){
+            // TODO: This is not tested.
             var unsorted_forms = elements(node);
             var form_elems = [];
             for(j = 1; j <= count(unsorted_forms); j++){
@@ -384,7 +397,7 @@
         
         node = node.data(force.nodes(), function (d) {return d.id});
         node.enter().append("path");
-        node.attr("class", "node")
+        node.attr("class", function(d){ return d.selected ? "node selected" : "node"})
             .attr("d", function(d){ return d.shape.d;})
             .attr("fill", function(d){ return d.highlighted ? "gold" : "#ccc"})
             .on('mousedown', node_mouseDown)
@@ -397,6 +410,10 @@
         circle = circle.data(force.nodes(), function (d) {return d.id;});
         circle.enter().append("circle")
                 .attr("class", "token")
+                .on('mousedown', node_mouseDown)
+                .on('mouseup', node_mouseUp)
+                .on("click", node_click)
+                .on("dblclick", node_dblclick)
                 .attr("r", radius/6)
                 .attr("fill", "black")
                 .call(nodeDrag);
@@ -436,10 +453,11 @@
     // Mouse event handling
     
     function mouseDown() {
+        console.log("Mouse down");
         switch(d3.event.button){
             case 0:     /*left click*/
                 d3.event.stopPropagation();
-                link_added = false;
+                can_add_node = true;
                 break;
             case 1:     /*middle click*/
                  break;
@@ -459,6 +477,7 @@
     }
     
     function mouseUp() {
+        console.log("Mouse up");
         switch(d3.event.button){
             case 0:     /*left click*/
                 d3.event.stopPropagation();
@@ -473,9 +492,8 @@
                         var point = d3.mouse(this),
                         node = {id : "dummy_"+force.nodes().length,
                             name : "dummy_"+force.nodes().length,
-                            type : "place", 
-                            shape : shapes.circle,
-                            marking : true,
+                            type : mousedown_node.type == "transition" ? "place" : "transition", 
+                            shape : mousedown_node.type == "transition" ? shapes.circle : shapes.rect,
                             x : point[0],
                             y : point[1],
                             highlighted : false,
@@ -501,7 +519,7 @@
                         temp_i = force.links().length - 1;
                         links_index["dummy_"+temp_i] = temp_i;
                     }
-                } else if(!link_added){
+                } else if(can_add_node){
                     var point = d3.mouse(this),
                     node = {id : "dummy_"+force.nodes().length,
                         name : "dummy_"+force.nodes().length,
@@ -539,12 +557,12 @@
     
     function node_click(d){
         if (d3.event.defaultPrevented) return;
-        
         d.lua_node.set("selected", true);
         d3.select(this).classed("selected", d.selected = true);
     }
     
     function node_mouseDown(d){
+        console.log("Node down");
         switch(d3.event.button){
             case 0:     /*left click*/
                 d3.event.stopPropagation();
@@ -560,6 +578,7 @@
                   .attr("y1", mousedown_node.y)
                   .attr("x2", mousedown_node.x)
                   .attr("y2", mousedown_node.y);
+                can_add_node = false;
                 updateForceLayout();
                 break;
 
@@ -571,11 +590,13 @@
     }
     
     function node_mouseUp(d){
+        console.log("Node up");
         switch(d3.event.button){
             case 0:     /*left click*/
                 if (mousedown_node) {
-                    mouseup_node = d; 
-                    if (mouseup_node == mousedown_node) { resetMouseVars(); return; }
+                    mouseup_node = d;
+                    can_add_node = false; 
+                    if (mouseup_node.id == mousedown_node.id) { resetMouseVars(); return; }
 
                     /*TODO: create a proper LUA node and link*/
                     var link = {id : "temp_"+force.links().length, 
@@ -593,7 +614,7 @@
                     // select new link
                     selected_link = link;
                     selected_node = null;
-                    link_added = true;
+                    
                     updateForceLayout();
                 }
                 break;
