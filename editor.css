@@ -19,6 +19,7 @@ path.link.elliptic {
     stroke: orange;
 }
 circle.token {
+    cursor: move;
     stroke: #333;
     stroke-width: 1.5px;
 }
