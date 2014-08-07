@@ -2,6 +2,8 @@
 
 local colors = require 'ansicolors'
 
+table.sort (arg)
+
 local max_size = 0
 for _, x in ipairs (arg) do
   if #x > max_size then

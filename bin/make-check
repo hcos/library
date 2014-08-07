@@ -5,11 +5,11 @@ set +e
 cd src
 
   # Run check on all Lua files:
-  luacheck $(find . -name "*.lua")
+  luacheck $(find . -name "*.lua" | sort)
   echo
 
   # Run coverage on all test files:
-  for file in $(find . -name "*.test.lua")
+  for file in $(find . -name "*.test.lua" | sort)
   do
     lua -lluacov ${file}
   done

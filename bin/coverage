@@ -52,7 +52,14 @@ end
 
 max_size = max_size + 3
 
-for k, v in pairs (report) do
+local keys = {}
+for k, _ in pairs (report) do
+  keys [#keys + 1] = k
+end
+table.sort (keys)
+
+for _, k in ipairs (keys) do
+  local v = report [k]
   if v == "100.00%" then
     status = colors("%{bright green}Full")
   else

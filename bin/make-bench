@@ -5,7 +5,7 @@ set +e
 cd src
 
   # Run bench files:
-  for file in $(find . -name "*.bench.lua")
+  for file in $(find . -name "*.bench.lua" | sort)
   do
     lua    ${file}
     luajit ${file}
