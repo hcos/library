@@ -239,7 +239,7 @@ end
 local COMPONENTS = {}
 
 local function compose (self, x)
-  local result = x
+  local result = raw (x)
   for f in seq (self [COMPONENTS]) do
     result = f (result)
   end
