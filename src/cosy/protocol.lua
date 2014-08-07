@@ -48,6 +48,7 @@ function protocol.on_connect (interface)
     [INTERFACE] = interface,
     [VERSION  ] = nil,
   }
+  return cosy [resource]
 end
 
 function protocol.on_open (model)
