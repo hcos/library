@@ -1,11 +1,11 @@
-local proxy    = require "cosy.util.proxy"
-local tags     = require "cosy.util.tags"
-local is_proxy = require "cosy.util.is_proxy"
-local is_tag   = require "cosy.util.is_tag"
-local map      = require "cosy.util.map"
-local rawify   = require "cosy.proxy.rawify"
-local path_of  = require "cosy.util.path_of"
-local value_of = require "cosy.util.value_of"
+local proxy     = require "cosy.util.proxy"
+local tags      = require "cosy.util.tags"
+local is_proxy  = require "cosy.util.is_proxy"
+local is_tag    = require "cosy.util.is_tag"
+local map       = require "cosy.util.map"
+local container = require "cosy.util.container"
+local path_of   = require "cosy.util.path_of"
+local value_of  = require "cosy.util.value_of"
 
 local PATH    = tags.PATH
 local PATCHES = tags.PATCHES
@@ -21,9 +21,6 @@ local function perform (self, key, new_value, old_value, seen)
   end
   local key_path  = self [PATH] .. key
   local viewed    = seen [new_value]
-  if type (new_value) == "table" and not viewed then
-    seen [new_value] = key_path
-  end
   local recursive = false
   local patch_str = path_of (key_path) .. " = "
   if viewed then
@@ -31,7 +28,7 @@ local function perform (self, key, new_value, old_value, seen)
   elseif is_proxy (new_value) then
     patch_str = patch_str .. path_of (new_value [PATH])
   else
-    patch_str = patch_str .. value_of (new_value, seen)
+    patch_str = patch_str .. (value_of (new_value, seen) or "{}")
     recursive = type (new_value) == "table" and not is_tag (new_value)
   end
   local model = key_path [1] [key_path [2]]
@@ -42,9 +39,12 @@ local function perform (self, key, new_value, old_value, seen)
       unapply = function () self [key] = old_value end,
     }
   end
+  if type (new_value) == "table" and not viewed then
+    seen [new_value] = key_path
+  end
   if recursive then
     for k, v in map (new_value) do
-      perform (new_value, k, v, seen)
+      perform (self [key], k, v, nil, seen)
     end
   end
 end
@@ -52,8 +52,7 @@ end
 function guess_patch:__newindex (key, value)
   local old_value = self [key]
   forward (self, key, value)
-  local new_value = self [key]
-  perform (self, key, new_value, old_value, rawify {})
+  perform (self, key, value, old_value, container {})
 end
 
 return guess_patch

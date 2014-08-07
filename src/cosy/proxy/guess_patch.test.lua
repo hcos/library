@@ -4,30 +4,7 @@ local path   = require "cosy.proxy.remember_path"
 local guess  = require "cosy.proxy.guess_patch"
 local tags   = require "cosy.util.tags"
 
-local function make (value)
-  return guess (path (rawify (value)))
-end
-
---[[
-do
-  local root = make {
-    [tags.NAME] = "root",
-  }
-  root.model = {}
-  root.model = {
-    [tags.PATCHES] = {},
-  }
-  local t = {}
-  root.model.a = 1
-  root.model.x = {
-    a = t,
-    b = {
-      y = t,
-    },
-  }
-  root.model [root.model.b] = true
-end
---]]
+local make = guess .. path .. rawify
 
 do
   local root = make {
@@ -57,7 +34,7 @@ do
   assert.has.no.error (function () root.model.x = {""} end)
 
   assert.has.error    (function () root.model [function () end] = true end)
-  assert.has.error    (function () root.model.x = function () end end)
+  assert.has.no.error (function () root.model.x = function () end end)
 
   assert.has.error    (function () root.model [coroutine.create (function () end)] = true end)
   assert.has.error    (function () root.model.x = coroutine.create (function () end) end)
@@ -74,5 +51,19 @@ do
 
   local t = {}
   assert.has.no.error (function () root.model.x = { a = t, b = t } end)
+end
 
+do
+  local root = make {
+      [tags.NAME] = "root",
+      model = {
+        [tags.PATCHES] = {
+          [tags.IS_VOLATILE] = true,
+        },
+      },
+    }
+  local t = {}
+  t.a = {}
+  t.b = t.a
+  assert.has.no.error (function () root.model.t = t end)
 end
