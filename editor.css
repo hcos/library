@@ -5,7 +5,7 @@ path.link {
 }
 marker#licensing {
     fill: black;
-}
+    }
 marker#resolved{
     fill: blue;
 }
