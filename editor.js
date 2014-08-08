@@ -76,8 +76,7 @@
     // Position definitions and points of reference for the markers
     var width = 960,
         height = 500,
-        markerWidth = 8,
-        markerHeight = 8,
+        markerSize = 8,
         origin = {x: width/2, y: height/2},
         fill = d3.scale.category20();
         
@@ -88,9 +87,7 @@
             
     var svg = outer.append("svg:g")
                 .call(d3.behavior.zoom()
-                        .on("zoom", rescale)
-                        .on("zoomstart", zoomStart)
-                        .on("zoomend", zoomEnd))
+                        .on("zoom", rescale))
                 .on("dblclick.zoom", null)
                 .append("svg:g")
                 .on("mousedown", mouseDown)
@@ -134,8 +131,6 @@
         .size([width, height])
         .nodes([])
         .links([])
-        //~ .charge(5)
-        //~ .linkDistance(100)
         .on("tick", tick);
     
     svg.append("svg:defs").selectAll("marker")
@@ -143,21 +138,25 @@
         .enter().append("svg:marker")    // This section adds in the arrows
         .attr("id", String)
         .attr("viewBox", "0 -5 10 10")
-        .attr("refX", 8)
-        .attr("markerWidth", 8)
-        .attr("markerHeight", 8)
+        .attr("refX", markerSize)
+        .attr("markerWidth", markerSize)
+        .attr("markerHeight", markerSize)
         .attr("orient", "auto")
         .append("svg:path")
         .attr("d", "M0,-5L10,0L0,5");
-        
-    var dragInitiated;
     
+    var nodes_index = {},
+        links_index = {},
+        forms_index = {},
+        node_stack = [];
+        
     // This definition of drag allows to drag only with a right click
+    var dragInitiated;
     var nodeDrag = d3.behavior.drag()
         .on("dragstart", function(d, i) {
-            if(d3.event.sourceEvent.which == 3){
+            if(d3.event.sourceEvent.which == 1){
                 d3.event.sourceEvent.stopPropagation();
-                dragInitiated = true
+                dragInitiated = true;
                 force.stop();
             }
         })
@@ -171,11 +170,11 @@
             }
         })
         .on("dragend", function(d, i){
-            if (d3.event.sourceEvent.which == 3){
-                force.resume()                     
-                d.fixed = true
-                tick()
-                dragInitiated = false
+            if (d3.event.sourceEvent.which == 1){
+                force.resume();
+                //~ d.fixed = true
+                tick();
+                dragInitiated = false;
             }
         });
 
@@ -185,23 +184,19 @@
         node = svg.append("svg:g").selectAll("node").attr("id", "nodes"),
         circle = svg.append("svg:g").selectAll("g").attr("id", "tokens"),
         text = svg.append("svg:g").selectAll("g").attr("id", "dummy_labels");
-        
-    var nodes_index = {},
-        links_index = {}.
-        forms_index = {};
 
     // mouse event vars
-    var selected_node = null,
-        selected_link = null,
-        mousedown_link = null,
-        mousedown_node = null,
-        mouseup_node = null,
-        can_add_node = false;
+    var source_node = null;
+    //~ var selected_node = null,
+        //~ selected_link = null,
+        //~ mousedown_link = null,
+        //~ mousedown_node = null,
+        //~ mouseup_node = null,
+        //~ can_add_node = false;
+    
     
     function resetMouseVars() {
-        mousedown_node = null;
-        mouseup_node = null;
-        mousedown_link = null
+        source_node = null;
     }
     
     // Add new node from the model 
@@ -384,56 +379,53 @@
     
     // GUI update
     function updateForceLayout() {
-        
-        assert(force.nodes().lenght == nodes_index.lenght, "Error: Force nodes amount diferrent from indexed nodes");
-        assert(force.links().lenght == links_index .lenght, "Error: Force links amount diferrent from indexed links");
+        console.log(">> updateForceLayout");
+        assert(force.nodes().length != nodes_index.length, "Error: Force nodes amount diferrent from indexed nodes");
+        assert(force.links().length != links_index.length, "Error: Force links amount diferrent from indexed links");
         
         path = path.data(force.links(), function(d){return d.id});
-        
         path.enter().insert("svg:path", ".node");
         path.attr("class", function (d) {return "link " + d.type;})
             .attr("marker-end", function (d) {return "url(#" + d.type + ")";});
         path.exit().remove();
         
+        console.log("1");
+        console.log(force.nodes())
         node = node.data(force.nodes(), function (d) {return d.id});
+        console.log("2");
         node.enter().append("path");
+        console.log("3");
         node.attr("class", function(d){ return d.selected ? "node selected" : "node"})
             .attr("d", function(d){ return d.shape.d;})
             .attr("fill", function(d){ return d.highlighted ? "gold" : "#ccc"})
-            .on('mousedown', node_mouseDown)
-            .on('mouseup', node_mouseUp)
-            .on("click", node_click)
-            .on("dblclick", node_dblclick)
+            .on('mouseenter', node_mouseEnter)
+            .on('mouseout', node_mouseExit)
             .call(nodeDrag);
+        console.log("4");
         node.exit().remove();
         
-        circle = circle.data(force.nodes(), function (d) {return d.id;});
-        circle.enter().append("circle")
-                .attr("class", "token")
-                .on('mousedown', node_mouseDown)
-                .on('mouseup', node_mouseUp)
-                .on("click", node_click)
-                .on("dblclick", node_dblclick)
-                .attr("r", radius/6)
-                .attr("fill", "black")
-                .call(nodeDrag);
-                                
-        circle.attr("visibility", function(d) {return d.marking ? "visible" : "hidden" })
+        //~ circle = circle.data(force.nodes(), function (d) {return d.id;});
+        //~ circle.enter().append("circle")
+                //~ .attr("class", "token")
+                //~ .attr("r", radius/6)
+                //~ .attr("fill", "black")
+                //~ .call(nodeDrag);
+                                //~ 
+        //~ circle.attr("visibility", function(d) {return d.marking ? "visible" : "hidden" })
+        //~ 
+        //~ circle.exit().remove();
         
-        circle.exit().remove();
-
         text = text.data(force.nodes(), function (d) {return d.id;});
         text.enter().append("text")
             .attr("x", function(d){ return d.type == 'transition' ? 45 : 30})
             .attr("y", ".45em")
             .attr("size", 10)
             .call(nodeDrag);
-            
+        
         text.text(function(d) { return d.name; });
         text.exit().remove();
-        
         force.start();
-        
+        console.log("<< updateForceLayout");
         return true;
     }
     
@@ -442,58 +434,62 @@
         svg.attr("transform", "translate(" + d3.event.translate + ")"+ " scale(" + d3.event.scale + ")");
     }
     
-    function zoomStart(){
-        //~ console.log("ZOOM START");
-    }
-    
-    function zoomEnd(){
-        //~ console.log("ZOOM END");
-    }
-    
     // Mouse event handling
     
     function mouseDown() {
-        console.log("Mouse down");
+        console.log("mouse down")
         switch(d3.event.button){
             case 0:     /*left click*/
                 d3.event.stopPropagation();
-                can_add_node = true;
                 break;
             case 1:     /*middle click*/
                  break;
             case 2:     /*right click*/
                 d3.event.stopPropagation();
+                if(node_stack.length > 0){
+                    source_node = node_stack[node_stack.length - 1];
+                    drag_line
+                      .attr("class", "drag_line")
+                      .attr("x1", source_node.x)
+                      .attr("y1", source_node.y)
+                      .attr("x2", source_node.x)
+                      .attr("y2", source_node.y);
+                } else {
+                }
         }
     }
     
     function mouseMove(){
-        if (!mousedown_node) return;
-
-        drag_line
-            .attr("x1", mousedown_node.x)
-            .attr("y1", mousedown_node.y)
-            .attr("x2", d3.mouse(this)[0])
-            .attr("y2", d3.mouse(this)[1]);
+        //~ if (node_stack.length > 0){
+        if (source_node){
+            drag_line
+                .attr("x1", source_node.x)
+                .attr("y1", source_node.y)
+                .attr("x2", d3.mouse(this)[0])
+                .attr("y2", d3.mouse(this)[1]);
+        }
     }
     
     function mouseUp() {
         console.log("Mouse up");
         switch(d3.event.button){
             case 0:     /*left click*/
-                d3.event.stopPropagation();
-                
-                if (mousedown_node) {
-                    // hide drag line
+                break;
+            case 1:     /*middle click*/
+                break;
+            case 2:     /*right click*/
+                if(source_node){
+                    console.log("Add link")
                     drag_line.attr("class", "drag_line_hidden")
-
-                    if (!mouseup_node) {
-                        /*TODO: create a proper LUA node and link*/
-                        
-                        var point = d3.mouse(this),
-                        node = {id : "dummy_"+force.nodes().length,
-                            name : "dummy_"+force.nodes().length,
-                            type : mousedown_node.type == "transition" ? "place" : "transition", 
-                            shape : mousedown_node.type == "transition" ? shapes.circle : shapes.rect,
+                    var point = d3.mouse(this);
+                    var node;
+                    if(node_stack.length > 0){
+                        node = node_stack[node_stack.length -1];
+                    } else {
+                        node = {id : "dummy_node_"+force.nodes().length,
+                            name : "dummy_node_"+force.nodes().length,
+                            type : source_node.type == "transition" ? "place" : "transition", 
+                            shape : source_node.type == "transition" ? shapes.circle : shapes.rect,
                             x : point[0],
                             y : point[1],
                             highlighted : false,
@@ -501,28 +497,25 @@
                             lua_node : null,
                             fixed : true};
                         force.nodes().push(node);
-                        
-                        var temp_i = force.nodes().length - 1;
-                        nodes_index["dummy_"+temp_i] = temp_i;
-
-                        // select new node
-                        selected_node = node;
-                        selected_link = null;
-
-                        force.links().push({id : "dummy_"+force.links().length, 
-                                    anchor:"",
-                                    source: mousedown_node,
-                                    target: node,
-                                    type: "licensing",
-                                    lock_pos : false});
-                    
-                        temp_i = force.links().length - 1;
-                        links_index["dummy_"+temp_i] = temp_i;
                     }
-                } else if(can_add_node){
+                    
+                    var temp_i = force.nodes().length - 1;
+                    nodes_index["dummy_node"+temp_i] = temp_i;
+
+                    force.links().push({id : "dummy_link_"+force.links().length, 
+                                anchor:"",
+                                source: source_node,
+                                target: node,
+                                type: "licensing",
+                                lock_pos : false});
+                
+                    temp_i = force.links().length - 1;
+                    links_index["dummy_link_"+temp_i] = temp_i;
+                } else {
+                    console.log("Add node")
                     var point = d3.mouse(this),
-                    node = {id : "dummy_"+force.nodes().length,
-                        name : "dummy_"+force.nodes().length,
+                    node = {id : "dummy_node_"+force.nodes().length,
+                        name : "dummy_node_"+force.nodes().length,
                         type : "place", 
                         shape : shapes.circle,
                         marking : true,
@@ -535,30 +528,25 @@
                     force.nodes().push(node);
                     
                     var temp_i = force.nodes().length - 1;
-                    nodes_index["temp_"+temp_i] = temp_i;
+                    nodes_index["dummy_link_"+temp_i] = temp_i;
                 }
-                // clear mouse event vars
-                resetMouseVars();
-                updateForceLayout();
-                break;
-            case 1:     /*middle click*/
-                break;
-            case 2:     /*right click*/
                 break;
         }
+        updateForceLayout();
+        resetMouseVars();
     }
     
     // Force nodes event handling
     
     function node_dblclick(d) {
-        d.lua_node.set("selected", false);
+        d.lua_node.set("selected", !d.selected);
         d3.select(this).classed("selected", d.selected = false);
     }
     
     function node_click(d){
         if (d3.event.defaultPrevented) return;
-        d.lua_node.set("selected", true);
-        d3.select(this).classed("selected", d.selected = true);
+        d.lua_node.set("selected", !d.selected);
+        d3.select(this).classed("selected", d.selected = !d.selected);
     }
     
     function node_mouseDown(d){
@@ -625,6 +613,14 @@
         }
     }
 
+    function node_mouseEnter(d){
+        node_stack.push(d);
+    }
+    
+    function node_mouseExit(d){
+        node_stack.pop();
+    }
+    
     // Other events
     function formTextChange(d){
         d.set("value", this.value);
