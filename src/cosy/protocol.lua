@@ -24,14 +24,14 @@ VERSION   [IS_VOLATILE] = true
 local protocol = {}
 
 local function from_user (interface)
-  return interface.wrapper ..
+  return interface.from_user ..
          guess_patch ..
          remember_path ..
          rawify
 end
 
 local function from_server (interface)
-  return interface.wrapper ..
+  return interface.from_server ..
          rawify
 end
 
