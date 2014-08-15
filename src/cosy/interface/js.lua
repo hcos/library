@@ -8,7 +8,6 @@ local container  = require "cosy.util.container"
 local ignore     = require "cosy.util.ignore"
 local map        = require "cosy.util.map"
 local set        = require "cosy.util.set"
-local seq        = require "cosy.util.seq"
 
 local GLOBAL = _G or _ENV
 local js  = GLOBAL.js
@@ -18,13 +17,38 @@ GLOBAL.cosy = cosy
 GLOBAL.tags = tags
 env.cosy = cosy
 
-local detect = proxy ()
 
 local DATA    = tags.DATA
 local PATH    = tags.PATH
 local PATCHES = tags.PATCHES
 local NODES   = tags.NODES
+local TYPE    = tags.TYPE
 
+local show = proxy ()
+function show:__newindex (key, value)
+  if self [TYPE] then
+    if model [NODES] [self] then
+      env:update_node (self)
+    else
+      env:add_node (self)
+    end
+  end
+  if type (old_value) == "table" and old_value [TYPE] then
+    model [NODES] [old_value] = model [NODES] [old_value] - 1
+    if model [NODES] [old_value] == 0 then
+      model [NODES] [old_value] = nil
+      env:remove_node (old_value)
+    end
+  end
+  if type (new_value) == "table" and new_value [TYPE] then
+    model [NODES] [new_value] = (model [NODES] [new_value] or 0) + 1
+    if model [NODES] [new_value] == 1 then
+      env:add_node (new_value)
+    end
+  end
+end
+
+local detect = proxy ()
 function detect:__newindex (key, value)
   local below = self [DATA]
   local path = self [PATH] .. key
@@ -35,29 +59,8 @@ function detect:__newindex (key, value)
   local old_value = self [key]
   below [key] = value
   local new_value = self [key]
-  --
+  -- 
   protocol.on_patch (model)
-  --
-  if self.type then
-    if model [NODES] [self] then
-      env:update_node (self)
-    else
-      env:add_node (self)
-    end
-  end
-  if type (old_value) == "table" and old_value.type then
-    model [NODES] [old_value] = model [NODES] [old_value] - 1
-    if model [NODES] [old_value] == 0 then
-      model [NODES] [old_value] = nil
-      env:remove_node (old_value)
-    end
-  end
-  if type (new_value) == "table" and new_value.type then
-    model [NODES] [new_value] = (model [NODES] [new_value] or 0) + 1
-    if model [NODES] [new_value] == 1 then
-      env:add_node (new_value)
-    end
-  end
 end
 
 local interface_mt = {}
@@ -95,12 +98,13 @@ interface_mt.__index = interface_mt
 function env:connect (editor, resource, token)
   ignore (self)
   local websocket =
-    js:run ([[new WebSocket ("${editor}", "cosy")]] % { editor = editor })
+    js.global:eval ([[new WebSocket ("${editor}", "cosy")]] % { editor = editor })
   local interface = setmetatable ({
-    resource  = resource,
-    token     = token,
-    websocket = websocket,
---    wrapper   = detect,
+    resource    = resource,
+    token       = token,
+    websocket   = websocket,
+    from_user   = show .. detect,
+    from_server = show,
   }, interface_mt)
   local model = protocol.on_connect (interface)
   function websocket:onopen ()
@@ -149,7 +153,7 @@ local function to_array (x)
     elements [#elements + 1] = '"' .. tostring (element) .. '"'
   end
   table.sort (elements)
-  return js:run ("[ " .. table.concat (elements, ", ") .. " ]")
+  return js.global:eval ("[ " .. table.concat (elements, ", ") .. " ]")
 end
 
 local function to_object (x)
@@ -161,7 +165,7 @@ local function to_object (x)
     }
   end
   table.sort (elements)
-  return js:run ("{ " .. table.concat (elements, ", ") .. " }")
+  return js.global:eval ("{ " .. table.concat (elements, ", ") .. " }")
 end
 
 function env:selected (data)
@@ -213,7 +217,7 @@ function env:highlight (data, name, value)
     s = { s = true }
   end
   s [name] = value
-  data [HIGHLIGHT] = s
+  data [tags.HIGHLIGHT] = s
 end
 
 function env:get_position (data)
@@ -230,28 +234,20 @@ function env:set_position (data, value)
   data [tags.POSITION] = value
 end
 
-function get_source (data)
+function env:instantiate (element_type)
+  return {
+    [tags.TYPE] = element__type,
+  }
 end
-
-function set_source (data, node, anchor)
-end
-
-function get_target (data)
-end
-
-function set_target (data, node, anchor)
-end
-
-function types (model)
-end
-
-function instantiate (container, element_type)
-end
-
 
 function env:count (x)
   ignore (self)
   return #x
+end
+
+function env:all_tags ()
+  ignore (self)
+  return to_object (tags);
 end
 
 function env:keys (x)
@@ -272,16 +268,34 @@ function env:elements (model)
   return result
 end
 
---[[
-local map = require "cosy.util.map"
+js.global:eval [[
+  global.make_iterator = function (iterator) {
+    return {
+      next: function () {
+              var result = iterator ();
+              if (result == undefined) {
+                return {
+                  done: true
+                }
+              } else {
+                return {
+                  value: result,
+                  done:  false
+                }
+              }
+            }
+    };
+  };
+]]
 
-function js.global:map (collection)
+function env:map (collection)
   local iterator = coroutine.wrap (function ()
     for k, v in map (collection) do
-      coroutine.yield (js.new (js.global.Array, k, v))
+      coroutine.yield (js.global:eval ([[
+        new Array (${k}, ${v})
+      ]] % { k = k, v = v }))
     end
   end)
-  return js.global:make_iterator (iterator)
+  return env:make_iterator (iterator)
 end
---]]
 
