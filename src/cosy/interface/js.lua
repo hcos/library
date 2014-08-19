@@ -269,7 +269,7 @@ function env:elements (model)
 end
 
 js.global:eval [[
-  global.make_iterator = function (iterator) {
+  window.make_iterator = function (iterator) {
     return {
       next: function () {
               var result = iterator ();
