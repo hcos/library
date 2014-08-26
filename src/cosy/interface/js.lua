@@ -17,15 +17,23 @@ GLOBAL.cosy = cosy
 GLOBAL.tags = tags
 env.cosy = cosy
 
+GLOBAL.print = function (msg)
+  env.console:log (msg)
+end
 
 local DATA    = tags.DATA
 local PATH    = tags.PATH
-local PATCHES = tags.PATCHES
 local NODES   = tags.NODES
 local TYPE    = tags.TYPE
 
 local show = proxy ()
 function show:__newindex (key, value)
+  local below = self [DATA]
+  local path = self [PATH] .. key
+  local model = path [1]
+  local old_value = self [key]
+  below [key] = value
+  local new_value = self [key]
   if self [TYPE] then
     if model [NODES] [self] then
       env:update_node (self)
@@ -53,13 +61,8 @@ function detect:__newindex (key, value)
   local below = self [DATA]
   local path = self [PATH] .. key
   assert (#path >= 2)
-  local model = path [1] [path [2]]
-  model [PATCHES] = {}
-  --
-  local old_value = self [key]
+  local model = path [1]
   below [key] = value
-  local new_value = self [key]
-  -- 
   protocol.on_patch (model)
 end
 
@@ -111,10 +114,6 @@ function env:connect (editor, resource, token)
     ignore (self)
     protocol.on_open (model)
     interface:send {
-      action   = "set-resource",
-      resource = resource,
-    }
-    interface:send {
       action   = "get-patches",
     }
     cosy [resource] [NODES] = container {}
@@ -131,6 +130,7 @@ function env:connect (editor, resource, token)
     ignore (self)
     websocket:close ()
   end
+  return model
 end
 
 function env:id (data)
@@ -235,8 +235,9 @@ function env:set_position (data, value)
 end
 
 function env:instantiate (element_type)
+  ignore (self)
   return {
-    [tags.TYPE] = element__type,
+    [tags.TYPE] = element_type,
   }
 end
 
@@ -289,6 +290,7 @@ js.global:eval [[
 ]]
 
 function env:map (collection)
+  ignore (self)
   local iterator = coroutine.wrap (function ()
     for k, v in map (collection) do
       coroutine.yield (js.global:eval ([[

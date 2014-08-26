@@ -9,12 +9,14 @@ local cosy = require "cosy.util.cosy"
 local tags = require "cosy.util.tags"
 
 local IS_VOLATILE = tags.IS_VOLATILE
+local NAME        = tags.NAME
 local PATCHES     = tags.PATCHES
 local RESOURCE    = tags.RESOURCE
 local TOKEN       = tags.TOKEN
 local INTERFACE   = tags.INTERFACE
 local VERSION     = tags.VERSION
 
+NAME      [IS_VOLATILE] = true
 PATCHES   [IS_VOLATILE] = true
 RESOURCE  [IS_VOLATILE] = true
 TOKEN     [IS_VOLATILE] = true
@@ -44,6 +46,7 @@ function protocol.on_connect (interface)
   cosy [resource] = from_user (interface) {
     [PATCHES  ] = {},
     [RESOURCE ] = resource,
+    [NAME     ] = "cosy [" .. resource .. "]",
     [TOKEN    ] = token,
     [INTERFACE] = interface,
     [VERSION  ] = nil,
@@ -69,7 +72,7 @@ function protocol.on_close (model)
   local resource  = model [RESOURCE]
   local interface = model [INTERFACE]
   interface:log ("Closing connection to resource " .. tostring (resource))
-  cosy [resource] = nil
+  -- cosy [resource] = nil
 end
 
 -- Protocol:

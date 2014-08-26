@@ -31,11 +31,12 @@ local function perform (self, key, new_value, old_value, seen)
     patch_str = patch_str .. (value_of (new_value, seen) or "{}")
     recursive = type (new_value) == "table" and not is_tag (new_value)
   end
-  local model = key_path [1] [key_path [2]]
-  if model and #key_path > 2 then
+  local model = key_path [1]
+  if model then
     local patches = model [PATCHES]
     patches [#patches + 1] = {
-      apply   = patch_str,
+      status  = "applied",
+      code    = patch_str,
       unapply = function () self [key] = old_value end,
     }
   end
