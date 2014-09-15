@@ -15,14 +15,13 @@ local function map (data)
     return function () end
   end
   data = raw (data)
-  local f = coroutine.wrap (
+  return coroutine.wrap (
     function ()
       for k, v in pairs (data) do
         coroutine.yield (k, v)
       end
     end
   )
-  return f
 end
 
 return map
