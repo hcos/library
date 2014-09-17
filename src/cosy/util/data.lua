@@ -57,6 +57,108 @@ function Data:__newindex (key, value)
   end
 end
 
+local function exists (x)
+  local path = x [PATH]
+  assert (#path < 8)
+  local function _exists (data, i)
+    if data == nil then
+      return false
+    end
+    local key = path [i]
+    if key then
+      assert (type (data) == "table")
+      local subdata = data [key]
+      if _exists (subdata, i + 1) then
+        return true
+      end
+    else
+      return true
+    end
+    for _, subpath in ipairs (data [PARENTS] or {}) do
+      for j = i, #path do
+        subpath = subpath [path [j]]
+      end
+      if exists (subpath) then
+        return true
+      end
+    end
+    return false
+  end
+  return _exists (path [1], 2)
+end
+
+function Data:__len ()
+  local i = 1
+  while true do
+    if not exists (self [i]) then
+      break
+    end
+    i = i + 1
+  end
+  return i - 1
+end
+
+function Data:__ipairs ()
+  return coroutine.wrap (
+    function ()
+      local i = 1
+      while true do
+        local r = self [i]
+        if not exists (r) then
+          break
+        end
+        coroutine.yield (i, r)
+        i = i +1
+      end
+    end
+  )
+end
+
+function Data:__pairs ()
+  local path = self [PATH]
+  local function compute (data, i)
+    local seen = {}
+    if not data then
+      return
+    end
+    local key = path [i]
+    if key then
+      assert (type (data) == "table")
+      local subdata = data [key]
+      for k, v in coroutine.wrap (function () compute (subdata, i+1) end) do
+        if not seen [k] then
+          coroutine.yield (k, v)
+          seen [k] = true
+        end
+      end
+    else
+      if type (data) == "table" then
+        for k, v in pairs (data) do
+          if k ~= PARENTS then
+            coroutine.yield (k, v)
+          end
+        end
+      end
+    end
+    for _, subpath in ipairs (data [PARENTS] or {}) do
+      for j = i, #path do
+        subpath = subpath [path [j]]
+      end
+      for k, v in pairs (subpath) do
+        if not seen [k] then
+          coroutine.yield (k, v)
+          seen [k] = true
+        end
+      end
+    end
+  end
+  return coroutine.wrap (
+    function ()
+      compute (path [1], 2)
+    end
+  )
+end
+
 function Data:__tostring ()
   local path = self [PATH]
   local result = "@" .. tostring (path [1]):sub (8)

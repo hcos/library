@@ -1,6 +1,7 @@
 local assert = require "luassert"
 local tags   = require "cosy.util.tags"
 local data   = require "cosy.util.data"
+local value  = require "cosy.util.value"
 
 local PATH    = tags.PATH
 local PARENTS = tags.PARENTS
@@ -79,3 +80,86 @@ do
   assert.has.error (function () return (d.x + d.y) + {} end)
 end
 
+do
+  local d = data {}
+  d.a = {
+    [2] = 2
+  }
+  d.b = d.a {
+    [3] = 3
+  }
+  d.c = d.b {
+    [1] = 1
+  }
+  assert.are.equal (#d.c, 3)
+end
+
+do
+  local d = data {}
+  d.a = {
+    [2] = 2
+  }
+  d.b = d.a {
+    [3] = 3
+  }
+  d.c = d.b {
+    [1] = 1
+  }
+  local count = 0
+  for i, v in ipairs (d.c) do
+    assert.are.equal (i, value (v))
+    count = count + 1
+  end
+  assert.are.equal (count, 3)
+end
+
+do
+  local d = data {}
+  d.a = {
+    [2] = 2
+  }
+  d.b = d.a {
+    [3] = 3
+  }
+  d.c = d.b {
+    [1] = 1
+  }
+  local count = 0
+  for k, v in pairs (d.c) do
+    count = count + 1
+  end
+  assert.are.equal (count, 3)
+end
+
+do
+  local root = data {}
+  root.f1 = {
+    t = {
+      x = {
+        c = 3,
+      },
+    },
+  }
+  root.f2 = {
+    t = {
+      x = {
+        a = 1,
+      },
+      y = {
+        z = true,
+      },
+      z = root.f1.t,
+    },
+  }
+  root.m = (root.f1.t + root.f2.t) {
+    x = {
+      b = 2,
+    },
+    y = 5,
+  }
+  local count = 0
+  for k, v in pairs (root.m.x) do
+    count = count + 1
+  end
+  assert.are.equal (count, 3)
+end
