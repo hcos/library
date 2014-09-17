@@ -5,6 +5,7 @@ local PARENTS = tags.PARENTS
 local VALUE   = tags.VALUE
 
 local Data = {}
+Data.on_write = {}
 
 local Expression = {}
 
@@ -25,9 +26,22 @@ function Data:__index (key)
   }, Data)
 end
 
-function Data:__newindex (key, value)
-  local path = self [PATH]
+local function clear (x)
+  local path = x [PATH]
   local data = path [1]
+  for i = 2, #path-1 do
+    data = data [path [i]]
+    if type (data) ~= "table" then
+      return
+    end
+  end
+  data [path [#path]] = nil
+end
+
+function Data:__newindex (key, value)
+  local target = self [key]
+  local path   = self [PATH]
+  local data   = path [1]
   for i = 2, #path do
     local k = path [i]
     local v = data [k]
@@ -39,58 +53,57 @@ function Data:__newindex (key, value)
     data = data [k]
   end
   local v = data [key]
+  local reverse
   if type (value) ~= "table" and type (v) ~= "table" then
+    reverse = function () self [key] = v end
     data [key] = value
   elseif type (value) ~= "table" and type (v) == "table" then
+    local old_value = v [VALUE]
+    reverse = function () self [key] = old_value end
     v [VALUE] = value
-    data [key] = v
   elseif type (value) == "table" and type (v) ~= "table" then
+    reverse = function () clear (target); self [key] = v end
     if not value [VALUE] then
       value [VALUE] = v
     end
     data [key] = value
   elseif type (value) == "table" and type (v) == "table" then
+    reverse = function () clear (target); self [key] = v end
     if not value [VALUE] then
       value [VALUE] = v [VALUE]
     end
     data [key] = value
   end
-end
-
-local function exists (x)
-  local path = x [PATH]
-  assert (#path < 8)
-  local function _exists (data, i)
-    if data == nil then
-      return false
+  for _, f in pairs (Data.on_write) do
+    if type (f) == "function" then
+      f (target, value, reverse)
     end
-    local key = path [i]
-    if key then
-      assert (type (data) == "table")
-      local subdata = data [key]
-      if _exists (subdata, i + 1) then
-        return true
-      end
-    else
-      return true
-    end
-    for _, subpath in ipairs (data [PARENTS] or {}) do
-      for j = i, #path do
-        subpath = subpath [path [j]]
-      end
-      if exists (subpath) then
-        return true
-      end
-    end
-    return false
   end
-  return _exists (path [1], 2)
+  -- Clean:
+  local path = self [key] [PATH]
+  local data = path [1]
+  local traversed = {data}
+  for i = 2, #path do
+    data = data [path [i]]
+    if type (data) ~= "table" then
+      break
+    end
+    traversed [#traversed + 1] = data
+  end
+  for i = #traversed, 2, -1 do
+    local d = traversed [i]
+    if pairs (d) (d) == nil then
+      traversed [i-1] [path [i]] = nil
+    else
+      break
+    end
+  end
 end
 
 function Data:__len ()
   local i = 1
   while true do
-    if not exists (self [i]) then
+    if not Data.exists (self [i]) then
       break
     end
     i = i + 1
@@ -104,7 +117,7 @@ function Data:__ipairs ()
       local i = 1
       while true do
         local r = self [i]
-        if not exists (r) then
+        if not Data.exists (r) then
           break
         end
         coroutine.yield (i, r)
@@ -240,4 +253,83 @@ function Expression:__add (x)
   return Expression.new (parents)
 end
 
-return Data.new
+function Data.is (x)
+  return type (x) == "table"
+     and getmetatable (x) == Data
+end
+
+function Data.exists (x)
+  if type (x) ~= "table" or getmetatable (x) ~= Data then
+    return false
+  end
+  local path = x [PATH]
+  assert (#path < 8)
+  local function _exists (data, i)
+    if data == nil then
+      return false
+    end
+    local key = path [i]
+    if key then
+      assert (type (data) == "table")
+      local subdata = data [key]
+      if _exists (subdata, i + 1) then
+        return true
+      end
+    else
+      return true
+    end
+    for _, subpath in ipairs (data [PARENTS] or {}) do
+      for j = i, #path do
+        subpath = subpath [path [j]]
+      end
+      if Data.exists (subpath) then
+        return true
+      end
+    end
+    return false
+  end
+  return _exists (path [1], 2)
+end
+
+function Data.value (x)
+  if type (x) ~= "table" or getmetatable (x) ~= Data then
+    return nil
+  end
+  local path = x [PATH]
+  local function _value (data, i)
+    if data == nil then
+      return nil
+    end
+    local key = path [i]
+    if key then
+      assert (type (data) == "table")
+      local subdata = data [key]
+      local result  = _value (subdata, i + 1)
+      if result then
+        return result
+      end
+    else
+      if type (data) == "table" then
+        if Data.is (data) then
+          return data
+        else
+          return data [VALUE]
+        end
+      end
+      return data
+    end
+    for _, subpath in ipairs (data [PARENTS] or {}) do
+      for j = i, #path do
+        subpath = subpath [path [j]]
+      end
+      local result = Data.value (subpath)
+      if result then
+        return result
+      end
+    end
+    return nil
+  end
+  return _value (path [1], 2)
+end
+
+return Data
