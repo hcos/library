@@ -125,7 +125,7 @@ do
     [1] = 1
   }
   local count = 0
-  for k, v in pairs (d.c) do
+  for _ in pairs (d.c) do
     count = count + 1
   end
   assert.are.equal (count, 3)
@@ -158,7 +158,7 @@ do
     y = 5,
   }
   local count = 0
-  for k, v in pairs (root.m.x) do
+  for _ in pairs (root.m.x) do
     count = count + 1
   end
   assert.are.equal (count, 3)
