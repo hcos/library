@@ -1,135 +1,12 @@
--- Calque Data
--- ===========
---
--- (calque = tracing paper = layers)
---
--- In CosyVerif, we store, manipulate and exchange data, not objects.
--- These data have been represented as CAMI and FML/GrML in previous
--- versions. In the current version, they are represented as Lua values.
---
--- Data can be atomic values (Booleans, numbers, strings, functions) or
--- tables containing other data. When a data is a function, is should not
--- be considered as a method. It is *really* a just a function.
---
--- Proposal
--- ========
---
--- We use an approach similar to the use tracing paper.
--- Because things can only be built by addition, we can build a formalism or
--- model by putting all the tracing papers together. The final data is the
--- one obtained from all of the parts.
---
--- For instance, the example below shows in `result` the resulting data
--- obtained by merging `t1`, `t2` and `t3`.
+local tags  = require "cosy.util.tags"
 
-do
-  local t1 = {
-    x = {
-      a = 1,
-    },
-  }
-  local t2 = {
-    x = {
-      b = 2,
-    },
-    y = true,
-  }
-  local t3 = {
-    z = false,
-  }
-  local result = {
-    x = {
-      a = 1,
-      b = 2,
-    },
-    y = true,
-    z = false,
-  }
-end
-
--- CosyVerif allows to specify types and instances. The layers must be
--- extended to handle them. The example below shows an instance `i` created
--- from a type `t`. The `extends` field gives us the extended types. The
--- merge of all layers is shown in `result.i`.
-
-do
-  local m = {
-    t = {
-      x = {
-        c = 3,
-      },
-    },
-  }
-  local model = {
-    extends = { m },
-    t = {
-      x = {
-        a = 1,
-      },
-      y = {
-        z = true,
-      },
-    }
-  }
-  model.i = {
-    extends = { model.t },
-    x = {
-      b = 2,
-    },
-  }
-  local result = {
-    extends = { m },
-    t = {
-      x = {
-        a = 1,
-        c = 3,
-      },
-      y = {
-        z = true,
-      },
-    },
-    i = {
-      extends = { model.t },
-      x = {
-        a = 1,
-        b = 2,
-        c = 3,
-      },
-      y = {
-        z = true,
-      },
-    },
-  }
-end
-
--- Note that:
--- * `a = 1` comes from `model.i`;
--- * `b = 2` comes from `model.t`;
--- * `c = 3` comes from `m.t` that is imported by `model.t`;
--- * `y = { z = true }` comes from `model.t`.
---
--- Although `model.t` does not specify that is extends `m.t`, it is the case
--- because `model` extends `m` and `t` is a field in both.
--- This behavior allows to specify the extension only where it is really
--- required, thus improving readability (this can be discussed, but in big
--- examples, it Data.news a clear difference).
-
--- Access Rules
--- ------------
---
--- We need a very simple rule to define how to merge layers.
--- The `value` function computes the value of any leaf in the data.
---
--- **Question:** what should `value` return for non leaves?
-
-local PATH    = {}
-local PARENTS = {}
-local VALUE   = {}
-
--- Data
--- ----
+local PATH    = tags.PATH
+local PARENTS = tags.PARENTS
+local VALUE   = tags.VALUE
 
 local Data = {}
+
+local Expression = {}
 
 function Data.new (x)
   return setmetatable ({
@@ -162,20 +39,103 @@ function Data:__newindex (key, value)
   local data = path [1]
   for i = 2, #path do
     local k = path [i]
-    if not data [k] then
+    local v = data [k]
+    if not v then
       data [k] = {}
+    elseif type (v) ~= "table" then
+      data [k] = { [VALUE] = v }
     end
     data = data [k]
   end
-  data [key] = value
+  local v = data [key]
+  if type (value) ~= "table" and type (v) ~= "table" then
+    data [key] = value
+  elseif type (value) ~= "table" and type (v) == "table" then
+    data [key] = { [VALUE] = v }
+  elseif type (value) == "table" and type (v) ~= "table" then
+    if not value [VALUE] then
+      value [VALUE] = v
+    end
+    data [key] = value
+  elseif type (value) == "table" and type (v) == "table" then
+    if not value [VALUE] then
+      value [VALUE] = v [VALUE]
+    end
+    data [key] = value
+  end
 end
 
--- Value
--- -----
+function Data:__eq (x)
+  local lhs = self [PATH]
+  local rhs = x    [PATH]
+  if #lhs ~= #rhs then
+    return false
+  end
+  for i, l in ipairs (lhs) do
+    if l ~= rhs [i] then
+      return false
+    end
+  end
+  return true
+end
+
+function Data:__call (x)
+  assert (type (x) == "table")
+  local parents = x [PARENTS] or {}
+  parents [#parents + 1] = self
+  x [PARENTS] = parents
+  return x
+end
+
+function Data:__add (x)
+  assert (type (x) == "table" and getmetatable (x) == Data)
+  local parents = {
+    self
+  }
+  if getmetatable (x) == Data then
+    parents [#parents + 1] = x
+  elseif getmetatable (x) == Expression then
+    for _, v in ipairs (x [PARENTS]) do
+      parents [#parents + 1] = v
+    end
+  end
+  return Expression.new (parents)
+end
+
+function Expression.new (x)
+  return setmetatable ({
+    [PARENTS] = x
+  }, Expression)
+end
+
+function Expression:__call (x)
+  assert (type (x) == "table")
+  local parents = x [PARENTS] or {}
+  for _, v in ipairs (self [PARENTS]) do
+    parents [#parents + 1] = v
+  end
+  x [PARENTS] = parents
+  return x
+end
+
+function Expression:__add (x)
+  assert (type (x) == "table" and getmetatable (x) == Data)
+  local parents = {}
+  for _, v in ipairs (self [PARENTS]) do
+    parents [#parents + 1] = v
+  end
+  if getmetatable (x) == Data then
+    parents [#parents + 1] = x
+  elseif getmetatable (x) == Expression then
+    for _, v in ipairs (x [PARENTS]) do
+      parents [#parents + 1] = v
+    end
+  end
+  return Expression.new (parents)
+end
 
 local function value (x)
   local path = x [PATH]
-  local TABLE = {}
   local function _value (data, i)
     if not data then
       return nil
@@ -209,27 +169,22 @@ local function value (x)
     end
     return nil
   end
-  local result = _value (path [1], 2)
-  if result == TABLE then
-    return x
-  else
-    return result
-  end
+  return _value (path [1], 2)
 end
 
 -- Test
 -- ----
 
 do
-  local m = Data.new {
+  local cosy = Data.new {}
+  cosy.f1 = {
     t = {
       x = {
         c = 3,
       },
     },
   }
-  local model = Data.new {
-    [PARENTS] = { m },
+  cosy.f2 = {
     t = {
       x = {
         a = 1,
@@ -237,11 +192,10 @@ do
       y = {
         z = true,
       },
-      z = m.t,
+      z = cosy.f1.t,
     },
   }
-  model.i = {
-    [PARENTS] = { model.t },
+  cosy.m = (cosy.f1.t + cosy.f2.t) {
     x = {
       b = 2,
     },
@@ -249,16 +203,11 @@ do
       [VALUE] = 5,
     },
   }
-  print (tostring (model.i.x.a) .. " = " .. tostring (value (model.i.x.a)))
-  print (tostring (model.i.x.b) .. " = " .. tostring (value (model.i.x.b)))
-  print (tostring (model.i.x.c) .. " = " .. tostring (value (model.i.x.c)))
-  print (tostring (model.i.x  ) .. " = " .. tostring (value (model.i.x  )))
-  print (tostring (model.i.y  ) .. " = " .. tostring (value (model.i.y  )))
-  print (tostring (model.i.z  ) .. " = " .. tostring (value (model.i.z  )))
+  print (tostring (cosy.m.x.a) .. " = " .. tostring (value (cosy.m.x.a)))
+  print (tostring (cosy.m.x.b) .. " = " .. tostring (value (cosy.m.x.b)))
+  print (tostring (cosy.m.x.c) .. " = " .. tostring (value (cosy.m.x.c)))
+  print (tostring (cosy.m.x  ) .. " = " .. tostring (value (cosy.m.x  )))
+  print (tostring (cosy.m.y  ) .. " = " .. tostring (value (cosy.m.y  )))
+  print (tostring (cosy.m.z  ) .. " = " .. tostring (value (cosy.m.z  )))
 end
 
--- Other Problems
--- ==============
---
--- We should handle access rights (read-only or read-write).
--- This can easily be done by adding a proxy over data.
