@@ -8,7 +8,7 @@ local VALUE   = tags.VALUE
 local function value (x)
   local path = x [PATH]
   local function _value (data, i)
-    if not data then
+    if data == nil then
       return nil
     end
     local key = path [i]
