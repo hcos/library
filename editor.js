@@ -1,4 +1,8 @@
 
+    Array.prototype.top = function(){
+        var ret = this.length > 0 ? this[this.length-1] : null;
+        return ret;
+    }
     // Size definitions for the shapes
     var rect_size = 30,
         rect_highlighted = 40,
@@ -74,7 +78,7 @@
     };
 
     // Position definitions and points of reference for the markers
-    var width = 960,
+    var width = 1170,
         height = 500,
         markerSize = 8,
         origin = {x: width/2, y: height/2},
@@ -84,10 +88,11 @@
             .attr("width", width)
             .attr("height", height)
             .attr("pointer-events", "all");
-            
+    
+    var zm = d3.behavior.zoom().on("zoom", rescale);
+    
     var svg = outer.append("svg:g")
-                .call(d3.behavior.zoom()
-                        .on("zoom", rescale))
+                .call(zm)
                 .on("dblclick.zoom", null)
                 .append("svg:g")
                 .on("mousedown", mouseDown)
@@ -100,7 +105,7 @@
         .attr('width', width)
         .attr('height', height)
         .attr('fill', 'white');
-
+        
     var drag_line = svg.append("line")
         .attr("class", "drag_line")
         .attr("x1", 0)
@@ -145,6 +150,18 @@
         .append("svg:path")
         .attr("d", "M0,-5L10,0L0,5");
     
+    //~ svg.select("defs").selectAll("icons")
+        //~ .data(["icon1"])
+        //~ .enter().append("svg:pattern")
+        //~ .attr("id", "icon")
+        //~ .attr("x", "0")
+        //~ .attr("y", "0")
+        //~ .attr("patternUnits", "userSpaceOnUse")
+        //~ .attr("height", "5")
+        //~ .attr("width", "5")
+        //~ .append("i")
+            //~ .attr("class", "fa fa-camera-retro fa-lg")    
+    
     var nodes_index = {},
         links_index = {},
         forms_index = {},
@@ -158,9 +175,12 @@
                 d3.event.sourceEvent.stopPropagation();
                 dragInitiated = true;
                 force.stop();
+                var point = [d.x, d.y];
+                pressTimerLeft = window.setTimeout(function(){ left_longClick(point); },800);
             }
         })
         .on("drag", function(d, i) {
+            resetMouseVars();
             if (dragInitiated){
                 d.px += d3.event.dx;
                 d.py += d3.event.dy;
@@ -172,7 +192,6 @@
         .on("dragend", function(d, i){
             if (d3.event.sourceEvent.which == 1){
                 force.resume();
-                //~ d.fixed = true
                 tick();
                 dragInitiated = false;
             }
@@ -184,20 +203,6 @@
         node = svg.append("svg:g").selectAll("node").attr("id", "nodes"),
         circle = svg.append("svg:g").selectAll("g").attr("id", "tokens"),
         text = svg.append("svg:g").selectAll("g").attr("id", "dummy_labels");
-
-    // mouse event vars
-    var source_node = null;
-    //~ var selected_node = null,
-        //~ selected_link = null,
-        //~ mousedown_link = null,
-        //~ mousedown_node = null,
-        //~ mouseup_node = null,
-        //~ can_add_node = false;
-    
-    
-    function resetMouseVars() {
-        source_node = null;
-    }
     
     // Add new node from the model 
     function add_node(node){
@@ -210,6 +215,7 @@
     }
     
     function updateModelNode (node) {
+        console.log("update model");
         if(node.get("type") == "arc"){
             var source = node.get('source'),
                 target = node.get('target'),
@@ -341,7 +347,7 @@
                         .attr("data-toggle", "button")
                         .on("click", formBtnClick)
                         .text(form.get("name"));
-                    if(!form.get("is_active")){
+                    if(!form.get("is_active")) {
                         btn.attr("disabled", "true")
                     }
                 }
@@ -379,7 +385,6 @@
     
     // GUI update
     function updateForceLayout() {
-        console.log(">> updateForceLayout");
         assert(force.nodes().length != nodes_index.length, "Error: Force nodes amount diferrent from indexed nodes");
         assert(force.links().length != links_index.length, "Error: Force links amount diferrent from indexed links");
         
@@ -389,31 +394,28 @@
             .attr("marker-end", function (d) {return "url(#" + d.type + ")";});
         path.exit().remove();
         
-        console.log("1");
-        console.log(force.nodes())
+        console.log("#Nodes: " + force.nodes().length+" #Links: " + force.links().length);
         node = node.data(force.nodes(), function (d) {return d.id});
-        console.log("2");
         node.enter().append("path");
-        console.log("3");
         node.attr("class", function(d){ return d.selected ? "node selected" : "node"})
             .attr("d", function(d){ return d.shape.d;})
             .attr("fill", function(d){ return d.highlighted ? "gold" : "#ccc"})
             .on('mouseenter', node_mouseEnter)
             .on('mouseout', node_mouseExit)
+            .on('click', node_click)
             .call(nodeDrag);
-        console.log("4");
         node.exit().remove();
         
-        //~ circle = circle.data(force.nodes(), function (d) {return d.id;});
-        //~ circle.enter().append("circle")
-                //~ .attr("class", "token")
-                //~ .attr("r", radius/6)
-                //~ .attr("fill", "black")
-                //~ .call(nodeDrag);
-                                //~ 
-        //~ circle.attr("visibility", function(d) {return d.marking ? "visible" : "hidden" })
-        //~ 
-        //~ circle.exit().remove();
+        circle = circle.data(force.nodes(), function (d) {return d.id;});
+        circle.enter().append("circle")
+                .attr("class", "token")
+                .attr("r", radius/6)
+                .attr("fill", "black")
+                .on('mouseenter', node_mouseEnter)
+                .on('mouseleave', node_mouseExit)
+                .call(nodeDrag);
+        circle.attr("visibility", function(d) {return d.marking ? "visible" : "hidden" })
+        circle.exit().remove();
         
         text = text.data(force.nodes(), function (d) {return d.id;});
         text.enter().append("text")
@@ -425,7 +427,6 @@
         text.text(function(d) { return d.name; });
         text.exit().remove();
         force.start();
-        console.log("<< updateForceLayout");
         return true;
     }
     
@@ -434,10 +435,27 @@
         svg.attr("transform", "translate(" + d3.event.translate + ")"+ " scale(" + d3.event.scale + ")");
     }
     
+    // Mouse event vars
+    var newLinkValues = {arc_initiated: false, source_node:null};
+    var cancelUpEvent = false;
+    var pressTimerRight = null;
+    var pressTimerLeft = null;
+    
+    // User selected type. TODO: On implementation of "lua types", change this var
+    var new_elem_type = "place";
+    
+    function resetMouseVars() {
+        newLinkValues.arc_initiated= false;
+        newLinkValues.source_node= null;
+        clearTimeout(pressTimerRight);
+        clearTimeout(pressTimerLeft);
+    }
+    
     // Mouse event handling
     
     function mouseDown() {
-        console.log("mouse down")
+        console.log("Mouse down")
+        var point = d3.mouse(this);
         switch(d3.event.button){
             case 0:     /*left click*/
                 d3.event.stopPropagation();
@@ -447,49 +465,57 @@
             case 2:     /*right click*/
                 d3.event.stopPropagation();
                 if(node_stack.length > 0){
-                    source_node = node_stack[node_stack.length - 1];
+                    newLinkValues.arc_initiated = true;
+                    newLinkValues.source_node = node_stack.top();
                     drag_line
                       .attr("class", "drag_line")
-                      .attr("x1", source_node.x)
-                      .attr("y1", source_node.y)
-                      .attr("x2", source_node.x)
-                      .attr("y2", source_node.y);
+                      .attr("x1", newLinkValues.source_node.x)
+                      .attr("y1", newLinkValues.source_node.y)
+                      .attr("x2", newLinkValues.source_node.x)
+                      .attr("y2", newLinkValues.source_node.y);
                 } else {
+                    pressTimerRight = window.setTimeout(function(){ right_longClick(point); },800);
+                    newLinkValues.arc_initiated = false;
+                    newLinkValues.source_node = null;
                 }
         }
     }
     
     function mouseMove(){
-        //~ if (node_stack.length > 0){
-        if (source_node){
+        if (newLinkValues.arc_initiated){
             drag_line
-                .attr("x1", source_node.x)
-                .attr("y1", source_node.y)
+                .attr("x1", newLinkValues.source_node.x)
+                .attr("y1", newLinkValues.source_node.y)
                 .attr("x2", d3.mouse(this)[0])
                 .attr("y2", d3.mouse(this)[1]);
+        } else {
+            resetMouseVars();
         }
     }
     
     function mouseUp() {
         console.log("Mouse up");
+        
+        if(cancelUpEvent) return;
+        
         switch(d3.event.button){
             case 0:     /*left click*/
                 break;
             case 1:     /*middle click*/
                 break;
             case 2:     /*right click*/
-                if(source_node){
-                    console.log("Add link")
+                if(newLinkValues.arc_initiated){
+                    var source = newLinkValues.source_node;
                     drag_line.attr("class", "drag_line_hidden")
                     var point = d3.mouse(this);
                     var node;
-                    if(node_stack.length > 0){
-                        node = node_stack[node_stack.length -1];
-                    } else {
+                    if(node_stack.length > 0)
+                        node = node_stack.top();
+                    else {
                         node = {id : "dummy_node_"+force.nodes().length,
                             name : "dummy_node_"+force.nodes().length,
-                            type : source_node.type == "transition" ? "place" : "transition", 
-                            shape : source_node.type == "transition" ? shapes.circle : shapes.rect,
+                            type : source.type == "transition" ? "place" : "transition", 
+                            shape : source.type == "transition" ? shapes.circle : shapes.rect,
                             x : point[0],
                             y : point[1],
                             highlighted : false,
@@ -498,13 +524,12 @@
                             fixed : true};
                         force.nodes().push(node);
                     }
-                    
                     var temp_i = force.nodes().length - 1;
                     nodes_index["dummy_node"+temp_i] = temp_i;
 
                     force.links().push({id : "dummy_link_"+force.links().length, 
                                 anchor:"",
-                                source: source_node,
+                                source: source,
                                 target: node,
                                 type: "licensing",
                                 lock_pos : false});
@@ -512,12 +537,11 @@
                     temp_i = force.links().length - 1;
                     links_index["dummy_link_"+temp_i] = temp_i;
                 } else {
-                    console.log("Add node")
                     var point = d3.mouse(this),
                     node = {id : "dummy_node_"+force.nodes().length,
                         name : "dummy_node_"+force.nodes().length,
-                        type : "place", 
-                        shape : shapes.circle,
+                        type : new_elem_type == "place" ? "place" : "transition", 
+                        shape : new_elem_type == "place" ? shapes.circle : shapes.rect,
                         marking : true,
                         x : point[0],
                         y : point[1],
@@ -530,87 +554,118 @@
                     var temp_i = force.nodes().length - 1;
                     nodes_index["dummy_link_"+temp_i] = temp_i;
                 }
+                arc_initiated = false;
+                node_stack.pop();
                 break;
         }
-        updateForceLayout();
+        updateForceLayout();    
         resetMouseVars();
     }
     
-    // Force nodes event handling
+    function left_longClick(point){
+        removePalette();
+        console.log("Left long click", point);
+        var node = node_stack.top();
+        
+        var options_menu = svg.append("g").attr("class", "node_options");
+        var size = 100;
+        
+        var foreign = options_menu.append("foreignObject")
+                .attr("x", point[0]-size/2)
+                .attr("y", point[1]-size/2)
+                .attr("height", size)
+                .attr("width", size);
+                
+        var menu_container = foreign.append("xhtml:div")
+                                .attr("class", "node-options-menu")
+        
+        
+        var menu = menu_container.append("xhtml:div")
+                        .attr("class", "node-options-container")
+                        
+        var buttons_data = [{icon: "fa fa-edit fa-lg", f:function(node){console.log("function 1");}}, 
+                            {icon: "fa fa-trash-o fa-lg", f: function(node){console.log("function 2");}}];
+        
+        menu.selectAll("a")
+            .data(buttons_data)
+            .enter().append("a")
+                .attr("class", function(d){ return d.icon; })
+                .attr("href", "")
+                .attr("onclick", "return false") // To prevent reload when clicked.
+                .on("click", function(d){ removeOptionsMenu(); d.f(d) ; return false;});
+        
+        var items = document.querySelectorAll('.node-options-container a');
+        items[0].style.left = (50 - 35* Math.cos(-0.5 * Math.PI - 2*(1/5)*1*Math.PI)).toFixed(4) + "%";
+        items[0].style.top = (50 + 35* Math.sin(-0.5 * Math.PI - 2*(1/5)*1*Math.PI)).toFixed(4) + "%";
+        items[1].style.left = (50 - 35* Math.cos(-0.5 * Math.PI - 2*(1/5)*4*Math.PI)).toFixed(4) + "%";
+        items[1].style.top = (50 + 35* Math.sin(-0.5 * Math.PI - 2*(1/5)*4*Math.PI)).toFixed(4) + "%";
+
+        window.setTimeout(function(d) {d3.select('.node-options-container').classed('open', true) }, 50);
+    }
+
+    function right_longClick(point){
+        console.log("Right Long click");
+        removeOptionsMenu();
+        cancelUpEvent = true;
+        var pallet_menu = svg.append("g").attr("class", "palette");
+        
+        var size = 250;
+        
+        var foreign = pallet_menu.append("foreignObject")
+                .attr("x", point[0]-size/2)
+                .attr("y", point[1]-size/2)
+                .attr("height", size)
+                .attr("width", size);
+        
+        var menu_container = foreign.append("xhtml:div")
+                                .attr("class", "circular-menu")
+        
+        
+        var menu = menu_container.append("xhtml:div")
+                        .attr("class", "circle_container")
+                        .attr("height", size)
+                        .attr("width", size);
+        
+        var buttons_data = [{ type: "trans", icon: "fa fa-arrows-h fa-2x"},
+                            { type: "place", icon: "fa fa-circle-o fa-2x"},
+                            { type: "trans", icon: "fa fa-arrows-h fa-2x"},
+                            { type: "place", icon: "fa fa-circle-o fa-2x"}];
+        
+        
+        menu.selectAll("a")
+            .data(buttons_data)
+            .enter().append("a")
+                .attr("class", function(d){ return d.icon; })
+                .attr("href", "")
+                .attr("onclick", "return false") // To prevent reload when clicked.
+                .on("click", function(d){ new_elem_type = d.type; removePalette(); return false;});
+            
+        var items = document.querySelectorAll('.circle_container a');
+        for(var i = 0, l = items.length; i < l; i++) {
+            items[i].style.left = (50 - 35* Math.cos(-0.5 * Math.PI - 2*(1/l)*i*Math.PI)).toFixed(4) + "%";
+
+            items[i].style.top = (50 + 35* Math.sin(-0.5 * Math.PI - 2*(1/l)*i*Math.PI)).toFixed(4) + "%";
+        }
+
+        window.setTimeout(function(d) {d3.select('.circle_container').classed('open', true) }, 50);
+    }
     
-    function node_dblclick(d) {
-        d.lua_node.set("selected", !d.selected);
-        d3.select(this).classed("selected", d.selected = false);
+    function removePalette(){
+        //~ d3.select('.circle_container').classed('open', false)        
+        d3.select(".palette").remove();
+        cancelUpEvent = false;
+    }
+    
+    function removeOptionsMenu(){
+        d3.select(".node_options").remove();
+        cancelUpEvent = false;
     }
     
     function node_click(d){
         if (d3.event.defaultPrevented) return;
         d.lua_node.set("selected", !d.selected);
         d3.select(this).classed("selected", d.selected = !d.selected);
-    }
-    
-    function node_mouseDown(d){
-        console.log("Node down");
-        switch(d3.event.button){
-            case 0:     /*left click*/
-                d3.event.stopPropagation();
-                mousedown_node = d;
-                if (mousedown_node == selected_node) selected_node = null;
-                else selected_node = mousedown_node; 
-                selected_link = null; 
-
-                // reposition drag line
-                drag_line
-                  .attr("class", "drag_line")
-                  .attr("x1", mousedown_node.x)
-                  .attr("y1", mousedown_node.y)
-                  .attr("x2", mousedown_node.x)
-                  .attr("y2", mousedown_node.y);
-                can_add_node = false;
-                updateForceLayout();
-                break;
-
-            case 1:     /*middle click*/
-                 break;
-            case 2:     /*right click*/
-                d3.event.stopPropagation();
-        }
-    }
-    
-    function node_mouseUp(d){
-        console.log("Node up");
-        switch(d3.event.button){
-            case 0:     /*left click*/
-                if (mousedown_node) {
-                    mouseup_node = d;
-                    can_add_node = false; 
-                    if (mouseup_node.id == mousedown_node.id) { resetMouseVars(); return; }
-
-                    /*TODO: create a proper LUA node and link*/
-                    var link = {id : "temp_"+force.links().length, 
-                                    anchor:"",
-                                    source: mousedown_node,
-                                    target: mouseup_node,
-                                    type: "licensing",
-                                    lock_pos : false};
-                                    
-                    force.links().push(link);
-                    
-                    var temp_i = force.links().length - 1;
-                    links_index["temp_"+temp_i] = temp_i;
-
-                    // select new link
-                    selected_link = link;
-                    selected_node = null;
-                    
-                    updateForceLayout();
-                }
-                break;
-            case 1:     /*middle click*/
-                 break;
-            case 2:     /*right click*/
-                break;
-        }
+        console.log("Short click");
     }
 
     function node_mouseEnter(d){
@@ -667,6 +722,7 @@
         }
     }
     
+    // Auxiliax functions
     function assert(condition, message) {
         if (!condition) {
             throw message || "Assertion failed";
