@@ -84,8 +84,8 @@ function Data:__newindex (key, value)
     end
   end
   -- Clean:
-  local path = self [key] [PATH]
-  local data = path [1]
+  path = self [key] [PATH]
+  data = path [1]
   local traversed = {data}
   for i = 2, #path do
     data = data [path [i]]
@@ -230,6 +230,25 @@ function Data:__lt (x)
     end
   end
   return true
+end
+
+function Data:__mod (x)
+  assert (type (x) == "table" and getmetatable (x) == Data)
+  if x < self then
+    local lhs  = self [PATH]
+    local rhs  = x    [PATH]
+    local root = rhs [1]
+    for i = 2, #rhs do
+      root = root [rhs [i]]
+    end
+    local result = Data.new (root)
+    for i = #rhs+1, #lhs do
+      result = result [lhs [i]]
+    end
+    return result
+  else
+    return self
+  end
 end
 
 function Data:__call (x)
