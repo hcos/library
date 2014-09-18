@@ -1,45 +1,43 @@
-local tags      = require "cosy.util.tags"
-local is_tag    = require "cosy.util.is_tag"
-local path_of -- Cyclic dependency
+             require "cosy.util.string"
+local Tag  = require "cosy.tag"
+local Data = require "cosy.data"
 
-local NAME = tags.NAME
-
-local function value_of (value, named)
-  if not path_of then
-    path_of = require "cosy.util.path_of"
-  end
-  named = named or {}
-  if value == nil then
+local function dump (x)
+  if x == nil then
     return "nil"
-  elseif type (value) == "boolean" then
-    return tostring (value)
-  elseif type (value) == "number" then
-    return tostring (value)
-  elseif type (value) == "string" then
-    if not value:find ('"') then
-      return '"' .. value .. '"'
-    elseif not value:find ("'") then
-      return "'" .. value .. "'"
-    end
-    local pattern = ""
-    while true do
-      if not (   value:find ("%[" .. pattern .. "%[")
-              or value:find ("%]" .. pattern .. "%]")) then
-        return "[" .. pattern .. "[" .. value .. "]" .. pattern .. "]"
+  elseif type (x) == "boolean" then
+    return tostring (x)
+  elseif type (x) == "number" then
+    return tostring (x)
+  elseif type (x) == "string" then
+    return x:quote ()
+  elseif type (x) == "table" and Tag.is (x) then
+    return tostring (x)
+  elseif type (x) == "table" and Data.is (x) then
+    return tostring (x)
+  elseif type (x) == "table" then
+    local result = {}
+    for k, v in pairs (x) do
+      if type (k) == "string" and k:is_identifier () then
+        result [#result + 1] = "${k} = ${v}" % {
+          k = k,
+          v = dump (v)
+        }
+      else
+        result [#result + 1] = "[ ${k} ] = ${v}" % {
+          k = dump (k),
+          v = dump (v),
+        }
       end
-      pattern = pattern .. "="
     end
-  elseif type (value) == "table" and is_tag (value) then
-    return "tags." .. value [NAME]
-  elseif type (value) == "table" and named [value] then
-    return path_of (named [value])
-  elseif type (value) == "table" then
-    return nil
-  elseif type (value) == "function" then
-    return string.dump (value)
+    return "{ " .. table.concat (result, ", ") .. " }"
+  elseif type (x) == "function" then
+    return string.dump (x)
   else
-    error ("Unable to dump value for data type " .. type (value))
+    error ("Unable to dump x for data type ${type}." % {
+      type = type (x)
+    })
   end
 end
 
-return value_of
+return dump
