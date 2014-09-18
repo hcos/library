@@ -46,8 +46,12 @@ function Tag_mt:__index (key)
 end
 
 function Tag:__tostring ()
-  local name = self [NAME] : quote ()
-  return "Tag [ ${name} ]" % { name = name }
+  local name = self [NAME]
+  if name:is_identifier () then
+    return "Tag.${name}" % { name = name }
+  else
+    return "Tag [ ${name} ]" % { name = name }
+  end
 end
 
 function Tag.is (tag)

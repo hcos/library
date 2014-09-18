@@ -26,5 +26,5 @@ end
 -- tostring
 do
   local word = Tag.new "word"
-  assert.are.equal (tostring (word), 'Tag [ "word" ]')
+  assert.are.equal (tostring (word), 'Tag.word')
 end
