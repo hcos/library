@@ -1,7 +1,7 @@
 local assert = require "luassert"
 local ignore = require "cosy.util.ignore"
-local Tag    = require "cosy.Tag"
-local Data   = require "cosy.Data"
+local Tag    = require "cosy.tag"
+local Data   = require "cosy.data"
 
 local new    = Data.new
 local is_new = Data.is

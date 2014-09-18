@@ -50,7 +50,7 @@ function Tag:__tostring ()
   if name:is_identifier () then
     return "Tag.${name}" % { name = name }
   else
-    return "Tag [ ${name} ]" % { name = name }
+    return "Tag [ ${name} ]" % { name = name:quote () }
   end
 end
 

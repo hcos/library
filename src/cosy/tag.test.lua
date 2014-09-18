@@ -1,5 +1,5 @@
 local assert = require "luassert"
-local Tag    = require "cosy.Tag"
+local Tag    = require "cosy.tag"
 
 -- Tag.new
 do
@@ -27,4 +27,6 @@ end
 do
   local word = Tag.new "word"
   assert.are.equal (tostring (word), 'Tag.word')
+  local sentence = Tag.new "a sentence"
+  assert.are.equal (tostring (sentence), 'Tag [ "a sentence" ]')
 end

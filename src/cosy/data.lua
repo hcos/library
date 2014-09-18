@@ -1,4 +1,4 @@
-local Tag = require "cosy.Tag"
+local Tag = require "cosy.tag"
 
 local PATH    = Tag.new "PATH"
 local PARENT  = Tag.new "PARENT"
