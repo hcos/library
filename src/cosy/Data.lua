@@ -1,8 +1,9 @@
-local tags  = require "cosy.util.tags"
+local Tag = require "cosy.Tag"
 
-local PATH    = tags.PATH
-local PARENTS = tags.PARENTS
-local VALUE   = tags.VALUE
+local PATH    = Tag.new "PATH"
+local PARENT  = Tag.new "PARENT"
+local PARENTS = Tag.new "PARENTS"
+local VALUE   = Tag.new "VALUE"
 
 local Data = {}
 Data.on_write = {}
@@ -147,13 +148,13 @@ function Data:__pairs ()
     else
       if type (data) == "table" then
         for k, v in pairs (data) do
-          if k ~= PARENTS then
+          if k ~= PARENT and k ~= PARENTS then
             coroutine.yield (k, v)
           end
         end
       end
     end
-    for _, subpath in ipairs (data [PARENTS] or {}) do
+    for _, subpath in ipairs (data [PARENTS] or { data [PARENT] }) do
       for j = i, #path do
         subpath = subpath [path [j]]
       end
@@ -197,9 +198,7 @@ end
 
 function Data:__call (x)
   assert (type (x) == "table")
-  local parents = x [PARENTS] or {}
-  parents [#parents + 1] = self
-  x [PARENTS] = parents
+  x [PARENT] = self
   return x
 end
 
@@ -219,9 +218,13 @@ function Data:__add (x)
   return Expression.new (parents)
 end
 
-function Expression.new (x)
+function Expression.new (...)
+  local parents = {}
+  for _, p in ipairs (...) do
+    parents [#parents + 1] = p
+  end
   return setmetatable ({
-    [PARENTS] = x
+    [PARENTS] = parents
   }, Expression)
 end
 
@@ -278,7 +281,7 @@ function Data.exists (x)
     else
       return true
     end
-    for _, subpath in ipairs (data [PARENTS] or {}) do
+    for _, subpath in ipairs (data [PARENTS] or { data [PARENT] }) do
       for j = i, #path do
         subpath = subpath [path [j]]
       end
@@ -318,7 +321,7 @@ function Data.value (x)
       end
       return data
     end
-    for _, subpath in ipairs (data [PARENTS] or {}) do
+    for _, subpath in ipairs (data [PARENTS] or { data [PARENT] }) do
       for j = i, #path do
         subpath = subpath [path [j]]
       end

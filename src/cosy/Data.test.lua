@@ -1,26 +1,27 @@
 local assert = require "luassert"
-local tags   = require "cosy.util.tags"
 local ignore = require "cosy.util.ignore"
-local Data   = require "cosy.util.data"
+local Tag    = require "cosy.Tag"
+local Data   = require "cosy.Data"
 
-local data    = Data.new
-local is_data = Data.is
-local value   = Data.value
-local exists  = Data.exists
+local new    = Data.new
+local is_new = Data.is
+local value  = Data.value
+local exists = Data.exists
 
-local PATH    = tags.PATH
-local PARENTS = tags.PARENTS
-local VALUE   = tags.VALUE
+local PATH    = Tag.PATH
+local PARENT  = Tag.PARENT
+local PARENTS = Tag.PARENTS
+local VALUE   = Tag.VALUE
 
 do
   local t = {}
-  local d = data (t)
+  local d = new (t)
   assert.are.same (d, { [PATH] = { t } })
 end
 
 do
   local t = {}
-  local d = data (t)
+  local d = new (t)
   assert.are.same (d.a.b, { [PATH] = { t, "a", "b" } })
   local k = {}
   assert.are.same (d [k], { [PATH] = { t, k } })
@@ -28,7 +29,7 @@ end
 
 do
   local t = {}
-  local d = data (t)
+  local d = new (t)
   d.x = 1
   assert.are.same (t, { x = 1 })
   d.x = { a = "a" }
@@ -46,14 +47,14 @@ end
 
 do
   local t = {}
-  local d = data (t)
+  local d = new (t)
   assert.has.no.error (function () return tostring (d.a.b) end)
 end
 
 do
   local t = {}
-  local l = data (t)
-  local r = data (t)
+  local l = new (t)
+  local r = new (t)
   assert.are.equal     (l.a.b, r.a.b)
   assert.are_not.equal (l.a.b, l.a  )
   assert.are_not.equal (l.a  , l.a.b)
@@ -62,14 +63,14 @@ end
 
 do
   local t = {}
-  local d = data (t)
+  local d = new (t)
   d.x = d {}
-  assert.are.same (t, { x = { [PARENTS] = { d } } })
+  assert.are.same (t, { x = { [PARENT] = d } })
 end
 
 do
   local t = {}
-  local d = data (t)
+  local d = new (t)
   d.x = {}
   d.y = {}
   d.z = {}
@@ -86,7 +87,7 @@ do
 end
 
 do
-  local d = data {}
+  local d = new {}
   d.a = {
     [2] = 2
   }
@@ -105,7 +106,7 @@ do
 end
 
 do
-  local d = data {}
+  local d = new {}
   d.a = {
     [2] = 2
   }
@@ -124,7 +125,7 @@ do
 end
 
 do
-  local d = data {}
+  local d = new {}
   d.a = {
     [2] = 2
   }
@@ -142,7 +143,7 @@ do
 end
 
 do
-  local root = data {}
+  local root = new {}
   root.f1 = {
     t = {
       x = {
@@ -175,7 +176,7 @@ do
 end
 
 do
-  local root = data {}
+  local root = new {}
   root.f1 = {
     t = {
       x = {
@@ -209,7 +210,7 @@ do
 end
 
 do
-  local root = data {}
+  local root = new {}
   root.f1 = {
     t = {
       x = {
@@ -247,14 +248,14 @@ do
 end
 
 do
-  assert.is_false (is_data (1))
-  assert.is_false (is_data {} )
+  assert.is_false (is_new (1))
+  assert.is_false (is_new {} )
 end
 
 do
-  local d = data {}
-  assert.is_true (is_data (d))
-  assert.is_true (is_data (d.x))
+  local d = new {}
+  assert.is_true (is_new (d))
+  assert.is_true (is_new (d.x))
 end
 
 do
@@ -267,7 +268,7 @@ do
     reverse = r
   end
   local t = {}
-  local d = data (t)
+  local d = new (t)
   d.a = 1
   assert.are.equal (target, d.a)
   assert.are.equal (value, 1)
@@ -290,7 +291,7 @@ do
     x = 1,
     y = { z = 3 }
   }
-  local d = data (t)
+  local d = new (t)
   -- Replace value by value:
   d.x = 0
   assert.are.same (t, {
@@ -350,7 +351,7 @@ do
       }
     }
   }
-  local d = data (t)
+  local d = new (t)
   d.a.b.c = { d = true }
   Data.on_write ["me"] = nil
   d.a.b.c = {}
