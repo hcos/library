@@ -3,6 +3,9 @@ doc/
 coverage/
 coverage.txt
 
+src/dkjson.lua
+src/ee5_base64.lua
+
 # All swap files:
 *.swp
 *~
