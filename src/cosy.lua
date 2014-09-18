@@ -26,6 +26,9 @@ function Cosy:configure (t)
 end
 
 function Cosy:__index (url)
+  if type (url) ~= "string" then
+    return nil
+  end
   -- FIXME: validate url
   print ("Loading " .. tostring (url))
   local resource = rawget (cosy, url)
@@ -33,7 +36,7 @@ function Cosy:__index (url)
     return Data.new (resource)
   end
   -- Step 1: ask for edition URL
-  local authorization
+  local headers
   if Cosy.username and Cosy.password then
     headers = {
       Authorization = base64 (Cosy.username .. ":" .. Cosy.password)
@@ -44,7 +47,9 @@ function Cosy:__index (url)
     headers = headers,
   }
   -- create and load resource:
-  rawset (cosy, url, {})
+  rawset (cosy, url, {
+    [NAME] = "model"
+  })
   local model = Data.new (cosy) [url]
   if answer and status == 200 then
     answer = json.decode (answer)
@@ -69,12 +74,9 @@ function Cosy:__index (url)
     loader ()
     local file = io.open (filename, "a+")
     -- set handler to write changed on file
-    local prefix = tostring (model)
     Data.on_write [Cosy] = function (target, value)
-      local target_str = tostring (target)
       if model < target then
-        local patch = target_str:gsub (prefix, "model") ..
-                      " = " .. dump (value) .. "\n"
+        local patch = tostring (target % model) .. " = " .. dump (value) .. "\n"
         file:write (patch)
         file:flush ()
       end
