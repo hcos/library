@@ -2,10 +2,12 @@
 
 current=$(pwd)
 dir=$(mktemp -d -t cosy.XXXXXX)
+echo "Working in ${dir}"
 cd ${dir}
-  echo "Working in ${dir}"
+  echo "Downloading ee5_base64..."
   git clone https://github.com/ErnieE5/ee5_base64.git
   cp ee5_base64/ee5_base64.lua ${current}/src/
+  echo "Downloading dkjson..."
   git clone https://github.com/LuaDist/dkjson.git
   cp dkjson/dkjson.lua ${current}/src/
 cd ${current}
