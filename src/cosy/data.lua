@@ -1,9 +1,12 @@
+            require "cosy.util.string"
 local Tag = require "cosy.tag"
 
 local PATH    = Tag.new "PATH"
 local PARENT  = Tag.new "PARENT"
 local PARENTS = Tag.new "PARENTS"
 local VALUE   = Tag.new "VALUE"
+
+local NAME    = Tag.NAME
 
 local Data = {}
 Data.on_write = {}
@@ -175,9 +178,14 @@ end
 
 function Data:__tostring ()
   local path = self [PATH]
-  local result = "@" .. tostring (path [1]):sub (8)
+  local result = path [1] [NAME] or "@" .. tostring (path [1]):sub (8)
   for i = 2, #path do
-    result = result .. "." .. tostring (path [i])
+    local key = path [i]
+    if key:is_identifier () then
+      result = result .. "." .. key
+    else
+      result = result .. " [ " .. key:quote () .. " ]"
+    end
   end
   return result
 end
@@ -186,6 +194,34 @@ function Data:__eq (x)
   local lhs = self [PATH]
   local rhs = x    [PATH]
   if #lhs ~= #rhs then
+    return false
+  end
+  for i, l in ipairs (lhs) do
+    if l ~= rhs [i] then
+      return false
+    end
+  end
+  return true
+end
+
+function Data:__le (x)
+  local lhs = self [PATH]
+  local rhs = x    [PATH]
+  if #lhs > #rhs then
+    return false
+  end
+  for i, l in ipairs (lhs) do
+    if l ~= rhs [i] then
+      return false
+    end
+  end
+  return true
+end
+
+function Data:__lt (x)
+  local lhs = self [PATH]
+  local rhs = x    [PATH]
+  if #lhs >= #rhs then
     return false
   end
   for i, l in ipairs (lhs) do
