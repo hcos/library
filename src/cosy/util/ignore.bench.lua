@@ -2,7 +2,7 @@
 -- =======================
 --
 local ignore  = require "cosy.util.ignore"
-local measure = require "cosy.bench"
+local measure = require "cosy.util.bench"
 
 do
   measure {
