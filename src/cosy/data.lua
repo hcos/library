@@ -7,27 +7,48 @@ local PARENTS = Tag.new "PARENTS"
 local VALUE   = Tag.new "VALUE"
 
 local NAME    = Tag.NAME
+local ID      = Tag.new "ID"
 
 local Data = {}
 Data.on_write = {}
 
 local Expression = {}
 
+local cache = setmetatable ({}, {
+  __mode = "kv"
+})
+
 function Data.new (x)
-  return setmetatable ({
-    [PATH] = { x }
-  }, Data)
+  local key    = tostring (x)
+  local result = cache [key]
+  if not result then
+    result = {
+      [PATH] = { x }
+    }
+    result [ID] = tostring (result):sub (8)
+    setmetatable (result, Data)
+    cache [key] = result
+  end
+  return result
 end
 
 function Data:__index (key)
-  local path = {}
-  for _, x in ipairs (self [PATH]) do
-    path [#path + 1] = x
+  local k = self [ID] .. ">" .. type (key) .. ":" .. tostring (key)
+  local result = cache [k]
+  if not result then
+    local path = {}
+    for _, x in ipairs (self [PATH]) do
+      path [#path + 1] = x
+    end
+    path [#path + 1] = key
+    result = {
+      [PATH] = path
+    }
+    result [ID] = tostring (result):sub (8)
+    setmetatable (result, Data)
+    cache [k] = result
   end
-  path [#path + 1] = key
-  return setmetatable ({
-    [PATH] = path
-  }, Data)
+  return result
 end
 
 local function clear (x)
@@ -181,10 +202,14 @@ function Data:__tostring ()
   local result = path [1] [NAME] or "@" .. tostring (path [1]):sub (8)
   for i = 2, #path do
     local key = path [i]
-    if key:is_identifier () then
-      result = result .. "." .. key
+    if type (key) == "string" then
+      if key:is_identifier () then
+        result = result .. "." .. key
+      else
+        result = result .. " [ " .. key:quote () .. " ]"
+      end
     else
-      result = result .. " [ " .. key:quote () .. " ]"
+      result = result .. " [" .. tostring (key) .. "]"
     end
   end
   return result
@@ -251,6 +276,17 @@ function Data:__mod (x)
   end
 end
 
+function Data:__div (x)
+  assert (type (x) == "number" and x % 1 == 0)
+  local path   = self [PATH]
+  local root   = self [1]
+  local result = Data.new (root)
+  for i = 2, math.min (#path, x) do
+    result = result [path [i]]
+  end
+  return result
+end
+
 function Data:__call (x)
   assert (type (x) == "table")
   x [PARENT] = self
@@ -311,6 +347,13 @@ function Expression:__add (x)
   return Expression.new (parents)
 end
 
+function Data.path (x)
+  if type (x) ~= "table" or getmetatable (x) ~= Data then
+    return nil
+  end
+  return x [PATH]
+end
+
 function Data.is (x)
   return type (x) == "table"
      and getmetatable (x) == Data
@@ -349,7 +392,7 @@ function Data.exists (x)
   return _exists (path [1], 2)
 end
 
-function Data.value (x)
+function Data.dereference (x)
   if type (x) ~= "table" or getmetatable (x) ~= Data then
     return nil
   end
@@ -380,7 +423,7 @@ function Data.value (x)
       for j = i, #path do
         subpath = subpath [path [j]]
       end
-      local result = Data.value (subpath)
+      local result = Data.dereference (subpath)
       if result then
         return result
       end
@@ -388,6 +431,13 @@ function Data.value (x)
     return nil
   end
   return _value (path [1], 2)
+end
+
+function Data.value (x)
+  repeat
+    x = Data.dereference (x)
+  until not Data.is (x)
+  return x
 end
 
 return Data

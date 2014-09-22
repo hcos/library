@@ -3,10 +3,11 @@ local ignore = require "cosy.util.ignore"
 local Tag    = require "cosy.tag"
 local Data   = require "cosy.data"
 
-local new    = Data.new
-local is_new = Data.is
-local value  = Data.value
-local exists = Data.exists
+local new         = Data.new
+local is_new      = Data.is
+local value       = Data.value
+local dereference = Data.dereference
+local exists      = Data.exists
 
 local PATH    = Tag.PATH
 local PARENT  = Tag.PARENT
@@ -201,12 +202,13 @@ do
     },
     y = 5,
   }
-  assert.are.equal (value (root.m.x.a), 1)
-  assert.are.equal (value (root.m.x.b), 2)
-  assert.are.equal (value (root.m.x.c), 3)
-  assert.are.equal (value (root.m.x  ), nil)
-  assert.are.equal (value (root.m.y  ), 5)
-  assert.are.equal (value (root.m.z  ), root.f1.t)
+  assert.are.equal (value (root.m.x.a  ), 1)
+  assert.are.equal (value (root.m.x.b  ), 2)
+  assert.are.equal (value (root.m.x.c  ), 3)
+  assert.are.equal (value (root.m.x    ), nil)
+  assert.are.equal (value (root.m.y    ), 5)
+  assert.are.equal (value (root.m.z.x.c), 3)
+  assert.are.equal (dereference (root.m.z  ), root.f1.t)
 end
 
 do
