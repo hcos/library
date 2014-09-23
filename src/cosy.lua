@@ -1,38 +1,30 @@
-local Tag    = require "cosy.tag"
-local Data   = require "cosy.data"
-local ignore = require "cosy.util.ignore"
-
-local json   = require "dkjson"
-local base64 = require "ee5_base64"
-
-local Cosy = {
-  username = nil,
-  password = nil,
-  root_directory = os.getenv "HOME" .. "/.cosy/",
-}
+local Tag      = require "cosy.tag"
+local Data     = require "cosy.data"
+local Protocol = require "cosy.protocol"
+local ignore   = require "cosy.util.ignore"
 
 local NAME = Tag.NAME
-local cosy = setmetatable ({
+
+local Cosy = {}
+
+local meta = Data.new {
+  [NAME] = "meta"
+}
+local store = Data.new {
   [NAME] = "cosy"
-}, Cosy)
+}
 
 -- Set global:
 local global = _ENV or _G
-global.cosy = cosy
-global.Cosy = Cosy
+global.cosy = setmetatable ({}, Cosy)
 
 -- Load interface:
-local interface
+local Platform
 if global.js then
-  interface = require "cosy.interface.js"
+  Platform = require "cosy.platform.js"
+  Platform:log "Using JavaScript"
 else
-  interface = require "cosy.interface.c"
-end
-
-function Cosy:configure (t)
-  self.username = t.username
-  self.password = t.password
-  self.root_directory = t.root_directory
+--  Platform = require "cosy.interface.c"
 end
 
 function Cosy:__index (url)
@@ -40,61 +32,48 @@ function Cosy:__index (url)
   if type (url) ~= "string" then
     return nil
   end
+  -- FIXME: validate url
   -- If url does not use SSL, force it:
   if url:find "http://" == 1 then
     url = url:gsub ("^http://", "https://")
   end
-  -- FIXME: validate url
-  print ("Loading " .. tostring (url))
-  local resource = rawget (cosy, url)
+  -- Remove trailing slash:
+  if url [#url] == "/" then
+    url = url:sub (1, #url-1)
+  end
+  --
+  local resource = rawget (store, url)
   if resource then
-    return Data.new (resource)
+    return resource
   end
-  -- create and load resource:
-  rawset (cosy, url, {
-    [NAME] = "model"
-  })
-  local model = Data.new (cosy) [url]
-  -- Step 1: ask for edition URL
-  local headers
-  if Cosy.username and Cosy.password then
-    headers = {
-      Authorization = base64.encode (Cosy.username .. ":" .. Cosy.password)
-    }
-  end
-  do
-    local answer, status = interface.request {
-      url     = url .. "/editor",
-      headers = headers,
-    }
-    -- Try websocket:
-    if answer and status == 200 then
-      answer = json.decode (answer)
-      if pcall (function () interface.dynamic (url, answer) end) then
-        return model
-      end
+  local model = store [url]
+  --
+  for k, server in pairs (meta.servers) do
+    if url:sub (1, #k) == k then
+      meta.models [model] = server {}
+      break
     end
   end
-  -- Try to download model:
-  do
-    local answer, status = interface.request {
-      url     = url,
-      headers = headers,
-    }
-    if answer and status == 200 then
-      if pcall (function () interface.static (url, answer) end) then
-        return model
-      end
-    end
+  local meta = meta.models [model]
+  print (meta)
+  print (model)
+  meta.model       = model
+  meta.resource    = url
+  meta.editor.url  = url .. "/editor"
+  meta.protocol    = Protocol.new (meta)
+  meta.platform    = Platform.new (meta)
+  meta.patch       = {
+    action = "add-patch",
+    token  = meta.editor.token,
+  }
+  meta.patches     = {}
+  meta.patches.ids = {}
+  meta.disconnect  = function ()
+    Data.clear (model)
+    Data.clear (meta)
   end
-  -- Try filesystem:
-  do
-    if pcall (function () interface.filesystem (url) end) then
-      return model
-    end
-  end
-  -- Error:
-  assert (false)
+  store [url] = model
+  return model
 end
 
 function Cosy:__newindex ()
@@ -102,4 +81,29 @@ function Cosy:__newindex ()
   assert (false)
 end
 
-return global.cosy
+
+Data.on_write.from_user = function (target, value, reverse)
+  if target / 1 ~= store then
+    return
+  end
+  local model    = target / 2
+  local meta     = meta [model]
+  local protocol = meta.protocol ()
+  -- TODO: generate patch
+  meta.patches [#(meta.patches) + 1] = meta.patch {
+    code    = [[ ]] % { },
+    id      = # (meta.patches.ids) + 1,
+    status  = "applied",
+    target  = target,
+    value   = value,
+    reverse = reverse,
+  }
+  meta.patches.ids [#(meta.patches.ids) + 1] = true
+  protocol:on_change ()
+end
+
+return {
+  Cosy = Cosy,
+  cosy = global.cosy,
+  meta = meta,
+}

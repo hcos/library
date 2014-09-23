@@ -1,125 +1,52 @@
-local rev    = require "cosy.util.rev"
-local seq    = require "cosy.util.seq"
+--local Algorithm = require "cosy.algorithm"
 
-local rawify        = require "cosy.proxy.rawify"
-local remember_path = require "cosy.proxy.remember_path"
-local guess_patch   = require "cosy.proxy.guess_patch"
+local Protocol = {}
 
-local cosy = require "cosy.util.cosy"
-local tags = require "cosy.util.tags"
+Protocol.__index = Protocol
 
-local IS_VOLATILE = tags.IS_VOLATILE
-local NAME        = tags.NAME
-local PATCHES     = tags.PATCHES
-local RESOURCE    = tags.RESOURCE
-local TOKEN       = tags.TOKEN
-local INTERFACE   = tags.INTERFACE
-local VERSION     = tags.VERSION
-
-NAME      [IS_VOLATILE] = true
-PATCHES   [IS_VOLATILE] = true
-RESOURCE  [IS_VOLATILE] = true
-TOKEN     [IS_VOLATILE] = true
-INTERFACE [IS_VOLATILE] = true
-VERSION   [IS_VOLATILE] = true
-
-local protocol = {}
-
-local function from_user (interface)
-  return interface.from_user ..
-         guess_patch ..
-         remember_path ..
-         rawify
+function Protocol.new (meta)
+  return setmetatable ({
+    meta = meta
+  }, Protocol)
 end
 
-local function from_server (interface)
-  return interface.from_server ..
-         rawify
-end
-
--- Called by the interface:
-function protocol.on_connect (interface)
-  local resource  = interface.resource
-  local token     = interface.token
-  interface:log ("Connecting to resource: " .. tostring (resource) ..
-                 " using token: " .. tostring (token))
-  cosy [resource] = from_user (interface) {
-    [PATCHES  ] = {},
-    [RESOURCE ] = resource,
-    [NAME     ] = "cosy [" .. resource .. "]",
-    [TOKEN    ] = token,
-    [INTERFACE] = interface,
-    [VERSION  ] = nil,
-  }
-  return cosy [resource]
-end
-
-function protocol.on_open (model)
-  local resource  = model [RESOURCE]
-  local token     = model [TOKEN]
-  local interface = model [INTERFACE]
-  interface:log ("Sending set-resource command" ..
-                 " for: " .. tostring (resource) ..
-                 " using token: " .. tostring (token))
-  interface:send {
+function Protocol:on_open ()
+  self.meta.platform:log ("Connection to ${resource} opened." % {
+    resource = self.meta.resource
+  })
+  self.meta.platform:send {
     action   = "set-resource",
-    token    = token,
-    resource = resource,
+    token    = self.meta.editor.token,
+    resource = self.meta.resource,
   }
 end
 
-function protocol.on_close (model)
-  local resource  = model [RESOURCE]
-  local interface = model [INTERFACE]
-  interface:log ("Closing connection to resource " .. tostring (resource))
-  -- cosy [resource] = nil
+function Protocol:on_close ()
+  self.meta.platform:log ("Connection to ${resource} closed." % {
+    resource = self.meta.resource
+  })
+  self.meta.disconnect ()
 end
 
--- Protocol:
---
--- Messages:
---
--- * set-editor
--- * set-token
--- * set-resource   -> ?
--- * get-model      -> data
--- * list-patches   -> patches
--- * get-patches    -> patches
--- * add-patch      -> id
--- * update         -> patches
---
--- * Messages sent in an order are received in the same order
--- 
--- Cases:
---
--- * updates while waiting for initial patches
--- * answer to initial patches
--- * accepted the first patch
--- * rejected the first patch
--- * receive an update
---
--- 
+--[[
 
-function protocol.on_patch (model)
-  local token     = model [TOKEN]
-  local interface = model [INTERFACE]
-  local patches   = model [PATCHES]
-  for patch in seq (patches) do
-    if patch.status == "applied" then
+function Protocol:on_change ()
+  local patches = self.meta.patches
+  for patch in Algorithm.seq (patches) do
+    if patch.status () == "applied" then
       local id = tostring (patch)
       interface:send {
         action     = "add-patch",
-        token      = token,
-        data       = patch.code,
-        request_id = id,
+        token      = value (patch.token),
+        data       = value (patch.code),
+        request_id = value (patch.id),
       }
       patch.status     = "sent"
-      patch.request_id = id
     end
   end
 end
 
-function protocol.on_message (model, message)
+function Protocol:on_message (message)
   local resource  = model [RESOURCE]
   local token     = model [TOKEN]
   local interface = model [INTERFACE]
@@ -238,4 +165,5 @@ function protocol.on_message (model, message)
   end
 end
 
-return protocol
+--]]
+return Protocol

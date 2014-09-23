@@ -15,7 +15,7 @@ Data.on_write = {}
 local Expression = {}
 
 local cache = setmetatable ({}, {
-  __mode = "kv"
+  __mode = "v" -- maps strings to objects, delete entry when object disappears
 })
 
 function Data.new (x)
@@ -30,6 +30,10 @@ function Data.new (x)
     cache [key] = result
   end
   return result
+end
+
+function Data.id (x)
+  return x [ID]
 end
 
 function Data:__index (key)
@@ -99,6 +103,7 @@ function Data:__newindex (key, value)
     end
     data [key] = value
   end
+  --
   for _, f in pairs (Data.on_write) do
     if type (f) == "function" then
       f (target, value, reverse)
@@ -198,7 +203,7 @@ function Data:__pairs ()
 end
 
 function Data:__tostring ()
-  local path = self [PATH]
+  local path   = self [PATH]
   local result = path [1] [NAME] or "@" .. tostring (path [1]):sub (8)
   for i = 2, #path do
     local key = path [i]
@@ -279,7 +284,7 @@ end
 function Data:__div (x)
   assert (type (x) == "number" and x % 1 == 0)
   local path   = self [PATH]
-  local root   = self [1]
+  local root   = path [1]
   local result = Data.new (root)
   for i = 2, math.min (#path, x) do
     result = result [path [i]]
@@ -287,10 +292,20 @@ function Data:__div (x)
   return result
 end
 
-function Data:__call (x)
+function Data:__mul (x)
   assert (type (x) == "table")
   x [PARENT] = self
   return x
+end
+
+function Data:__call (...)
+  local f = Data.value (self)
+  if type (f) == "function" or type (f) == "thread" then
+    return f (...)
+  else
+    assert (... == nil)
+    return f
+  end
 end
 
 function Data:__add (x)
@@ -309,6 +324,10 @@ function Data:__add (x)
   return Expression.new (parents)
 end
 
+function Data:__unm ()
+  return Data.dereference (self)
+end
+
 function Expression.new (...)
   local parents = {}
   for _, p in ipairs (...) do
@@ -319,7 +338,7 @@ function Expression.new (...)
   }, Expression)
 end
 
-function Expression:__call (x)
+function Expression:__mul (x)
   assert (type (x) == "table")
   local parents = x [PARENTS] or {}
   for _, v in ipairs (self [PARENTS]) do

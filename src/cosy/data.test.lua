@@ -6,7 +6,6 @@ local Data   = require "cosy.data"
 local new         = Data.new
 local is_new      = Data.is
 local value       = Data.value
-local dereference = Data.dereference
 local exists      = Data.exists
 
 local PATH    = Tag.PATH
@@ -65,7 +64,7 @@ end
 do
   local t = {}
   local d = new (t)
-  d.x = d {}
+  d.x = d * {}
   assert.are.same (t, { x = { [PARENT] = d } })
 end
 
@@ -75,13 +74,13 @@ do
   d.x = {}
   d.y = {}
   d.z = {}
-  d.a = (d.x + d.y + d.z) {}
+  d.a = (d.x + d.y + d.z) * {}
   assert.are.same (t.a, { [PARENTS] = { d.x, d.y, d.z } })
-  d.a = ((d.x + d.y) + d.z) {}
+  d.a = ((d.x + d.y) + d.z) * {}
   assert.are.same (t.a, { [PARENTS] = { d.x, d.y, d.z } })
-  d.a = (d.x + (d.y + d.z)) {}
+  d.a = (d.x + (d.y + d.z)) * {}
   assert.are.same (t.a, { [PARENTS] = { d.x, d.y, d.z } })
-  d.a = ((d.x + d.y) + (d.y + d.z)) {}
+  d.a = ((d.x + d.y) + (d.y + d.z)) * {}
   assert.are.same (t.a, { [PARENTS] = { d.x, d.y, d.y, d.z } })
   assert.has.error (function () return d.x + {} end)
   assert.has.error (function () return (d.x + d.y) + {} end)
@@ -92,10 +91,10 @@ do
   d.a = {
     [2] = 2
   }
-  d.b = d.a {
+  d.b = d.a * {
     [3] = 3
   }
-  d.c = d.b {
+  d.c = d.b * {
     [1] = 1
   }
   assert.are.equal (#d.c, 3)
@@ -111,15 +110,15 @@ do
   d.a = {
     [2] = 2
   }
-  d.b = d.a {
+  d.b = d.a * {
     [3] = 3
   }
-  d.c = d.b {
+  d.c = d.b * {
     [1] = 1
   }
   local count = 0
   for i, v in ipairs (d.c) do
-    assert.are.equal (i, value (v))
+    assert.are.equal (i, v ())
     count = count + 1
   end
   assert.are.equal (count, 3)
@@ -130,10 +129,10 @@ do
   d.a = {
     [2] = 2
   }
-  d.b = d.a {
+  d.b = d.a * {
     [3] = 3
   }
-  d.c = d.b {
+  d.c = d.b * {
     [1] = 1
   }
   local count = 0
@@ -163,7 +162,7 @@ do
       z = root.f1.t,
     },
   }
-  root.m = (root.f1.t + root.f2.t) {
+  root.m = (root.f1.t + root.f2.t) * {
     x = {
       b = 2,
     },
@@ -196,19 +195,19 @@ do
       z = root.f1.t,
     },
   }
-  root.m = (root.f1.t + root.f2.t) {
+  root.m = (root.f1.t + root.f2.t) * {
     x = {
       b = 2,
     },
     y = 5,
   }
-  assert.are.equal (value (root.m.x.a  ), 1)
-  assert.are.equal (value (root.m.x.b  ), 2)
-  assert.are.equal (value (root.m.x.c  ), 3)
-  assert.are.equal (value (root.m.x    ), nil)
-  assert.are.equal (value (root.m.y    ), 5)
-  assert.are.equal (value (root.m.z.x.c), 3)
-  assert.are.equal (dereference (root.m.z  ), root.f1.t)
+  assert.are.equal (root.m.x.a   (), 1)
+  assert.are.equal (root.m.x.b   (), 2)
+  assert.are.equal (root.m.x.c   (), 3)
+  assert.are.equal (root.m.x     (), nil)
+  assert.are.equal (root.m.y     (), 5)
+  assert.are.equal (root.m.z.x.c (), 3)
+  assert.are.equal (-root.m.z, root.f1.t)
 end
 
 do
@@ -231,7 +230,7 @@ do
       z = root.f1.t,
     },
   }
-  root.m = (root.f1.t + root.f2.t) {
+  root.m = (root.f1.t + root.f2.t) * {
     x = {
       b = 2,
     },
