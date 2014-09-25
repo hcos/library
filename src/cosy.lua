@@ -17,6 +17,7 @@ local store = Data.new {
 -- Set global:
 local global = _ENV or _G
 global.cosy = setmetatable ({}, Cosy)
+global.meta = meta
 
 -- Load interface:
 local Platform
@@ -24,7 +25,8 @@ if global.js then
   Platform = require "cosy.platform.js"
   Platform:log "Using JavaScript"
 else
---  Platform = require "cosy.interface.c"
+  Platform = require "cosy.platform.dummy"
+  Platform:log "Using dummy"
 end
 
 function Cosy:__index (url)
@@ -42,11 +44,11 @@ function Cosy:__index (url)
     url = url:sub (1, #url-1)
   end
   --
-  local resource = rawget (store, url)
-  if resource then
-    return resource
+  local model = rawget (cosy, url)
+  if model ~= nil then
+    return model
   end
-  local model = store [url]
+  model = store [url]
   --
   for k, server in pairs (meta.servers) do
     if url:sub (1, #k) == k then
@@ -70,7 +72,7 @@ function Cosy:__index (url)
     Data.clear (model)
     Data.clear (meta)
   end
-  store [url] = model
+  rawset (cosy, url, model)
   return model
 end
 
@@ -78,7 +80,6 @@ function Cosy:__newindex ()
   ignore (self)
   assert (false)
 end
-
 
 Data.on_write.from_user = function (target, value, reverse)
   if target / 1 ~= store then
