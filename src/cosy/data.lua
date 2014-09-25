@@ -25,7 +25,6 @@ function Data.new (x)
     result = {
       [PATH] = { x }
     }
-    result [ID] = tostring (result):sub (8)
     setmetatable (result, Data)
     cache [key] = result
   end
@@ -37,7 +36,7 @@ function Data.id (x)
 end
 
 function Data:__index (key)
-  local k = self [ID] .. ">" .. type (key) .. ":" .. tostring (key)
+  local k = tostring (self) .. ">" .. type (key) .. ":" .. tostring (key)
   local result = cache [k]
   if not result then
     local path = {}
@@ -48,7 +47,6 @@ function Data:__index (key)
     result = {
       [PATH] = path
     }
-    result [ID] = tostring (result):sub (8)
     setmetatable (result, Data)
     cache [k] = result
   end
@@ -83,20 +81,21 @@ function Data:__newindex (key, value)
   end
   local v = data [key]
   local reverse
-  if type (value) ~= "table" and type (v) ~= "table" then
+  local is_value = type (value) ~= "table" or getmetatable (value) ~= nil
+  if is_value and type (v) ~= "table" then
     reverse = function () self [key] = v end
     data [key] = value
-  elseif type (value) ~= "table" and type (v) == "table" then
+  elseif is_value and type (v) == "table" then
     local old_value = v [VALUE]
     reverse = function () self [key] = old_value end
     v [VALUE] = value
-  elseif type (value) == "table" and type (v) ~= "table" then
+  elseif not is_value and type (v) ~= "table" then
     reverse = function () clear (target); self [key] = v end
     if not value [VALUE] then
       value [VALUE] = v
     end
     data [key] = value
-  elseif type (value) == "table" and type (v) == "table" then
+  elseif not is_value and type (v) == "table" then
     reverse = function () clear (target); self [key] = v end
     if not value [VALUE] then
       value [VALUE] = v [VALUE]
@@ -122,7 +121,7 @@ function Data:__newindex (key, value)
   end
   for i = #traversed, 2, -1 do
     local d = traversed [i]
-    if pairs (d) (d) == nil then
+    if not getmetatable (d) and pairs (d) (d) == nil then
       traversed [i-1] [path [i]] = nil
     else
       break
@@ -303,7 +302,8 @@ function Data:__call (...)
   if type (f) == "function" or type (f) == "thread" then
     return f (...)
   else
-    assert (... == nil)
+    local args = table.pack (...)
+    assert (#args == 0)
     return f
   end
 end
@@ -431,6 +431,8 @@ function Data.dereference (x)
     else
       if type (data) == "table" then
         if Data.is (data) then
+          return data
+        elseif getmetatable (data) then
           return data
         else
           return data [VALUE]

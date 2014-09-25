@@ -55,8 +55,6 @@ function Cosy:__index (url)
     end
   end
   local meta = meta.models [model]
-  print (meta)
-  print (model)
   meta.model       = model
   meta.resource    = url
   meta.editor.url  = url .. "/editor"
@@ -87,10 +85,10 @@ Data.on_write.from_user = function (target, value, reverse)
     return
   end
   local model    = target / 2
-  local meta     = meta [model]
+  local meta     = meta.models [model]
   local protocol = meta.protocol ()
   -- TODO: generate patch
-  meta.patches [#(meta.patches) + 1] = meta.patch {
+  meta.patches [#(meta.patches) + 1] = meta.patch * {
     code    = [[ ]] % { },
     id      = # (meta.patches.ids) + 1,
     status  = "applied",

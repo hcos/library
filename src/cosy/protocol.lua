@@ -28,9 +28,8 @@ function Protocol:on_close ()
   self.meta.disconnect ()
 end
 
---[[
-
 function Protocol:on_change ()
+  --[[
   local patches = self.meta.patches
   for patch in Algorithm.seq (patches) do
     if patch.status () == "applied" then
@@ -44,7 +43,10 @@ function Protocol:on_change ()
       patch.status     = "sent"
     end
   end
+  --]]
 end
+
+--[[
 
 function Protocol:on_message (message)
   local resource  = model [RESOURCE]

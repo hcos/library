@@ -57,7 +57,16 @@ end
 --
 
 function Platform.new (meta)
-  local editor_info = json.decode (env:load (meta.editor.url ()))
+  local editor_info = env:load (meta.editor.url ())
+  if not editor_info then
+    Platform:warn ("Cannot get editor ${editor_url} from repository." % {
+      editor_url = meta.editor.url ()
+    })
+    return setmetatable ({
+      meta = meta,
+    }, Platform)
+  end
+  editor_info = json.decode (editor_info)
   meta.editor.token = editor_info.token
   meta.editor.url   = editor_info.url
   local websocket =
@@ -92,10 +101,12 @@ function Platform.new (meta)
 end
 
 function Platform:close ()
-  if self.websocket.readyState == 1 then
-    self.websocket:close ()
+  if self.websocket then
+    if self.websocket.readyState == 1 then
+      self.websocket:close ()
+    end
+    self.websocket = nil
   end
-  self.websocket = nil
 end
 
 --[=[
