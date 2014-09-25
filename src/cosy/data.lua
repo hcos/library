@@ -31,10 +31,6 @@ function Data.new (x)
   return result
 end
 
-function Data.id (x)
-  return x [ID]
-end
-
 function Data:__index (key)
   local k = tostring (self) .. ">" .. type (key) .. ":" .. tostring (key)
   local result = cache [k]
