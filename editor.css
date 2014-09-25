@@ -21,7 +21,6 @@ path.link.elliptic {
 circle.token {
     cursor: move;
     stroke: #333;
-    stroke-width: 1.5px;
 }
 text {
     font: 12px sans-serif;
