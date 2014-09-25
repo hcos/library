@@ -81,47 +81,41 @@
     var width = 1170,
         height = 500,
         markerSize = 8,
-        origin = {x: width/2, y: height/2},
-        fill = d3.scale.category20();
+        origin = {x: width/2, y: height/2};
         
-    var outer = d3.select("#model_container").append("svg:svg")
+    var svg = d3.select("#model_container").append("svg:svg")
+            .attr("class", "svg_container")
             .attr("width", width)
-            .attr("height", height)
-            .attr("pointer-events", "all");
+            .attr("height", height);
     
     var zm = d3.behavior.zoom().on("zoom", rescale);
     
-    var svg = outer.append("svg:g")
-                .call(zm)
+    var outer = svg.append("g")
+                .attr("class", "outer")
                 .on("dblclick.zoom", null)
-                .append("svg:g")
+                .style("pointer-events", "all")
+                .call(zm)
+                .on("contextmenu", function(data, index) { d3.event.preventDefault(); })
                 .on("mousedown", mouseDown)
                 .on("mousemove", mouseMove)
-                .on("mouseup", mouseUp)
-                .on("contextmenu", function(data, index) { d3.event.preventDefault(); });    
+                .on("mouseup", mouseUp);
 
     // Background color
-    svg.append('svg:rect')
+    outer.append('svg:rect')
+        .attr('class', 'click-capture')
         .attr('width', width)
         .attr('height', height)
-        .attr('fill', 'white');
-        
-    var drag_line = svg.append("line")
+        .attr('visibility', 'hidden');
+
+    var container = outer.append("g")
+                .attr("class", "container");
+                
+    var drag_line = container.append("line")
         .attr("class", "drag_line")
         .attr("x1", 0)
         .attr("y1", 0)
         .attr("x2", 0)
         .attr("y2", 0);
-    
-    d3.select(window).on("keydown", keydown);
-    
-    
-    function keydown() {
-        switch (d3.event.keyCode) {
-        case 8: // backspace
-            break;
-        }
-    }
       
     d3.select("#model_container").append("div")
         .attr("id", "forms_group")
@@ -138,7 +132,7 @@
         .links([])
         .on("tick", tick);
     
-    svg.append("svg:defs").selectAll("marker")
+    container.append("svg:defs").selectAll("marker")
         .data(["licensing"])      // Different link/path types can be defined here
         .enter().append("svg:marker")    // This section adds in the arrows
         .attr("id", String)
@@ -150,18 +144,6 @@
         .append("svg:path")
         .attr("d", "M0,-5L10,0L0,5");
     
-    //~ svg.select("defs").selectAll("icons")
-        //~ .data(["icon1"])
-        //~ .enter().append("svg:pattern")
-        //~ .attr("id", "icon")
-        //~ .attr("x", "0")
-        //~ .attr("y", "0")
-        //~ .attr("patternUnits", "userSpaceOnUse")
-        //~ .attr("height", "5")
-        //~ .attr("width", "5")
-        //~ .append("i")
-            //~ .attr("class", "fa fa-camera-retro fa-lg")    
-    
     var nodes_index = {},
         links_index = {},
         forms_index = {},
@@ -171,6 +153,7 @@
     var dragInitiated;
     var nodeDrag = d3.behavior.drag()
         .on("dragstart", function(d, i) {
+            console.log('drag Start');
             if(d3.event.sourceEvent.which == 1){
                 d3.event.sourceEvent.stopPropagation();
                 dragInitiated = true;
@@ -180,7 +163,6 @@
             }
         })
         .on("drag", function(d, i) {
-            resetMouseVars();
             if (dragInitiated){
                 d.px += d3.event.dx;
                 d.py += d3.event.dy;
@@ -199,17 +181,17 @@
 
     // Definitions of all the elements from the force layot.
     // the circle represents a token for each node. 
-    var path = svg.append("svg:g").selectAll("path").attr("id", "paths"),
-        node = svg.append("svg:g").selectAll("node").attr("id", "nodes"),
-        circle = svg.append("svg:g").selectAll("g").attr("id", "tokens"),
-        text = svg.append("svg:g").selectAll("g").attr("id", "dummy_labels");
+    var path = container.append("svg:g").selectAll("path").attr("id", "paths"),
+        node = container.append("svg:g").selectAll("node").attr("id", "nodes"),
+        circle = container.append("svg:g").selectAll("g").attr("id", "tokens"),
+        text = container.append("svg:g").selectAll("g").attr("id", "dummy_labels");
     
-    // Add new node from the model 
+    // Add new node notification from server 
     function add_node(node){
         updateModelNode(node);
     }
     
-    // Update a previous existing node in the model
+    // Update node notification from server
     function update_node (node) {
         updateModelNode(node);
     }
@@ -356,8 +338,7 @@
         updateForceLayout();
     }
 
-    // A node has been removed from the model, so it needs to be deleted
-    // in the layout
+    // Remove a node notification from server
     function remove_node (node) {
         var index_object, list;
         
@@ -373,6 +354,14 @@
         
         delete index_object[id(node)];
         updateForceLayout();
+    }
+    
+    // User add new node
+    function addNodeToModel(node) {
+    }
+    
+    // User remove node
+    function removeNodeFromModel(node){
     }
     
     function websocket (url) {
@@ -400,6 +389,7 @@
         node.attr("class", function(d){ return d.selected ? "node selected" : "node"})
             .attr("d", function(d){ return d.shape.d;})
             .attr("fill", function(d){ return d.highlighted ? "gold" : "#ccc"})
+            .style("stroke-width", '1.5px')
             .on('mouseenter', node_mouseEnter)
             .on('mouseout', node_mouseExit)
             .on('click', node_click)
@@ -432,7 +422,11 @@
     
     // Zoom and rescale event handling
     function rescale() {
-        svg.attr("transform", "translate(" + d3.event.translate + ")"+ " scale(" + d3.event.scale + ")");
+        container.attr("transform", "translate(" + d3.event.translate + ")"+ " scale(" + d3.event.scale + ")");
+        d3.selectAll('.node').each( function(d, i){
+            var stroke = d3.select(this).style('stroke-width');
+            d3.select(this).style('stroke-width', 1.5 / zm.scale() + 'px')
+        });
     }
     
     // Mouse event vars
@@ -464,6 +458,7 @@
                  break;
             case 2:     /*right click*/
                 d3.event.stopPropagation();
+                d3.event.preventDefault();
                 if(node_stack.length > 0){
                     newLinkValues.arc_initiated = true;
                     newLinkValues.source_node = node_stack.top();
@@ -552,22 +547,24 @@
                     force.nodes().push(node);
                     
                     var temp_i = force.nodes().length - 1;
-                    nodes_index["dummy_link_"+temp_i] = temp_i;
+                    nodes_index["dummy_link_" + temp_i] = temp_i;
                 }
                 arc_initiated = false;
                 node_stack.pop();
                 break;
         }
-        updateForceLayout();    
+        updateForceLayout();
         resetMouseVars();
     }
     
     function left_longClick(point){
-        removePalette();
         console.log("Left long click", point);
         var node = node_stack.top();
-        
-        var options_menu = svg.append("g").attr("class", "node_options");
+        if(!d3.select(".node_options").empty()) {
+            removeOptionsMenu();
+        }
+        removePalette();
+        var options_menu = container.append("g").attr("class", "node_options");
         var size = 100;
         
         var foreign = options_menu.append("foreignObject")
@@ -583,31 +580,40 @@
         var menu = menu_container.append("xhtml:div")
                         .attr("class", "node-options-container")
                         
-        var buttons_data = [{icon: "fa fa-edit fa-lg", f:function(node){console.log("function 1");}}, 
-                            {icon: "fa fa-trash-o fa-lg", f: function(node){console.log("function 2");}}];
+        var buttons_data = [{icon: "fa fa-edit fa-lg", f:function(node){console.log("Node Edition function not implemented");}}, 
+                            {icon: "fa fa-trash-o fa-lg", f: function(node){console.log("Node Remove function not implemented");}}];
         
         menu.selectAll("a")
             .data(buttons_data)
-            .enter().append("a")
+            .enter().append("a")    
                 .attr("class", function(d){ return d.icon; })
                 .attr("href", "")
                 .attr("onclick", "return false") // To prevent reload when clicked.
                 .on("click", function(d){ removeOptionsMenu(); d.f(d) ; return false;});
         
         var items = document.querySelectorAll('.node-options-container a');
-        items[0].style.left = (50 - 35* Math.cos(-0.5 * Math.PI - 2*(1/5)*1*Math.PI)).toFixed(4) + "%";
-        items[0].style.top = (50 + 35* Math.sin(-0.5 * Math.PI - 2*(1/5)*1*Math.PI)).toFixed(4) + "%";
-        items[1].style.left = (50 - 35* Math.cos(-0.5 * Math.PI - 2*(1/5)*4*Math.PI)).toFixed(4) + "%";
-        items[1].style.top = (50 + 35* Math.sin(-0.5 * Math.PI - 2*(1/5)*4*Math.PI)).toFixed(4) + "%";
-
+        var offset = node.type == 'place' ? 35 : 45
+        items[0].style.left = (50 - offset* Math.cos(-0.5 * Math.PI - 2*(1/5)*1*Math.PI)).toFixed(4) + "%";
+        items[0].style.top = (50 + offset* Math.sin(-0.5 * Math.PI - 2*(1/5)*1*Math.PI)).toFixed(4) + "%";
+        items[1].style.left = (50 - offset* Math.cos(-0.5 * Math.PI - 2*(1/5)*4*Math.PI)).toFixed(4) + "%";
+        items[1].style.top = (50 + offset* Math.sin(-0.5 * Math.PI - 2*(1/5)*4*Math.PI)).toFixed(4) + "%";
+        
+        /*
+         * The animation is coded in the css.
+         * The transition is fired when the container adds
+         * the class open
+         */
         window.setTimeout(function(d) {d3.select('.node-options-container').classed('open', true) }, 50);
     }
 
     function right_longClick(point){
         console.log("Right Long click");
+        if(!d3.select(".palette").empty()) {
+            removePalette();
+        }
         removeOptionsMenu();
         cancelUpEvent = true;
-        var pallet_menu = svg.append("g").attr("class", "palette");
+        var pallet_menu = container.append("g").attr("class", "palette");
         
         var size = 250;
         
@@ -646,12 +652,16 @@
 
             items[i].style.top = (50 + 35* Math.sin(-0.5 * Math.PI - 2*(1/l)*i*Math.PI)).toFixed(4) + "%";
         }
-
+        
+        /*
+         * The animation is coded in the css.
+         * The transition is fired when the container adds
+         * the class open
+         */
         window.setTimeout(function(d) {d3.select('.circle_container').classed('open', true) }, 50);
     }
     
     function removePalette(){
-        //~ d3.select('.circle_container').classed('open', false)        
         d3.select(".palette").remove();
         cancelUpEvent = false;
     }
@@ -722,7 +732,7 @@
         }
     }
     
-    // Auxiliax functions
+    // Extra functions
     function assert(condition, message) {
         if (!condition) {
             throw message || "Assertion failed";
