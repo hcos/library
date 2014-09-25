@@ -7,7 +7,9 @@ local js  = GLOBAL.js
 local env = js.global
 
 local cosy = GLOBAL.cosy
+local meta = GLOBAL.meta
 env.cosy = cosy
+env.meta = meta
 
 GLOBAL.print = function (msg)
   env.console:info (msg)
