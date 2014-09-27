@@ -7,7 +7,6 @@ local PARENTS = Tag.new "PARENTS"
 local VALUE   = Tag.new "VALUE"
 
 local NAME    = Tag.NAME
-local ID      = Tag.new "ID"
 
 local Data = {}
 Data.on_write = {}
@@ -105,7 +104,7 @@ function Data:__newindex (key, value)
     end
   end
   -- Clean:
-  path = self [key] [PATH]
+  path = target [PATH]
   data = path [1]
   local traversed = {data}
   for i = 2, #path do
@@ -277,12 +276,18 @@ function Data:__mod (x)
 end
 
 function Data:__div (x)
-  assert (type (x) == "number" and x % 1 == 0)
+  assert (type (x) == "number" and x % 1 == 0 and x ~= 0)
   local path   = self [PATH]
   local root   = path [1]
   local result = Data.new (root)
-  for i = 2, math.min (#path, x) do
-    result = result [path [i]]
+  if x > 0 then
+    for i = 2, math.min (#path, x) do
+      result = result [path [i]]
+    end
+  elseif x < 0 then
+    for i = 2, math.max (1, #path + x) do
+      result = result [path [i]]
+    end
   end
   return result
 end
@@ -455,6 +460,46 @@ function Data.value (x)
     x = Data.dereference (x)
   until not Data.is (x)
   return x
+end
+
+function Data.parents (x, result)
+  if type (x) ~= "table" or getmetatable (x) ~= Data then
+    return { [x] = true }
+  end
+  result     = result or { }
+  local path = x [PATH]
+  local function _parents (data, current, i)
+    if data == nil then
+      return
+    end
+    local key = path [i]
+    if key then
+      assert (type (data) == "table")
+      local subdata = data [key]
+      _parents (data [key], current [key], i + 1)
+    else
+      print "here"
+      if type (data) == "table" then
+        if Data.is (data) then
+          result [data] = true
+        elseif getmetatable (data) then
+          result [data] = true
+        elseif data [VALUE] ~= nil then
+          result [data [VALUE]] = true
+        end
+      else
+        result [data] = true
+      end
+    end
+    for _, subpath in ipairs (data [PARENTS] or { data [PARENT] }) do
+      for j = i, #path do
+        subpath = subpath [path [j]]
+      end
+      Data.parents (subpath, result)
+    end
+  end
+  _parents (path [1], x / 1, 2)
+  return result
 end
 
 return Data

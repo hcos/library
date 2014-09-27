@@ -1,6 +1,7 @@
 local Tag      = require "cosy.tag"
 local Data     = require "cosy.data"
 local Protocol = require "cosy.protocol"
+local Patches  = require "cosy.patches"
 local ignore   = require "cosy.util.ignore"
 
 local NAME = Tag.NAME
@@ -18,6 +19,7 @@ local store = Data.new {
 local global = _ENV or _G
 global.cosy = setmetatable ({}, Cosy)
 global.meta = meta
+local cosy  = global.cosy
 
 -- Load interface:
 local Platform
@@ -66,8 +68,7 @@ function Cosy:__index (url)
     action = "add-patch",
     token  = meta.editor.token,
   }
-  meta.patches     = {}
-  meta.patches.ids = {}
+  meta.patches     = Patches.new ()
   meta.disconnect  = function ()
     Data.clear (model)
     Data.clear (meta)
@@ -88,16 +89,15 @@ Data.on_write.from_user = function (target, value, reverse)
   local model    = target / 2
   local meta     = meta.models [model]
   local protocol = meta.protocol ()
+  local patches  = meta.patches ()
   -- TODO: generate patch
-  meta.patches [#(meta.patches) + 1] = meta.patch * {
+  patches:insert (meta.patch * {
     code    = [[ ]] % { },
-    id      = # (meta.patches.ids) + 1,
     status  = "applied",
     target  = target,
     value   = value,
     reverse = reverse,
-  }
-  meta.patches.ids [#(meta.patches.ids) + 1] = true
+  })
   protocol:on_change ()
 end
 

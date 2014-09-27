@@ -7,6 +7,7 @@ local new         = Data.new
 local is_new      = Data.is
 local value       = Data.value
 local exists      = Data.exists
+local parents     = Data.parents
 
 local PATH    = Tag.PATH
 local PARENT  = Tag.PARENT
@@ -208,6 +209,12 @@ do
   assert.are.equal (root.m.y     (), 5)
   assert.are.equal (root.m.z.x.c (), 3)
   assert.are.equal (-root.m.z, root.f1.t)
+  assert.are.same  (parents (root), { [root] = true })
+  assert.are.same  (parents (root.m), {
+    [root.m   ] = true,
+    [root.f1.t] = true,
+    [root.f2.t] = true
+  })
 end
 
 do
