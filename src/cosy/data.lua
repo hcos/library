@@ -7,6 +7,7 @@ local PARENTS = Tag.new "PARENTS"
 local VALUE   = Tag.new "VALUE"
 
 local NAME    = Tag.NAME
+local ID      = Tag.new "ID"
 
 local Data = {}
 Data.on_write = {}
@@ -18,32 +19,37 @@ local cache = setmetatable ({}, {
 })
 
 function Data.new (x)
-  local key    = tostring (x)
-  local result = cache [key]
+  local id     = tostring (x)
+  local result = cache [id]
   if not result then
-    result = {
-      [PATH] = { x }
-    }
-    setmetatable (result, Data)
-    cache [key] = result
+    result = setmetatable ({
+      [PATH] = { x },
+      [ID  ] = id,
+    }, Data)
+    cache [id] = result
   end
   return result
 end
 
+function Data.id (x)
+  assert (type (x) == "table" and getmetatable (x) == Data)
+  return rawget (x, ID)
+end
+
 function Data:__index (key)
-  local k = tostring (self) .. ">" .. type (key) .. ":" .. tostring (key)
-  local result = cache [k]
+  local id     = self [ID] .. ">" .. type (key) .. ":" .. tostring (key)
+  local result = cache [id]
   if not result then
     local path = {}
     for _, x in ipairs (self [PATH]) do
       path [#path + 1] = x
     end
     path [#path + 1] = key
-    result = {
-      [PATH] = path
-    }
-    setmetatable (result, Data)
-    cache [k] = result
+    result = setmetatable ({
+      [PATH] = path,
+      [ID  ] = id,
+    }, Data)
+    cache [id] = result
   end
   return result
 end
@@ -67,9 +73,7 @@ function Data:__newindex (key, value)
   for i = 2, #path do
     local k = path [i]
     local v = data [k]
-    if not v then
-      data [k] = {}
-    elseif type (v) ~= "table" then
+    if type (v) ~= "table" then
       data [k] = { [VALUE] = v }
     end
     data = data [k]
@@ -86,22 +90,21 @@ function Data:__newindex (key, value)
     v [VALUE] = value
   elseif not is_value and type (v) ~= "table" then
     reverse = function () clear (target); self [key] = v end
-    if not value [VALUE] then
+    if value [VALUE] == nil then
       value [VALUE] = v
     end
     data [key] = value
   elseif not is_value and type (v) == "table" then
     reverse = function () clear (target); self [key] = v end
-    if not value [VALUE] then
+    if value [VALUE] == nil then
       value [VALUE] = v [VALUE]
     end
     data [key] = value
   end
   --
   for _, f in pairs (Data.on_write) do
-    if type (f) == "function" then
-      f (target, value, reverse)
-    end
+    assert (type (f) == "function")
+    f (target, value, reverse)
   end
   -- Clean:
   path = target [PATH]
