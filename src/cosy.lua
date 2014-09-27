@@ -58,7 +58,7 @@ function Cosy:__index (url)
       break
     end
   end
-  local meta = meta.models [model]
+  local meta = meta.models [tostring (model)]
   meta.model       = model
   meta.resource    = url
   meta.editor.url  = url .. "/editor"
@@ -87,7 +87,7 @@ Data.on_write.from_user = function (target, value, reverse)
     return
   end
   local model    = target / 2
-  local meta     = meta.models [model]
+  local meta     = meta.models [tostring (model)]
   local protocol = meta.protocol ()
   local patches  = meta.patches ()
   -- TODO: generate patch

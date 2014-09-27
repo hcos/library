@@ -1,61 +1,58 @@
             require "cosy.util.string"
 local Tag = require "cosy.tag"
 
-local PATH    = Tag.new "PATH"
+local PREVIOUS_DATA = {}
+local PREVIOUS_KEY  = {}
+local ROOT          = {}
+
 local PARENT  = Tag.new "PARENT"
 local PARENTS = Tag.new "PARENTS"
 local VALUE   = Tag.new "VALUE"
 
 local NAME    = Tag.NAME
-local ID      = Tag.new "ID"
 
 local Data = {}
 Data.on_write = {}
 
 local Expression = {}
 
-local cache = setmetatable ({}, {
-  __mode = "v" -- maps strings to objects, delete entry when object disappears
-})
-
 function Data.new (x)
-  local id     = tostring (x)
-  local result = cache [id]
-  if not result then
-    result = setmetatable ({
-      [PATH] = { x },
-      [ID  ] = id,
-    }, Data)
-    cache [id] = result
+  return setmetatable ({
+    [ROOT         ] = x,
+    [PREVIOUS_DATA] = false,
+    [PREVIOUS_KEY ] = false,
+  }, Data)
+end
+
+local function data_path (x)
+  local r = {}
+  while not x [ROOT] do
+    r [#r + 1] = x [PREVIOUS_KEY]
+    x = x [PREVIOUS_DATA]
+  end
+  r [#r + 1] = x [ROOT]
+  local result = {}
+  for i = #r, 1, -1 do
+    result [#result + 1] = r [i]
   end
   return result
 end
 
-function Data.id (x)
+function Data.path (x)
   assert (type (x) == "table" and getmetatable (x) == Data)
-  return rawget (x, ID)
+  return data_path (x)
 end
 
 function Data:__index (key)
-  local id     = self [ID] .. ">" .. type (key) .. ":" .. tostring (key)
-  local result = cache [id]
-  if not result then
-    local path = {}
-    for _, x in ipairs (self [PATH]) do
-      path [#path + 1] = x
-    end
-    path [#path + 1] = key
-    result = setmetatable ({
-      [PATH] = path,
-      [ID  ] = id,
-    }, Data)
-    cache [id] = result
-  end
-  return result
+  return setmetatable ({
+    [PREVIOUS_DATA] = self,
+    [PREVIOUS_KEY ] = key,
+    [ROOT         ] = false,
+  }, Data)
 end
 
 local function clear (x)
-  local path = x [PATH]
+  local path = data_path (x)
   local data = path [1]
   for i = 2, #path-1 do
     data = data [path [i]]
@@ -68,8 +65,9 @@ end
 
 function Data:__newindex (key, value)
   local target = self [key]
-  local path   = self [PATH]
+  local path   = data_path (self)
   local data   = path [1]
+  local traversed = { data }
   for i = 2, #path do
     local k = path [i]
     local v = data [k]
@@ -77,6 +75,7 @@ function Data:__newindex (key, value)
       data [k] = { [VALUE] = v }
     end
     data = data [k]
+    traversed [#traversed + 1] = data
   end
   local v = data [key]
   local reverse
@@ -101,25 +100,19 @@ function Data:__newindex (key, value)
     end
     data [key] = value
   end
+  traversed [#traversed + 1] = data [key]
+  path      [#path      + 1] = key
   --
   for _, f in pairs (Data.on_write) do
     assert (type (f) == "function")
     f (target, value, reverse)
   end
   -- Clean:
-  path = target [PATH]
-  data = path [1]
-  local traversed = {data}
-  for i = 2, #path do
-    data = data [path [i]]
-    if type (data) ~= "table" then
-      break
-    end
-    traversed [#traversed + 1] = data
-  end
   for i = #traversed, 2, -1 do
     local d = traversed [i]
-    if not getmetatable (d) and pairs (d) (d) == nil then
+    if  type (d) == "table"
+    and not getmetatable (d)
+    and pairs (d) (d) == nil then
       traversed [i-1] [path [i]] = nil
     else
       break
@@ -155,7 +148,7 @@ function Data:__ipairs ()
 end
 
 function Data:__pairs ()
-  local path = self [PATH]
+  local path = data_path (self)
   local function compute (data, i)
     local seen = {}
     if not data then
@@ -200,7 +193,7 @@ function Data:__pairs ()
 end
 
 function Data:__tostring ()
-  local path   = self [PATH]
+  local path   = data_path (self)
   local result = path [1] [NAME] or "@" .. tostring (path [1]):sub (8)
   for i = 2, #path do
     local key = path [i]
@@ -218,8 +211,8 @@ function Data:__tostring ()
 end
 
 function Data:__eq (x)
-  local lhs = self [PATH]
-  local rhs = x    [PATH]
+  local lhs = data_path (self)
+  local rhs = data_path (x)
   if #lhs ~= #rhs then
     return false
   end
@@ -232,8 +225,8 @@ function Data:__eq (x)
 end
 
 function Data:__le (x)
-  local lhs = self [PATH]
-  local rhs = x    [PATH]
+  local lhs = data_path (self)
+  local rhs = data_path (x)
   if #lhs > #rhs then
     return false
   end
@@ -246,8 +239,8 @@ function Data:__le (x)
 end
 
 function Data:__lt (x)
-  local lhs = self [PATH]
-  local rhs = x    [PATH]
+  local lhs = data_path (self)
+  local rhs = data_path (x)
   if #lhs >= #rhs then
     return false
   end
@@ -262,8 +255,8 @@ end
 function Data:__mod (x)
   assert (type (x) == "table" and getmetatable (x) == Data)
   if x < self then
-    local lhs  = self [PATH]
-    local rhs  = x    [PATH]
+    local lhs = data_path (self)
+    local rhs = data_path (x)
     local root = rhs [1]
     for i = 2, #rhs do
       root = root [rhs [i]]
@@ -280,7 +273,7 @@ end
 
 function Data:__div (x)
   assert (type (x) == "number" and x % 1 == 0 and x ~= 0)
-  local path   = self [PATH]
+  local path   = data_path (self)
   local root   = path [1]
   local result = Data.new (root)
   if x > 0 then
@@ -370,13 +363,6 @@ function Expression:__add (x)
   return Expression.new (parents)
 end
 
-function Data.path (x)
-  if type (x) ~= "table" or getmetatable (x) ~= Data then
-    return nil
-  end
-  return x [PATH]
-end
-
 function Data.is (x)
   return type (x) == "table"
      and getmetatable (x) == Data
@@ -386,7 +372,7 @@ function Data.exists (x)
   if type (x) ~= "table" or getmetatable (x) ~= Data then
     return false
   end
-  local path = x [PATH]
+  local path = data_path (x)
   assert (#path < 8)
   local function _exists (data, i)
     if data == nil then
@@ -419,7 +405,7 @@ function Data.dereference (x)
   if type (x) ~= "table" or getmetatable (x) ~= Data then
     return nil
   end
-  local path = x [PATH]
+  local path = data_path (x)
   local function _value (data, i)
     if data == nil then
       return nil
@@ -470,7 +456,7 @@ function Data.parents (x, result)
     return { [x] = true }
   end
   result     = result or { }
-  local path = x [PATH]
+  local path = data_path (x)
   local function _parents (data, current, i)
     if data == nil then
       return
@@ -478,7 +464,6 @@ function Data.parents (x, result)
     local key = path [i]
     if key then
       assert (type (data) == "table")
-      local subdata = data [key]
       _parents (data [key], current [key], i + 1)
     else
       print "here"

@@ -5,11 +5,11 @@ local Data   = require "cosy.data"
 
 local new         = Data.new
 local is_new      = Data.is
+local path        = Data.path
 local value       = Data.value
 local exists      = Data.exists
 local parents     = Data.parents
 
-local PATH    = Tag.PATH
 local PARENT  = Tag.PARENT
 local PARENTS = Tag.PARENTS
 local VALUE   = Tag.VALUE
@@ -17,15 +17,9 @@ local VALUE   = Tag.VALUE
 do
   local t = {}
   local d = new (t)
-  assert.are.same (d, { [PATH] = { t } })
-end
-
-do
-  local t = {}
-  local d = new (t)
-  assert.are.same (d.a.b, { [PATH] = { t, "a", "b" } })
+  assert.are.same (path (d.a.b), { t, "a", "b" })
   local k = {}
-  assert.are.same (d [k], { [PATH] = { t, k } })
+  assert.are.same (path (d [k]), { t, k })
 end
 
 do
