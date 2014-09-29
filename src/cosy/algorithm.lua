@@ -1,33 +1,35 @@
+local Data = require "cosy.data"
+
 local Algorithm = {}
 
 function Algorithm.map (data)
-  assert (type (data) == "table")
+  assert (Data.is (data))
   return coroutine.wrap (
     function ()
-      for k, v in pairs (data) do
-        coroutine.yield (k, v)
+      for k in pairs (data) do
+        coroutine.yield (k)
       end
     end
   )
 end
 
 function Algorithm.seq (data)
-  assert (type (data) == "table")
+  assert (Data.is (data))
   return coroutine.wrap (
     function ()
-      for i, v in ipairs (data) do
-        coroutine.yield (i, v)
+      for i in ipairs (data) do
+        coroutine.yield (i)
       end
     end
   )
 end
 
 function Algorithm.set (data)
-  assert (type (data) == "table")
+  assert (Data.is (data))
   return coroutine.wrap (
     function ()
       for k, v in pairs (data) do
-        if v then
+        if v == true then
           coroutine.yield (k)
         end
       end
@@ -37,44 +39,49 @@ end
 
 function Algorithm.reversed (iterator)
   local results = {}
-  for k, v in iterator do
-    results [#results + 1] = {
-      k = k,
-      v = v,
-    }
+  for v in iterator do
+    results [#results + 1] = v
   end
   return coroutine.wrap (
     function ()
       for i = #results, 1, -1 do
-        local result = results [i]
-        coroutine.yield (result.k, result.v)
+        coroutine.yield (results [i])
       end
     end
   )
 end
 
-local function sort (lhs, rhs)
-  if type (lhs) < type (rhs) then
-    return true
-  elseif type (lhs) > type (rhs) then
-    return false
-  else
-    return lhs < rhs
-  end
-end
-
 function Algorithm.sorted (iterator)
-  local keys    = {}
   local results = {}
-  for k, v in iterator do
-    keys [#keys + 1] = k
-    results [k] = v
+  for v in iterator do
+    results [#results + 1] = v
   end
-  table.sort (keys, sort)
+  table.sort (results, function (l, r)
+    return tostring (l) < tostring (r)
+  end)
   return coroutine.wrap (
     function ()
-      for _, k in ipairs (keys) do
-        coroutine.yield (k, results [k])
+      for r in ipairs (results) do
+        coroutine.yield (r)
+      end
+    end
+  )
+end
+
+function Algorithm.filter (x, f)
+  assert (Data.is (x) or type (x) == "function")
+  return coroutine.wrap (
+    function ()
+      local iterator
+      if type (x) == "function" then
+        iterator = x
+      else
+        iterator = Algorithm.map (x)
+      end
+      for v in iterator do
+        if f (v) then
+          coroutine.yield (v)
+        end
       end
     end
   )
