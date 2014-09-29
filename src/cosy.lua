@@ -4,7 +4,9 @@ local Protocol = require "cosy.protocol"
 local Patches  = require "cosy.patches"
 local ignore   = require "cosy.util.ignore"
 
-local NAME = Tag.NAME
+local NAME     = Tag.NAME
+local META     = Tag.new "META"
+local INHERITS = Tag.new INHERITS
 
 local Cosy = {}
 
@@ -31,6 +33,8 @@ else
   Platform:log "Using dummy"
 end
 
+local on_write_enabled = true
+
 function Cosy:__index (url)
   ignore (self)
   if type (url) ~= "string" then
@@ -50,15 +54,16 @@ function Cosy:__index (url)
   if model ~= nil then
     return model
   end
+  on_write_enabled = false
   model = store [url]
   --
   for k, server in pairs (meta.servers) do
     if url:sub (1, #k) == k then
-      meta.models [model] = server {}
+      meta.models [url] = server {}
       break
     end
   end
-  local meta = meta.models [tostring (model)]
+  local meta = meta.models [url]
   meta.model       = model
   meta.resource    = url
   meta.editor.url  = url .. "/editor"
@@ -74,6 +79,7 @@ function Cosy:__index (url)
     Data.clear (meta)
   end
   rawset (cosy, url, model)
+  on_write_enabled = true
   return model
 end
 
@@ -83,21 +89,22 @@ function Cosy:__newindex ()
 end
 
 Data.on_write.from_user = function (target, value, reverse)
-  if target / 1 ~= store then
+  if not (store <= target) then
     return
   end
-  local model    = target / 2
-  local meta     = meta.models [tostring (model)]
+  local path     = Data.path (target)
+  local url      = path [2]
+  local meta     = meta.models [url]
   local protocol = meta.protocol ()
-  local patches  = meta.patches ()
+--  local patches  = meta.patches ()
   -- TODO: generate patch
-  patches:insert (meta.patch * {
-    code    = [[ ]] % { },
-    status  = "applied",
-    target  = target,
-    value   = value,
-    reverse = reverse,
-  })
+--  patches:insert (meta.patch * {
+--    code    = [[ ]] % { },
+--    status  = "applied",
+--    target  = target,
+--    value   = value,
+--    reverse = reverse,
+--  })
   protocol:on_change ()
 end
 
@@ -106,3 +113,7 @@ return {
   cosy = global.cosy,
   meta = meta,
 }
+
+-- Each data can have:
+-- [TYPE] = "type" or "instance"
+-- [INHERITS] = { string = true }
