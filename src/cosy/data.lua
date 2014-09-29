@@ -43,6 +43,16 @@ function Data.path (x)
   return data_path (x)
 end
 
+function Data.root (x)
+  assert (type (x) == "table" and getmetatable (x) == Data)
+  return x [ROOT]
+end
+
+function Data.key (x)
+  assert (type (x) == "table" and getmetatable (x) == Data)
+  return x [PREVIOUS_KEY]
+end
+
 function Data:__index (key)
   return setmetatable ({
     [PREVIOUS_DATA] = self,
@@ -372,76 +382,76 @@ function Data.exists (x)
   if type (x) ~= "table" or getmetatable (x) ~= Data then
     return false
   end
-  local path = data_path (x)
-  assert (#path < 8)
-  local function _exists (data, i)
+  local path    = data_path (x)
+  local data    = path [1]
+  local visited = { data }
+  for i = 2, #path do
+    data = data [path [i]]
     if data == nil then
-      return false
+      break
     end
-    local key = path [i]
-    if key then
-      assert (type (data) == "table")
-      local subdata = data [key]
-      if _exists (subdata, i + 1) then
-        return true
-      end
-    else
-      return true
-    end
+    visited [#visited + 1] = data
+  end
+  if data ~= nil then
+    return true
+  end
+  for i = #visited, 1, -1 do
+    data = visited [i]
     for _, subpath in ipairs (data [PARENTS] or { data [PARENT] }) do
-      for j = i, #path do
+      for j = i+1, #path do
         subpath = subpath [path [j]]
       end
       if Data.exists (subpath) then
         return true
       end
     end
-    return false
   end
-  return _exists (path [1], 2)
+  return false
 end
 
 function Data.dereference (x)
   if type (x) ~= "table" or getmetatable (x) ~= Data then
     return nil
   end
-  local path = data_path (x)
-  local function _value (data, i)
+  local path    = data_path (x)
+  local data    = path [1]
+  local visited = { data }
+  for i = 2, #path do
+    data = data [path [i]]
     if data == nil then
-      return nil
+      break
     end
-    local key = path [i]
-    if key then
-      assert (type (data) == "table")
-      local subdata = data [key]
-      local result  = _value (subdata, i + 1)
-      if result then
-        return result
-      end
+    visited [#visited + 1] = data
+  end
+  local result
+  if type (data) == "table" then
+    local mt = getmetatable (data)
+    if mt == Data then
+      result = data
+    elseif mt ~= nil then
+      result = data
     else
-      if type (data) == "table" then
-        if Data.is (data) then
-          return data
-        elseif getmetatable (data) then
-          return data
-        else
-          return data [VALUE]
-        end
-      end
-      return data
+      result = data [VALUE]
     end
+  else
+    result = data
+  end
+  if result  ~= nil then
+    return result
+  end
+  for i = #visited, 1, -1 do
+    data = visited [i]
     for _, subpath in ipairs (data [PARENTS] or { data [PARENT] }) do
-      for j = i, #path do
+      for j = i+1, #path do
         subpath = subpath [path [j]]
       end
-      local result = Data.dereference (subpath)
+      result = Data.dereference (subpath)
       if result then
         return result
       end
     end
-    return nil
   end
-  return _value (path [1], 2)
+  return nil
 end
 
 function Data.value (x)
@@ -449,45 +459,6 @@ function Data.value (x)
     x = Data.dereference (x)
   until not Data.is (x)
   return x
-end
-
-function Data.parents (x, result)
-  if type (x) ~= "table" or getmetatable (x) ~= Data then
-    return { [x] = true }
-  end
-  result     = result or { }
-  local path = data_path (x)
-  local function _parents (data, current, i)
-    if data == nil then
-      return
-    end
-    local key = path [i]
-    if key then
-      assert (type (data) == "table")
-      _parents (data [key], current [key], i + 1)
-    else
-      print "here"
-      if type (data) == "table" then
-        if Data.is (data) then
-          result [data] = true
-        elseif getmetatable (data) then
-          result [data] = true
-        elseif data [VALUE] ~= nil then
-          result [data [VALUE]] = true
-        end
-      else
-        result [data] = true
-      end
-    end
-    for _, subpath in ipairs (data [PARENTS] or { data [PARENT] }) do
-      for j = i, #path do
-        subpath = subpath [path [j]]
-      end
-      Data.parents (subpath, result)
-    end
-  end
-  _parents (path [1], x / 1, 2)
-  return result
 end
 
 return Data
