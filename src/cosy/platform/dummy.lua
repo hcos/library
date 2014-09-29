@@ -51,4 +51,35 @@ end
 function Platform:close ()
 end
 
+local Tags = require "cosy.tags"
+local TYPE     = Tags.TYPE
+local INSTANCE = Tags.INSTANCE
+local VISIBLE  = Tags.VISIBLE
+
+local Algorithm = require "cosy.algorithm"
+
+local function visible_types (x)
+  return Algorithm.filter (x, function (d)
+    return d [TYPE] () == true and d [VISIBLE] () == true
+  end)
+end
+
+local function visible_instances (x)
+  return Algorithm.filter (x, function (d)
+    return d [INSTANCE] () == true and d [VISIBLE] () == true
+  end)
+end
+
+function instantiate (target_type, data)
+  
+end
+
+function create (source, link_type, target_type, data)
+  
+end
+
+function delete (target)
+  
+end
+
 return Platform

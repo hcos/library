@@ -48,17 +48,8 @@ function Platform:send (message)
   end
 end
 
--- Cosy.models [url] = {
---   [VALUE] = <model>
---   username = ...
---   password = ...
---   resource = ...
---   editor   = ...
---   editor.token = ...
--- }
---
-
 function Platform.new (meta)
+  -- TODO: cross-domain + authentication
   local editor_info = env:load (meta.editor.url ())
   if not editor_info then
     Platform:warn ("Cannot get editor ${editor_url} from repository." % {
@@ -110,6 +101,47 @@ function Platform:close ()
     self.websocket = nil
   end
 end
+
+local Data      = require "cosy.data"
+local Algorithm = require "cosy.algorithm"
+local Tags      = require "cosy.tags"
+local INHERITS  = Tags.INHERITS
+local TYPE      = Tags.TYPE
+local INSTANCE  = Tags.INSTANCE
+local VISIBLE   = Tags.VISIBLE
+
+local function visible_types (model)
+  assert (Data.is (model))
+  return Algorithm.filter (model, function (d)
+    return d [TYPE] () == true and d [VISIBLE] () == true
+  end)
+end
+
+local function visible_instances (model)
+  assert (Data.is (model))
+  return Algorithm.filter (model, function (d)
+    return d [INSTANCE] () == true and d [VISIBLE] () == true
+  end)
+end
+
+local function instantiate (model, target_type, data)
+  assert (Data.is (target_type))
+  model [#model + 1] = target_type * data
+  local result = model [#model]
+  result [INHERITS] [tostring (result)] = true
+  result [INSTANCE] = true
+  return result
+end
+
+local function create (model, source, link_type, target_type, data)
+  
+end
+
+local function delete (target)
+  
+end
+
+
 
 --[=[
 function model_of (data)
