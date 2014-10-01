@@ -191,13 +191,6 @@ function alertNotification(type, data)
 
 function loadTemplate(templateName, container, is_append, data)
 {
-<<<<<<< HEAD
-  $(element).parents("#top-navigation").find('li a[class="active"]').removeClass("active");
-  $(element).attr("class","active");
-  loadPage($(element).attr("rel"));
-  return false;
-}
-=======
   var source = $("#" + templateName).html();
   var template = Handlebars.compile(source);
   if (is_append)
@@ -205,4 +198,3 @@ function loadTemplate(templateName, container, is_append, data)
   else
     $("#"+container).html(template(data));
 }
->>>>>>> 46f34ae67f8e2697e799fb244ad903dc1db4139a
