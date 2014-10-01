@@ -1,4 +1,4 @@
-rootURL = "http://localhost/server/server.php";
+rootURL = "https://rest.cosyverif.io";
 
 url = "";
 username = "";
