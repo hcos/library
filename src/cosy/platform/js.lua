@@ -1,6 +1,17 @@
 local json       = require "dkjson"
 local _          = require "cosy.util.string"
 local ignore     = require "cosy.util.ignore"
+local Data       = require "cosy.data"
+local Algorithm  = require "cosy.algorithm"
+local Tag        = require "cosy.tag"
+local INHERITS    = Tag.INHERITS
+local TYPE        = Tag.TYPE
+local INSTANCE    = Tag.INSTANCE
+local VISIBLE     = Tag.VISIBLE
+local POSITION    = Tag.new "POSITION"
+local SELECTED    = Tag.new "SELECTED"
+local HIGHLIGHTED = Tag.new "HIGHLIGHTED"
+
 
 local GLOBAL = _G or _ENV
 local js  = GLOBAL.js
@@ -50,6 +61,17 @@ end
 
 function Platform.new (meta)
   -- TODO: cross-domain + authentication
+  local model = meta.model
+  Data.on_write [tostring (model)] = function (target, value, reverse)
+    if target / 2 == model then
+      local x = target / 3
+      if not Data.exits (x) then
+        env:remove_node (x)
+      elseif Data.value (x [INSTANCE]) then
+        env:update_node (x)
+      end
+    end
+  end
   local editor_info = env:load (meta.editor.url ())
   if not editor_info then
     Platform:warn ("Cannot get editor ${editor_url} from repository." % {
@@ -102,14 +124,6 @@ function Platform:close ()
   end
 end
 
-local Data      = require "cosy.data"
-local Algorithm = require "cosy.algorithm"
-local Tags      = require "cosy.tags"
-local INHERITS  = Tags.INHERITS
-local TYPE      = Tags.TYPE
-local INSTANCE  = Tags.INSTANCE
-local VISIBLE   = Tags.VISIBLE
-
 local function visible_types (model)
   assert (Data.is (model))
   return Algorithm.filter (model, function (d)
@@ -124,7 +138,7 @@ local function visible_instances (model)
   end)
 end
 
-local function instantiate (model, target_type, data)
+function env:instantiate (model, target_type, data)
   assert (Data.is (target_type))
   model [#model + 1] = target_type * data
   local result = model [#model]
@@ -133,15 +147,133 @@ local function instantiate (model, target_type, data)
   return result
 end
 
-local function create (model, source, link_type, target_type, data)
-  
+function env:create (model, source, link_type, target_type, data)
+  -- TODO
 end
 
-local function delete (target)
-  
+function env:delete (target)
+  -- TODO: remove arcs
+  Data.clear (target)
 end
 
+local function to_array (x)
+  x = x or {}
+  local elements = {}
+  for _, element in ipairs (x) do
+    elements [#elements + 1] = '"' .. tostring (element) .. '"'
+  end
+  table.sort (elements)
+  return env:eval ("[ " .. table.concat (elements, ", ") .. " ]")
+end
 
+local function to_object (x)
+  x = x or {}
+  local elements = {}
+  for key, value in pairs (x) do
+    elements [#elements + 1] = [["${key}": ${value}]] % {
+      key   = tostring (key),
+      value = value,
+    }
+  end
+  table.sort (elements)
+  return env:eval ("{ " .. table.concat (elements, ", ") .. " }")
+end
+
+function env:types (model)
+  return to_object {
+    place_type      = model.place_type,
+    transition_type = model.transition_type,
+    arc_type        = model.arc_type,
+  }
+end
+
+function env:is_place (x)
+  ignore (self)
+  local model = x / 2
+  return Data.value (x [tostring (model.place_type)])
+end
+
+function env:is_transition (x)
+  ignore (self)
+  local model = x / 2
+  return Data.value (x [tostring (model.transition_type)])
+end
+
+function env:is_arc (x)
+  ignore (self)
+  local model = x / 2
+  return Data.value (x [tostring (model.arc_type)])
+end
+
+function env:get_name (x)
+  ignore (self)
+  return Data.value (x.name)
+end
+
+function env:set_name (x, value)
+  ignore (self)
+  x.name = value
+end
+
+function env:get_token (x)
+  ignore (self)
+  return Data.value (x.token)
+end
+
+function env:set_token (x, value)
+  ignore (self)
+  x.token = value
+end
+
+function env:get_position (x)
+  ignore (self)
+  return Data.value (x [POSITION])
+end
+
+function env:set_position (x, value)
+  ignore (self)
+  x [POSITION] = value
+end
+
+function env:is_selected (x)
+  ignore (self)
+  return Data.value (x [SELECTED]) -- FIXME
+end
+
+function env:select (x)
+  ignore (self)
+  x [SELECTED] = true
+end
+
+function env:deselect (x)
+  ignore (self)
+  x [SELECTED] = nil
+end
+
+function env:is_highlighted (x)
+  ignore (self)
+  return Data.value (x [HIGHLIGHTED]) -- FIXME
+end
+
+function env:highlight (x)
+  ignore (self)
+  x [HIGHLIGHTED] = true
+end
+
+function env:unhighlight (x)
+  ignore (self)
+  x [HIGHLIGHTED] = nil
+end
+
+function env:source (x)
+  ignore (self)
+  return x.source
+end
+
+function env:target (x)
+  ignore (self)
+  return x.target
+end
 
 --[=[
 function model_of (data)

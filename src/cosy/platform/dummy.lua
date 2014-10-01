@@ -51,7 +51,7 @@ end
 function Platform:close ()
 end
 
-local Tags = require "cosy.tags"
+local Tags     = require "cosy.tag"
 local TYPE     = Tags.TYPE
 local INSTANCE = Tags.INSTANCE
 local VISIBLE  = Tags.VISIBLE

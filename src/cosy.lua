@@ -6,7 +6,9 @@ local ignore   = require "cosy.util.ignore"
 
 local NAME     = Tag.NAME
 local META     = Tag.new "META"
-local INHERITS = Tag.new INHERITS
+local INHERITS = Tag.new "INHERITS"
+local TYPE     = Tag.new "TYPE"
+local VISIBLE  = Tag.new "VISIBLE"
 
 local Cosy = {}
 
