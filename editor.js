@@ -78,8 +78,8 @@
     };
 
     // Position definitions and points of reference for the markers
-    var width = 1170,
-        height = 500,
+    var width = 700,
+        height = 450,
         markerSize = 8,
         origin = {x: width/2, y: height/2};
         
@@ -89,6 +89,10 @@
             .attr("height", height)
             .style("pointer-events", "all");
     
+    function change_size_svg(h, w) {
+        d3.select('.svg_container').attr('width', w).attr('height', h);
+    }
+
     var zm = d3.behavior.zoom().on("zoom", rescale);
     
     var outer = svg.append("g")

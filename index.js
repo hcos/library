@@ -78,7 +78,7 @@ function loginClick()
     }
     get('/users/'+ getUserLogin(), success, error);
   }
-  function authError()
+  function authError(jqXHR, textStatus, errorThrown)
   {
     setUserLogin("");
     setUserPassword("");
