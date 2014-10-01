@@ -86,29 +86,28 @@
     var svg = d3.select("#model_container").append("svg:svg")
             .attr("class", "svg_container")
             .attr("width", width)
-            .attr("height", height);
+            .attr("height", height)
+            .style("pointer-events", "all");
     
     var zm = d3.behavior.zoom().on("zoom", rescale);
     
     var outer = svg.append("g")
                 .attr("class", "outer")
-                .on("dblclick.zoom", null)
-                .style("pointer-events", "all")
                 .call(zm)
+                .on("dblclick.zoom", null);
+
+    var container = outer.append("g")
+                .attr("class", "container")
                 .on("contextmenu", function(data, index) { d3.event.preventDefault(); })
                 .on("mousedown", mouseDown)
                 .on("mousemove", mouseMove)
                 .on("mouseup", mouseUp);
-
     // Background color
-    outer.append('svg:rect')
+    container.append('svg:rect')
         .attr('class', 'click-capture')
         .attr('width', width)
         .attr('height', height)
         .attr('visibility', 'hidden');
-
-    var container = outer.append("g")
-                .attr("class", "container");
                 
     var drag_line = container.append("line")
         .attr("class", "drag_line")
@@ -120,11 +119,6 @@
     d3.select("#model_container").append("div")
         .attr("id", "forms_group")
         .attr("class", "span5");
-    
-            
-    // The force layout from D3 is the graphical representation of the
-    // model. Set gravity in 0 so that the nodes dont move in the graph and linkDistance 
-    // in 300 to adjust any node without inicial position
     
     var force = d3.layout.force()
         .size([width, height])
@@ -422,7 +416,7 @@
     
     // Zoom and rescale event handling
     function rescale() {
-        container.attr("transform", "translate(" + d3.event.translate + ")"+ " scale(" + d3.event.scale + ")");
+        container.attr("transform"," translate("+d3.event.translate+") scale(" + d3.event.scale + ")");
         d3.selectAll('.node').each( function(d, i){
             var stroke = d3.select(this).style('stroke-width');
             d3.select(this).style('stroke-width', 1.5 / zm.scale() + 'px')
@@ -490,7 +484,6 @@
     
     function mouseUp() {
         console.log("Mouse up");
-        
         if(cancelUpEvent) return;
         
         switch(d3.event.button){
