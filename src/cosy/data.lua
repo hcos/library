@@ -426,7 +426,7 @@ function Data.dereference (x)
   local visited = { data }
   for i = 2, #path do
     data = data [path [i]]
-    if data == nil then
+    if type (data) ~= "table" then
       break
     end
     visited [#visited + 1] = data
