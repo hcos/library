@@ -62,6 +62,14 @@ function Data:__index (key)
 end
 
 function Data.clear (x)
+  local path   = Data.path (x)
+  local parent = x / -1
+  local key    = path [#path]
+  parent [key] = nil
+  parent [key] = {}
+end
+
+local function clear (x)
   local path = data_path (x)
   local data = path [1]
   for i = 2, #path-1 do
@@ -98,13 +106,13 @@ function Data:__newindex (key, value)
     reverse = function () self [key] = old_value end
     v [VALUE] = value
   elseif not is_value and type (v) ~= "table" then
-    reverse = function () Data.clear (target); self [key] = v end
+    reverse = function () clear (target); self [key] = v end
     if value [VALUE] == nil then
       value [VALUE] = v
     end
     data [key] = value
   elseif not is_value and type (v) == "table" then
-    reverse = function () Data.clear (target); self [key] = v end
+    reverse = function () clear (target); self [key] = v end
     if value [VALUE] == nil then
       value [VALUE] = v [VALUE]
     end
@@ -112,11 +120,6 @@ function Data:__newindex (key, value)
   end
   traversed [#traversed + 1] = data [key]
   path      [#path      + 1] = key
-  --
-  for _, f in pairs (Data.on_write) do
-    assert (type (f) == "function")
-    f (target, value, reverse)
-  end
   -- Clean:
   for i = #traversed, 2, -1 do
     local d = traversed [i]
@@ -127,6 +130,11 @@ function Data:__newindex (key, value)
     else
       break
     end
+  end
+  --
+  for _, f in pairs (Data.on_write) do
+    assert (type (f) == "function")
+    f (target, value, reverse)
   end
 end
 
