@@ -61,7 +61,7 @@ function Data:__index (key)
   }, Data)
 end
 
-local function clear (x)
+function Data.clear (x)
   local path = data_path (x)
   local data = path [1]
   for i = 2, #path-1 do
@@ -98,13 +98,13 @@ function Data:__newindex (key, value)
     reverse = function () self [key] = old_value end
     v [VALUE] = value
   elseif not is_value and type (v) ~= "table" then
-    reverse = function () clear (target); self [key] = v end
+    reverse = function () Data.clear (target); self [key] = v end
     if value [VALUE] == nil then
       value [VALUE] = v
     end
     data [key] = value
   elseif not is_value and type (v) == "table" then
-    reverse = function () clear (target); self [key] = v end
+    reverse = function () Data.clear (target); self [key] = v end
     if value [VALUE] == nil then
       value [VALUE] = v [VALUE]
     end
