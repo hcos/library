@@ -74,7 +74,6 @@ function Platform.new (meta)
 end
 
 function Platform:close ()
-  print "Close"
   if self.websocket then
     self.websocket:close ()
     self.websocket = nil
