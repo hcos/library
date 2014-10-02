@@ -22,6 +22,8 @@ GLOBAL.print = function (msg)
   console:info (msg)
 end
 
+env.Cosy = env:eval [[ Object.create (null); ]]
+
 local Platform = {}
 
 Platform.__index = Platform
@@ -59,7 +61,7 @@ function Platform:send (message)
 end
 
 function Platform.new (meta)
-  local resource = meta.resource
+  local model     = meta.model
   local websocket =
     env:eval ([[new WebSocket ("${editor}", "cosy")]] % {
       editor = meta.editor,
@@ -70,12 +72,16 @@ function Platform.new (meta)
     websocket = websocket,
   }, Platform)
   Data.on_write [platform] = function (target)
-    if target / 2 == resource then
+    if target / 2 == model then
       local x = target / 3
       if not Data.exists (x) then
-        env:remove_node (x)
-      elseif Data.value (x [INSTANCE]) then
+        env:remove (x)
+      elseif Data.value (x [INSTANCE])
+        and (env.Cosy:is_place (x) or env.Cosy:is_transition (x)) then
         env:update_node (x)
+      elseif Data.value (x [INSTANCE])
+        and env.Cosy:is_arc (x) then
+--        env:update_arc (x)
       end
     end
   end
@@ -109,8 +115,6 @@ function Platform:close ()
   end
 end
 
-env.Cosy = env:eval [[ Object.create (null); ]]
-
 function env.Cosy:configure_editor (url)
   ignore (self)
   meta.editor = url
@@ -134,6 +138,7 @@ function env.Cosy:configure_server (url, data)
 end
 
 function env.Cosy:model (url)
+  ignore (self)
   return cosy [url]
 end
 
@@ -156,7 +161,6 @@ function env.Cosy:create (model, source, link_type, target_type, data)
   local transition_type = model.transition_type
   local arc_type        = model.arc_type
   local target
-  print (source)
   if env.Cosy:is_place (source) then
     model [#model + 1] = transition_type * {}
     target = model [#model]
