@@ -83,14 +83,6 @@ function Cosy:__newindex ()
   assert (false)
 end
 
-local function start ()
-  Platform.start ()
-end
-
-local function stop ()
-  Platform.stop ()
-end
-
 local Module = {}
 
 Module.cosy  = cosy

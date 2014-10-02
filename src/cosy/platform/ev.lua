@@ -8,8 +8,6 @@ local logging    = require "logging"
 logging.console  = require "logging.console"
 local logger     = logging.console "%level %message\n"
 
-local global = _ENV or _G
-
 local Platform = {}
 
 Platform.__index = Platform
@@ -101,14 +99,16 @@ function Platform:execute (f, again)
 end
 
 function Platform.start ()
-  if global.main then
+  local Cosy = require "cosy"
+  if Cosy.main then
     local m = coroutine.create (function ()
-      local ok, err = pcall (global.main)
+      local ok, err = pcall (Cosy.main)
       if not ok then
         logger:error (err)
       end
     end)
     local function wrap (loop, idle, revents)
+      ignore (revents)
       if coroutine.status (m) == "suspended" then
         coroutine.resume (m)
       else
@@ -122,8 +122,10 @@ function Platform.start ()
 end
 
 function Platform.stop ()
+  local Cosy = require "cosy"
   local function check_patches (loop, timer, revents)
-    local models = global.meta.models
+    ignore (revents)
+    local models = Cosy.meta.models
     local all = true
     for _, m in pairs (models) do
       if # (m.patches) ~= 0 then
