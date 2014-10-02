@@ -110,19 +110,20 @@ function Helper.types (model)
   }
 end
 
+function Helper.is (x, y)
+  return Data.value (x [tostring (y)])
+end
+
 function Helper.is_place (x)
-  local model = x / 2
-  return Data.value (x [tostring (model.place_type)])
+  return Helper.is (x, (x / 2).place_type)
 end
 
 function Helper.is_transition (x)
-  local model = x / 2
-  return Data.value (x [tostring (model.transition_type)])
+  return Helper.is (x, (x / 2).transition_type)
 end
 
 function Helper.is_arc (x)
-  local model = x / 2
-  return Data.value (x [tostring (model.arc_type)])
+  return Helper.is (x, (x / 2).arc_type)
 end
 
 function Helper.get_name (x)
