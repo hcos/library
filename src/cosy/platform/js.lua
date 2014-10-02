@@ -115,6 +115,12 @@ function Platform:close ()
   end
 end
 
+function Platform.start ()
+end
+
+function Platform.stop ()
+end
+
 function env.Cosy:configure_editor (url)
   ignore (self)
   meta.editor = url
@@ -136,7 +142,13 @@ end
 function env.Cosy:id (x)
   ignore (self)
   assert (Data.is (x))
-  return tostring (x)
+  while true do
+    local y = Data.dereference (x)
+    if not Data.is (y) then
+      return tostring (x)
+    end
+    x = y
+  end
 end
 
 function env.Cosy:model (url)
