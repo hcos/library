@@ -59,4 +59,9 @@ function Tag.is (tag)
      and getmetatable (tag) == Tag
 end
 
+Tag.new "INSTANCE"
+Tag.new "POSITION"
+Tag.new "SELECTED"
+Tag.new "HIGHLIGHTED"
+
 return Tag

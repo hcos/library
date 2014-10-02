@@ -20,6 +20,7 @@ local store = Data.new {
 local global = _ENV or _G
 global.cosy = setmetatable ({}, Cosy)
 global.meta = meta
+global.Tag  = Tag
 local cosy  = global.cosy
 
 -- Load interface:

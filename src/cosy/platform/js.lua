@@ -3,11 +3,11 @@ local _          = require "cosy.util.string"
 local ignore     = require "cosy.util.ignore"
 local Data       = require "cosy.data"
 local Tag        = require "cosy.tag"
-local INHERITS    = Tag.new "INHERITS"
-local INSTANCE    = Tag.new "INSTANCE"
-local POSITION    = Tag.new "POSITION"
-local SELECTED    = Tag.new "SELECTED"
-local HIGHLIGHTED = Tag.new "HIGHLIGHTED"
+
+local INSTANCE    = Tag.INSTANCE
+local POSITION    = Tag.POSITION
+local SELECTED    = Tag.SELECTED
+local HIGHLIGHTED = Tag.HIGHLIGHTED
 
 local GLOBAL = _G or _ENV
 local js  = GLOBAL.js
@@ -15,8 +15,6 @@ local env = js.global
 
 local cosy = GLOBAL.cosy
 local meta = GLOBAL.meta
-env.cosy = cosy
-env.meta = meta
 
 local console = env.console
 
@@ -61,7 +59,6 @@ function Platform:send (message)
 end
 
 function Platform.new (meta)
-  local model    = meta.model
   local resource = meta.resource
   local websocket =
     env:eval ([[new WebSocket ("${editor}", "cosy")]] % {
@@ -112,11 +109,15 @@ function Platform:close ()
   end
 end
 
-function env:configure_editor (url)
+env.Cosy = env:eval [[ Object.create (null); ]]
+
+function env.Cosy:configure_editor (url)
+  ignore (self)
   meta.editor = url
 end
 
-function env:configure_server (url, data)
+function env.Cosy:configure_server (url, data)
+  ignore (self)
   -- If url does not use SSL, force it:
   if url:find "http://" == 1 then
     url = url:gsub ("^http://", "https://")
@@ -132,25 +133,11 @@ function env:configure_server (url, data)
   }
 end
 
---[[
-
-local function visible_types (model)
-  assert (Data.is (model))
-  return Algorithm.filter (model, function (d)
-    return d [TYPE] () == true and d [VISIBLE] () == true
-  end)
+function env.Cosy:model (url)
+  return cosy [url]
 end
 
-local function visible_instances (model)
-  assert (Data.is (model))
-  return Algorithm.filter (model, function (d)
-    return d [INSTANCE] () == true and d [VISIBLE] () == true
-  end)
-end
-
---]]
-
-function env:instantiate (model, target_type, data)
+function env.Cosy:instantiate (model, target_type, data)
   ignore (self)
   assert (Data.is (target_type))
   model [#model + 1] = target_type * {
@@ -163,14 +150,49 @@ function env:instantiate (model, target_type, data)
   return result
 end
 
-function env:create (model, source, link_type, target_type, data)
-  ignore (self)
-  -- TODO
+function env.Cosy:create (model, source, link_type, target_type, data)
+  ignore (self, link_type, target_type)
+  local place_type      = model.place_type
+  local transition_type = model.transition_type
+  local arc_type        = model.arc_type
+  local target
+  print (source)
+  if env.Cosy:is_place (source) then
+    model [#model + 1] = transition_type * {}
+    target = model [#model]
+  elseif env.Cosy:is_transition (source) then
+    model [#model + 1] = place_type * {}
+    target = model [#model]
+  else
+    console:error ("Source ${source} is neither a place nor a transition." % {
+      source = tostring (source)
+    })
+    return
+  end
+  for k, v in pairs (data) do
+    target [k] = v
+  end
+  model [#model + 1] = arc_type * {
+    source = source,
+    target = target,
+  }
+  return target
 end
 
-function env:delete (target)
+function env.Cosy:remove (target)
   ignore (self)
-  -- TODO: remove arcs
+  local model           = target / 2
+  local place_type      = model.place_type
+  local transition_type = model.transition_type
+  if Data.value (target [tostring (place_type)])
+  or Data.value (target [tostring (transition_type)]) then
+    for _, x in pairs (model) do
+      if Data.dereference (x.source) == target
+      or Data.dereference (x.target) == target then
+        Data.clear (x)
+      end
+    end
+  end
   Data.clear (target)
 end
 
@@ -188,18 +210,16 @@ end
 
 local function to_object (x)
   x = x or {}
-  local elements = {}
+  local elements = env:eval [[ Object.create (null); ]]
   for key, value in pairs (x) do
-    elements [#elements + 1] = [["${key}": ${value}]] % {
-      key   = tostring (key),
-      value = value,
-    }
+    if type (key) == "string" then
+      elements [key] = value
+    end
   end
-  table.sort (elements)
-  return env:eval ("{ " .. table.concat (elements, ", ") .. " }")
+  return elements
 end
 
-function env:types (model)
+function env.Cosy:types (model)
   ignore (self)
   return to_object {
     place_type      = model.place_type,
@@ -208,90 +228,90 @@ function env:types (model)
   }
 end
 
-function env:is_place (x)
+function env.Cosy:is_place (x)
   ignore (self)
   local model = x / 2
   return Data.value (x [tostring (model.place_type)])
 end
 
-function env:is_transition (x)
+function env.Cosy:is_transition (x)
   ignore (self)
   local model = x / 2
   return Data.value (x [tostring (model.transition_type)])
 end
 
-function env:is_arc (x)
+function env.Cosy:is_arc (x)
   ignore (self)
   local model = x / 2
   return Data.value (x [tostring (model.arc_type)])
 end
 
-function env:get_name (x)
+function env.Cosy:get_name (x)
   ignore (self)
   return Data.value (x.name)
 end
 
-function env:set_name (x, value)
+function env.Cosy:set_name (x, value)
   ignore (self)
   x.name = value
 end
 
-function env:get_token (x)
+function env.Cosy:get_token (x)
   ignore (self)
   return Data.value (x.token)
 end
 
-function env:set_token (x, value)
+function env.Cosy:set_token (x, value)
   ignore (self)
   x.token = value
 end
 
-function env:get_position (x)
+function env.Cosy:get_position (x)
   ignore (self)
   return Data.value (x [POSITION])
 end
 
-function env:set_position (x, value)
+function env.Cosy:set_position (x, value)
   ignore (self)
   x [POSITION] = value
 end
 
-function env:is_selected (x)
+function env.Cosy:is_selected (x)
   ignore (self)
   return Data.value (x [SELECTED]) -- FIXME
 end
 
-function env:select (x)
+function env.Cosy:select (x)
   ignore (self)
   x [SELECTED] = true
 end
 
-function env:deselect (x)
+function env.Cosy:deselect (x)
   ignore (self)
   x [SELECTED] = nil
 end
 
-function env:is_highlighted (x)
+function env.Cosy:is_highlighted (x)
   ignore (self)
   return Data.value (x [HIGHLIGHTED]) -- FIXME
 end
 
-function env:highlight (x)
+function env.Cosy:highlight (x)
   ignore (self)
   x [HIGHLIGHTED] = true
 end
 
-function env:unhighlight (x)
+function env.Cosy:unhighlight (x)
   ignore (self)
   x [HIGHLIGHTED] = nil
 end
 
-function env:source (x)
+function env.Cosy:source (x)
   ignore (self)
   return x.source
 end
 
-function env:target (x)
+function env.Cosy:target (x)
   ignore (self)
   return x.target
 end
