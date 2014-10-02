@@ -30,17 +30,8 @@ function Platform:error (message)
 end
 
 function Platform:send (message)
+  ignore (self, message)
 end
-
--- Cosy.models [url] = {
---   [VALUE] = <model>
---   username = ...
---   password = ...
---   resource = ...
---   editor   = ...
---   editor.token = ...
--- }
---
 
 function Platform.new (meta)
   return setmetatable ({
@@ -49,37 +40,7 @@ function Platform.new (meta)
 end
 
 function Platform:close ()
-end
-
-local Tags     = require "cosy.tag"
-local TYPE     = Tags.TYPE
-local INSTANCE = Tags.INSTANCE
-local VISIBLE  = Tags.VISIBLE
-
-local Algorithm = require "cosy.algorithm"
-
-local function visible_types (x)
-  return Algorithm.filter (x, function (d)
-    return d [TYPE] () == true and d [VISIBLE] () == true
-  end)
-end
-
-local function visible_instances (x)
-  return Algorithm.filter (x, function (d)
-    return d [INSTANCE] () == true and d [VISIBLE] () == true
-  end)
-end
-
-function instantiate (target_type, data)
-  
-end
-
-function create (source, link_type, target_type, data)
-  
-end
-
-function delete (target)
-  
+  ignore (self)
 end
 
 return Platform
