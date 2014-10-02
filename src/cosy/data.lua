@@ -186,7 +186,7 @@ function Data:__pairs ()
       if type (data) == "table" then
         for k, v in pairs (data) do
           if k ~= PARENT and k ~= PARENTS then
-            coroutine.yield (k, v)
+            coroutine.yield (k, self [k])
           end
         end
       end
@@ -197,7 +197,7 @@ function Data:__pairs ()
       end
       for k, v in pairs (subpath) do
         if not seen [k] then
-          coroutine.yield (k, v)
+          coroutine.yield (k, self [k])
           seen [k] = true
         end
       end
