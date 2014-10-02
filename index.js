@@ -1,4 +1,4 @@
-rootURL = "https://rest.cosyverif.io";
+rootURL = "http://rest.cosyverif.io";
 
 url = "";
 username = "";
