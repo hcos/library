@@ -28,6 +28,9 @@ local Platform
 if global.js then
   Platform = require "cosy.platform.js"
   Platform:log "Using JavaScript"
+elseif global.ev then
+  Platform = require "cosy.platform.ev"
+  Platform:log "Using ev"
 else
   Platform = require "cosy.platform.dummy"
   Platform:log "Using dummy"
