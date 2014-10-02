@@ -10,10 +10,9 @@ function Protocol.new (metam)
   local protocol = setmetatable ({
     meta = metam
   }, Protocol)
+  local model = metam.model
   Data.on_write [protocol] = function (target, value, reverse)
-    local path = Data.path (target)
-    local url  = path [2]
-    if #path < 3 or url ~= metam.resource then
+    if not (model < target) then
       return
     end
     protocol:on_patch {
@@ -90,19 +89,25 @@ function Protocol:on_patch (patch)
 end
 
 function Protocol:on_message (message)
+  local platform = self.meta.platform
   local function disabled_load (x)
     local ow = Data.on_write [self]
     Data.on_write [self] = nil
     if type (x) == "function" then
-      assert (pcall (x))
+      local ok, err = pcall (x)
+      if not ok then
+        platform:error (err)
+      end
     elseif type (x) == "string" then
-      assert (pcall (loadstring (x)))
+      local ok, err = pcall (loadstring (x))
+      if not ok then
+        platform:error (err)
+      end
     else
       assert (false)
     end
     Data.on_write [self] = ow
   end
-  local platform = self.meta.platform
   local resource = self.meta.resource
   local patches  = self.meta.patches
   if message.action == "connect" then
@@ -137,8 +142,8 @@ function Protocol:on_message (message)
       end
       patches:pop ()
     else
-      platform:log ("Patch ${id} on resource ${resource} has been rejected," ..
-                    " because ${reason}." % {
+      platform:log (("Patch ${id} on resource ${resource} has been rejected," ..
+                     " because ${reason}.") % {
         id       = patch.id,
         resource = resource,
         reason   = message.reason,
@@ -146,8 +151,8 @@ function Protocol:on_message (message)
       for i = #patches, 1, -1 do
         local patch = patches [i]
         if patch.status == "applied" or patch.status == "sent" then
-          platform:log ("Unapply patch ${id} on ${resource}," ..
-                        " as a previous one has been rejected." % {
+          platform:log (("Unapply patch ${id} on ${resource}," ..
+                         " as a previous one has been rejected.") % {
             id       = patch.id,
             resource = resource,
           })
@@ -161,8 +166,8 @@ function Protocol:on_message (message)
     for i = #patches, 1, -1 do
       local patch = patches [i]
       if patch.status == "applied" or patch.status == "sent" then
-        platform:log ("Unapply patch ${id} on resource ${resource}," ..
-                      " because of interleaved updates. " % {
+        platform:log (("Unapply patch ${id} on resource ${resource}," ..
+                       " because of interleaved updates.") % {
           id       = patch.id,
           resource = resource,
         })
