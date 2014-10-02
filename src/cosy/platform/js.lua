@@ -133,6 +133,12 @@ function env.Cosy:configure_server (url, data)
   }
 end
 
+function env.Cosy:id (x)
+  ignore (self)
+  assert (Data.is (x))
+  return tostring (x)
+end
+
 function env.Cosy:model (url)
   ignore (self)
   return cosy [url]
