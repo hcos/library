@@ -97,27 +97,4 @@ function Module.stop ()
   Platform.stop ()
 end
 
-function Module:configure_editor (url)
-  ignore (self)
-  meta.editor = url
-end
-
-function Module:configure_server (url, data)
-  ignore (self)
-  -- Remove trailing slash:
-  if url [#url] == "/" then
-    url = url:sub (1, #url-1)
-  end
-  -- Store:
-  meta.servers [url] = {
-    username = data.username,
-    password = data.password,
-  }
-end
-
-function Module:model (url)
-  ignore (self)
-  return cosy [url]
-end
-
-return Module 
+return Module

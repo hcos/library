@@ -3,18 +3,13 @@ local _          = require "cosy.util.string"
 local ignore     = require "cosy.util.ignore"
 local Data       = require "cosy.data"
 local Tag        = require "cosy.tag"
+local Helper     = require "cosy.helper"
 
 local INSTANCE    = Tag.INSTANCE
-local POSITION    = Tag.POSITION
-local SELECTED    = Tag.SELECTED
-local HIGHLIGHTED = Tag.HIGHLIGHTED
 
 local GLOBAL = _G or _ENV
 local js  = GLOBAL.js
 local env = js.global
-
-local cosy = GLOBAL.cosy
-local meta = GLOBAL.meta
 
 local console = env.console
 
@@ -23,6 +18,14 @@ GLOBAL.print = function (msg)
 end
 
 env.Cosy = env:eval [[ Object.create (null); ]]
+
+for k, v in pairs (Helper) do
+  env.Cosy [k] = function (self, ...)
+    ignore (self)
+    return v (...)
+  end
+end
+
 
 local Platform = {}
 
@@ -121,98 +124,6 @@ end
 function Platform.stop ()
 end
 
-function env.Cosy:configure_editor (url)
-  ignore (self)
-  meta.editor = url
-end
-
-function env.Cosy:configure_server (url, data)
-  ignore (self)
-  -- Remove trailing slash:
-  if url [#url] == "/" then
-    url = url:sub (1, #url-1)
-  end
-  -- Store:
-  meta.servers [url] = {
-    username = data.username,
-    password = data.password,
-  }
-end
-
-function env.Cosy:id (x)
-  ignore (self)
-  assert (Data.is (x))
-  while true do
-    local y = Data.dereference (x)
-    if not Data.is (y) then
-      return tostring (x)
-    end
-    x = y
-  end
-end
-
-function env.Cosy:model (url)
-  ignore (self)
-  return cosy [url]
-end
-
-function env.Cosy:instantiate (model, target_type, data)
-  ignore (self)
-  assert (Data.is (target_type))
-  model [#model + 1] = target_type * {
-    [INSTANCE] = true,
-  }
-  local result = model [#model]
-  for k, v in pairs (data) do
-    result [k] = v
-  end
-  return result
-end
-
-function env.Cosy:create (model, source, link_type, target_type, data)
-  ignore (self, link_type, target_type)
-  local place_type      = model.place_type
-  local transition_type = model.transition_type
-  local arc_type        = model.arc_type
-  local target
-  if env.Cosy:is_place (source) then
-    model [#model + 1] = transition_type * {}
-    target = model [#model]
-  elseif env.Cosy:is_transition (source) then
-    model [#model + 1] = place_type * {}
-    target = model [#model]
-  else
-    console:error ("Source ${source} is neither a place nor a transition." % {
-      source = tostring (source)
-    })
-    return
-  end
-  for k, v in pairs (data) do
-    target [k] = v
-  end
-  model [#model + 1] = arc_type * {
-    source = source,
-    target = target,
-  }
-  return target
-end
-
-function env.Cosy:remove (target)
-  ignore (self)
-  local model           = target / 2
-  local place_type      = model.place_type
-  local transition_type = model.transition_type
-  if Data.value (target [tostring (place_type)])
-  or Data.value (target [tostring (transition_type)]) then
-    for _, x in pairs (model) do
-      if Data.dereference (x.source) == target
-      or Data.dereference (x.target) == target then
-        Data.clear (x)
-      end
-    end
-  end
-  Data.clear (target)
-end
 
 --[[
 local function to_array (x)
@@ -237,101 +148,11 @@ local function to_object (x)
   return elements
 end
 
+local old_types = env.Cosy.types
+
 function env.Cosy:types (model)
   ignore (self)
-  return to_object {
-    place_type      = model.place_type,
-    transition_type = model.transition_type,
-    arc_type        = model.arc_type,
-  }
-end
-
-function env.Cosy:is_place (x)
-  ignore (self)
-  local model = x / 2
-  return Data.value (x [tostring (model.place_type)])
-end
-
-function env.Cosy:is_transition (x)
-  ignore (self)
-  local model = x / 2
-  return Data.value (x [tostring (model.transition_type)])
-end
-
-function env.Cosy:is_arc (x)
-  ignore (self)
-  local model = x / 2
-  return Data.value (x [tostring (model.arc_type)])
-end
-
-function env.Cosy:get_name (x)
-  ignore (self)
-  return Data.value (x.name)
-end
-
-function env.Cosy:set_name (x, value)
-  ignore (self)
-  x.name = value
-end
-
-function env.Cosy:get_token (x)
-  ignore (self)
-  return Data.value (x.token)
-end
-
-function env.Cosy:set_token (x, value)
-  ignore (self)
-  x.token = value
-end
-
-function env.Cosy:get_position (x)
-  ignore (self)
-  return Data.value (x [POSITION])
-end
-
-function env.Cosy:set_position (x, value)
-  ignore (self)
-  x [POSITION] = value
-end
-
-function env.Cosy:is_selected (x)
-  ignore (self)
-  return Data.value (x [SELECTED]) -- FIXME
-end
-
-function env.Cosy:select (x)
-  ignore (self)
-  x [SELECTED] = true
-end
-
-function env.Cosy:deselect (x)
-  ignore (self)
-  x [SELECTED] = nil
-end
-
-function env.Cosy:is_highlighted (x)
-  ignore (self)
-  return Data.value (x [HIGHLIGHTED]) -- FIXME
-end
-
-function env.Cosy:highlight (x)
-  ignore (self)
-  x [HIGHLIGHTED] = true
-end
-
-function env.Cosy:unhighlight (x)
-  ignore (self)
-  x [HIGHLIGHTED] = nil
-end
-
-function env.Cosy:source (x)
-  ignore (self)
-  return x.source
-end
-
-function env.Cosy:target (x)
-  ignore (self)
-  return x.target
+  return to_object (old_types (model))
 end
 
 --[=[
