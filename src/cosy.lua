@@ -83,8 +83,18 @@ function Cosy:__newindex ()
   assert (false)
 end
 
+local function start ()
+  Platform.start ()
+end
+
+local function stop ()
+  Platform.stop ()
+end
+
 return {
-  Cosy = Cosy,
-  cosy = global.cosy,
-  meta = meta,
+  Cosy  = Cosy,
+  cosy  = global.cosy,
+  meta  = meta,
+  start = start,
+  stop  = stop,
 }

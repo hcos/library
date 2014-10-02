@@ -8,6 +8,8 @@ local logging    = require "logging"
 logging.console  = require "logging.console"
 local logger     = logging.console "%level %message\n"
 
+local global = _ENV or _G
+
 local Platform = {}
 
 Platform.__index = Platform
@@ -33,10 +35,12 @@ function Platform:error (message)
 end
 
 function Platform:send (message)
-  if self.websocket.state == "CONNECTED" then
+  if self.websocket.state == "OPEN" then
     self.websocket:send (json.encode (message))
+    return true
   else
-    self:log ("Unable to send: " .. json.encode (message))
+    self:log ("Unable to send message.")
+    return false
   end
 end
 
@@ -58,7 +62,7 @@ function Platform.new (meta)
     if not message then
       return
     end
-    protocol:on_message (json.decode (message.data))
+    protocol:on_message (json.decode (message))
   end)
   websocket:on_error (function (_, err)
     logger:warn ("Error received: ${err}." % {
@@ -70,6 +74,7 @@ function Platform.new (meta)
 end
 
 function Platform:close ()
+  print "Close"
   if self.websocket then
     self.websocket:close ()
     self.websocket = nil
@@ -96,14 +101,45 @@ function Platform:execute (f, again)
   timer:start (ev.Loop.default)
 end
 
-function Platform:loop ()
-  ignore (self)
+function Platform.start ()
+  if global.main then
+    local m = coroutine.create (function ()
+      local ok, err = pcall (global.main)
+      if not ok then
+        logger:error (err)
+      end
+    end)
+    local function wrap (loop, idle, revents)
+      if coroutine.status (m) == "suspended" then
+        coroutine.resume (m)
+      else
+        idle:stop (loop)
+      end
+    end
+    local idle = ev.Idle.new (wrap)
+    idle:start (ev.Loop.default)
+  end
   ev.Loop.default:loop ()
 end
 
-function Platform:stop ()
-  ignore (self)
-  ev.Loop.default:unloop ()
+function Platform.stop ()
+  local function check_patches (loop, timer, revents)
+    local models = global.meta.models
+    local all = true
+    for _, m in pairs (models) do
+      if # (m.patches) ~= 0 then
+        all = false
+        break
+      end
+    end
+    if all then
+      timer:stop (loop)
+      loop:unloop ()
+      return
+    end
+  end
+  local timer = ev.Timer.new (check_patches, 1, 1)
+  timer:start (ev.Loop.default)
 end
 
 return Platform
