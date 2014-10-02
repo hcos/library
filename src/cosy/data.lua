@@ -97,21 +97,22 @@ function Data:__newindex (key, value)
   end
   local v = data [key]
   local reverse
-  local is_value = type (value) ~= "table" or getmetatable (value) ~= nil
-  if is_value and type (v) ~= "table" then
+  local new_is_value = type (value) ~= "table" or getmetatable (value) ~= nil
+  local old_is_value = type (v    ) ~= "table" or getmetatable (v    ) ~= nil
+  if new_is_value and old_is_value then
     reverse = function () self [key] = v end
     data [key] = value
-  elseif is_value and type (v) == "table" then
+  elseif new_is_value and not old_is_value then
     local old_value = v [VALUE]
     reverse = function () self [key] = old_value end
     v [VALUE] = value
-  elseif not is_value and type (v) ~= "table" then
+  elseif not new_is_value and old_is_value then
     reverse = function () clear (target); self [key] = v end
     if value [VALUE] == nil then
       value [VALUE] = v
     end
     data [key] = value
-  elseif not is_value and type (v) == "table" then
+  elseif not new_is_value and not old_is_value then
     reverse = function () clear (target); self [key] = v end
     if value [VALUE] == nil then
       value [VALUE] = v [VALUE]
