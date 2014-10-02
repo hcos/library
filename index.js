@@ -92,7 +92,7 @@ function logoutClick(){
     setUserPassword("");
     setUserName("");
     showLoginLogout();
-    showSearch();
+    showSearch(false);
 }
 
 function setUserLogin(value){
@@ -146,6 +146,7 @@ function showLoginLogout()
     document.getElementById("usernameLogo").style.display = 'inline';
     document.getElementById("usernameLabel").innerHTML = ' ' + getUserName();
     $("#userLogin").attr("onClick","showUser('/users/"+getUserLogin()+"')");
+    showSearch(true);
   } 
   else 
   {
@@ -157,6 +158,7 @@ function showLoginLogout()
     document.getElementById("btnLogoff").style.display = 'none';
     document.getElementById("usernameLabel").style.display = 'none';
     document.getElementById("usernameLogo").style.display = 'none';
+    showSearch(false);
   }
 }
 
