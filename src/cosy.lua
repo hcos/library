@@ -42,10 +42,6 @@ function Cosy:__index (url)
     return nil
   end
   -- FIXME: validate url
-  -- If url does not use SSL, force it:
-  if url:find "http://" == 1 then
-    url = url:gsub ("^http://", "https://")
-  end
   -- Remove trailing slash:
   if url [#url] == "/" then
     url = url:sub (1, #url-1)

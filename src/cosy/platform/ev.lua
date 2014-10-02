@@ -33,10 +33,7 @@ function Platform:error (message)
 end
 
 function Platform:send (message)
-  for k in pairs (self.websocket) do
-    print (k)
-  end
-  if self.websocket.readyState == 1 then
+  if self.websocket.state == "CONNECTED" then
     self.websocket:send (json.encode (message))
   else
     self:log ("Unable to send: " .. json.encode (message))

@@ -72,10 +72,10 @@ function Platform.new (meta)
     websocket = websocket,
   }, Platform)
   Data.on_write [platform] = function (target)
-    if target / 2 == model then
+    if target / 2 == model and # (Data.path (target)) >= 3 then
       local x = target / 3
       if not Data.exists (x) then
-        env:remove (x)
+--        env:remove (x)
       elseif Data.value (x [INSTANCE])
         and (env.Cosy:is_place (x) or env.Cosy:is_transition (x)) then
         env:update_node (x)
@@ -122,10 +122,6 @@ end
 
 function env.Cosy:configure_server (url, data)
   ignore (self)
-  -- If url does not use SSL, force it:
-  if url:find "http://" == 1 then
-    url = url:gsub ("^http://", "https://")
-  end
   -- Remove trailing slash:
   if url [#url] == "/" then
     url = url:sub (1, #url-1)

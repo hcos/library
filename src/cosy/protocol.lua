@@ -11,9 +11,9 @@ function Protocol.new (metam)
     meta = metam
   }, Protocol)
   Data.on_write [protocol] = function (target, value, reverse)
-    local path     = Data.path (target)
-    local url      = path [2]
-    if url ~= metam.resource then
+    local path = Data.path (target)
+    local url  = path [2]
+    if #path < 3 or url ~= metam.resource then
       return
     end
     protocol:on_patch {
