@@ -112,6 +112,10 @@ function Platform:close ()
   end
 end
 
+function env:configure_editor (url)
+  meta.editor = url
+end
+
 function env:configure_server (url, data)
   -- If url does not use SSL, force it:
   if url:find "http://" == 1 then
@@ -149,10 +153,13 @@ end
 function env:instantiate (model, target_type, data)
   ignore (self)
   assert (Data.is (target_type))
-  model [#model + 1] = target_type * data
+  model [#model + 1] = target_type * {
+    [INSTANCE] = true,
+  }
   local result = model [#model]
-  result [INHERITS] [tostring (result)] = true
-  result [INSTANCE] = true
+  for k, v in pairs (data) do
+    result [k] = v
+  end
   return result
 end
 

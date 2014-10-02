@@ -9,7 +9,6 @@ local NAME = Tag.NAME
 local Cosy = {}
 
 local meta = {
-  editor  = "ws://edit.cosyverif.io:6969",
   servers = {},
   models  = {},
 }
