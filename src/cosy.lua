@@ -1,19 +1,17 @@
 local Tag      = require "cosy.tag"
 local Data     = require "cosy.data"
-local Protocol = require "cosy.protocol"
 local Patches  = require "cosy.patches"
+local Protocol = require "cosy.protocol"
 local ignore   = require "cosy.util.ignore"
 
-local NAME     = Tag.NAME
-local META     = Tag.new "META"
-local INHERITS = Tag.new "INHERITS"
-local TYPE     = Tag.new "TYPE"
-local VISIBLE  = Tag.new "VISIBLE"
+local NAME = Tag.NAME
 
 local Cosy = {}
 
-local meta = Data.new {
-  [NAME] = "meta"
+local meta = {
+  editor  = "ws://edit.cosyverif.io:6969",
+  servers = {},
+  models  = {},
 }
 local store = Data.new {
   [NAME] = "cosy"
@@ -35,8 +33,6 @@ else
   Platform:log "Using dummy"
 end
 
-local on_write_enabled = true
-
 function Cosy:__index (url)
   ignore (self)
   if type (url) ~= "string" then
@@ -56,32 +52,30 @@ function Cosy:__index (url)
   if model ~= nil then
     return model
   end
-  on_write_enabled = false
   model = store [url]
   --
-  for k, server in pairs (meta.servers) do
-    if url:sub (1, #k) == k then
-      meta.models [url] = server {}
+  local server
+  for k, v in pairs (meta.servers) do
+    if url:find ("^" .. k) == 1 then
+      server = v
       break
     end
   end
-  local meta = meta.models [url]
-  meta.model       = model
-  meta.resource    = url
-  meta.editor.url  = url .. "/editor"
-  meta.protocol    = Protocol.new (meta)
-  meta.platform    = Platform.new (meta)
-  meta.patch       = {
-    action = "add-patch",
-    token  = meta.editor.token,
+  local metam = {
+    model       = model,
+    server      = server,
+    resource    = url,
+    editor      = meta.editor,
+    patches     = Patches.new (),
+    disconnect  = function ()
+      Data.clear (model)
+      meta.models [url] = nil
+    end,
   }
-  meta.patches     = Patches.new ()
-  meta.disconnect  = function ()
-    Data.clear (model)
-    Data.clear (meta)
-  end
+  metam.protocol = Protocol.new (metam)
+  metam.platform = Platform.new (metam)
+  meta.models [url] = metam
   rawset (cosy, url, model)
-  on_write_enabled = true
   return model
 end
 
@@ -90,32 +84,8 @@ function Cosy:__newindex ()
   assert (false)
 end
 
-Data.on_write.from_user = function (target, value, reverse)
-  if not (store <= target) then
-    return
-  end
-  local path     = Data.path (target)
-  local url      = path [2]
-  local meta     = meta.models [url]
-  local protocol = meta.protocol ()
---  local patches  = meta.patches ()
-  -- TODO: generate patch
---  patches:insert (meta.patch * {
---    code    = [[ ]] % { },
---    status  = "applied",
---    target  = target,
---    value   = value,
---    reverse = reverse,
---  })
-  protocol:on_change ()
-end
-
 return {
   Cosy = Cosy,
   cosy = global.cosy,
   meta = meta,
 }
-
--- Each data can have:
--- [TYPE] = "type" or "instance"
--- [INHERITS] = { string = true }

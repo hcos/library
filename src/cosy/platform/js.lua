@@ -2,16 +2,12 @@ local json       = require "dkjson"
 local _          = require "cosy.util.string"
 local ignore     = require "cosy.util.ignore"
 local Data       = require "cosy.data"
-local Algorithm  = require "cosy.algorithm"
 local Tag        = require "cosy.tag"
-local INHERITS    = Tag.INHERITS
-local TYPE        = Tag.TYPE
-local INSTANCE    = Tag.INSTANCE
-local VISIBLE     = Tag.VISIBLE
+local INHERITS    = Tag.new "INHERITS"
+local INSTANCE    = Tag.new "INSTANCE"
 local POSITION    = Tag.new "POSITION"
 local SELECTED    = Tag.new "SELECTED"
 local HIGHLIGHTED = Tag.new "HIGHLIGHTED"
-
 
 local GLOBAL = _G or _ENV
 local js  = GLOBAL.js
@@ -22,8 +18,10 @@ local meta = GLOBAL.meta
 env.cosy = cosy
 env.meta = meta
 
+local console = env.console
+
 GLOBAL.print = function (msg)
-  env.console:info (msg)
+  console:info (msg)
 end
 
 local Platform = {}
@@ -32,73 +30,66 @@ Platform.__index = Platform
 
 function Platform:log (message)
   ignore (self)
-  env.console:log (message)
+  console:log (message)
 end
 
 function Platform:info (message)
   ignore (self)
-  env.console:info (message)
+  console:info (message)
 end
 
 function Platform:warn (message)
   ignore (self)
-  env.console:warn (message)
+  console:warn (message)
 end
 
 function Platform:error (message)
   ignore (self)
-  env.console:error (message)
+  console:error (message)
 end
 
 function Platform:send (message)
   if self.websocket.readyState == 1 then
     message.token = self.token
     self.websocket:send (json.encode (message))
+    self:log ("Sent: " .. json.encode (message))
+    return true
   else
     self:log ("Unable to send: " .. json.encode (message))
+    return false
   end
 end
 
 function Platform.new (meta)
-  -- TODO: cross-domain + authentication
-  local model = meta.model
-  Data.on_write [tostring (model)] = function (target, value, reverse)
-    if target / 2 == model then
+  local model    = meta.model
+  local resource = meta.resource
+  local websocket =
+    env:eval ([[new WebSocket ("${editor}", "cosy")]] % {
+      editor = meta.editor,
+    })
+  local protocol = meta.protocol
+  local platform = setmetatable ({
+    meta      = meta,
+    websocket = websocket,
+  }, Platform)
+  Data.on_write [platform] = function (target)
+    if target / 2 == resource then
       local x = target / 3
-      if not Data.exits (x) then
+      if not Data.exists (x) then
         env:remove_node (x)
       elseif Data.value (x [INSTANCE]) then
         env:update_node (x)
       end
     end
   end
-  local editor_info = env:load (meta.editor.url ())
-  if not editor_info then
-    Platform:warn ("Cannot get editor ${editor_url} from repository." % {
-      editor_url = meta.editor.url ()
-    })
-    return setmetatable ({
-      meta = meta,
-    }, Platform)
-  end
-  editor_info = json.decode (editor_info)
-  meta.editor.token = editor_info.token
-  meta.editor.url   = editor_info.url
-  local websocket =
-    env:eval ([[new WebSocket ("${editor}", "cosy")]] % {
-      editor = meta.editor.url (),
-    })
-  local protocol = meta.protocol ()
   function websocket:onopen ()
     ignore (self)
+    env:is_connected (true);
     protocol:on_open ()
-    websocket:send {
-      action = "get-patches",
-      token  = meta.editor.token (),
-    }
   end
   function websocket:onclose ()
     ignore (self)
+    env:is_connected (false);
     protocol:on_close ()
   end
   function websocket:onmessage (event)
@@ -109,10 +100,7 @@ function Platform.new (meta)
     ignore (self)
     websocket:close ()
   end
-  return setmetatable ({
-    meta      = meta,
-    websocket = websocket,
-  }, Platform)
+  return platform
 end
 
 function Platform:close ()
@@ -123,6 +111,24 @@ function Platform:close ()
     self.websocket = nil
   end
 end
+
+function env:configure_server (url, data)
+  -- If url does not use SSL, force it:
+  if url:find "http://" == 1 then
+    url = url:gsub ("^http://", "https://")
+  end
+  -- Remove trailing slash:
+  if url [#url] == "/" then
+    url = url:sub (1, #url-1)
+  end
+  -- Store:
+  meta.servers [url] = {
+    username = data.username,
+    password = data.password,
+  }
+end
+
+--[[
 
 local function visible_types (model)
   assert (Data.is (model))
@@ -138,7 +144,10 @@ local function visible_instances (model)
   end)
 end
 
+--]]
+
 function env:instantiate (model, target_type, data)
+  ignore (self)
   assert (Data.is (target_type))
   model [#model + 1] = target_type * data
   local result = model [#model]
@@ -148,14 +157,17 @@ function env:instantiate (model, target_type, data)
 end
 
 function env:create (model, source, link_type, target_type, data)
+  ignore (self)
   -- TODO
 end
 
 function env:delete (target)
+  ignore (self)
   -- TODO: remove arcs
   Data.clear (target)
 end
 
+--[[
 local function to_array (x)
   x = x or {}
   local elements = {}
@@ -165,6 +177,7 @@ local function to_array (x)
   table.sort (elements)
   return env:eval ("[ " .. table.concat (elements, ", ") .. " ]")
 end
+--]]
 
 local function to_object (x)
   x = x or {}
@@ -180,6 +193,7 @@ local function to_object (x)
 end
 
 function env:types (model)
+  ignore (self)
   return to_object {
     place_type      = model.place_type,
     transition_type = model.transition_type,
@@ -276,141 +290,6 @@ function env:target (x)
 end
 
 --[=[
-function model_of (data)
-  return data [PATH] [1]
-end
-
-function is_empty (data)
-  for _ in pairs (data) do
-    return false
-  end
-  return true
-end
-
-function env:id (data)
-  ignore (self)
-  if type (data) ~= "table" then
-    return nil
-  end
-  return tostring (data)
-end
-
-function env:type (data)
-  ignore (self)
-  if type (data) ~= "table" then
-    return nil
-  end
-  return data [tags.TYPE]
-end
-
-local function to_array (x)
-  x = x or {}
-  local elements = {}
-  for element in set (x) do
-    elements [#elements + 1] = '"' .. tostring (element) .. '"'
-  end
-  table.sort (elements)
-  return js.global:eval ("[ " .. table.concat (elements, ", ") .. " ]")
-end
-
-local function to_object (x)
-  x = x or {}
-  local elements = {}
-  for key, value in map (x) do
-    elements [#elements + 1] = [["${key}": ${value}]] % {
-      key   = tostring (key),
-      value = value,
-    }
-  end
-  table.sort (elements)
-  return js.global:eval ("{ " .. table.concat (elements, ", ") .. " }")
-end
-
-function env:selected (data)
-  ignore (self)
-  if type (data) ~= "table" then
-    return nil
-  end
-  return to_array (data [tags.SELECTEDED])
-end
-
-function env:select (data)
-  ignore (self)
-  if type (data) ~= "table" then
-    return nil
-  end
-  local username = model_of (data) [USER]
-  local selected = data [tags.SELECTED] or {}
-  selected [username] = true
-  data [tags.SELECTED] = selected
-end
-
-function env:deselect (data)
-  ignore (self)
-  if type (data) ~= "table" then
-    return nil
-  end
-  local username = model_of (data) [USER]
-  local selected = data [tags.SELECTED] or {}
-  selected [username] = nil
-  if is_empty (selected) then
-    data [tags.SELECTED] = nil
-  else
-    data [tags.SELECTED] = selected
-  end
-end
-
-function env:attributes (data)
-  local result = {}
-  for k, v in map (data) do
-    if type (k) == "string" then
-      result [k] = true
-    end
-  end
-  return to_array (result)
-end
-
-function env:appearance (data)
-
-end
-
-function env:update_appearance (data)
-
-end
-
-
-function env:create_node (of_type)
-  ignore (self)
-  return {
-    [tags.TYPE] = of_type,
-  }
-end
-
-function env:create_arc (arc_type, arrows²&)
-end
-
-function env:smart_create (node, arc_type, node_type)
-
-end
-
-function delete (data)
-  local path = data [PATH]
-
-end
-
-function env:count (x)
-  ignore (self)
-  return #x
-end
-
-function env:tags ()
-  ignore (self)
-  return to_object (tags);
-end
-
-
-
-
 js.global:eval [[
   window.make_iterator = function (iterator) {
     return {
@@ -442,7 +321,6 @@ function env:map (collection)
   end)
   return env:make_iterator (iterator)
 end
-
 --]=]
 
 return Platform
