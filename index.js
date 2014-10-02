@@ -1,4 +1,8 @@
-rootURL = "http://localhost:8080/server.php";
+rootURL = "http://rest.cosyverif.io";
+
+url = "";
+username = "";
+password = "";
 
 function get(url, successFunction, errorFunction)
 {
