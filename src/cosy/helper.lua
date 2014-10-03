@@ -126,6 +126,10 @@ function Helper.is_arc (x)
   return Helper.is (x, (x / 2).arc_type)
 end
 
+function Helper.is_instance (x)
+  return x [INSTANCE] ()
+end
+
 function Helper.get_name (x)
   return Data.value (x.name)
 end
