@@ -88,18 +88,18 @@ end
 
 function Helper.remove (target)
   local model           = target / 2
-  local place_type      = model.place_type
-  local transition_type = model.transition_type
-  if Data.value (target [tostring (place_type)])
-  or Data.value (target [tostring (transition_type)]) then
+  if Helper.is_place (target)
+  or Helper.is_transition (target) then
     for _, x in pairs (model) do
       if Data.dereference (x.source) == target
       or Data.dereference (x.target) == target then
         Data.clear (x)
       end
     end
+    Data.clear (target)
+  elseif Helper.is_arc (target) then
+    Data.clear (target)
   end
-  Data.clear (target)
 end
 
 function Helper.types (model)
