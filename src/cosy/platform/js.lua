@@ -78,13 +78,13 @@ function Platform.new (meta)
     if target / 2 == model and # (Data.path (target)) >= 3 then
       local x = target / 3
       if not Data.exists (x) then
---        env:remove (x)
+        env:remove (x)
       elseif Data.value (x [INSTANCE])
-        and (env.Cosy:is_place (x) or env.Cosy:is_transition (x)) then
+        and (Helper.is_place (x) or Helper.is_transition (x)) then
         env:update_node (x)
       elseif Data.value (x [INSTANCE])
-        and env.Cosy:is_arc (x) then
---        env:update_arc (x)
+        and Helper.is_arc (x) then
+        env:update_arc (x)
       end
     end
   end
