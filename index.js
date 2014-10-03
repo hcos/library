@@ -193,29 +193,34 @@ function showError(code, text, message)
   {
     alertNotification("danger", text +" : "+ message);
   }
-  else if (code == '403')
+  else if (code == 403)
   {
     alertNotification("danger", text +" : "+ message);
   }
-  else if (code == '404')
+  else if (code == 404)
   {
     alertNotification("danger", text +" : "+ message);
   }
-  else if (code == '409')
+  else if (code == 409)
   {
     alertNotification("danger", text +" : "+ message);
   }
-  else if (code == '410')
+  else if (code == 410)
   {
     alertNotification("danger", text +" : "+ message);
   }
-  else if (code == '422')
+  else if (code == 422)
   {
     alertNotification("danger", text +" : "+ message);
   }
-  else if (code == '500')
+  else if (code == 500)
   {
     alertNotification("danger", text +" : "+ message);
+  }
+  else
+  {
+    alert(text);
+    alertNotification("danger", "Fatal error !");
   }
 }
 
