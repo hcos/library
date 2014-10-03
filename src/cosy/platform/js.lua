@@ -79,10 +79,10 @@ function Platform.new (meta)
       local x = target / 3
       if not Data.exists (x) then
         env:remove (x)
-      elseif Data.value (x [INSTANCE])
+      elseif Helper.is_instance (x)
         and (Helper.is_place (x) or Helper.is_transition (x)) then
         env:update_node (x)
-      elseif Data.value (x [INSTANCE])
+      elseif Helper.is_instance (x)
         and Helper.is_arc (x) then
         env:update_arc (x)
       end
