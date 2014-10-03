@@ -131,7 +131,7 @@
         .on("tick", tick);
     
     container.append("svg:defs").selectAll("marker")
-        .data(["licensing"])      // Different link/path types can be defined here
+        .data(["arc"])      // Different link/path types can be defined here
         .enter().append("svg:marker")    // This section adds in the arrows
         .attr("id", String)
         .attr("viewBox", "0 -5 10 10")
@@ -184,62 +184,62 @@
         circle = container.append("svg:g").selectAll("g").attr("id", "tokens"),
         text = container.append("svg:g").selectAll("g").attr("id", "dummy_labels");
     
-    // Add new node notification from server 
-    function add_node(node){
-        updateModelNode(node);
-    }
-    
     // Update node notification from server
     function update_node (node) {
+        console.log('Update a Node');
         updateModelNode(node);
     }
     
-    function updateModelNode (node) {
-        console.log("update model");
-        if(node.get("type") == "arc"){
-            var source = node.get('source'),
-                target = node.get('target'),
-                valuation = node.get('validation'),
-                anchor = node.get("anchor") ?  node.get("anchor") : '',
-                lock_pos = node.get("lock_pos") ?  node.get("lock_pos") : false;
-            
-            source = force.nodes()[nodes_index[id(source)]];
-            target = force.nodes()[nodes_index[id(target)]];
+    function update_arc (arc) {
+        console.log('Update an Arc')
+        updateModelNode(arc);
+    }
+    
+    function updateModelNode(node) {
+        if(Cosy.is_arc(node)){
+            var source = Cosy.source(node),
+                target = Cosy.target(node),
+                anchor = '',
+                lock_pos = false;
+            console.log('Source ' + source + ' target ' + target);
+            source = force.nodes()[nodes_index[Cosy.id(source)]];
+            target = force.nodes()[nodes_index[Cosy.id(target)]];
+            console.log('Source ' + source + ' target ' + target);
             
             if(!source || !target) return;
             
-            if(undefined == links_index[id(node)]){
-                force.links().push({id : id(node), 
-                                    anchor:anchor,
+            if(undefined == links_index[Cosy.id(node)]){
+                force.links().push({id : Cosy.id(node), 
+                                    anchor: anchor,
                                     source: source,
                                     target: target,
-                                    type: "licensing",
+                                    type: "arc",
                                     lock_pos : lock_pos});
                                     
-                links_index[id(node)] = force.links().length - 1;
+                links_index[Cosy.id(node)] = force.links().length - 1;
             } else {
-                var i = links_index[id(node)];
+                var i = links_index[Cosy.id(node)];
                 force.links()[i].source = source;            
                 force.links()[i].target = target;
                 force.links()[i].anchor = anchor;
                 force.links()[i].lock_pos = lock_pos;
             }
-        } else if("place" == node.get("type") || "transition" == node.get("type")){
+        } else if(Cosy.is_place(node) || Cosy.is_transition(node)){
             
-            if(node.get('name') == undefined) return;
+            if(Cosy.get_name(node) == undefined) return;
             
-            marking = node.get('marking') ? node.get('marking') : '';
-            highlighted = node.get('highlighted') ? node.get('highlighted') : '';
-            selected = node.get('selected') ? node.get('selected') : '';
-            name = node.get('name');
-            isTransition = node.get("type") == "transition";
+            marking = Cosy.get_token(node) ? Cosy.get_token(node) : '';
+            highlighted = Cosy.is_highlighted(node) ? Cosy.is_highlighted(node) : '';
+            selected = Cosy.is_selected(node) ? Cosy.is_selected(node) : '';
+            name = Cosy.get_name(node);
+            isTransition = Cosy.is_transition(node);
             
             if(highlighted)
-                shape = isTransition? shapes.rect_highlighted : shapes.circle_highlighted;
+                shape = isTransition ? shapes.rect_highlighted : shapes.circle_highlighted;
             else
-                shape = isTransition? shapes.rect : shapes.circle;
+                shape = isTransition ? shapes.rect : shapes.circle;
             
-            var s = node.get("position"),
+            var s = Cosy.get_position(node),
                 is_polar = s.indexOf(",") == -1,
                 x_pos, y_pos, p;
                 
@@ -254,9 +254,10 @@
             
             var x_pos = parseFloat(origin.x) + parseFloat(offset_x);
             var y_pos = parseFloat(origin.y) - parseFloat(offset_y);
-            elem = {id : id(node),
+            
+            elem = {id : Cosy.id(node),
                     name : name,
-                    type : node.get("type"), 
+                    type : isTransition ? 'transition' : 'place',   // FIXME
                     shape : shape,
                     marking : marking ? true : false,
                     px : x_pos,
@@ -264,12 +265,13 @@
                     highlighted : highlighted,
                     selected : selected,
                     lua_node :node};
-            if(undefined == nodes_index[id(node)]){
+            if(undefined == nodes_index[Cosy.id(node)]){
                 elem.fixed = true;
                 force.nodes().push(elem);
-                nodes_index[id(node)] = force.nodes().length - 1;
+                console.log('Saving new node in javascript: ' + Cosy.id(node));
+                nodes_index[Cosy.id(node)] = force.nodes().length - 1;
             } else {
-                i = nodes_index[id(node)];
+                i = nodes_index[Cosy.id(node)];
                 force.nodes()[i].id = elem.id;
                 force.nodes()[i].name = elem.name;
                 force.nodes()[i].type = elem.type;
@@ -282,84 +284,96 @@
                 force.nodes()[i].lua_node = elem.lua_node;
             }
         } 
-        else if("form" == node.get("type")){
-            // TODO: This is not tested.
-            var unsorted_forms = elements(node);
-            var form_elems = [];
-            for(j = 1; j <= count(unsorted_forms); j++){
-                form_elems.push(unsorted_forms.get(j));
-            }
-            form_elems.sort(function sortForms(x, y) {
-                if("text" == x.get("type"))
-                    return -1;
-                if(y_value = "text" == y.get("type"))
-                    return 1;
-                return 0;
-            });
-            
-            var selection = d3.select("#forms_group");
-            var data = selection.data();
-            data[id(node)] = node;
-            selection = selection.data(data, function(d) { return id(node)});
-            
-            selection.enter().append("div")
-                    .attr("id", id(node))
-                    .attr("class", "lua_form");
-            
-            for(j = 0; j < count(form_elems); j++){
-                form = form_elems[j];
-                sub_id = id(form);
-                if("text" == form.get("type")){
-                    selection.append("h4")
-                        .attr("id", sub_id+"_h4")
-                        .text(form.get("name"));
-                    selection.append("input").data([form])
-                        .attr("id", sub_id+"_text")
-                        .attr("type", "text")
-                        .attr("size", 9)
-                        .on("change", formTextChange)
-                        .attr("value", form.get("value"));
-                } else if("button" == form.get("type")) {
-                    btn = selection.append("button").data([form]);
-                    btn.attr("type", "button")
-                        .attr("id", sub_id)
-                        .attr("class", "btn btn-success")
-                        .attr("data-toggle", "button")
-                        .on("click", formBtnClick)
-                        .text(form.get("name"));
-                    if(!form.get("is_active")) {
-                        btn.attr("disabled", "true")
-                    }
-                }
-            }
-        }
+        //~ else if("form" == node.get("type")){
+            //~ // TODO: This is not tested.
+            //~ var unsorted_forms = elements(node);
+            //~ var form_elems = [];
+            //~ for(j = 1; j <= count(unsorted_forms); j++){
+                //~ form_elems.push(unsorted_forms.get(j));
+            //~ }
+            //~ form_elems.sort(function sortForms(x, y) {
+                //~ if("text" == x.get("type"))
+                    //~ return -1;
+                //~ if(y_value = "text" == y.get("type"))
+                    //~ return 1;
+                //~ return 0;
+            //~ });
+            //~ 
+            //~ var selection = d3.select("#forms_group");
+            //~ var data = selection.data();
+            //~ data[id(node)] = node;
+            //~ selection = selection.data(data, function(d) { return id(node)});
+            //~ 
+            //~ selection.enter().append("div")
+                    //~ .attr("id", id(node))
+                    //~ .attr("class", "lua_form");
+            //~ 
+            //~ for(j = 0; j < count(form_elems); j++){
+                //~ form = form_elems[j];
+                //~ sub_id = id(form);
+                //~ if("text" == form.get("type")){
+                    //~ selection.append("h4")
+                        //~ .attr("id", sub_id+"_h4")
+                        //~ .text(form.get("name"));
+                    //~ selection.append("input").data([form])
+                        //~ .attr("id", sub_id+"_text")
+                        //~ .attr("type", "text")
+                        //~ .attr("size", 9)
+                        //~ .on("change", formTextChange)
+                        //~ .attr("value", form.get("value"));
+                //~ } else if("button" == form.get("type")) {
+                    //~ btn = selection.append("button").data([form]);
+                    //~ btn.attr("type", "button")
+                        //~ .attr("id", sub_id)
+                        //~ .attr("class", "btn btn-success")
+                        //~ .attr("data-toggle", "button")
+                        //~ .on("click", formBtnClick)
+                        //~ .text(form.get("name"));
+                    //~ if(!form.get("is_active")) {
+                        //~ btn.attr("disabled", "true")
+                    //~ }
+                //~ }
+            //~ }
+        //~ }
         updateForceLayout();
     }
 
-    // Remove a node notification from server
-    function remove_node (node) {
+    function remove(node) {
+        console.log('Remove called')
         var index_object, list;
-        
-        if(node.get("type") == "arc"){
+        if(node.type == 'arc'){
             index_object = links_index;
             list = force.links();
-        } else if(node.get("type") == "place" || node.get("type") == "transition"){
+        } else if(node.type == 'place' || node.type == 'transition'){
             index_object = nodes_index;
             list = force.nodes();
         }
-
-        list.splice(index_object[id(node)], 1)
         
-        delete index_object[id(node)];
-        updateForceLayout();
+        if(list && index_object) {
+            list.splice(index_object[node.id], 1)
+            delete index_object[node.id];
+            
+            var temp = force.links();
+            for(var i = 0; i < temp.length; i++) {
+                var l = force.links()[i];
+                if(l.source.id == node.id || l.target.id == node.id){
+                    
+                    temp.splice(links_index[l.id], 1)
+                    delete links_index[l.id];
+                }
+            }
+            updateForceLayout();
+        }
     }
     
     // User add new node
     function addNodeToModel(node) {
+        Cosy.create(model, source, link_type, target_type, data);
     }
     
     // User remove node
     function removeNodeFromModel(node){
+        Cosy.remove(node.lua_node)
     }
     
     function websocket (url) {
@@ -381,7 +395,6 @@
             .attr("marker-end", function (d) {return "url(#" + d.type + ")";});
         path.exit().remove();
         
-        console.log("#Nodes: " + force.nodes().length+" #Links: " + force.links().length);
         node = node.data(force.nodes(), function (d) {return d.id});
         node.enter().append("path");
         node.attr("class", function(d){ return d.selected ? "node selected" : "node"})
@@ -415,6 +428,7 @@
         text.text(function(d) { return d.name; });
         text.exit().remove();
         force.start();
+        console.log("#Nodes: " + force.nodes().length+" #Links: " + force.links().length);
         return true;
     }
     
@@ -433,7 +447,7 @@
     var pressTimerRight = null;
     var pressTimerLeft = null;
     
-    // User selected type. TODO: On implementation of "lua types", change this var
+    // User selected type. FIXME: On implementation of "lua types", change this var
     var new_elem_type = "place";
     
     function resetMouseVars() {
@@ -508,26 +522,22 @@
                             name : "dummy_node_"+force.nodes().length,
                             type : source.type == "transition" ? "place" : "transition", 
                             shape : source.type == "transition" ? shapes.circle : shapes.rect,
-                            x : point[0],
-                            y : point[1],
+                            position : point[0] + ','+point[1],
                             highlighted : false,
-                            selected : false,
-                            lua_node : null,
-                            fixed : true};
-                        force.nodes().push(node);
+                            selected : false};
+                        //~ force.nodes().push(node);
                     }
-                    var temp_i = force.nodes().length - 1;
-                    nodes_index["dummy_node"+temp_i] = temp_i;
+                    //~ var temp_i = force.nodes().length - 1;
+                    //~ nodes_index["dummy_node"+temp_i] = temp_i;
 
-                    force.links().push({id : "dummy_link_"+force.links().length, 
-                                anchor:"",
-                                source: source,
-                                target: node,
-                                type: "licensing",
-                                lock_pos : false});
-                
-                    temp_i = force.links().length - 1;
-                    links_index["dummy_link_"+temp_i] = temp_i;
+                    //~ force.links().push({id : "dummy_link_"+force.links().length, 
+                                //~ anchor:"",
+                                //~ source: source,
+                                //~ target: node,
+                                //~ type: "arc",
+                                //~ lock_pos : false});
+                    //~ temp_i = force.links().length - 1;
+                    //~ links_index["dummy_link_"+temp_i] = temp_i;
                 } else {
                     var point = d3.mouse(this),
                     node = {id : "dummy_node_"+force.nodes().length,
@@ -543,20 +553,20 @@
                         fixed : true};
                     force.nodes().push(node);
                     
-                    var temp_i = force.nodes().length - 1;
-                    nodes_index["dummy_link_" + temp_i] = temp_i;
+                    //~ var temp_i = force.nodes().length - 1;
+                    //~ nodes_index["dummy_link_" + temp_i] = temp_i;
                 }
                 arc_initiated = false;
                 node_stack.pop();
                 break;
         }
-        updateForceLayout();
+        //~ updateForceLayout();
         resetMouseVars();
     }
     
     function left_longClick(point){
         console.log("Left long click", point);
-        var node = node_stack.top();
+        var node_data = node_stack.top();
         if(!d3.select(".node_options").empty()) {
             removeOptionsMenu();
         }
@@ -578,7 +588,7 @@
                         .attr("class", "node-options-container")
                         
         var buttons_data = [{icon: "fa fa-edit fa-lg", f:function(node){console.log("Node Edition function not implemented");}}, 
-                            {icon: "fa fa-trash-o fa-lg", f: function(node){console.log("Node Remove function not implemented");}}];
+                            {icon: "fa fa-trash-o fa-lg", f: function(node){remove(node)}}];
         
         menu.selectAll("a")
             .data(buttons_data)
@@ -586,7 +596,7 @@
                 .attr("class", function(d){ return d.icon; })
                 .attr("href", "")
                 .attr("onclick", "return false") // To prevent reload when clicked.
-                .on("click", function(d){ removeOptionsMenu(); d.f(d) ; return false;});
+                .on("click", function(d){ removeOptionsMenu(); d.f(node_data) ; return false;});
         
         var items = document.querySelectorAll('.node-options-container a');
         var offset = node.type == 'place' ? 35 : 45
