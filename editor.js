@@ -264,7 +264,8 @@
                     py : y_pos,
                     highlighted : highlighted,
                     selected : selected,
-                    lua_node :node};
+                    lua_node :node };
+                console.log('ACAAAAA '+ node);
             if(undefined == nodes_index[Cosy.id(node)]){
                 elem.fixed = true;
                 force.nodes().push(elem);
@@ -339,7 +340,6 @@
     }
 
     function remove(node) {
-        console.log('Remove called')
         var index_object, list;
         if(node.type == 'arc'){
             index_object = links_index;
@@ -350,16 +350,24 @@
         }
         
         if(list && index_object) {
+            console.log("node to remove", node.id)
+            for(var x in index_object){
+                console.log([x, index_object[x]])
+            }
+            console.log(list);
             list.splice(index_object[node.id], 1)
+            console.log(list);
             delete index_object[node.id];
             
-            var temp = force.links();
-            for(var i = 0; i < temp.length; i++) {
-                var l = force.links()[i];
-                if(l.source.id == node.id || l.target.id == node.id){
-                    
-                    temp.splice(links_index[l.id], 1)
-                    delete links_index[l.id];
+            if(node.type == 'place' || node.type == 'transition'){
+                var temp = force.links();
+                for(var i = 0; i < temp.length; i++) {
+                    var l = force.links()[i];
+                    if(l.source.id == node.id || l.target.id == node.id){
+                        
+                        temp.splice(links_index[l.id], 1)
+                        delete links_index[l.id];
+                    }
                 }
             }
             updateForceLayout();
@@ -368,12 +376,13 @@
     
     // User add new node
     function addNodeToModel(node) {
-        //~ Cosy.create(model, source, link_type, target_type, data);
+        Cosy.create(Cosy.resource(), source, link_type, target_type, data);
+        Cosy.instantiate(Cosy.resource(), target_type, data);
     }
     
     // User remove node
     function removeNodeFromModel(node){
-        console.log("Cosy.remove")
+        console.log("Cosy.remove " + node.lua_node)
         Cosy.remove(node.lua_node);
     }
     
@@ -532,7 +541,7 @@
                         force.nodes().push(node);
                     }
                     var temp_i = force.nodes().length - 1;
-                    nodes_index["dummy_node"+temp_i] = temp_i;
+                    nodes_index["dummy_node_"+temp_i] = temp_i;
 
                     force.links().push({id : "dummy_link_"+force.links().length, 
                                 anchor:"",
@@ -558,7 +567,7 @@
                     force.nodes().push(node);
                     
                     var temp_i = force.nodes().length - 1;
-                    nodes_index["dummy_link_" + temp_i] = temp_i;
+                    nodes_index["dummy_node_" + temp_i] = temp_i;
                 }
                 arc_initiated = false;
                 node_stack.pop();
@@ -592,7 +601,7 @@
                         .attr("class", "node-options-container")
                         
         var buttons_data = [{icon: "fa fa-edit fa-lg", f:function(node){console.log("Node Edition function not implemented");}}, 
-                            {icon: "fa fa-trash-o fa-lg", f: function(node){removeNodeFromModel(node)}}];
+                            {icon: "fa fa-trash-o fa-lg", f: function(node){remove(node)}}];
         
         menu.selectAll("a")
             .data(buttons_data)
