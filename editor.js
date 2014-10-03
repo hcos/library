@@ -368,12 +368,13 @@
     
     // User add new node
     function addNodeToModel(node) {
-        Cosy.create(model, source, link_type, target_type, data);
+        //~ Cosy.create(model, source, link_type, target_type, data);
     }
     
     // User remove node
     function removeNodeFromModel(node){
-        Cosy.remove(node.lua_node)
+        console.log("Cosy.remove")
+        Cosy.remove(node.lua_node);
     }
     
     function websocket (url) {
@@ -522,22 +523,25 @@
                             name : "dummy_node_"+force.nodes().length,
                             type : source.type == "transition" ? "place" : "transition", 
                             shape : source.type == "transition" ? shapes.circle : shapes.rect,
+                            x : point[0],
+                            y : point[1],
                             position : point[0] + ','+point[1],
                             highlighted : false,
-                            selected : false};
-                        //~ force.nodes().push(node);
+                            selected : false,
+                            fixed : true};
+                        force.nodes().push(node);
                     }
-                    //~ var temp_i = force.nodes().length - 1;
-                    //~ nodes_index["dummy_node"+temp_i] = temp_i;
+                    var temp_i = force.nodes().length - 1;
+                    nodes_index["dummy_node"+temp_i] = temp_i;
 
-                    //~ force.links().push({id : "dummy_link_"+force.links().length, 
-                                //~ anchor:"",
-                                //~ source: source,
-                                //~ target: node,
-                                //~ type: "arc",
-                                //~ lock_pos : false});
-                    //~ temp_i = force.links().length - 1;
-                    //~ links_index["dummy_link_"+temp_i] = temp_i;
+                    force.links().push({id : "dummy_link_"+force.links().length, 
+                                anchor:"",
+                                source: source,
+                                target: node,
+                                type: "arc",
+                                lock_pos : false});
+                    temp_i = force.links().length - 1;
+                    links_index["dummy_link_"+temp_i] = temp_i;
                 } else {
                     var point = d3.mouse(this),
                     node = {id : "dummy_node_"+force.nodes().length,
@@ -553,14 +557,14 @@
                         fixed : true};
                     force.nodes().push(node);
                     
-                    //~ var temp_i = force.nodes().length - 1;
-                    //~ nodes_index["dummy_link_" + temp_i] = temp_i;
+                    var temp_i = force.nodes().length - 1;
+                    nodes_index["dummy_link_" + temp_i] = temp_i;
                 }
                 arc_initiated = false;
                 node_stack.pop();
                 break;
         }
-        //~ updateForceLayout();
+        updateForceLayout();
         resetMouseVars();
     }
     
@@ -588,7 +592,7 @@
                         .attr("class", "node-options-container")
                         
         var buttons_data = [{icon: "fa fa-edit fa-lg", f:function(node){console.log("Node Edition function not implemented");}}, 
-                            {icon: "fa fa-trash-o fa-lg", f: function(node){remove(node)}}];
+                            {icon: "fa fa-trash-o fa-lg", f: function(node){removeNodeFromModel(node)}}];
         
         menu.selectAll("a")
             .data(buttons_data)
