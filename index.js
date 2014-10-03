@@ -173,51 +173,50 @@ function showLoginLogout()
 
 function showError(code, text, message)
 {
-  if (code == 200)
+  if (code == '200')
   {
     alertNotification("success", text +" : "+ message);
   }
-  else if (code == 201)
+  else if (code == '201')
   {
-    alertNotification("success", message);
+    alertNotification("success", text +" : "+ message);
   }
-  else if (code == 204)
+  else if (code == '204')
   {
-    alertNotification("success", message);
+    alertNotification("success", text +" : "+ message);
   }
-  else if (code == 400)
+  else if (code == '400')
   {
-    alertNotification("danger", message);
+    alertNotification("danger", text +" : "+ message);
   }
-  else if (code == 401)
+  else if (code == '401')
   {
-    alertNotification("danger", message);
+    alertNotification("danger", text +" : "+ message);
   }
-  else if (code == 403)
+  else if (code == '403')
   {
-    alertNotification("danger", message);
+    alertNotification("danger", text +" : "+ message);
   }
-  else if (code == 404)
+  else if (code == '404')
   {
-    alertNotification("danger", message);
+    alertNotification("danger", text +" : "+ message);
   }
-  else if (code == 409)
+  else if (code == '409')
   {
-    alertNotification("danger", message);
+    alertNotification("danger", text +" : "+ message);
   }
-  else if (code == 410)
+  else if (code == '410')
   {
-    alertNotification("danger", message);
+    alertNotification("danger", text +" : "+ message);
   }
-  else if (code == 422)
+  else if (code == '422')
   {
-    alertNotification("danger", message);
+    alertNotification("danger", text +" : "+ message);
   }
-  else if (code == 500)
+  else if (code == '500')
   {
-    alertNotification("danger", message);
+    alertNotification("danger", text +" : "+ message);
   }
-  
 }
 
 function alertNotification(type, data)
