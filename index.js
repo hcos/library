@@ -171,6 +171,55 @@ function showLoginLogout()
   }
 }
 
+function showError(code, text, message)
+{
+  if (code == 200)
+  {
+    alertNotification("success", text +" : "+ message);
+  }
+  else if (code == 201)
+  {
+    alertNotification("success", message);
+  }
+  else if (code == 204)
+  {
+    alertNotification("success", message);
+  }
+  else if (code == 400)
+  {
+    alertNotification("danger", message);
+  }
+  else if (code == 401)
+  {
+    alertNotification("danger", message);
+  }
+  else if (code == 403)
+  {
+    alertNotification("danger", message);
+  }
+  else if (code == 404)
+  {
+    alertNotification("danger", message);
+  }
+  else if (code == 409)
+  {
+    alertNotification("danger", message);
+  }
+  else if (code == 410)
+  {
+    alertNotification("danger", message);
+  }
+  else if (code == 422)
+  {
+    alertNotification("danger", message);
+  }
+  else if (code == 500)
+  {
+    alertNotification("danger", message);
+  }
+  
+}
+
 function alertNotification(type, data)
 {
   var classVar = "alert alert-info";
