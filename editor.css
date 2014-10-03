@@ -3,13 +3,13 @@ path.link {
     stroke: #666;
     stroke-width: 1.5px;
 }
-marker#licensing {
+marker#arc {
     fill: black;
     }
 marker#resolved{
     fill: blue;
 }
-path.link.licensing {
+path.link.arc {
     stroke: black;
 }
 path.link.resolved {
