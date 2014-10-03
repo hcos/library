@@ -16,9 +16,7 @@ function Protocol.new (metam)
       return
     end
     protocol:on_patch {
-      code    = [[
-  ${target} = ${value}
-      ]] % { 
+      code    = [[${target} = ${value}]] % {
         target = tostring (target),
         value  = dump (value),
       },
@@ -148,6 +146,7 @@ function Protocol:on_message (message)
         resource = resource,
         reason   = message.reason,
       })
+      platform:log (message.data)
       for i = #patches, 1, -1 do
         local patch = patches [i]
         if patch.status == "applied" or patch.status == "sent" then
