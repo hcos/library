@@ -93,6 +93,10 @@ function Module.start ()
   Platform.start ()
 end
 
+function Module.respond ()
+  Platform.respond ()
+end
+
 function Module.stop ()
   Platform.stop ()
 end

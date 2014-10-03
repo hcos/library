@@ -121,6 +121,9 @@ end
 function Platform.start ()
 end
 
+function Platform.respond ()
+end
+
 function Platform.stop ()
 end
 

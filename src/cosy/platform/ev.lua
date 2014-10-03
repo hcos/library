@@ -1,9 +1,11 @@
-local json       = require "dkjson"
 local _          = require "cosy.util.string"
 local ignore     = require "cosy.util.ignore"
+local Helper     = require "cosy.helper"
 local websocket  = require "websocket"
 local ev         = require "ev"
-
+local http       = require "socket.http"
+local ltn12      = require "ltn12"
+local json       = require "dkjson"
 local logging    = require "logging"
 logging.console  = require "logging.console"
 local logger     = logging.console "%level %message\n"
@@ -105,6 +107,7 @@ function Platform.start ()
       local ok, err = pcall (Cosy.main)
       if not ok then
         logger:error (err)
+        Cosy.stop ()
       end
     end)
     local function wrap (loop, idle, revents)
@@ -113,12 +116,19 @@ function Platform.start ()
         coroutine.resume (m)
       else
         idle:stop (loop)
+        if not Platform.no_stop then
+          Cosy.stop ()
+        end
       end
     end
     local idle = ev.Idle.new (wrap)
     idle:start (ev.Loop.default)
   end
   ev.Loop.default:loop ()
+end
+
+function Platform.respond ()
+  Platform.no_stop = true
 end
 
 function Platform.stop ()
@@ -141,6 +151,80 @@ function Platform.stop ()
   end
   local timer = ev.Timer.new (check_patches, 1, 1)
   timer:start (ev.Loop.default)
+end
+
+function Helper.create_resource (resource, info)
+  local Cosy = require "cosy"
+  local server
+  for k, v in pairs (Cosy.meta.servers) do
+    if resource:find ("^" .. k) == 1 then
+      server = v
+      break
+    end
+  end
+  if not server then
+    error ("Cannot create ${resource}, because its server is not configured. Call 'Helper.configure_server' before." % {
+      resource = resource
+    })
+  end
+  local url = resource:gsub ("^http://", "http://${username}:${password}@" % {
+    username = server.username,
+    password = server.password,
+  })
+  print (url)
+  local data = json.encode (info)
+  print (data)
+  logger:info ("Requesting creation of ${resource}." % {
+    resource = resource
+  })
+  local _, code = http.request {
+    url    = url,
+    method = "POST",
+    source = ltn12.source.string (data),
+    headers = {
+      ["content-type"  ] = "application/json",
+      ["content-length"] = #data,
+    },
+  }
+  if code ~= 201 then
+    error ("Cannot create ${resource}, because ${reason}." % {
+      resource = resource,
+      reason   = code
+    })
+  end
+end
+
+function Helper.delete_resource (resource)
+  local Cosy = require "cosy"
+  local server
+  for k, v in pairs (Cosy.meta.servers) do
+    if resource:find ("^" .. k) == 1 then
+      server = v
+      break
+    end
+  end
+  if not server then
+    error ("Cannot create ${resource}, because its server is not configured. Call 'Helper.configure_server' before." % {
+      resource = resource
+    })
+  end
+  local url = resource:gsub ("^http://", "http://${username}:${password}@" % {
+    username = server.username,
+    password = server.password,
+  })
+  logger:info ("Requesting deletion of ${resource}." % {
+    resource = resource
+  })
+  local _, code = http.request {
+    url    = url,
+    method = "DELETE",
+  }
+  if code ~= 204 then
+    error ("Cannot delete ${resource}, because ${reason}." % {
+      resource = resource,
+      reason   = code
+    })
+  end
 end
 
 return Platform
