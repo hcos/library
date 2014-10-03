@@ -55,7 +55,7 @@ function Helper.instantiate (model, target_type, data)
     [INSTANCE] = true,
   }
   local result = model [#model]
-  for k, v in pairs (data) do
+  for k, v in pairs (data or {}) do
     result [k] = v
   end
   return result
@@ -76,7 +76,7 @@ function Helper.create (model, source, link_type, target_type, data)
   else
     return
   end
-  for k, v in pairs (data) do
+  for k, v in pairs (data or {}) do
     target [k] = v
   end
   model [#model + 1] = arc_type * {
@@ -91,8 +91,8 @@ function Helper.remove (target)
   if Helper.is_place (target)
   or Helper.is_transition (target) then
     for _, x in pairs (model) do
-      if Data.dereference (x.source) == target
-      or Data.dereference (x.target) == target then
+      if Helper.source (x) == target
+      or Helper.target (x) == target then
         Data.clear (x)
       end
     end
@@ -175,11 +175,11 @@ function Helper.unhighlight (x)
 end
 
 function Helper.source (x)
-  return x.source
+  return Data.dereference (x.source)
 end
 
 function Helper.target (x)
-  return x.target
+  return Data.dereference (x.target)
 end
 
 return Helper
