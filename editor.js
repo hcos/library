@@ -201,10 +201,10 @@
                 target = Cosy.target(node),
                 anchor = '',
                 lock_pos = false;
-            console.log('Source ' + source + ' target ' + target);
+            //~ console.log('Source ' + source + ' target ' + target);
             source = force.nodes()[nodes_index[Cosy.id(source)]];
             target = force.nodes()[nodes_index[Cosy.id(target)]];
-            console.log('Source ' + source + ' target ' + target);
+            //~ console.log('Source ' + source + ' target ' + target);
             
             if(!source || !target) return;
             
@@ -265,7 +265,6 @@
                     highlighted : highlighted,
                     selected : selected,
                     lua_node :node };
-                console.log('ACAAAAA '+ node);
             if(undefined == nodes_index[Cosy.id(node)]){
                 elem.fixed = true;
                 force.nodes().push(elem);
@@ -341,6 +340,7 @@
 
     function remove(node) {
         var index_object, list;
+        
         if(node.type == 'arc'){
             index_object = links_index;
             list = force.links();
@@ -351,25 +351,30 @@
         
         if(list && index_object) {
             console.log("node to remove", node.id)
-            for(var x in index_object){
-                console.log([x, index_object[x]])
-            }
-            console.log(list);
+            //~ for(var x in index_object){
+                //~ console.log([x, index_object[x]])
+            //~ }
             list.splice(index_object[node.id], 1)
-            console.log(list);
+            var index = index_object[node.id];
             delete index_object[node.id];
-            
-            if(node.type == 'place' || node.type == 'transition'){
-                var temp = force.links();
-                for(var i = 0; i < temp.length; i++) {
-                    var l = force.links()[i];
-                    if(l.source.id == node.id || l.target.id == node.id){
-                        
-                        temp.splice(links_index[l.id], 1)
-                        delete links_index[l.id];
-                    }
-                }
+            for(var e in index_object){
+                index_object[e] = index < index_object[e] ? index_object[e] - 1 : index_object[e];
             }
+            
+            //~ for(var x in index_object){
+                //~ console.log([x, index_object[x]])
+            //~ }
+            //~ if(node.type == 'place' || node.type == 'transition'){
+                //~ var temp = force.links();
+                //~ for(var i = 0; i < temp.length; i++) {
+                    //~ var l = force.links()[i];
+                    //~ if(l.source.id == node.id || l.target.id == node.id){
+                        //~ 
+                        //~ temp.splice(links_index[l.id], 1)
+                        //~ delete links_index[l.id];
+                    //~ }
+                //~ }
+            //~ }
             updateForceLayout();
         }
     }
@@ -399,13 +404,14 @@
         assert(force.nodes().length != nodes_index.length, "Error: Force nodes amount diferrent from indexed nodes");
         assert(force.links().length != links_index.length, "Error: Force links amount diferrent from indexed links");
         
-        path = path.data(force.links(), function(d){return d.id});
+        path = path.data(force.links(), function(d) { return d.id });
         path.enter().insert("svg:path", ".node");
         path.attr("class", function (d) {return "link " + d.type;})
             .attr("marker-end", function (d) {return "url(#" + d.type + ")";});
         path.exit().remove();
         
-        node = node.data(force.nodes(), function (d) {return d.id});
+        console.log('Nodes: ' + force.nodes());
+        node = node.data(force.nodes(), function (d) { return d.id });
         node.enter().append("path");
         node.attr("class", function(d){ return d.selected ? "node selected" : "node"})
             .attr("d", function(d){ return d.shape.d;})
@@ -601,7 +607,7 @@
                         .attr("class", "node-options-container")
                         
         var buttons_data = [{icon: "fa fa-edit fa-lg", f:function(node){console.log("Node Edition function not implemented");}}, 
-                            {icon: "fa fa-trash-o fa-lg", f: function(node){remove(node)}}];
+                            {icon: "fa fa-trash-o fa-lg", f: function(node){removeNodeFromModel(node)}}];
         
         menu.selectAll("a")
             .data(buttons_data)
