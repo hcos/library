@@ -355,8 +355,12 @@
                 //~ console.log([x, index_object[x]])
             //~ }
             list.splice(index_object[node.id], 1)
+            
             var index = index_object[node.id];
+            
             delete index_object[node.id];
+            
+            /*We need to update all the indexes*/
             for(var e in index_object){
                 index_object[e] = index < index_object[e] ? index_object[e] - 1 : index_object[e];
             }
@@ -410,7 +414,7 @@
             .attr("marker-end", function (d) {return "url(#" + d.type + ")";});
         path.exit().remove();
         
-        console.log('Nodes: ' + force.nodes());
+        //~ console.log('Nodes: ' + force.nodes());
         node = node.data(force.nodes(), function (d) { return d.id });
         node.enter().append("path");
         node.attr("class", function(d){ return d.selected ? "node selected" : "node"})
@@ -531,8 +535,10 @@
                     drag_line.attr("class", "drag_line_hidden")
                     var point = d3.mouse(this);
                     var node;
-                    if(node_stack.length > 0)
+                    if(node_stack.length > 0) {
                         node = node_stack.top();
+                        if(node == source) break;
+                    }
                     else {
                         node = {id : "dummy_node_"+force.nodes().length,
                             name : "dummy_node_"+force.nodes().length,
