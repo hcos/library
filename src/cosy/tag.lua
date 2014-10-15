@@ -15,7 +15,8 @@
 -- The implementation relies on overriding the `__index` behavior. Whenever
 -- a non existing tag is accessed, it is created on the fly.
 
-require "cosy.util.string"
+local _      = require "cosy.util.string"
+local ignore = require "cosy.util.ignore"
 
 local Tag_mt = {}
 local Tag  = setmetatable ({}, Tag_mt)
@@ -37,6 +38,7 @@ function Tag.new (name)
 end
 
 function Tag_mt:__index (key)
+  ignore (self)
   local result = rawget (tags, key)
   if result then
     return result

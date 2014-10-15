@@ -127,7 +127,7 @@ function Helper.is_arc (x)
 end
 
 function Helper.is_instance (x)
-  return x [INSTANCE] ()
+  return x [INSTANCE] () == true
 end
 
 function Helper.get_name (x)

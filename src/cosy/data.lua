@@ -4,6 +4,7 @@ local Tag = require "cosy.tag"
 local PREVIOUS_DATA = {}
 local PREVIOUS_KEY  = {}
 local ROOT          = {}
+local DEPTH         = {}
 
 local PARENT  = Tag.new "PARENT"
 local PARENTS = Tag.new "PARENTS"
@@ -21,6 +22,7 @@ function Data.new (x)
     [ROOT         ] = x,
     [PREVIOUS_DATA] = false,
     [PREVIOUS_KEY ] = false,
+    [DEPTH        ] = 1,
   }, Data)
 end
 
@@ -58,27 +60,15 @@ function Data:__index (key)
     [PREVIOUS_DATA] = self,
     [PREVIOUS_KEY ] = key,
     [ROOT         ] = false,
+    [DEPTH        ] = self [DEPTH] + 1
   }, Data)
 end
 
 function Data.clear (x)
-  local path   = Data.path (x)
-  local parent = x / -1
-  local key    = path [#path]
+  local parent = x [PREVIOUS_DATA]
+  local key    = x [PREVIOUS_KEY ]
   parent [key] = nil
   parent [key] = {}
-end
-
-local function clear (x)
-  local path = data_path (x)
-  local data = path [1]
-  for i = 2, #path-1 do
-    data = data [path [i]]
-    if type (data) ~= "table" then
-      return
-    end
-  end
-  data [path [#path]] = nil
 end
 
 function Data:__newindex (key, value)
@@ -107,13 +97,13 @@ function Data:__newindex (key, value)
     reverse = function () self [key] = old_value end
     v [VALUE] = value
   elseif not new_is_value and old_is_value then
-    reverse = function () clear (target); self [key] = v end
+    reverse = function () Data.clear (target); self [key] = v end
     if value [VALUE] == nil then
       value [VALUE] = v
     end
     data [key] = value
   elseif not new_is_value and not old_is_value then
-    reverse = function () clear (target); self [key] = v end
+    reverse = function () Data.clear (target); self [key] = v end
     if value [VALUE] == nil then
       value [VALUE] = v [VALUE]
     end
@@ -185,7 +175,7 @@ function Data:__pairs ()
       end
     else
       if type (data) == "table" then
-        for k, v in pairs (data) do
+        for k, _ in pairs (data) do
           if k ~= PARENT and k ~= PARENTS then
             coroutine.yield (k, self [k])
           end
@@ -196,7 +186,7 @@ function Data:__pairs ()
       for j = i, #path do
         subpath = subpath [path [j]]
       end
-      for k, v in pairs (subpath) do
+      for k, _ in pairs (subpath) do
         if not seen [k] then
           coroutine.yield (k, self [k])
           seen [k] = true
@@ -212,21 +202,28 @@ function Data:__pairs ()
 end
 
 function Data:__tostring ()
-  local path   = data_path (self)
-  local result = path [1] [NAME] or "@" .. tostring (path [1]):sub (8)
-  for i = 2, #path do
-    local key = path [i]
+  local current = self
+  local result  = {}
+  while not current [ROOT] do
+    local key = current [PREVIOUS_KEY]
     if type (key) == "string" then
       if key:is_identifier () then
-        result = result .. "." .. key
+        result [#result + 1] = "." .. key
       else
-        result = result .. " [ " .. key:quote () .. " ]"
+        result [#result + 1] = "[ " .. key:quote () .. " ]"
       end
     else
-      result = result .. " [" .. tostring (key) .. "]"
+      result [#result + 1] = "[" .. tostring (key) .. "]"
     end
+    current = current [PREVIOUS_DATA]
   end
-  return result
+  local root = current [ROOT]
+  result [#result + 1] = (root [NAME] or "@" .. tostring (root):sub (8))
+  local size = #result
+  for i = 1, size / 2 do
+    result [i], result [size+1-i] = result [size+1-i], result [i]
+  end
+  return table.concat (result)
 end
 
 function Data:__eq (x)
@@ -243,85 +240,41 @@ function Data:__eq (x)
   return true
 end
 
-function Data:__le (x)
-  local lhs = data_path (self)
-  local rhs = data_path (x)
-  if #lhs > #rhs then
-    return false
-  end
-  for i, l in ipairs (lhs) do
-    if l ~= rhs [i] then
-      return false
-    end
-  end
-  return true
-end
-
-function Data:__lt (x)
-  local lhs = data_path (self)
-  local rhs = data_path (x)
-  if #lhs >= #rhs then
-    return false
-  end
-  for i, l in ipairs (lhs) do
-    if l ~= rhs [i] then
-      return false
-    end
-  end
-  return true
-end
-
-function Data:__mod (x)
-  assert (type (x) == "table" and getmetatable (x) == Data)
-  if x < self then
-    local lhs = data_path (self)
-    local rhs = data_path (x)
-    local root = rhs [1]
-    for i = 2, #rhs do
-      root = root [rhs [i]]
-    end
-    local result = Data.new (root)
-    for i = #rhs+1, #lhs do
-      result = result [lhs [i]]
-    end
-    return result
-  else
-    return self
-  end
-end
-
+-- `x / n` restricts `x` to the `n` first (or last) parts of its path.
 function Data:__div (x)
   assert (type (x) == "number" and x % 1 == 0 and x ~= 0)
-  local path   = data_path (self)
-  local root   = path [1]
-  local result = Data.new (root)
+  local depth  = self [DEPTH]
+  local steps
   if x > 0 then
-    for i = 2, math.min (#path, x) do
-      result = result [path [i]]
+    if x >= depth then
+      return self
     end
+    steps = depth - x
   elseif x < 0 then
-    for i = 2, math.max (1, #path + x) do
-      result = result [path [i]]
+    if -x >= depth then
+      return nil
     end
+    steps = x
+  end
+  local result = self
+  for _ = 1, steps do
+    result = result [PREVIOUS_DATA]
   end
   return result
+end
+
+function Data:__unm ()
+  return Data.dereference (self)
+end
+
+function Data:__call (...)
+  return Data.value (self)
 end
 
 function Data:__mul (x)
   assert (type (x) == "table")
   x [PARENT] = self
   return x
-end
-
-function Data:__call (...)
-  local f = Data.value (self)
-  if type (f) == "function" or type (f) == "thread" then
-    return f (...)
-  else
-    local args = table.pack (...)
-    assert (#args == 0)
-    return f
-  end
 end
 
 function Data:__add (x)
@@ -338,10 +291,6 @@ function Data:__add (x)
     assert (false)
   end
   return Expression.new (parents)
-end
-
-function Data:__unm ()
-  return Data.dereference (self)
 end
 
 function Expression.new (...)
@@ -427,10 +376,10 @@ function Data.dereference (x)
   local visited = { data }
   for i = 2, #path do
     data = data [path [i]]
-    if type (data) ~= "table" then
+    if not data then
       break
     end
-    visited [#visited + 1] = data
+    visited [i] = data
   end
   local result
   if type (data) == "table" then
@@ -463,11 +412,98 @@ function Data.dereference (x)
   return nil
 end
 
+function Data:__le (x)
+  if type (self) ~= "table" or getmetatable (self) ~= Data
+  or type (x   ) ~= "table" or getmetatable (x   ) ~= Data then
+    return nil
+  end
+  return self == x or self < x
+end
+
+function Data:__lt (x)
+  if type (self) ~= "table" or getmetatable (self) ~= Data
+  or type (x   ) ~= "table" or getmetatable (x   ) ~= Data then
+    return nil
+  end
+  local path    = data_path (x)
+  local data    = path [1]
+  local visited = { data }
+  for i = 2, #path do
+    data = data [path [i]]
+    if not data then
+      break
+    end
+    visited [i] = data
+  end
+  for i = #visited, 1, -1 do
+    data = visited [i]
+    for _, subpath in ipairs (data [PARENTS] or { data [PARENT] }) do
+      for j = i+1, #path do
+        subpath = subpath [path [j]]
+      end
+      local result = subpath == self or self < subpath
+      if result then
+        return result
+      end
+    end
+  end
+  return false
+end
+
 function Data.value (x)
   repeat
     x = Data.dereference (x)
-  until not Data.is (x)
+  until type (x) ~= "table" or getmetatable (x) ~= Data
   return x
 end
 
 return Data
+
+--[=[
+function Data:__le (x)
+  local lhs = data_path (self)
+  local rhs = data_path (x)
+  if #lhs > #rhs then
+    return false
+  end
+  for i, l in ipairs (lhs) do
+    if l ~= rhs [i] then
+      return false
+    end
+  end
+  return true
+end
+
+function Data:__lt (x)
+  local lhs = data_path (self)
+  local rhs = data_path (x)
+  if #lhs >= #rhs then
+    return false
+  end
+  for i, l in ipairs (lhs) do
+    if l ~= rhs [i] then
+      return false
+    end
+  end
+  return true
+end
+
+function Data:__mod (x)
+  assert (type (x) == "table" and getmetatable (x) == Data)
+  if x < self then
+    local lhs = data_path (self)
+    local rhs = data_path (x)
+    local root = rhs [1]
+    for i = 2, #rhs do
+      root = root [rhs [i]]
+    end
+    local result = Data.new (root)
+    for i = #rhs+1, #lhs do
+      result = result [lhs [i]]
+    end
+    return result
+  else
+    return self
+  end
+end
+--]=]

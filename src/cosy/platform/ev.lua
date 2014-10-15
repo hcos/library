@@ -39,7 +39,6 @@ function Platform:send (message)
     self.websocket:send (json.encode (message))
     return true
   else
-    self:log ("Unable to send message.")
     return false
   end
 end
@@ -171,9 +170,7 @@ function Helper.create_resource (resource, info)
     username = server.username,
     password = server.password,
   })
-  print (url)
   local data = json.encode (info)
-  print (data)
   logger:info ("Requesting creation of ${resource}." % {
     resource = resource
   })

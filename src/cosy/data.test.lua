@@ -91,6 +91,24 @@ do
   d.c = d.b * {
     [1] = 1
   }
+  assert.is_true  (d.c <= d.c)
+  assert.is_false (d.c <  d.c)
+  assert.is_true  (d.b <= d.c)
+  assert.is_true  (d.a <= d.c)
+  assert.is_false (d   <= d.c)
+end
+
+do
+  local d = new {}
+  d.a = {
+    [2] = 2
+  }
+  d.b = d.a * {
+    [3] = 3
+  }
+  d.c = d.b * {
+    [1] = 1
+  }
   assert.are.equal (#d.c, 3)
 end
 

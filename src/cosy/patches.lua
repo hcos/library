@@ -1,3 +1,5 @@
+local ignore = require "cosy.util.ignore"
+
 local Patches    = {}
 local patches_mt = {}
 local ids_mt     = { __mode = "v" }
@@ -52,6 +54,7 @@ function Patches:__index (n)
 end
 
 function Patches:__newindex ()
+  ignore (self)
   assert (false)
 end
 

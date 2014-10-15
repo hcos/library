@@ -2,10 +2,7 @@ local json       = require "dkjson"
 local _          = require "cosy.util.string"
 local ignore     = require "cosy.util.ignore"
 local Data       = require "cosy.data"
-local Tag        = require "cosy.tag"
 local Helper     = require "cosy.helper"
-
-local INSTANCE    = Tag.INSTANCE
 
 local GLOBAL = _G or _ENV
 local js  = GLOBAL.js
@@ -77,6 +74,7 @@ function Platform.new (meta)
   Data.on_write [platform] = function (target)
     if target / 2 == model and # (Data.path (target)) >= 3 then
       local x = target / 3
+--      console:warn (tostring (x) .. " => " .. tostring (Helper.is_instance (x)))
       if not Data.exists (x) then
         env:remove (x)
       elseif Helper.is_instance (x)

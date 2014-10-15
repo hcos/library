@@ -12,7 +12,7 @@ function Protocol.new (metam)
   }, Protocol)
   local model = metam.model
   Data.on_write [protocol] = function (target, value, reverse)
-    if not (model < target) then
+    if target / 2 ~= model then
       return
     end
     protocol:on_patch {

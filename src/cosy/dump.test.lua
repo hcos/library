@@ -7,5 +7,5 @@ do
   local root = Data.new {
     [Tag.NAME] = "root"
   }
-  print (dump (root))
+  assert.are.equal (dump (root), "root")
 end
