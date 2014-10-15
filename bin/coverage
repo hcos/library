@@ -19,7 +19,7 @@ for line in io.lines(file) do
         io.close (output)
       end
       output = "summary"
-    elseif line:find ("./cosy/") == 1 then
+    elseif line:find ("./cosy/", 1, true) == 1 then
       if type (output) == "userdata" then
         io.close (output)
       end
@@ -27,12 +27,14 @@ for line in io.lines(file) do
       local name = "../coverage/" .. line:sub (e + 1)
       output = io.open(name, "w")
     elseif output == "summary" then
-      line = line:expandtabs (1)
-      local parts = line:split (" ")
-      if #parts == 4 and parts [4] ~= "" then
-        local filename = parts [4]
-        local percent  = parts [3]
-        report [filename] = percent
+      if line:find ("./cosy/", 1, true) then
+        line = line:expandtabs (1)
+        local parts = line:split (" ")
+        if #parts == 4 and parts [4] ~= "" then
+          local filename = parts [4]
+          local percent  = parts [3]
+          report [filename] = percent
+        end
       end
     elseif type (output) == "userdata" then
       output:write (line .. "\n")

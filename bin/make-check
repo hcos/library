@@ -5,7 +5,7 @@ set +e
 cd src
 
   # Run check on all Lua files:
-  luacheck $(find . -name "*.lua" | sort)
+  luacheck $(find . -name "*.lua" | grep "cosy" | sort)
   echo
 
   # Run coverage on all test files:
