@@ -4,6 +4,7 @@ local logging   = require "logging"
 logging.console = require "logging.console"
 
 local logger = logging.console "%level %message\n"
+logger:setLevel (logging.WARN)
 
 local Platform = {}
 
@@ -30,7 +31,11 @@ function Platform:error (message)
 end
 
 function Platform:send (message)
-  ignore (self, message)
+  if message.action == "patch" then
+    message.answer   = message.request
+    message.accepted = true
+    self.meta.protocol:on_message (message)
+  end
 end
 
 function Platform.new (meta)
