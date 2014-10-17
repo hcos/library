@@ -9,9 +9,10 @@ local max_i = 100
 local max_j = 100
 local max_k = 10
 local max_l = 10
+local schemes = {}
 local scheme
 
-local function scheme_1 ()
+schemes.nested_writes = function ()
   scheme = "nested writes"
   local cosy = require "cosy" . cosy
   for i = 1, max_i do
@@ -29,7 +30,7 @@ local function scheme_1 ()
   end
 end
 
-local function scheme_2 ()
+schemes.flat_writes = function ()
   scheme = "flat writes"
   local cosy = require "cosy" . cosy
   for i = 1, max_i * max_j * max_k * max_l do
@@ -37,7 +38,7 @@ local function scheme_2 ()
   end
 end
 
-local function scheme_3 ()
+schemes.flat_read_writes = function ()
   scheme = "flat read / write"
   local cosy = require "cosy" . cosy
   cosy.m [0] = 1
@@ -46,8 +47,27 @@ local function scheme_3 ()
   end
 end
 
+local scheme_key = arg [1]
+if not scheme_key then
+  print ("Run using: " .. arg [0] .. " <scheme>")
+  print ("Available schemes:")
+  for k in pairs (schemes) do
+    print ("  " .. k)
+  end
+  os.exit (1)
+end
+local f = schemes [scheme_key]
+if not f then
+  print ("Unknown scheme.")
+  print ("Available schemes:")
+  for k in pairs (schemes) do
+    print ("  " .. k)
+  end
+  os.exit (2)
+end
+
 local start = os.time ()
-scheme_3 ()
+f ()
 local finish = os.time ()
 
 if profiler then
