@@ -179,10 +179,10 @@
 
     // Definitions of all the elements from the force layot.
     // the circle represents a token for each node. 
-    var path = container.append("svg:g").selectAll("path").attr("id", "paths"),
-        node = container.append("svg:g").selectAll("node").attr("id", "nodes"),
-        circle = container.append("svg:g").selectAll("g").attr("id", "tokens"),
-        text = container.append("svg:g").selectAll("g").attr("id", "dummy_labels");
+    var path = container.append("svg:g").attr('class', 'paths').selectAll("path"),
+        node = container.append("svg:g").attr('class', 'nodes').selectAll("node"),
+        circle = container.append("svg:g").attr('class', 'tokens').selectAll("g"),
+        text = container.append("svg:g").attr('class', 'names').selectAll("g");
     
     // Update node notification from server
     function update_node (node) {
@@ -390,9 +390,19 @@
     }
     
     // User remove node
-    function removeNodeFromModel(node){
+    function removeNodeFromModel(node) {
         console.log("Cosy.remove " + node.lua_node)
         Cosy.remove(node.lua_node);
+    }
+    
+    function editAttribute(node) {
+        console.log('Click on text: ' + node);
+        $('#node_name').replaceWith(function(){
+            return $('<input />', { value: $(this).text(),
+                                    'transform': $(this).attr('transform'),
+                                    'x': $(this).attr('x'),
+                                    'y': $(this).attr('y')})
+        })
     }
     
     function websocket (url) {
@@ -423,7 +433,6 @@
             .style("stroke-width", '1.5px')
             .on('mouseenter', node_mouseEnter)
             .on('mouseout', node_mouseExit)
-            .on('click', node_click)
             .call(nodeDrag);
         node.exit().remove();
         
@@ -434,18 +443,32 @@
                 .attr("fill", "black")
                 .on('mouseenter', node_mouseEnter)
                 .on('mouseleave', node_mouseExit)
-                .call(nodeDrag);
+                //~ .call(nodeDrag);
         circle.attr("visibility", function(d) {return d.marking ? "visible" : "hidden" })
         circle.exit().remove();
         
-        text = text.data(force.nodes(), function (d) {return d.id;});
-        text.enter().append("text")
-            .attr("x", function(d){ return d.type == 'transition' ? 45 : 30})
-            .attr("y", ".45em")
-            .attr("size", 10)
-            .call(nodeDrag);
+        //~ text = text.data(force.nodes(), function (d) {return d.id;});
+        //~ text.enter().append("text")
+            //~ .attr("class", "node_name")
+            //~ .attr("x", function(d){ return d.type == 'transition' ? 45 : 30})
+            //~ .attr("y", ".45em")
+            //~ .attr("size", 10)
+            //~ .on('click', editAttribute);
+        //~ text.text(function(d) { return d.name; });
         
-        text.text(function(d) { return d.name; });
+        text = text.data(force.nodes(), function (d) {return d.id;});
+        text.enter().append("foreignObject")
+            .attr("class", "labels")
+            .attr("x", function(d){ return d.type == 'transition' ? 30 : 15})
+            .attr("height", 20)
+            .attr("width", 120)
+            .on('click', editAttribute)
+            .append('xhtml:text')
+                .attr('class', 'node_name')
+                .attr('type', 'text')
+                .html(function(d) { return d.name; });
+            
+        
         text.exit().remove();
         force.start();
         console.log("#Nodes: " + force.nodes().length+" #Links: " + force.links().length);
@@ -612,8 +635,8 @@
         var menu = menu_container.append("xhtml:div")
                         .attr("class", "node-options-container")
                         
-        var buttons_data = [{icon: "fa fa-edit fa-lg", f:function(node){console.log("Node Edition function not implemented");}}, 
-                            {icon: "fa fa-trash-o fa-lg", f: function(node){removeNodeFromModel(node)}}];
+        var buttons_data = [{icon: "fa fa-edit fa-lg", f:function(node){ console.log('TODO: Implement model view') }}, 
+                            {icon: "fa fa-trash-o fa-lg", f: function(node){ removeNodeFromModel(node); }}];
         
         menu.selectAll("a")
             .data(buttons_data)
@@ -704,6 +727,7 @@
     }
     
     function node_click(d){
+        console.log('click')
         if (d3.event.defaultPrevented) return;
         d.lua_node.set("selected", !d.selected);
         d3.select(this).classed("selected", d.selected = !d.selected);
@@ -758,7 +782,9 @@
         node.transition().duration(duration).attr("transform", transform);
         circle.transition().duration(duration).attr("transform", transform);
         text.transition().duration(duration).attr("transform", transform);
-        
+        //~ text.attr('x', function(d){ return d.x; })
+            //~ .attr('y', function(d){ return d.y; })
+            
         function transform(d) {
             return "translate(" + d.x + "," + d.y + ")";
         }
