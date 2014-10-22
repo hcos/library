@@ -44,6 +44,7 @@ function root_mt:__index (url)
       break
     end
   end
+  assert (server)
   local metam = {
     model       = model,
     server      = server,
