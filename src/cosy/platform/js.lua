@@ -67,8 +67,8 @@ end
 function Platform.new (meta)
   local model     = meta.model
   local websocket =
-    env:eval ([[new WebSocket ("${editor}", "cosy")]] % {
-      editor = meta.editor,
+    env:eval ([[new WebSocket ("ws://${editor}", "cosy")]] % {
+      editor = meta.server.websocket,
     })
   local protocol = meta.protocol
   local platform = setmetatable ({
@@ -78,14 +78,14 @@ function Platform.new (meta)
   Data.on_write [platform] = function (target)
     if target / 2 == model and # (Data.path (target)) >= 3 then
       local x = target / 3
---      console:warn (tostring (x) .. " => " .. tostring (Helper:is_instance (x)))
+      console:warn (tostring (x) .. " => " .. tostring (Helper.is_instance (x)))
       if not Data.exists (x) then
         env:remove (x)
-      elseif Helper:is_instance (x)
-        and (Helper:is_place (x) or Helper:is_transition (x)) then
+      elseif Helper.is_instance (x)
+        and (Helper.is_place (x) or Helper.is_transition (x)) then
         env:update_node (x)
-      elseif Helper:is_instance (x)
-        and Helper:is_arc (x) then
+      elseif Helper.is_instance (x)
+        and Helper.is_arc (x) then
         env:update_arc (x)
       end
     end
@@ -155,7 +155,7 @@ end
 
 local old_types = Helper.types
 
-function Helper:types (model)
+function Interface:types (model)
   ignore (self)
   return to_object (old_types (model))
 end

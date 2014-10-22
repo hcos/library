@@ -11,9 +11,9 @@ local HIGHLIGHTED = Tag.HIGHLIGHTED
 
 local Helper = {}
 
-function Helper.configure_server (data)
+function Helper.configure_server (base, data)
   assert (data.www)
-  Cosy.meta.servers [data.www] = {
+  Cosy.meta.servers [base] = {
     www       = data.www,
     rest      = data.rest,
     websocket = data.websocket,
