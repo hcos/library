@@ -1,37 +1,29 @@
-local _          = require "cosy.util.string"
-local ignore     = require "cosy.util.ignore"
-local Data       = require "cosy.data"
-local Tag        = require "cosy.tag"
+local _        = require "cosy.util.string"
+local Cosy     = require "cosy.cosy"
+local Tag      = require "cosy.tag"
+local Data     = require "cosy.data"
+local ignore   = require "cosy.util.ignore"
 
 local INSTANCE    = Tag.INSTANCE
 local POSITION    = Tag.POSITION
 local SELECTED    = Tag.SELECTED
 local HIGHLIGHTED = Tag.HIGHLIGHTED
 
-local global = _ENV or _G
-local meta   = global.meta
-local cosy   = global.cosy
-
 local Helper = {}
 
-function Helper.configure_editor (url)
-  meta.editor = url
-end
-
-function Helper.configure_server (url, data)
-  -- Remove trailing slash:
-  if url [#url] == "/" then
-    url = url:sub (1, #url-1)
-  end
-  -- Store:
-  meta.servers [url] = {
-    username = data.username,
-    password = data.password,
+function Helper.configure_server (data)
+  assert (data.www)
+  Cosy.meta.servers [data.www] = {
+    www       = data.www,
+    rest      = data.rest,
+    websocket = data.websocket,
+    username  = data.username,
+    password  = data.password,
   }
 end
 
 function Helper.resource (url)
-  return cosy [url]
+  return Cosy.root [url]
 end
 
 function Helper.id (x)
@@ -46,7 +38,7 @@ function Helper.id (x)
 end
 
 function Helper.model (url)
-  return cosy [url]
+  return Cosy.root [url]
 end
 
 function Helper.instantiate (model, target_type, data)

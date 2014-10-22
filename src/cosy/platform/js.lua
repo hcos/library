@@ -1,30 +1,34 @@
-local json       = require "dkjson"
-local _          = require "cosy.util.string"
-local ignore     = require "cosy.util.ignore"
-local Data       = require "cosy.data"
-local Helper     = require "cosy.helper"
+local json   = require "dkjson"
+local _      = require "cosy.util.string"
+local ignore = require "cosy.util.ignore"
+local Cosy   = require "cosy.cosy"
+local Data   = require "cosy.data"
+local Helper = require "cosy.helper"
 
-local GLOBAL = _G or _ENV
-local js  = GLOBAL.js
+local global = _G or _ENV
+local js  = global.js
 local env = js.global
 
 local console = env.console
 
-GLOBAL.print = function (msg)
+global.print = function (msg)
   console:info (msg)
 end
 
-env.Cosy = env:eval [[ Object.create (null); ]]
+print "Using the JavaScript platform."
+
+local Interface = env:eval [[ Object.create (Object.prototype); ]]
 
 for k, v in pairs (Helper) do
-  env.Cosy [k] = function (self, ...)
+  Interface [k] = function (self, ...)
     ignore (self)
     return v (...)
   end
 end
 
-
 local Platform = {}
+
+Cosy.Platform = Platform
 
 Platform.__index = Platform
 
@@ -74,14 +78,14 @@ function Platform.new (meta)
   Data.on_write [platform] = function (target)
     if target / 2 == model and # (Data.path (target)) >= 3 then
       local x = target / 3
---      console:warn (tostring (x) .. " => " .. tostring (Helper.is_instance (x)))
+--      console:warn (tostring (x) .. " => " .. tostring (Helper:is_instance (x)))
       if not Data.exists (x) then
         env:remove (x)
-      elseif Helper.is_instance (x)
-        and (Helper.is_place (x) or Helper.is_transition (x)) then
+      elseif Helper:is_instance (x)
+        and (Helper:is_place (x) or Helper:is_transition (x)) then
         env:update_node (x)
-      elseif Helper.is_instance (x)
-        and Helper.is_arc (x) then
+      elseif Helper:is_instance (x)
+        and Helper:is_arc (x) then
         env:update_arc (x)
       end
     end
@@ -140,7 +144,7 @@ end
 
 local function to_object (x)
   x = x or {}
-  local elements = env:eval [[ Object.create (null); ]]
+  local elements = env:eval [[ Object.create (Object.prototype); ]]
   for key, value in pairs (x) do
     if type (key) == "string" then
       elements [key] = value
@@ -149,9 +153,9 @@ local function to_object (x)
   return elements
 end
 
-local old_types = env.Cosy.types
+local old_types = Helper.types
 
-function env.Cosy:types (model)
+function Helper:types (model)
   ignore (self)
   return to_object (old_types (model))
 end
@@ -190,4 +194,4 @@ function env:map (collection)
 end
 --]=]
 
-return Platform
+return Interface
