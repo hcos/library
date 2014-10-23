@@ -27,7 +27,7 @@ function Helper.resource (url)
 end
 
 function Helper.id (x)
-  assert (Data.is (x))
+  assert (Data.is (x), "Parameter is not a data.")
   while true do
     local y = Data.dereference (x)
     if not Data.is (y) then
@@ -123,7 +123,11 @@ function Helper.is_instance (x)
 end
 
 function Helper.get_name (x)
-  return Data.value (x.name)
+  local result = Data.value (x.name)
+  if type (result) == "function" then
+    result = result (x)
+  end
+  return result
 end
 
 function Helper.set_name (x, value)
@@ -131,7 +135,11 @@ function Helper.set_name (x, value)
 end
 
 function Helper.get_token (x)
-  return Data.value (x.token)
+  local result = Data.value (x.token)
+  if type (result) == "function" then
+    result = result (x)
+  end
+  return result
 end
 
 function Helper.set_token (x, value)
@@ -139,7 +147,11 @@ function Helper.set_token (x, value)
 end
 
 function Helper.get_position (x)
-  return Data.value (x [POSITION])
+  local result = Data.value (x [POSITION])
+  if type (result) == "function" then
+    result = result (x)
+  end
+  return result
 end
 
 function Helper.set_position (x, value)
