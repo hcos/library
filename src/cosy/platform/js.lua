@@ -76,7 +76,7 @@ function Platform.new (meta)
     websocket = websocket,
   }, Platform)
   Data.on_write [platform] = function (target)
-    if target / 2 == model and # (Data.path (target)) >= 3 then
+    if target / 2 == model then
       local x = target / 3
       if not Data.exists (x) then
         env:remove (x)
