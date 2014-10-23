@@ -1,3 +1,5 @@
+print "Using the JavaScript platform."
+
 local json   = require "dkjson"
 local _      = require "cosy.util.string"
 local ignore = require "cosy.util.ignore"
@@ -14,8 +16,6 @@ local console = env.console
 global.print = function (msg)
   console:info (msg)
 end
-
-print "Using the JavaScript platform."
 
 local Interface = env:eval [[ Object.create (Object.prototype); ]]
 
@@ -80,12 +80,20 @@ function Platform.new (meta)
       local x = target / 3
       if not Data.exists (x) then
         env:remove (x)
-      elseif Helper.is_instance (x)
-        and (Helper.is_place (x) or Helper.is_transition (x)) then
+      elseif Helper.is_instance (x) and Helper.vertex (x) then
         env:update_node (x)
-      elseif Helper.is_instance (x)
-        and Helper.is_arc (x) then
+      elseif Helper.is_instance (x) and Helper.is_link (x) then
         env:update_arc (x)
+      elseif Helper.is_type (x) then
+        for k, v in pairs (model) do
+          if x <= v then
+            if Helper.is_link (v) then
+              env:update_arc (v)
+            elseif Helper.is_vertex (v) then
+              env:update_node (v)
+            end
+          end
+        end
       end
     end
   end
