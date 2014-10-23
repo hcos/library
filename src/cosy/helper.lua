@@ -103,7 +103,7 @@ function Helper.types (model)
 end
 
 function Helper.is (x, y)
-  return Data.value (x [tostring (y)])
+  return y <= x
 end
 
 function Helper.is_place (x)
