@@ -1,5 +1,8 @@
-local _          = require "cosy.util.string"
-local ignore     = require "cosy.util.ignore"
+print "Using the dummy platform."
+
+local _         = require "cosy.util.string"
+local ignore    = require "cosy.util.ignore"
+local Cosy      = require "cosy.cosy"
 local logging   = require "logging"
 logging.console = require "logging.console"
 
@@ -7,6 +10,8 @@ local logger = logging.console "%level %message\n"
 logger:setLevel (logging.WARN)
 
 local Platform = {}
+
+Cosy.Platform = Platform
 
 Platform.__index = Platform
 
@@ -48,4 +53,4 @@ function Platform:close ()
   ignore (self)
 end
 
-return Platform
+return require "cosy.helper"
