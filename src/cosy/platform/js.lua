@@ -56,10 +56,10 @@ function Platform:send (message)
   if self.websocket.readyState == 1 then
     message.token = self.token
     self.websocket:send (json.encode (message))
-    self:log ("Sent: " .. json.encode (message))
+--    self:log ("Sent: " .. json.encode (message))
     return true
   else
-    self:log ("Unable to send: " .. json.encode (message))
+--    self:log ("Unable to send: " .. json.encode (message))
     return false
   end
 end
@@ -78,7 +78,6 @@ function Platform.new (meta)
   Data.on_write [platform] = function (target)
     if target / 2 == model and # (Data.path (target)) >= 3 then
       local x = target / 3
-      console:warn (tostring (x) .. " => " .. tostring (Helper.is_instance (x)))
       if not Data.exists (x) then
         env:remove (x)
       elseif Helper.is_instance (x)
