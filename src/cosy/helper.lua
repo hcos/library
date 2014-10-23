@@ -4,10 +4,12 @@ local Tag      = require "cosy.tag"
 local Data     = require "cosy.data"
 local ignore   = require "cosy.util.ignore"
 
-local INSTANCE    = Tag.INSTANCE
-local POSITION    = Tag.POSITION
-local SELECTED    = Tag.SELECTED
-local HIGHLIGHTED = Tag.HIGHLIGHTED
+local HIDDEN      = Tag.new "HIDDEN"
+local HIGHLIGHTED = Tag.new "HIGHLIGHTED"
+local INSTANCE    = Tag.new "INSTANCE"
+local POSITION    = Tag.new "POSITION"
+local SELECTED    = Tag.new "SELECTED"
+local TYPE        = Tag.new "TYPE"
 
 local Helper = {}
 
@@ -20,6 +22,10 @@ function Helper.configure_server (base, data)
     username  = data.username,
     password  = data.password,
   }
+end
+
+function Helper.on_write (f)
+  Data.on_write [#(Data.on_write)] = f
 end
 
 function Helper.resource (url)
@@ -41,47 +47,45 @@ function Helper.model (url)
   return Cosy.root [url]
 end
 
-function Helper.instantiate (model, target_type, data)
-  assert (Data.is (target_type))
-  model [#model + 1] = target_type * {
-    [INSTANCE] = true,
-  }
-  local result = model [#model]
+function Helper.new_type (parent, data)
+  local result
+  if parent then
+    result = parent * {
+      [TYPE  ] = true,
+      [HIDDEN] = false,
+    }
+  else
+    result = {
+      [TYPE] = true,
+    }
+  end
   for k, v in pairs (data or {}) do
     result [k] = v
   end
   return result
 end
 
-function Helper.create (model, source, link_type, target_type, data)
-  ignore (link_type, target_type)
-  local place_type      = model.place_type
-  local transition_type = model.transition_type
-  local arc_type        = model.arc_type
-  local target
-  if Helper.is_place (source) then
-    model [#model + 1] = transition_type * {}
-    target = model [#model]
-  elseif Helper.is_transition (source) then
-    model [#model + 1] = place_type * {}
-    target = model [#model]
-  else
-    return
-  end
-  for k, v in pairs (data or {}) do
-    target [k] = v
-  end
-  model [#model + 1] = arc_type * {
-    source = source,
-    target = target,
+function Helper.new_instance (parent, data)
+  assert (Helper.is_type (parent) and Helper.is_visible (parent))
+  local result = parent * {
+    [INSTANCE] = true,
+    [TYPE    ] = false,
+    [HIDDEN  ] = false,
   }
-  return target
+  for k, v in pairs (data or {}) do
+    result [k] = v
+  end
+  return result
+end
+
+function Helper.insert (model, target)
+  model [#model + 1] = target
+  return model [#model]
 end
 
 function Helper.remove (target)
-  local model           = target / 2
-  if Helper.is_place (target)
-  or Helper.is_transition (target) then
+  local model = target / 2
+  if Helper.is_vertex (target) then
     for _, x in pairs (model) do
       if Helper.source (x) == target
       or Helper.target (x) == target then
@@ -89,37 +93,52 @@ function Helper.remove (target)
       end
     end
     Data.clear (target)
-  elseif Helper.is_arc (target) then
+  elseif Helper.is_link (target) then
     Data.clear (target)
   end
 end
 
 function Helper.types (model)
-  return {
-    place_type      = model.place_type,
-    transition_type = model.transition_type,
-    arc_type        = model.arc_type,
-  }
+  local result = {}
+  for k, x in pairs (model) do
+    if x [TYPE] () and not x [HIDDEN] () then
+      result [k] = x
+      print (tostring (k) .. " => " .. tostring (x))
+    end
+  end
+  return result
 end
 
 function Helper.is (x, y)
   return y <= x
 end
 
-function Helper.is_place (x)
-  return Helper.is (x, (x / 2).place_type)
+function Helper.is_vertex (x)
+  return Helper.is (x, (x / 2).vertex_type)
 end
 
-function Helper.is_transition (x)
-  return Helper.is (x, (x / 2).transition_type)
+function Helper.is_link (x)
+  return Helper.is (x, (x / 2).link_type)
 end
 
-function Helper.is_arc (x)
-  return Helper.is (x, (x / 2).arc_type)
+function Helper.hide (x)
+  x [HIDDEN] = true
+end
+
+function Helper.is_hidden (x)
+  return x [HIDDEN] ()
+end
+
+function Helper.is_visible (x)
+  return not x [HIDDEN] ()
+end
+
+function Helper.is_type (x)
+  return x [TYPE] ()
 end
 
 function Helper.is_instance (x)
-  return x [INSTANCE] () == true
+  return x [INSTANCE] ()
 end
 
 function Helper.get_name (x)
