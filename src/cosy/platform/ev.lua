@@ -1,5 +1,6 @@
 local _          = require "cosy.util.string"
 local ignore     = require "cosy.util.ignore"
+local Tree       = require "cosy.tree"
 local Helper     = require "cosy.helper"
 local websocket  = require "websocket"
 local ev         = require "ev"
@@ -11,6 +12,8 @@ logging.console  = require "logging.console"
 local logger     = logging.console "%level %message\n"
 
 local Platform = {}
+
+Helper.configure_platform (Platform)
 
 Platform.__index = Platform
 
@@ -39,6 +42,11 @@ function Platform:send (message)
     self.websocket:send (json.encode (message))
     return true
   else
+    if message.action == "patch" then
+      message.answer   = message.request
+      message.accepted = true
+      self.meta.protocol:on_message (message)
+    end
     return false
   end
 end
@@ -50,7 +58,9 @@ function Platform.new (meta)
     meta      = meta,
     websocket = websocket,
   }, Platform)
-  websocket:connect (meta.editor, "cosy")
+  websocket:connect ("ws://${editor}" % {
+    editor = meta.server.websocket
+  }, "cosy")
   websocket:on_open (function ()
     protocol:on_open ()
   end)
@@ -100,13 +110,12 @@ function Platform:execute (f, again)
 end
 
 function Platform.start ()
-  local Cosy = require "cosy"
-  if Cosy.main then
+  if Helper.main then
     local m = coroutine.create (function ()
-      local ok, err = pcall (Cosy.main)
+      local ok, err = pcall (Helper.main)
       if not ok then
         logger:error (err)
-        Cosy.stop ()
+        Helper.stop ()
       end
     end)
     local function wrap (loop, idle, revents)
@@ -116,7 +125,7 @@ function Platform.start ()
       else
         idle:stop (loop)
         if not Platform.no_stop then
-          Cosy.stop ()
+          Helper.stop ()
         end
       end
     end
@@ -131,10 +140,9 @@ function Platform.respond ()
 end
 
 function Platform.stop ()
-  local Cosy = require "cosy"
   local function check_patches (loop, timer, revents)
     ignore (revents)
-    local models = Cosy.meta.models
+    local models = Tree.meta.models
     local all = true
     for _, m in pairs (models) do
       if # (m.patches) ~= 0 then
@@ -153,9 +161,8 @@ function Platform.stop ()
 end
 
 function Helper.create_resource (resource, info)
-  local Cosy = require "cosy"
   local server
-  for k, v in pairs (Cosy.meta.servers) do
+  for k, v in pairs (Tree.meta.servers) do
     if resource:find ("^" .. k) == 1 then
       server = v
       break
@@ -192,9 +199,8 @@ function Helper.create_resource (resource, info)
 end
 
 function Helper.delete_resource (resource)
-  local Cosy = require "cosy"
   local server
-  for k, v in pairs (Cosy.meta.servers) do
+  for k, v in pairs (Tree.meta.servers) do
     if resource:find ("^" .. k) == 1 then
       server = v
       break
@@ -224,4 +230,16 @@ function Helper.delete_resource (resource)
   end
 end
 
-return Platform
+function Helper.start ()
+  Platform.start ()
+end
+
+function Helper.respond ()
+  Platform.respond ()
+end
+
+function Helper.stop ()
+  Platform.stop ()
+end
+
+return Helper

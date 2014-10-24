@@ -6,7 +6,7 @@ local ignore   = require "cosy.util.ignore"
 
 local root_mt = {}
 
-local Cosy = {
+local Tree = {
   meta = {
     servers = {},
     models  = {},
@@ -28,9 +28,9 @@ function root_mt:__index (url)
     url = url:sub (1, #url-1)
   end
   --
-  local root  = Cosy.root
-  local store = Cosy.store
-  local meta  = Cosy.meta
+  local root  = Tree.root
+  local store = Tree.store
+  local meta  = Tree.meta
   local model = rawget (store, url)
   if model ~= nil then
     return model
@@ -56,7 +56,7 @@ function root_mt:__index (url)
     end,
   }
   metam.protocol = Protocol.new (metam)
-  metam.platform = Cosy.Platform.new (metam)
+  metam.platform = Tree.Platform.new (metam)
   meta.models [url] = metam
   rawset (root, url, model)
   return model
@@ -67,16 +67,4 @@ function root_mt:__newindex ()
   assert (false)
 end
 
-function Cosy.start ()
-  Cosy.Platform.start ()
-end
-
-function Cosy.respond ()
-  Cosy.Platform.respond ()
-end
-
-function Cosy.stop ()
-  Cosy.Platform.stop ()
-end
-
-return Cosy
+return Tree

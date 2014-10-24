@@ -3,8 +3,6 @@ print "Using the JavaScript platform."
 local json   = require "dkjson"
 local _      = require "cosy.util.string"
 local ignore = require "cosy.util.ignore"
-local Cosy   = require "cosy.cosy"
-local Data   = require "cosy.data"
 local Helper = require "cosy.helper"
 
 local global = _G or _ENV
@@ -28,7 +26,7 @@ end
 
 local Platform = {}
 
-Cosy.Platform = Platform
+Helper.configure_platform (Platform)
 
 Platform.__index = Platform
 
@@ -56,10 +54,8 @@ function Platform:send (message)
   if self.websocket.readyState == 1 then
     message.token = self.token
     self.websocket:send (json.encode (message))
---    self:log ("Sent: " .. json.encode (message))
     return true
   else
---    self:log ("Unable to send: " .. json.encode (message))
     return false
   end
 end
@@ -75,10 +71,10 @@ function Platform.new (meta)
     meta      = meta,
     websocket = websocket,
   }, Platform)
-  Data.on_write [platform] = function (target)
+  Helper.on_write (platform, function (target)
     if target / 2 == model then
       local x = target / 3
-      if not Data.exists (x) then
+      if not Helper.is_empty (x) then
         env:remove (x)
       elseif Helper.is_instance (x) and Helper.vertex (x) then
         env:update_node (x)
@@ -96,7 +92,7 @@ function Platform.new (meta)
         end
       end
     end
-  end
+  end)
   function websocket:onopen ()
     ignore (self)
     env:is_connected (true);

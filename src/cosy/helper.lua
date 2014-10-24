@@ -1,5 +1,5 @@
 local _        = require "cosy.util.string"
-local Cosy     = require "cosy.cosy"
+local Tree     = require "cosy.tree"
 local Tag      = require "cosy.tag"
 local Data     = require "cosy.data"
 local ignore   = require "cosy.util.ignore"
@@ -11,11 +11,17 @@ local POSITION    = Tag.new "POSITION"
 local SELECTED    = Tag.new "SELECTED"
 local TYPE        = Tag.new "TYPE"
 
-local Helper = {}
+local Helper_mt = {}
+local Helper = setmetatable ({}, Helper_mt)
+
+function Helper.configure_platform (platform)
+  Tree.Platform = platform
+  Helper.configure_platform = nil
+end
 
 function Helper.configure_server (base, data)
   assert (data.www)
-  Cosy.meta.servers [base] = {
+  Tree.meta.servers [base] = {
     www       = data.www,
     rest      = data.rest,
     websocket = data.websocket,
@@ -24,12 +30,12 @@ function Helper.configure_server (base, data)
   }
 end
 
-function Helper.on_write (f)
-  Data.on_write [#(Data.on_write)] = f
+function Helper.on_write (k, f)
+  Data.on_write [k] = f
 end
 
 function Helper.resource (url)
-  return Cosy.root [url]
+  return Tree.root [url]
 end
 
 function Helper.id (x)
@@ -41,10 +47,6 @@ function Helper.id (x)
     end
     x = y
   end
-end
-
-function Helper.model (url)
-  return Cosy.root [url]
 end
 
 function Helper.new_type (parent, data)
@@ -113,16 +115,12 @@ function Helper.is (x, y)
   return y <= x
 end
 
-function Helper.is_vertex (x)
-  return Helper.is (x, (x / 2).vertex_type)
-end
-
-function Helper.is_link (x)
-  return Helper.is (x, (x / 2).link_type)
-end
-
 function Helper.hide (x)
   x [HIDDEN] = true
+end
+
+function Helper.is_empty (x)
+  return Data.exists (x)
 end
 
 function Helper.is_hidden (x)
