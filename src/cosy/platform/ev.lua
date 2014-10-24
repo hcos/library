@@ -9,7 +9,9 @@ local ltn12      = require "ltn12"
 local json       = require "dkjson"
 local logging    = require "logging"
 logging.console  = require "logging.console"
-local logger     = logging.console "%level %message\n"
+local logger = logging.console "%level %message\n"
+
+Helper.logger = logger
 
 local Platform = {}
 
