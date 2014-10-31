@@ -77,6 +77,11 @@
         },
     };
 
+    // OBECTJS AND D3 INITIALIZATION
+    
+    // Cosy object for server comunitacion
+    var Cosy = null;
+    
     // Position definitions and points of reference for the markers
     var width = 700,
         height = 450,
@@ -106,6 +111,7 @@
                 .on("mousedown", mouseDown)
                 .on("mousemove", mouseMove)
                 .on("mouseup", mouseUp);
+    
     // Background color
     container.append('svg:rect')
         .attr('class', 'click-capture')
@@ -130,6 +136,7 @@
         .links([])
         .on("tick", tick);
     
+    // Arrowheads definitions
     container.append("svg:defs").selectAll("marker")
         .data(["arc"])      // Different link/path types can be defined here
         .enter().append("svg:marker")    // This section adds in the arrows
@@ -196,15 +203,16 @@
     }
     
     function updateModelNode(node) {
+        //~ var types = Cosy.types()
+        //~ var lua_place = types['place_type'];
+        //~ Cosy.is(node, place_type)
         if(Cosy.is_arc(node)){
             var source = Cosy.source(node),
                 target = Cosy.target(node),
                 anchor = '',
                 lock_pos = false;
-            //~ console.log('Source ' + source + ' target ' + target);
             source = force.nodes()[nodes_index[Cosy.id(source)]];
             target = force.nodes()[nodes_index[Cosy.id(target)]];
-            //~ console.log('Source ' + source + ' target ' + target);
             
             if(!source || !target) return;
             
@@ -226,6 +234,7 @@
             }
         } else if(Cosy.is_place(node) || Cosy.is_transition(node)){
             
+            
             if(Cosy.get_name(node) == undefined) return;
             
             marking = Cosy.get_token(node) ? Cosy.get_token(node) : '';
@@ -233,16 +242,16 @@
             selected = Cosy.is_selected(node) ? Cosy.is_selected(node) : '';
             name = Cosy.get_name(node);
             isTransition = Cosy.is_transition(node);
-            
             if(highlighted)
                 shape = isTransition ? shapes.rect_highlighted : shapes.circle_highlighted;
             else
                 shape = isTransition ? shapes.rect : shapes.circle;
             
-            var s = Cosy.get_position(node),
-                is_polar = s.indexOf(",") == -1,
+            var s = Cosy.get_position(node) ? Cosy.get_position(node) : '[0,0]';
+            var is_polar = s.indexOf(",") == -1,
                 x_pos, y_pos, p;
-                
+            
+            
             if(is_polar)
                 p = s.indexOf(":")
             else
@@ -254,10 +263,9 @@
             
             var x_pos = parseFloat(origin.x) + parseFloat(offset_x);
             var y_pos = parseFloat(origin.y) - parseFloat(offset_y);
-            
             elem = {id : Cosy.id(node),
                     name : name,
-                    type : isTransition ? 'transition' : 'place',   // FIXME
+                    type : isTransition ? 'transition' : 'place',
                     shape : shape,
                     marking : marking ? true : false,
                     px : x_pos,
@@ -339,6 +347,7 @@
     }
 
     function remove(node) {
+        console.log('Remove called from server to node: ' + node.id);
         var index_object, list;
         
         if(node.type == 'arc'){
@@ -385,24 +394,32 @@
     
     // User add new node
     function addNodeToModel(node) {
-        Cosy.create(Cosy.resource(), source, link_type, target_type, data);
-        Cosy.instantiate(Cosy.resource(), target_type, data);
+        if(Cosy) {
+            Cosy.create(Cosy.resource(), source, link_type, target_type, data);
+            Cosy.instantiate(Cosy.resource(), target_type, data);
+        }
     }
     
     // User remove node
     function removeNodeFromModel(node) {
-        console.log("Cosy.remove " + node.lua_node)
-        Cosy.remove(node.lua_node);
+        if(Cosy) {
+            console.log("Cosy.remove " + node.lua_node)
+            Cosy.remove(node.lua_node);
+        }
     }
     
     function editAttribute(node) {
-        console.log('Click on text: ' + node);
-        $('#node_name').replaceWith(function(){
-            return $('<input />', { value: $(this).text(),
-                                    'transform': $(this).attr('transform'),
-                                    'x': $(this).attr('x'),
-                                    'y': $(this).attr('y')})
-        })
+        console.log('#' + node.id);
+        $('#' + node.id).replaceWith(function(){
+            var input = $('<input />', { value: $(this).text(), 'class': 'node_name', 'id': node.id});
+            input.on('keyup', function(e){
+                if(e.which == 13) {
+                    // TODO: Cosy Node modification. 
+                }
+            });
+            return input;
+        });
+        $('#' + node.id).focus();
     }
     
     function websocket (url) {
@@ -411,6 +428,10 @@
     }
     
     function add_patch (str) {
+    }
+    
+    function setCosyObject (obj){
+        Cosy = obj;
     }
     
     // GUI update
@@ -462,9 +483,10 @@
             .attr("x", function(d){ return d.type == 'transition' ? 30 : 15})
             .attr("height", 20)
             .attr("width", 120)
-            .on('click', editAttribute)
+            .on('dblclick', editAttribute)
             .append('xhtml:text')
                 .attr('class', 'node_name')
+                .attr('id', function(d){ return d.id; })
                 .attr('type', 'text')
                 .html(function(d) { return d.name; });
             
