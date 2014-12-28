@@ -1,18 +1,24 @@
-            require "cosy.util.string"
-local Tag = require "cosy.tag"
+require "cosy.util.string"
 
 local PREVIOUS_DATA = {}
 local PREVIOUS_KEY  = {}
 local ROOT          = {}
 local DEPTH         = {}
 
-local PARENT  = Tag.new "PARENT"
-local PARENTS = Tag.new "PARENTS"
-local VALUE   = Tag.new "VALUE"
+local PARENT  = "cosy:parent"
+local PARENTS = "cosy:parents"
+local VALUE   = "cosy:value"
+local NAME    = "cosy:name"
 
-local NAME    = Tag.NAME
+local Data = {
+  tags = {
+    PARENT  = PARENT,
+    PARENTS = PARENTS,
+    VALUE   = VALUE,
+    NAME    = NAME,
+  },
+}
 
-local Data = {}
 Data.on_write = {}
 
 local Expression = {}
@@ -458,52 +464,3 @@ function Data.value (x)
 end
 
 return Data
-
---[=[
-function Data:__le (x)
-  local lhs = data_path (self)
-  local rhs = data_path (x)
-  if #lhs > #rhs then
-    return false
-  end
-  for i, l in ipairs (lhs) do
-    if l ~= rhs [i] then
-      return false
-    end
-  end
-  return true
-end
-
-function Data:__lt (x)
-  local lhs = data_path (self)
-  local rhs = data_path (x)
-  if #lhs >= #rhs then
-    return false
-  end
-  for i, l in ipairs (lhs) do
-    if l ~= rhs [i] then
-      return false
-    end
-  end
-  return true
-end
-
-function Data:__mod (x)
-  assert (type (x) == "table" and getmetatable (x) == Data)
-  if x < self then
-    local lhs = data_path (self)
-    local rhs = data_path (x)
-    local root = rhs [1]
-    for i = 2, #rhs do
-      root = root [rhs [i]]
-    end
-    local result = Data.new (root)
-    for i = #rhs+1, #lhs do
-      result = result [lhs [i]]
-    end
-    return result
-  else
-    return self
-  end
-end
---]=]

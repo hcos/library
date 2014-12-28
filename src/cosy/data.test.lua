@@ -1,6 +1,5 @@
 local assert = require "luassert"
 local ignore = require "cosy.util.ignore"
-local Tag    = require "cosy.tag"
 local Data   = require "cosy.data"
 
 local new         = Data.new
@@ -9,9 +8,9 @@ local path        = Data.path
 local value       = Data.value
 local exists      = Data.exists
 
-local PARENT  = Tag.PARENT
-local PARENTS = Tag.PARENTS
-local VALUE   = Tag.VALUE
+local PARENT  = Data.tags.PARENT
+local PARENTS = Data.tags.PARENTS
+local VALUE   = Data.tags.VALUE
 
 do
   local t = {}

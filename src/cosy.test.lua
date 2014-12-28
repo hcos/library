@@ -1,4 +1,4 @@
-local cosy = require "cosy" . cosy
+local cosy = require "cosy.platform.dummy"
 
 local model = cosy ["http://cosyverif.org/my-model"]
 model.a = 1

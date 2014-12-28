@@ -1,8 +1,9 @@
-local Tag      = require "cosy.tag"
 local Data     = require "cosy.data"
 local Patches  = require "cosy.patches"
 local Protocol = require "cosy.protocol"
 local ignore   = require "cosy.util.ignore"
+
+local NAME = Data.tags.NAME
 
 local root_mt = {}
 
@@ -12,7 +13,7 @@ local Tree = {
     models  = {},
   },
   store = Data.new {
-    [Tag.NAME] = "root"
+    [NAME] = "root"
   },
   root = setmetatable ({}, root_mt)
 }

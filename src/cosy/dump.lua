@@ -1,5 +1,4 @@
              require "cosy.util.string"
-local Tag  = require "cosy.tag"
 local Data = require "cosy.data"
 
 local function dump (x)
@@ -11,8 +10,6 @@ local function dump (x)
     return tostring (x)
   elseif type (x) == "string" then
     return x:quote ()
-  elseif type (x) == "table" and Tag.is (x) then
-    return tostring (x)
   elseif type (x) == "table" and Data.is (x) then
     return tostring (x)
   elseif type (x) == "table" then

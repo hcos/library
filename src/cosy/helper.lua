@@ -1,15 +1,13 @@
 local _        = require "cosy.util.string"
 local Tree     = require "cosy.tree"
-local Tag      = require "cosy.tag"
 local Data     = require "cosy.data"
-local ignore   = require "cosy.util.ignore"
 
-local HIDDEN      = Tag.new "HIDDEN"
-local HIGHLIGHTED = Tag.new "HIGHLIGHTED"
-local INSTANCE    = Tag.new "INSTANCE"
-local POSITION    = Tag.new "POSITION"
-local SELECTED    = Tag.new "SELECTED"
-local TYPE        = Tag.new "TYPE"
+local HIDDEN      = "cosy:hidden"
+local HIGHLIGHTED = "cosy:highlighted"
+local INSTANCE    = "cosy:instance"
+local POSITION    = "cosy:position"
+local SELECTED    = "cosy:selected"
+local TYPE        = "cosy:type"
 
 local Helper_mt = {}
 local Helper = setmetatable ({}, Helper_mt)
