@@ -4,7 +4,7 @@ function string_mt:__mod (parameters)
   return self:gsub (
     '($%b{})',
     function (w)
-      return parameters[w:sub(3, -2)] or w
+      return tostring (parameters [w:sub (3, -2)]) or w
     end
   )
 end
@@ -28,4 +28,9 @@ end
 function string:is_identifier ()
   local i, j = self:find ("[_%a][_%w]*")
   return i == 1 and j == #self
+end
+
+-- http://lua-users.org/wiki/StringTrim
+function string:trim ()
+  return self:match "^()%s*$" and "" or self:match "^%s*(.*%S)"
 end
