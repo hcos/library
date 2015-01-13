@@ -1,16 +1,5 @@
 local Platform  = require "cosy.platform"
 
-local function read (path, loader)
-  local handle = io.open (path, "r")
-  if handle ~=nil then
-    local content = handle:read "*all"
-    io.close (handle)
-    return loader (content)
-  else
-    return nil
-  end
-end
-
 local function import (source, target)
   assert (type (source) == "table")
   assert (type (target) == "table")
@@ -28,18 +17,14 @@ local function import (source, target)
 end
 
 local Configuration = {}
-for _, path in ipairs {
-  "/etc",
-  os.getenv "HOME" .. "/.cosy",
-  os.getenv "PWD",
-} do
+for _, path in ipairs (Platform.configuration.paths) do
   for name, loader in pairs {
     ["cosy.yaml"] = Platform.yaml.decode,
     ["cosy.json"] = Platform.json.decode,
   } do
-    local loaded = read (path .. "/" .. name, loader)
-    if loaded then
-      import (Configuration, loaded)
+    local content = Platform.configuration.read (path .. "/" .. name)
+    if content then
+      import (Configuration, loader (content))
       Platform.logger:debug ("Configured using '${path}'." % {
         path = path,
       })

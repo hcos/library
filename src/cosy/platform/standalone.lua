@@ -126,4 +126,24 @@ function Platform.compression.decompress (x)
       or error "Compression not found"
 end
 
+-- Configuration
+-- =============
+Platform.configuration = {}
+
+Platform.configuration.paths = {
+  "/etc",
+  os.getenv "HOME" .. "/.cosy",
+  os.getenv "PWD",
+}
+function Platform.configuration.read (path)
+  local handle = io.open (path, "r")
+  if handle ~=nil then
+    local content = handle:read "*all"
+    io.close (handle)
+    return content
+  else
+    return nil
+  end
+end
+
 return Platform
