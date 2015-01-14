@@ -299,6 +299,44 @@ function Data:__add (x)
   return Expression.new (parents)
 end
 
+function Data:__le (x)
+  if type (self) ~= "table" or getmetatable (self) ~= Data
+  or type (x   ) ~= "table" or getmetatable (x   ) ~= Data then
+    return nil
+  end
+  return self == x or self < x
+end
+
+function Data:__lt (x)
+  if type (self) ~= "table" or getmetatable (self) ~= Data
+  or type (x   ) ~= "table" or getmetatable (x   ) ~= Data then
+    return nil
+  end
+  local path    = data_path (x)
+  local data    = path [1]
+  local visited = { data }
+  for i = 2, #path do
+    data = data [path [i]]
+    if type (data) ~= "table" then
+      break
+    end
+    visited [i] = data
+  end
+  for i = #visited, 1, -1 do
+    data = visited [i]
+    for _, subpath in ipairs (data [PARENTS] or { data [PARENT] }) do
+      for j = i+1, #path do
+        subpath = subpath [path [j]]
+      end
+      local result = subpath == self or self < subpath
+      if result then
+        return result
+      end
+    end
+  end
+  return false
+end
+
 function Expression.new (...)
   local parents = {}
   for _, p in ipairs (...) do
@@ -418,42 +456,40 @@ function Data.dereference (x)
   return nil
 end
 
-function Data:__le (x)
-  if type (self) ~= "table" or getmetatable (self) ~= Data
-  or type (x   ) ~= "table" or getmetatable (x   ) ~= Data then
-    return nil
-  end
-  return self == x or self < x
-end
-
-function Data:__lt (x)
-  if type (self) ~= "table" or getmetatable (self) ~= Data
-  or type (x   ) ~= "table" or getmetatable (x   ) ~= Data then
-    return nil
-  end
-  local path    = data_path (x)
-  local data    = path [1]
-  local visited = { data }
-  for i = 2, #path do
-    data = data [path [i]]
-    if type (data) ~= "table" then
-      break
-    end
-    visited [i] = data
-  end
-  for i = #visited, 1, -1 do
-    data = visited [i]
-    for _, subpath in ipairs (data [PARENTS] or { data [PARENT] }) do
-      for j = i+1, #path do
-        subpath = subpath [path [j]]
-      end
-      local result = subpath == self or self < subpath
-      if result then
-        return result
+function Data.dump (x)
+  if x == nil then
+    return "nil"
+  elseif type (x) == "boolean" then
+    return tostring (x)
+  elseif type (x) == "number" then
+    return tostring (x)
+  elseif type (x) == "string" then
+    return x:quote ()
+  elseif type (x) == "table" and Data.is (x) then
+    return tostring (x)
+  elseif type (x) == "table" then
+    local result = {}
+    for k, v in pairs (x) do
+      if type (k) == "string" and k:is_identifier () then
+        result [#result + 1] = "${k} = ${v}" % {
+          k = k,
+          v = dump (v)
+        }
+      else
+        result [#result + 1] = "[ ${k} ] = ${v}" % {
+          k = dump (k),
+          v = dump (v),
+        }
       end
     end
+    return "{ " .. table.concat (result, ", ") .. " }"
+  elseif type (x) == "function" then
+    return string.dump (x)
+  else
+    error ("Unable to dump x for data type ${type}." % {
+      type = type (x)
+    })
   end
-  return false
 end
 
 function Data.value (x)

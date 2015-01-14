@@ -381,3 +381,11 @@ do
     }
   })
 end
+
+do
+  local NAME = Data.tags.NAME
+  local root = Data.new {
+    [NAME] = "root"
+  }
+  assert.are.equal (Data.dump (root), "root")
+end
