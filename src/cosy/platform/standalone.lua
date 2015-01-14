@@ -115,7 +115,6 @@ function Platform.compression.format (x)
 end
 
 function Platform.compression.compress (x, format)
-  format = format or Platform.Compressions.default
   return format .. ":" .. Platform.Compressions[format].compress (x)
 end
 function Platform.compression.decompress (x)
@@ -123,7 +122,9 @@ function Platform.compression.decompress (x)
   local Compression = Platform.Compressions[format]
   return Compression
      and Compression.decompress (x:sub (#format+2))
-      or error "Compression not found"
+      or error ("Compression format '${format}' is not available" % {
+        format = format,
+      })
 end
 
 -- Configuration
@@ -144,6 +145,42 @@ function Platform.configuration.read (path)
   else
     return nil
   end
+end
+
+-- Password Hashing
+-- ================
+Platform.password = {}
+if pcall (function ()
+  local bcrypt = require "bcrypt"
+  local socket = require "socket"
+  local rounds = 5
+  while true do
+    local start = socket.gettime ()
+    bcrypt.digest ("asdf", rounds)
+    local delta = socket.gettime () - start
+    if delta >= 0.020 then -- 10 milliseconds
+      Platform.password.rounds = rounds - 1
+      break
+    end
+    rounds = rounds + 1
+  end
+  function Platform.password.hash (password)
+    return bcrypt.digest (password, Platform.password.rounds)
+  end
+  function Platform.password.verify (password, digest)
+    return bcrypt.verify (password, digest)
+  end
+  function Platform.password.is_cheap (digest)
+    return tonumber (digest:match "%$%w+%$(%d+)%$") < Platform.password.rounds
+  end
+end) then
+  Platform.logger:debug "Password hashing using 'bcrypt' is available:"
+  Platform.logger:debug ("  - using ${rounds} rounds" % {
+    rounds = Platform.password.rounds,
+  })
+else
+  Platform.logger:error "Password hashing is not available."
+  error "Missing dependency."
 end
 
 return Platform
