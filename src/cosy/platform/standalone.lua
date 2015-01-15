@@ -7,8 +7,8 @@ local Platform = {}
 
 -- Logger
 -- ======
-local logging    = require "logging"
-logging.console   = require "logging.console"
+local logging   = require "logging"
+logging.console = require "logging.console"
 Platform.logger = logging.console "%level %message\n"
 
 -- Foreign Function Interface
@@ -170,7 +170,7 @@ if pcall (function ()
   function Platform.password.verify (password, digest)
     return bcrypt.verify (password, digest)
   end
-  function Platform.password.is_cheap (digest)
+  function Platform.password.is_too_cheap (digest)
     return tonumber (digest:match "%$%w+%$(%d+)%$") < Platform.password.rounds
   end
 end) then
