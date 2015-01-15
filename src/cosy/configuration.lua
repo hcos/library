@@ -17,14 +17,23 @@ local function import (source, target)
 end
 
 local Configuration = {}
+
 for _, path in ipairs (Platform.configuration.paths) do
+  local found = false
   for name, loader in pairs {
     ["cosy.yaml"] = Platform.yaml.decode,
     ["cosy.json"] = Platform.json.decode,
   } do
     local content = Platform.configuration.read (path .. "/" .. name)
     if content then
-      import (Configuration, loader (content))
+      if found then
+        Platform.logger:error ("Directory '${path}' contains both 'cosy.json' and 'cosy.yaml' configuration files. There should be only one of them." % {
+          path = path,
+        })
+        error "Invalid configuration"
+      end
+      import (loader (content), Configuration)
+      found = true
       Platform.logger:debug ("Configured using '${path}'." % {
         path = path,
       })
