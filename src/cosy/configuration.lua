@@ -1,5 +1,18 @@
+-- Overall Configuration
+-- =====================
+
+-- This module returns an object describing the overall configuration.
+-- It tries to load files named `cosy.json` or `cosy.yaml` located in directories
+-- listed in `Platform.configuration.paths` (in order).
+--
+-- All the found configurations are merged to obtain the result. It allows to
+-- preset some configuration variables system-wide.
+
 local Platform  = require "cosy.platform"
 
+local Configuration = {}
+
+-- This function imports the `source` table inside the `target` one.
 local function import (source, target)
   assert (type (source) == "table")
   assert (type (target) == "table")
@@ -16,8 +29,6 @@ local function import (source, target)
   end
 end
 
-local Configuration = {}
-
 for _, path in ipairs (Platform.configuration.paths) do
   local found = false
   for name, loader in pairs {
@@ -26,6 +37,8 @@ for _, path in ipairs (Platform.configuration.paths) do
   } do
     local content = Platform.configuration.read (path .. "/" .. name)
     if content then
+      -- If a directory contains both `cosy.json` and `cosy.yaml` files, an error is raised
+      -- as there is no way to known which one should be used.
       if found then
         Platform.logger:error ("Directory '${path}' contains both 'cosy.json' and 'cosy.yaml' configuration files. There should be only one of them." % {
           path = path,
