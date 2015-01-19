@@ -1,7 +1,7 @@
 local _      = require "cosy.util.string"
 local ignore = require "cosy.util.ignore"
 
-local global = _ENV or _G
+local global = _G
 
 local Platform = {}
 
@@ -12,64 +12,64 @@ if pcall (function ()
   local logging   = require "logging"
   logging.console = require "logging.console"
   local backend   = logging.console "%level %message\n"
-  function Platform.logger:debug (message)
-    if self.enabled then
+  function Platform.logger.debug (message)
+    if Platform.logger.enabled then
       backend:debug (message)
     end
   end
-  function Platform.logger:info (message)
-    if self.enabled then
+  function Platform.logger.info (message)
+    if Platform.logger.enabled then
       backend:info (message)
     end
   end
-  function Platform.logger:warning (message)
-    if self.enabled then
+  function Platform.logger.warning (message)
+    if Platform.logger.enabled then
       backend:warn (message)
     end
   end
-  function Platform.logger:error (message)
-    if self.enabled then
+  function Platform.logger.error (message)
+    if Platform.logger.enabled then
       backend:error (message)
     end
   end
 end) then
   Platform.logger.enabled = true
-  Platform.logger:debug "Logger is available through lualogging."
+  Platform.logger.debug "Logger is available through lualogging."
 elseif pcall (function ()
   local backend = require "log".new ("debug",
     require "log.writer.console.color".new ()
   )
-  function Platform.logger:debug (message)
-    if self.enabled then
+  function Platform.logger.debug (message)
+    if Platform.logger.enabled then
       backend.notice (message)
     end
   end
-  function Platform.logger:info (message)
-    if self.enabled then
+  function Platform.logger.info (message)
+    if Platform.logger.enabled then
       backend.info (message)
     end
   end
-  function Platform.logger:warning (message)
-    if self.enabled then
+  function Platform.logger.warning (message)
+    if Platform.logger.enabled then
       backend.warning (message)
     end
   end
-  function Platform.logger:error (message)
-    if self.enabled then
+  function Platform.logger.error (message)
+    if Platform.logger.enabled then
       backend.error (message)
     end
   end
 end) then
   Platform.logger.enabled = true
-  Platform.logger:debug "Logger is available through lua-log."
+  Platform.logger.debug "Logger is available through lua-log."
 else
-  function Platform.logger:debug ()
+  function Platform.logger.debug ()
   end
-  function Platform.logger:info ()
+  function Platform.logger.info ()
   end
-  function Platform.logger:warning ()
+  function Platform.logger.warning ()
   end
-  function Platform.logger:error ()
+  function Platform.logger.error ()
   end
 end
 
@@ -77,13 +77,13 @@ end
 -- ==========================
 if global.jit then
   Platform.ffi = require "ffi"
-  Platform.logger:debug "FFI is available through LuaJIT."
+  Platform.logger.debug "FFI is available through LuaJIT."
 elseif pcall (function ()
   Platform.ffi = require "luaffi"
 end) then
-  Platform.logger:debug "FFI is available through luaffi."
+  Platform.logger.debug "FFI is available through luaffi."
 else
-  Platform.logger:debug "FFI is not available."
+  Platform.logger.debug "FFI is not available."
 end
 
 -- Unique ID generator
@@ -99,24 +99,43 @@ function Platform.unique.uuid ()
   return result
 end
 
+-- Table dump
+-- ==========
+
+if pcall (function ()
+  local serpent = require "serpent"
+  Platform.table = {}
+  function Platform.table.encode (t)
+    return serpent.dump (t)
+  end
+  function Platform.table.decode (s)
+    return loadstring (s) ()
+  end
+end) then
+  Platform.logger.debug "Table dump is available using 'serpent'."
+else
+  Platform.logger.error "Table dump is not available."
+  error "Missing dependency."
+end
+
 -- JSON
 -- ====
 if pcall (function ()
   Platform.json = require "cjson"
 end) then
-  Platform.logger:debug "JSON is available using cjson."
+  Platform.logger.debug "JSON is available using cjson."
 elseif pcall (function ()
   global.always_try_using_lpeg = true
   Platform.json = require "dkjson"
 end) then
-  Platform.logger:debug "JSON is available using dkjson and lpeg."
+  Platform.logger.debug "JSON is available using dkjson and lpeg."
 elseif pcall (function ()
   global.always_try_using_lpeg = false
   Platform.json = require "dkjson"
 end) then
-  Platform.logger:debug "JSON is available using dkjson."
+  Platform.logger.debug "JSON is available using dkjson."
 else
-  Platform.logger:error "JSON is not available."
+  Platform.logger.error "JSON is not available."
   error "Missing dependency."
 end
 
@@ -129,7 +148,7 @@ if pcall (function ()
     decode = yaml.load,
   }
 end) then
-  Platform.logger:debug "YAML is available using lyaml."
+  Platform.logger.debug "YAML is available using lyaml."
 elseif pcall (function ()
   local yaml = require "yaml"
   Platform.yaml = {
@@ -137,7 +156,7 @@ elseif pcall (function ()
     decode = yaml.load,
   }
 end) then
-  Platform.logger:debug "YAML is available using yaml."
+  Platform.logger.debug "YAML is available using yaml."
 elseif pcall (function ()
   local yaml = require "luayaml"
   Platform.yaml = {
@@ -145,9 +164,9 @@ elseif pcall (function ()
     decode = yaml.load,
   }
 end) then
-  Platform.logger:debug "YAML is available using luayaml."
+  Platform.logger.debug "YAML is available using luayaml."
 else
-  Platform.logger:error "YAML is not available."
+  Platform.logger.error "YAML is not available."
   error "Missing dependency."
 end
 
@@ -161,15 +180,15 @@ do
     compress   = function (x) return x end,
     decompress = function (x) return x end,
   }
-  Platform.logger:debug "Compression 'id' is available."
+  Platform.logger.debug "Compression 'id' is available."
 end
 ignore (pcall (function ()
   Platform.compression.available.lz4 = require "lz4"
-  Platform.logger:debug "Compression 'lz4' is available."
+  Platform.logger.debug "Compression 'lz4' is available."
 end))
 ignore (pcall (function ()
   Platform.compression.available.snappy = require "snappy"
-  Platform.logger:debug "Compression 'snappy' is available."
+  Platform.logger.debug "Compression 'snappy' is available."
 end))
 
 function Platform.compression.format (x)
@@ -243,14 +262,30 @@ if pcall (function ()
     return tonumber (digest:match "%$%w+%$(%d+)%$") < Platform.password.rounds
   end
 end) then
-  Platform.logger:debug "Password hashing using 'bcrypt' is available:"
-  Platform.logger:debug ("  - using ${rounds} rounds for at least ${time} milliseconds" % {
+  Platform.logger.debug "Password hashing using 'bcrypt' is available:"
+  Platform.logger.debug ("  - using ${rounds} rounds for at least ${time} milliseconds" % {
     rounds = Platform.password.rounds,
     time   = Platform.password.computation_time * 1000,
   })
 else
-  Platform.logger:error "Password hashing is not available."
+  Platform.logger.error "Password hashing is not available."
   error "Missing dependency."
+end
+
+-- Scheduler
+-- =========
+
+Platform.scheduler = require "cosy.util.scheduler" .create ()
+
+-- Redis
+-- =====
+
+if pcall (function ()
+  Platform.redis = require "redis"
+end) then
+  Platform.logger.debug "Redis is available using 'redis-lua'."
+else
+  Platform.logger.error "Redis is not available."
 end
 
 return Platform
