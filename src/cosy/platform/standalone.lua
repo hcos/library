@@ -7,9 +7,71 @@ local Platform = {}
 
 -- Logger
 -- ======
-local logging   = require "logging"
-logging.console = require "logging.console"
-Platform.logger = logging.console "%level %message\n"
+Platform.logger = {}
+if pcall (function ()
+  local logging   = require "logging"
+  logging.console = require "logging.console"
+  local backend   = logging.console "%level %message\n"
+  function Platform.logger:debug (message)
+    if self.enabled then
+      backend:debug (message)
+    end
+  end
+  function Platform.logger:info (message)
+    if self.enabled then
+      backend:info (message)
+    end
+  end
+  function Platform.logger:warning (message)
+    if self.enabled then
+      backend:warn (message)
+    end
+  end
+  function Platform.logger:error (message)
+    if self.enabled then
+      backend:error (message)
+    end
+  end
+end) then
+  Platform.logger.enabled = true
+  Platform.logger:debug "Logger is available through lualogging."
+elseif pcall (function ()
+  local backend = require "log".new ("debug",
+    require "log.writer.console.color".new ()
+  )
+  function Platform.logger:debug (message)
+    if self.enabled then
+      backend.notice (message)
+    end
+  end
+  function Platform.logger:info (message)
+    if self.enabled then
+      backend.info (message)
+    end
+  end
+  function Platform.logger:warning (message)
+    if self.enabled then
+      backend.warning (message)
+    end
+  end
+  function Platform.logger:error (message)
+    if self.enabled then
+      backend.error (message)
+    end
+  end
+end) then
+  Platform.logger.enabled = true
+  Platform.logger:debug "Logger is available through lua-log."
+else
+  function Platform.logger:debug ()
+  end
+  function Platform.logger:info ()
+  end
+  function Platform.logger:warning ()
+  end
+  function Platform.logger:error ()
+  end
+end
 
 -- Foreign Function Interface
 -- ==========================
@@ -150,20 +212,27 @@ end
 -- Password Hashing
 -- ================
 Platform.password = {}
+Platform.password.computation_time = 0.010 -- milliseconds
 if pcall (function ()
   local bcrypt = require "bcrypt"
   local socket = require "socket"
-  local rounds = 5
-  while true do
-    local start = socket.gettime ()
-    bcrypt.digest ("asdf", rounds)
-    local delta = socket.gettime () - start
-    if delta >= 0.020 then -- 10 milliseconds
-      Platform.password.rounds = rounds - 1
-      break
+  local function compute_rounds ()
+    for _ = 1, 5 do
+      local rounds = 5
+      while true do
+        local start = socket.gettime ()
+        bcrypt.digest ("some random string", rounds)
+        local delta = socket.gettime () - start
+        if delta > Platform.password.computation_time then
+          Platform.password.rounds = math.max (Platform.password.rounds or 0, rounds)
+          break
+        end
+        rounds = rounds + 1
+      end
     end
-    rounds = rounds + 1
+    return Platform.password.rounds
   end
+  compute_rounds ()
   function Platform.password.hash (password)
     return bcrypt.digest (password, Platform.password.rounds)
   end
@@ -175,8 +244,9 @@ if pcall (function ()
   end
 end) then
   Platform.logger:debug "Password hashing using 'bcrypt' is available:"
-  Platform.logger:debug ("  - using ${rounds} rounds" % {
+  Platform.logger:debug ("  - using ${rounds} rounds for at least ${time} milliseconds" % {
     rounds = Platform.password.rounds,
+    time   = Platform.password.computation_time * 1000,
   })
 else
   Platform.logger:error "Password hashing is not available."
