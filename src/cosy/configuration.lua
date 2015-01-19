@@ -40,14 +40,14 @@ for _, path in ipairs (Platform.configuration.paths) do
       -- If a directory contains both `cosy.json` and `cosy.yaml` files, an error is raised
       -- as there is no way to known which one should be used.
       if found then
-        Platform.logger:error ("Directory '${path}' contains both 'cosy.json' and 'cosy.yaml' configuration files. There should be only one of them." % {
+        Platform.logger.error ("Directory '${path}' contains both 'cosy.json' and 'cosy.yaml' configuration files. There should be only one of them." % {
           path = path,
         })
         error "Invalid configuration"
       end
       import (loader (content), Configuration)
       found = true
-      Platform.logger:debug ("Configured using '${path}'." % {
+      Platform.logger.debug ("Configured using '${path}'." % {
         path = path,
       })
     end
