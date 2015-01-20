@@ -21,62 +21,64 @@ if pcall (function ()
   local logging   = require "logging"
   logging.console = require "logging.console"
   local backend   = logging.console "%level %message\n"
-  function Platform.logger.debug (message)
+  function Platform.logger.debug (t)
     if Platform.logger.enabled then
-      backend:debug (message)
+      backend:debug (Platform.i18n (t [1], t))
     end
   end
-  function Platform.logger.info (message)
+  function Platform.logger.info (t)
     if Platform.logger.enabled then
-      backend:info (message)
+      backend:info (Platform.i18n (t [1], t))
     end
   end
-  function Platform.logger.warning (message)
+  function Platform.logger.warning (t)
     if Platform.logger.enabled then
-      backend:warn (message)
+      backend:warn (Platform.i18n (t [1], t))
     end
   end
-  function Platform.logger.error (message)
+  function Platform.logger.error (t)
     if Platform.logger.enabled then
-      backend:error (message)
+      backend:error (Platform.i18n (t [1], t))
     end
   end
 end) then
   Platform.logger.enabled = true
-  Platform.logger.debug (Platform.i18n ("available_dependency", {
+  Platform.logger.debug {
+    "available_dependency",
     component  = "logger",
     dependency = "lualogging",
-  }))
+  }
 elseif pcall (function ()
   local backend = require "log".new ("debug",
     require "log.writer.console.color".new ()
   )
-  function Platform.logger.debug (message)
+  function Platform.logger.debug (t)
     if Platform.logger.enabled then
-      backend.notice (message)
+      backend.notice (Platform.i18n (t [1], t))
     end
   end
-  function Platform.logger.info (message)
+  function Platform.logger.info (t)
     if Platform.logger.enabled then
-      backend.info (message)
+      backend.info (Platform.i18n (t [1], t))
     end
   end
-  function Platform.logger.warning (message)
+  function Platform.logger.warning (t)
     if Platform.logger.enabled then
-      backend.warning (message)
+      backend.warning (Platform.i18n (t [1], t))
     end
   end
-  function Platform.logger.error (message)
+  function Platform.logger.error (t)
     if Platform.logger.enabled then
-      backend.error (message)
+      backend.error (Platform.i18n (t [1], t))
     end
   end
 end) then
   Platform.logger.enabled = true
-  Platform.logger.debug (Platform.i18n ("available_dependency", {
+  Platform.logger.debug {
+    "available_dependency",
     component  = "logger",
     dependency = "lua-log",
-  }))
+  }
 else
   function Platform.logger.debug ()
   end
@@ -92,10 +94,11 @@ end
 -- ====================
 if pcall (require, "lfs") then
   local lfs = require "lfs"
-  Platform.logger.debug (Platform.i18n ("available_dependency", {
+  Platform.logger.debug {
+    "available_dependency",
     component  = "i18n",
     dependency = "i18n",
-  }))
+  }
   for path in package.path:gmatch "([^;]+)" do
     if path:sub (-5) == "?.lua" then
       path = path:sub (1, #path - 5) .. "cosy/i18n/"
@@ -105,18 +108,20 @@ if pcall (require, "lfs") then
           and file:sub (1,1) ~= "." then
             local name = file:gsub (".lua", "")
             Platform.i18n.load { name = require ("cosy.i18n." .. name) }
-            Platform.logger.debug (Platform.i18n ("available_locale", {
-              locale = name,
-            }))
+            Platform.logger.debug {
+              "available_locale",
+              locale  = name,
+            }
           end
         end
       end
     end
   end
 else
-  Platform.logger.debug (Platform.i18n ("missing_dependency", {
+  Platform.logger.debug {
+    "missing_dependency",
     component  = "i18n",
-  }))
+  }
   error "Missing dependency"
 end
 
@@ -169,14 +174,16 @@ if pcall (function ()
     return loadstring (s) ()
   end
 end) then
-  Platform.logger.debug (Platform.i18n ("available_dependency", {
+  Platform.logger.debug {
+    "available_dependency",
     component  = "table dump",
     dependency = "serpent",
-  }))
+  }
 else
-  Platform.logger.debug (Platform.i18n ("missing_dependency", {
+  Platform.logger.debug {
+    "missing_dependency",
     component  = "table dump",
-  }))
+  }
   error "Missing dependency"
 end
 
@@ -185,30 +192,34 @@ end
 if pcall (function ()
   Platform.json = require "cjson"
 end) then
-  Platform.logger.debug (Platform.i18n ("available_dependency", {
+  Platform.logger.debug {
+    "available_dependency",
     component  = "json",
     dependency = "cjson",
-  }))
+  }
 elseif pcall (function ()
   global.always_try_using_lpeg = true
   Platform.json = require "dkjson"
 end) then
-  Platform.logger.debug (Platform.i18n ("available_dependency", {
+  Platform.logger.debug {
+    "available_dependency",
     component  = "json",
     dependency = "dkjson+lpeg",
-  }))
+  }
 elseif pcall (function ()
   global.always_try_using_lpeg = false
   Platform.json = require "dkjson"
 end) then
-  Platform.logger.debug (Platform.i18n ("available_dependency", {
+  Platform.logger.debug {
+    "available_dependency",
     component  = "json",
     dependency = "dkjson",
-  }))
+  }
 else
-  Platform.logger.debug (Platform.i18n ("missing_dependency", {
+  Platform.logger.debug {
+    "missing_dependency",
     component  = "JSON",
-  }))
+  }
   error "Missing dependency"
 end
 
@@ -221,10 +232,11 @@ if pcall (function ()
     decode = yaml.load,
   }
 end) then
-  Platform.logger.debug (Platform.i18n ("available_dependency", {
+  Platform.logger.debug {
+    "available_dependency",
     component  = "yaml",
     dependency = "lyaml",
-  }))
+  }
 elseif pcall (function ()
   local yaml = require "yaml"
   Platform.yaml = {
@@ -232,10 +244,11 @@ elseif pcall (function ()
     decode = yaml.load,
   }
 end) then
-  Platform.logger.debug (Platform.i18n ("available_dependency", {
+  Platform.logger.debug {
+    "available_dependency",
     component  = "yaml",
     dependency = "yaml",
-  }))
+  }
 elseif pcall (function ()
   local yaml = require "luayaml"
   Platform.yaml = {
@@ -243,14 +256,16 @@ elseif pcall (function ()
     decode = yaml.load,
   }
 end) then
-  Platform.logger.debug (Platform.i18n ("available_dependency", {
+  Platform.logger.debug {
+    "available_dependency",
     component  = "yaml",
     dependency = "luayaml",
-  }))
+  }
 else
-  Platform.logger.debug (Platform.i18n ("missing_dependency", {
+  Platform.logger.debug {
+    "missing_dependency",
     component  = "yaml",
-  }))
+  }
   error "Missing dependency"
 end
 
@@ -264,21 +279,24 @@ do
     compress   = function (x) return x end,
     decompress = function (x) return x end,
   }
-  Platform.logger.debug (Platform.i18n ("available_compression", {
+  Platform.logger.debug {
+    "available_compression",
     compression = "none",
-  }))
+  }
 end
 ignore (pcall (function ()
   Platform.compression.available.lz4 = require "lz4"
-  Platform.logger.debug (Platform.i18n ("available_compression", {
+  Platform.logger.debug {
+    "available_compression",
     compression = "lz4",
-  }))
+  }
 end))
 ignore (pcall (function ()
   Platform.compression.available.snappy = require "snappy"
-  Platform.logger.debug (Platform.i18n ("available_compression", {
+  Platform.logger.debug {
+    "available_compression",
     compression = "snappy",
-  }))
+  }
 end))
 
 function Platform.compression.format (x)
@@ -332,18 +350,21 @@ if pcall (function ()
     return tonumber (digest:match "%$%w+%$(%d+)%$") < Platform.password.rounds
   end
 end) then
-  Platform.logger.debug (Platform.i18n ("available_dependency", {
+  Platform.logger.debug {
+    "available_dependency",
     component  = "password hashing",
     dependency = "bcrypt",
-  }))
-  Platform.logger.debug (Platform.i18n ("bcrypt_rounds", {
+  }
+  Platform.logger.debug {
+    "bcrypt_rounds",
     count = Platform.password.rounds,
     time  = Platform.password.computation_time * 1000,
-  }))
+  }
 else
-  Platform.logger.debug (Platform.i18n ("missing_dependency", {
+  Platform.logger.debug {
+    "missing_dependency",
     component  = "password hashing",
-  }))
+  }
   error "Missing dependency"
 end
 
@@ -352,14 +373,16 @@ end
 if pcall (function ()
   Platform.redis = require "redis"
 end) then
-  Platform.logger.debug (Platform.i18n ("available_dependency", {
+  Platform.logger.debug {
+    "available_dependency",
     component  = "redis",
     dependency = "redis-lua",
-  }))
+  }
 else
-  Platform.logger.debug (Platform.i18n ("missing_dependency", {
+  Platform.logger.debug {
+    "missing_dependency",
     component  = "redis",
-  }))
+  }
   error "Missing dependency"
 end
 

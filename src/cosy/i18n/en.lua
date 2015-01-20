@@ -7,5 +7,6 @@ return {
     one   = "using one round in bcrypt for at least %{time} milliseconds of computation",
     other = "using %{count} rounds in bcrypt for at least %{time} milliseconds of computation",
   },
-  configuration_conflict = "directory %{dir} contains several configuration files, instead of just one",
+  configuration_conflict = "directory %{path} contains several configuration files, instead of just one",
+  configuration_using    = "using configuration in directory %{path}",
 }
