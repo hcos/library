@@ -1,13 +1,5 @@
-local string_mt = getmetatable ""
-
-function string_mt:__mod (parameters)
-  return self:gsub (
-    '($%b{})',
-    function (w)
-      return tostring (parameters [w:sub (3, -2)]) or w
-    end
-  )
-end
+local string_metatable = getmetatable ""
+string_metatable.__mod = require "i18n.interpolate"
 
 function string:quote ()
   if not self:find ('"') then
