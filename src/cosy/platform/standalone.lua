@@ -1,9 +1,18 @@
-local _      = require "cosy.util.string"
+               require "cosy.util.string"
 local ignore = require "cosy.util.ignore"
 
 local global = _G
 
 local Platform = {}
+
+-- Preload
+-- =======
+if not pcall (function ()
+  Platform.i18n = require "i18n"
+  Platform.i18n.load { en = require "cosy.i18n.en" }
+end) then
+  error "Missing dependency"
+end
 
 -- Logger
 -- ======
@@ -34,7 +43,10 @@ if pcall (function ()
   end
 end) then
   Platform.logger.enabled = true
-  Platform.logger.debug "Logger is available through lualogging."
+  Platform.logger.debug (Platform.i18n ("available_dependency", {
+    component  = "logger",
+    dependency = "lualogging",
+  }))
 elseif pcall (function ()
   local backend = require "log".new ("debug",
     require "log.writer.console.color".new ()
@@ -61,7 +73,10 @@ elseif pcall (function ()
   end
 end) then
   Platform.logger.enabled = true
-  Platform.logger.debug "Logger is available through lua-log."
+  Platform.logger.debug (Platform.i18n ("available_dependency", {
+    component  = "logger",
+    dependency = "lua-log",
+  }))
 else
   function Platform.logger.debug ()
   end
@@ -73,18 +88,61 @@ else
   end
 end
 
+-- Internationalization
+-- ====================
+if pcall (require, "lfs") then
+  local lfs = require "lfs"
+  Platform.logger.debug (Platform.i18n ("available_dependency", {
+    component  = "i18n",
+    dependency = "i18n",
+  }))
+  for path in package.path:gmatch "([^;]+)" do
+    if path:sub (-5) == "?.lua" then
+      path = path:sub (1, #path - 5) .. "cosy/i18n/"
+      if lfs.attributes (path, "mode") == "directory" then
+        for file in lfs.dir (path) do
+          if lfs.attributes (path .. file, "mode") == "file"
+          and file:sub (1,1) ~= "." then
+            local name = file:gsub (".lua", "")
+            Platform.i18n.load { name = require ("cosy.i18n." .. name) }
+            Platform.logger.debug (Platform.i18n ("available_locale", {
+              locale = name,
+            }))
+          end
+        end
+      end
+    end
+  end
+else
+  Platform.logger.debug (Platform.i18n ("missing_dependency", {
+    component  = "i18n",
+  }))
+  error "Missing dependency"
+end
+
 -- Foreign Function Interface
 -- ==========================
+--[[
 if global.jit then
   Platform.ffi = require "ffi"
-  Platform.logger.debug "FFI is available through LuaJIT."
+  Platform.logger.debug (Platform.i18n ("available_dependency", {
+    component  = "ffi",
+    dependency = "luajit",
+  }))
 elseif pcall (function ()
   Platform.ffi = require "luaffi"
 end) then
-  Platform.logger.debug "FFI is available through luaffi."
+  Platform.logger.debug (Platform.i18n ("available_dependency", {
+    component  = "ffi",
+    dependency = "luaffi",
+  }))
 else
-  Platform.logger.debug "FFI is not available."
+  Platform.logger.debug (Platform.i18n ("missing_dependency", {
+    component  = "ffi",
+  }))
+  error "Missing dependency"
 end
+--]]
 
 -- Unique ID generator
 -- ===================
@@ -101,7 +159,6 @@ end
 
 -- Table dump
 -- ==========
-
 if pcall (function ()
   local serpent = require "serpent"
   Platform.table = {}
@@ -112,10 +169,15 @@ if pcall (function ()
     return loadstring (s) ()
   end
 end) then
-  Platform.logger.debug "Table dump is available using 'serpent'."
+  Platform.logger.debug (Platform.i18n ("available_dependency", {
+    component  = "table dump",
+    dependency = "serpent",
+  }))
 else
-  Platform.logger.error "Table dump is not available."
-  error "Missing dependency."
+  Platform.logger.debug (Platform.i18n ("missing_dependency", {
+    component  = "table dump",
+  }))
+  error "Missing dependency"
 end
 
 -- JSON
@@ -123,20 +185,31 @@ end
 if pcall (function ()
   Platform.json = require "cjson"
 end) then
-  Platform.logger.debug "JSON is available using cjson."
+  Platform.logger.debug (Platform.i18n ("available_dependency", {
+    component  = "json",
+    dependency = "cjson",
+  }))
 elseif pcall (function ()
   global.always_try_using_lpeg = true
   Platform.json = require "dkjson"
 end) then
-  Platform.logger.debug "JSON is available using dkjson and lpeg."
+  Platform.logger.debug (Platform.i18n ("available_dependency", {
+    component  = "json",
+    dependency = "dkjson+lpeg",
+  }))
 elseif pcall (function ()
   global.always_try_using_lpeg = false
   Platform.json = require "dkjson"
 end) then
-  Platform.logger.debug "JSON is available using dkjson."
+  Platform.logger.debug (Platform.i18n ("available_dependency", {
+    component  = "json",
+    dependency = "dkjson",
+  }))
 else
-  Platform.logger.error "JSON is not available."
-  error "Missing dependency."
+  Platform.logger.debug (Platform.i18n ("missing_dependency", {
+    component  = "JSON",
+  }))
+  error "Missing dependency"
 end
 
 -- YAML
@@ -148,7 +221,10 @@ if pcall (function ()
     decode = yaml.load,
   }
 end) then
-  Platform.logger.debug "YAML is available using lyaml."
+  Platform.logger.debug (Platform.i18n ("available_dependency", {
+    component  = "yaml",
+    dependency = "lyaml",
+  }))
 elseif pcall (function ()
   local yaml = require "yaml"
   Platform.yaml = {
@@ -156,7 +232,10 @@ elseif pcall (function ()
     decode = yaml.load,
   }
 end) then
-  Platform.logger.debug "YAML is available using yaml."
+  Platform.logger.debug (Platform.i18n ("available_dependency", {
+    component  = "yaml",
+    dependency = "yaml",
+  }))
 elseif pcall (function ()
   local yaml = require "luayaml"
   Platform.yaml = {
@@ -164,10 +243,15 @@ elseif pcall (function ()
     decode = yaml.load,
   }
 end) then
-  Platform.logger.debug "YAML is available using luayaml."
+  Platform.logger.debug (Platform.i18n ("available_dependency", {
+    component  = "yaml",
+    dependency = "luayaml",
+  }))
 else
-  Platform.logger.error "YAML is not available."
-  error "Missing dependency."
+  Platform.logger.debug (Platform.i18n ("missing_dependency", {
+    component  = "yaml",
+  }))
+  error "Missing dependency"
 end
 
 -- Compression
@@ -180,15 +264,21 @@ do
     compress   = function (x) return x end,
     decompress = function (x) return x end,
   }
-  Platform.logger.debug "Compression 'id' is available."
+  Platform.logger.debug (Platform.i18n ("available_compression", {
+    compression = "none",
+  }))
 end
 ignore (pcall (function ()
   Platform.compression.available.lz4 = require "lz4"
-  Platform.logger.debug "Compression 'lz4' is available."
+  Platform.logger.debug (Platform.i18n ("available_compression", {
+    compression = "lz4",
+  }))
 end))
 ignore (pcall (function ()
   Platform.compression.available.snappy = require "snappy"
-  Platform.logger.debug "Compression 'snappy' is available."
+  Platform.logger.debug (Platform.i18n ("available_compression", {
+    compression = "snappy",
+  }))
 end))
 
 function Platform.compression.format (x)
@@ -203,29 +293,9 @@ function Platform.compression.decompress (x)
   local Compression = Platform.Compressions[format]
   return Compression
      and Compression.decompress (x:sub (#format+2))
-      or error ("Compression format '${format}' is not available" % {
+      or error ("Compression format '%{format}' is not available" % {
         format = format,
       })
-end
-
--- Configuration
--- =============
-Platform.configuration = {}
-
-Platform.configuration.paths = {
-  "/etc",
-  os.getenv "HOME" .. "/.cosy",
-  os.getenv "PWD",
-}
-function Platform.configuration.read (path)
-  local handle = io.open (path, "r")
-  if handle ~=nil then
-    local content = handle:read "*all"
-    io.close (handle)
-    return content
-  else
-    return nil
-  end
 end
 
 -- Password Hashing
@@ -262,30 +332,59 @@ if pcall (function ()
     return tonumber (digest:match "%$%w+%$(%d+)%$") < Platform.password.rounds
   end
 end) then
-  Platform.logger.debug "Password hashing using 'bcrypt' is available:"
-  Platform.logger.debug ("  - using ${rounds} rounds for at least ${time} milliseconds" % {
-    rounds = Platform.password.rounds,
-    time   = Platform.password.computation_time * 1000,
-  })
+  Platform.logger.debug (Platform.i18n ("available_dependency", {
+    component  = "password hashing",
+    dependency = "bcrypt",
+  }))
+  Platform.logger.debug (Platform.i18n ("bcrypt_rounds", {
+    count = Platform.password.rounds,
+    time  = Platform.password.computation_time * 1000,
+  }))
 else
-  Platform.logger.error "Password hashing is not available."
-  error "Missing dependency."
+  Platform.logger.debug (Platform.i18n ("missing_dependency", {
+    component  = "password hashing",
+  }))
+  error "Missing dependency"
+end
+
+-- Redis
+-- =====
+if pcall (function ()
+  Platform.redis = require "redis"
+end) then
+  Platform.logger.debug (Platform.i18n ("available_dependency", {
+    component  = "redis",
+    dependency = "redis-lua",
+  }))
+else
+  Platform.logger.debug (Platform.i18n ("missing_dependency", {
+    component  = "redis",
+  }))
+  error "Missing dependency"
+end
+
+-- Configuration
+-- =============
+Platform.configuration = {}
+
+Platform.configuration.paths = {
+  "/etc",
+  os.getenv "HOME" .. "/.cosy",
+  os.getenv "PWD",
+}
+function Platform.configuration.read (path)
+  local handle = io.open (path, "r")
+  if handle ~=nil then
+    local content = handle:read "*all"
+    io.close (handle)
+    return content
+  else
+    return nil
+  end
 end
 
 -- Scheduler
 -- =========
-
 Platform.scheduler = require "cosy.util.scheduler" .create ()
-
--- Redis
--- =====
-
-if pcall (function ()
-  Platform.redis = require "redis"
-end) then
-  Platform.logger.debug "Redis is available using 'redis-lua'."
-else
-  Platform.logger.error "Redis is not available."
-end
 
 return Platform
