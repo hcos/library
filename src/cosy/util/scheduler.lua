@@ -7,6 +7,8 @@ local Socket = {}
 
 Socket.__index = Socket
 
+Socket.ASYNC = true
+
 function Socket:connect (host, port)
   local coroutine = self.coroutine
   local socket    = self.socket
@@ -165,7 +167,9 @@ function Scheduler.loop (scheduler)
   while scheduler._last ~= 0 do
     local current = threads [i]
     if current ~= nil then
+      scheduler.IN_THREAD = true
       local status, err = coroutine.resume (current)
+      scheduler.IN_THREAD = false
       if not status then
         scheduler.logger:warn (err)
       end
