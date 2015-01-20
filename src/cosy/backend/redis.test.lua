@@ -3,9 +3,9 @@ require "busted"
 local assert = require "luassert"
 
 local Platform = require "cosy.platform"
-Platform.logger.enabled = false
-
 local Backend  = require "cosy.backend.redis"
+
+Platform.logger.enabled = false
 
 describe ("Redis backend", function ()
 

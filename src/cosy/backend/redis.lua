@@ -3,22 +3,20 @@ local Backend = {}
 local Platform      = require "cosy.platform"
 local Configuration = require "cosy.configuration"
 local ignore        = require "cosy.util.ignore"
-
-local scheduler = Platform.scheduler
+local Email         = require "cosy.util.email"
 
 Backend.pool = {}
 
-scheduler:addthread (function ()
+Platform.scheduler:addthread (function ()
   local socket    = require "socket"
   local coroutine = require "coroutine.make" ()
-  local redis     = Platform.redis
   local host      = Configuration.redis.host
   local port      = Configuration.redis.port
   local database  = Configuration.redis.database
   local size      = Configuration.redis.size
   for _ = 1, size do
-    local skt    = socket.connect (host, port)
-    local client = redis.connect {
+    local skt    = Platform.scheduler:wrap (socket.tcp ()):connect (host, port)
+    local client = Platform.redis.connect {
       socket    = skt,
       coroutine = coroutine,
     }
@@ -30,7 +28,7 @@ end)
 function Backend.pool.using (f)
   local pool = Backend.pool
   while #pool == 0 do
-    scheduler:pass ()
+    Platform.scheduler:pass ()
   end
   local client     = pool [#pool]
   pool [#pool]     = nil
@@ -46,7 +44,7 @@ end
 function Backend.pool.transaction (keys, f)
   local pool = Backend.pool
   while #pool == 0 do
-    scheduler:pass ()
+    Platform.scheduler:pass ()
   end
   local client     = pool [#pool]
   pool [#pool]     = nil
@@ -92,6 +90,16 @@ end
 Parameters.password = {}
 Parameters.password.type = "string"
 Parameters.password.hint = "password"
+
+Parameters.email = {}
+Parameters.email.type = "string"
+Parameters.email.hint = "youremail@domain.org"
+Parameters.email.checks = {}
+Parameters.email.checks ["an email must comply to the standard format"] = function (t)
+  t.email = t.email:trim ()
+  local pattern = "^[A-Za-z0-9%.%%%+%-]+@[A-Za-z0-9%.%%%+%-]+%.%w%w%w?%w?>"
+  return t.email:find (pattern)
+end
 
 local function check (parameters, t)
   local reasons = {}
@@ -151,6 +159,9 @@ function Backend.create_user (session, t, interactive)
     local parameters = {
       username = Parameters.username,
       password = Parameters.password,
+      name     = Parameters.name,
+      email    = Parameters.email,
+      language = Parameters.language,
     }
     if interactive then
       t = Backend.coroutine.yield (parameters)
@@ -159,6 +170,7 @@ function Backend.create_user (session, t, interactive)
     local id = "/${username}" % {
       username = t.username,
     }
+    local validation_key = Platform.unique.uuid ()
     Backend.pool.transaction ({ id }, function (redis)
       if redis:exists (id) then
         error ("${username} exists already" % {
@@ -169,10 +181,23 @@ function Backend.create_user (session, t, interactive)
         username = t.username,
       })
       redis:hset (id, "secrets", Platform.json.encode {
-        password = t.password,
+        password   = t.password,
+        validation = validation_key,
       })
       redis:hset (id, "contents", Platform.json.encode {})
     end)
+    Email.send {
+      from    = "CosyVerif Platform <test.cosyverif@gmail.com>",
+      to      = "${name} <${email}>" % {
+        name  = t.name,
+        email = t.email,
+      },
+      subject = "[CosyVerif] New account",
+      body    = Configuration.message.registration % {
+        username = t.username,
+        key      = validation_key,
+      },
+    }
     return true
   end) ()
 end
