@@ -133,7 +133,7 @@ function Tcp.STARTTLS (protocol, make)
   end
 end
 
-local function discover ()
+function Email.discover ()
   local domain    = Configuration.server.root
   local host      = Configuration.smtp.host
   local username  = Configuration.smtp.username
@@ -190,16 +190,6 @@ local function discover ()
     end
   end
 end
-if not discover () then
-  Platform.logger.warning ("No SMTP server discovered, sending of emails will not work.")
-  return
-end
-Platform.logger.debug ("SMTP on ${host}:${port} uses ${method} (encrypted with ${protocol})." % {
-  host     = Configuration.smtp.host,
-  port     = Configuration.smtp.port,
-  method   = Configuration.smtp.method,
-  protocol = Configuration.smtp.protocol,
-})
 
 local function extract (source, t)
   if source == nil then

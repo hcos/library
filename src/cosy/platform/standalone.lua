@@ -436,4 +436,22 @@ Platform.scheduler = function ()
   Platform.scheduler = require "cosy.util.scheduler" .create ()
 end
 
+-- Email
+-- =====
+Platform.email = function ()
+  local Email = require "cosy.util.email"
+  if not Email.discover () then
+    Platform.logger.warning ("No SMTP server discovered, sending of emails will not work.")
+    error "SMTP missing"
+  end
+  local Configuration = require "cosy.configuration"
+  Platform.logger.debug ("SMTP on ${host}:${port} uses ${method} (encrypted with ${protocol})." % {
+    host     = Configuration.smtp.host,
+    port     = Configuration.smtp.port,
+    method   = Configuration.smtp.method,
+    protocol = Configuration.smtp.protocol,
+  })
+  Platform.email.send = Email.send
+end
+
 return Platform
