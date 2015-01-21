@@ -41,7 +41,7 @@ for _, path in ipairs (Platform.configuration.paths) do
       -- as there is no way to known which one should be used.
       if found then
         Platform.logger.error {
-          "configuration_conflict",
+          "configuration:conflict",
           path = path,
         }
         error "Invalid configuration"
@@ -49,7 +49,7 @@ for _, path in ipairs (Platform.configuration.paths) do
       import (loader (content), Configuration)
       found = true
       Platform.logger.debug {
-        "configuration_using",
+        "configuration:using",
         path = path,
       }
     end
