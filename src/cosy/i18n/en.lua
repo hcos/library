@@ -25,20 +25,25 @@ return {
     "transition",
   ["check:error"] =
     "some parameters are invalid or missing",
-  ["check:username:is-string"] =
-    "a username must be a string",
-  ["check:username:non-empty"] =
-    "a username must be non empty",
+
+  ["check:is-string"] =
+    "a %{key} must be a string",
+  ["check:min-size"] = {
+    one   = "a %{key} must contain at least one character",
+    other = "a %{key} must be at least %{count} characters long",
+  },
+  ["check:max-size"] = {
+    one   = "a %{key} must contain at most one character",
+    other = "a %{key} must be at most %{count} characters long",
+  },
+  
   ["check:username:alphanumeric"] =
     "a username must contain only alphanumeric characters",
-  ["check:password:is-string"] =
-    "a password must be a string",
-  ["check:password:min-size"] = {
-    one   = "a (trimmed) password must contain at least one character",
-    other = "a (trimmed) password must be at least %{count} characters long",
-  },
   ["check:email:pattern"] =
     "an email address must comply to the standard",
+  ["check:locale:pattern"] =
+    "a locale must comply to the standard",
+
   ["authenticate:non-existing"] =
     "authentication failed, because the given user does not exist",
   ["authenticate:non-user"] =

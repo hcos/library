@@ -68,9 +68,8 @@ end
 
 Backend.coroutine = require "coroutine.make" ()
 
-if _G.unpack then
-  table.unpack = _G.unpack
-end
+-- Fix missing `table.unpack` in lua 5.1:
+table.unpack = table.unpack or _G.unpack
 
 function Backend.__index (_, key)
   local result = Backend [key]
@@ -137,49 +136,60 @@ end
 
 local Parameters = {}
 
-Parameters.username = {}
-Parameters.username [1] = function (session, t)
-  return type (t.username) == "string"
-      or nil, Platform.i18n.translate ("check:username:is-string", {
-           locale = session.locale,
-         })
+function Parameters.new_string (key)
+  Parameters [key] = {}
+  Parameters [key] [1] = function (session, t)
+    return type (t [key]) == "string"
+        or nil, Platform.i18n.translate ("check:is-string", {
+             locale = session.locale,
+             key    = key,
+           })
+  end
+  Parameters [key] [2] = function (session, t)
+    return #(t [key]) >= Configuration.data [key] .min_size
+        or nil, Platform.i18n.translate ("check:min-size", {
+             locale = session.locale,
+             key    = key,
+             count  = Configuration.data [key] .min_size,
+           })
+  end
+  Parameters [key] [3] = function (session, t)
+    return #(t.username) <= Configuration.data [key] .max_size
+        or nil, Platform.i18n.translate ("check:max-size", {
+             locale = session.locale,
+             key    = key,
+             count  = Configuration.data [key].max_size,
+           })
+  end
+  return Parameters [key]
 end
-Parameters.username [2] = function (session, t)
-  t.username = t.username:trim ()
-  return #(t.username) > 0
-      or nil, Platform.i18n.translate ( "check:username:non-empty", {
-           locale = session.locale,
-         })
-end
-Parameters.username [2] = function (session, t)
+
+Parameters.new_string "username"
+Parameters.username [#(Parameters.username) + 1] = function (session, t)
   return t.username:find "^%w+$"
-      or nil, Platform.i18n.translate ( "check:username:alphanumeric", {
+      or nil, Platform.i18n.translate ("check:username:alphanumeric", {
            locale = session.locale,
          })
 end
 
-Parameters.password = {}
-Parameters.password [1] = function (session, t)
-  return type (t.password) == "string"
-      or nil, Platform.i18n.translate ( "check:password:is-string", {
-           locale = session.locale,
-         })
-end
-Parameters.password [2] = function (session, t)
-  t.password = t.password:trim ()
-  return #(t.password) >= Configuration.security.password_size
-      or nil, Platform.i18n.translate ("check:password:min-size" % {
-           locale = session.locale,
-           count  = Configuration.security.password_size,
-         })
-end
+Parameters.new_string "password"
 
-Parameters.email = {}
-Parameters.email [1] = function (session, t)
+Parameters.new_string "email"
+Parameters.email [#(Parameters.email) + 1] = function (session, t)
   t.email = t.email:trim ()
   local pattern = "^[A-Za-z0-9%.%%%+%-]+@[A-Za-z0-9%.%%%+%-]+%.%w%w%w?%w?"
   return t.email:find (pattern)
       or nil, Platform.i18n "check:email:pattern"
+end
+
+Parameters.new_string "name"
+
+Parameters.new_string "locale"
+Parameters.locale [#(Parameters.locale) + 1] = function (session, t)
+  t.locale = t.locale:trim ()
+  local pattern = "^[A-Za-z][A-Za-z](_[A-Za-z][A-Za-z])?"
+  return t.locale:find (pattern)
+      or nil, Platform.i18n "check:locale:pattern"
 end
 
 Parameters.resource = {}
@@ -219,6 +229,8 @@ function Backend.authenticate (session, t)
     end
     local secrets  = redis:hget (id, "secrets")
     secrets = Platform.json.decode (secrets)
+    -- end of reads
+    redis:multi ()
     if Platform.password.verify (t.password, secrets.password) then
       session.username = t.username
     else
@@ -243,55 +255,47 @@ function Backend.authenticate (session, t)
 end
 
 function Backend.create_user (session, t)
-  return Backend.coroutine.wrap (function ()
-    local parameters = {
-      username = Parameters.username,
-      password = Parameters.password,
-      name     = Parameters.name,
-      email    = Parameters.email,
-      language = Parameters.language,
-    }
-    repeat
-      local ok, reason = check (parameters, t)
-      if not ok then
-        Backend.coroutine.yield {
-          
-        }
-      end
-    until ok
-    local id = "/${username}" % {
+  local parameters = {
+    username = Parameters.username,
+    password = Parameters.password,
+    email    = Parameters.email,
+    name     = Parameters.name,
+    locale   = Parameters.locale,
+  }
+  Backend.localize (session, t)
+  Backend.check    (session, t, parameters)
+  local id = "/${username}" % {
+    username = t.username,
+  }
+  local validation_key = Platform.unique.uuid ()
+  Backend.pool.transaction ({ id }, function (redis)
+    if redis:exists (id) then
+      error ("${username} exists already" % {
+        username = t.username,
+      })
+    end
+    redis:hset (id, "metadata", Platform.json.encode {
       username = t.username,
-    }
-    local validation_key = Platform.unique.uuid ()
-    Backend.pool.transaction ({ id }, function (redis)
-      if redis:exists (id) then
-        error ("${username} exists already" % {
-          username = t.username,
-        })
-      end
-      redis:hset (id, "metadata", Platform.json.encode {
-        username = t.username,
-      })
-      redis:hset (id, "secrets", Platform.json.encode {
-        password   = t.password,
-        validation = validation_key,
-      })
-      redis:hset (id, "contents", Platform.json.encode {})
-    end)
-    Email.send {
-      from    = "CosyVerif Platform <test.cosyverif@gmail.com>",
-      to      = "${name} <${email}>" % {
-        name  = t.name,
-        email = t.email,
-      },
-      subject = "[CosyVerif] New account",
-      body    = Configuration.message.registration % {
-        username = t.username,
-        key      = validation_key,
-      },
-    }
-    return true
-  end) ()
+    })
+    redis:hset (id, "secrets", Platform.json.encode {
+      password   = t.password,
+      validation = validation_key,
+    })
+    redis:hset (id, "contents", Platform.json.encode {})
+  end)
+  Email.send {
+    from    = "CosyVerif Platform <test.cosyverif@gmail.com>",
+    to      = "${name} <${email}>" % {
+      name  = t.name,
+      email = t.email,
+    },
+    subject = "[CosyVerif] New account",
+    body    = Configuration.message.registration % {
+      username = t.username,
+      key      = validation_key,
+    },
+  }
+  return true
 end
 
 function Backend:delete_user (t)
