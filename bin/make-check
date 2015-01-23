@@ -9,9 +9,11 @@ cd src
   echo
 
   # Run coverage on all test files:
+  rm -rf TAP.txt
   for file in $(find . -name "*.test.lua" | sort)
   do
-    lua -lluacov ${file}
+    busted --verbose --coverage ${file}
+    busted --verbose --coverage --output=TAP ${file} >> TAP.txt
   done
 
   # Run coverage analysis:

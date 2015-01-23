@@ -1,14 +1,8 @@
-#! /bin/bash
+#! /usr/bin/env lua
 
-current=$(pwd)
-dir=$(mktemp -d -t cosy.XXXXXX)
-echo "Working in ${dir}"
-cd ${dir}
-  echo "Downloading ee5_base64..."
-  git clone https://github.com/ErnieE5/ee5_base64.git
-  cp ee5_base64/ee5_base64.lua ${current}/src/
-  echo "Downloading dkjson..."
-  git clone https://github.com/LuaDist/dkjson.git
-  cp dkjson/dkjson.lua ${current}/src/
-cd ${current}
-rm -rf ${dir}
+loadfile "./rockspec/cosyverif-master-1.rockspec" ()
+
+for _, d in ipairs (dependencies) do
+  local name = d:match "[^%s]+"
+  os.execute ("luarocks install " .. name)
+end
