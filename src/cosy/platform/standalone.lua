@@ -340,7 +340,6 @@ end
 -- ================
 Platform.password = function ()
   local Configuration = require "cosy.configuration"
-  Platform.password.computation_time = Configuration.security.password_computation
   if pcall (function ()
     local bcrypt = require "bcrypt"
     local socket = require "socket"
@@ -351,7 +350,7 @@ Platform.password = function ()
           local start = socket.gettime ()
           bcrypt.digest ("some random string", rounds)
           local delta = socket.gettime () - start
-          if delta > Platform.password.computation_time then
+          if delta > Configuration.data.password.time then
             Platform.password.rounds = math.max (Platform.password.rounds or 0, rounds)
             break
           end
@@ -379,7 +378,7 @@ Platform.password = function ()
     Platform.logger.debug {
       "platform:bcrypt-rounds",
       count = Platform.password.rounds,
-      time  = Platform.password.computation_time * 1000,
+      time  = Configuration.data.password.time * 1000,
     }
   else
     Platform.logger.debug {
