@@ -10,7 +10,8 @@
 
 local Platform  = require "cosy.platform"
 
-local Configuration = {}
+local Metatable = {}
+local Configuration = setmetatable ({}, Metatable)
 
 -- This function imports the `source` table inside the `target` one.
 local function import (source, target)
@@ -29,31 +30,42 @@ local function import (source, target)
   end
 end
 
-for _, path in ipairs (Platform.configuration.paths) do
-  local found = false
-  for name, loader in pairs {
-    ["cosy.yaml"] = Platform.yaml.decode,
-    ["cosy.json"] = Platform.json.decode,
-  } do
-    local content = Platform.configuration.read (path .. "/" .. name)
-    if content then
-      -- If a directory contains both `cosy.json` and `cosy.yaml` files, an error is raised
-      -- as there is no way to known which one should be used.
-      if found then
-        Platform.logger.error {
-          "configuration:conflict",
+Metatable.__index = Metatable
+
+function Metatable.reload ()
+  for k in pairs (Configuration) do
+    if k ~= "reload" then
+      Configuration [k] = nil
+    end
+  end
+  for _, path in ipairs (Platform.configuration.paths) do
+    local found = false
+    for name, loader in pairs {
+      ["cosy.yaml"] = Platform.yaml.decode,
+      ["cosy.json"] = Platform.json.decode,
+    } do
+      local content = Platform.configuration.read (path .. "/" .. name)
+      if content then
+        -- If a directory contains both `cosy.json` and `cosy.yaml` files, an error is raised
+        -- as there is no way to known which one should be used.
+        if found then
+          Platform.logger.error {
+            "configuration:conflict",
+            path = path,
+          }
+          error "Invalid configuration"
+        end
+        import (loader (content), Configuration)
+        found = true
+        Platform.logger.debug {
+          "configuration:using",
           path = path,
         }
-        error "Invalid configuration"
       end
-      import (loader (content), Configuration)
-      found = true
-      Platform.logger.debug {
-        "configuration:using",
-        path = path,
-      }
     end
   end
 end
+
+Configuration:reload ()
 
 return Configuration

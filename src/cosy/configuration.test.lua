@@ -128,4 +128,14 @@ describe ("Configuration", function ()
     assert (lfs.rmdir (directories [1]))
     assert (lfs.rmdir (directories [2]))
   end)
+
+  it ("should reload properly", function ()
+    local Configuration = require "cosy.configuration"
+    Configuration.some_key = true
+    Configuration:reload ()
+    assert.is_truthy (Configuration.some_key == nil)
+    local C = require "cosy.configuration"
+    assert.are.equal (Configuration, C)
+  end)
+
 end)
