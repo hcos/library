@@ -3,7 +3,6 @@ local Backend = {}
 local Platform      = require "cosy.platform"
 local Configuration = require "cosy.configuration"
 local ignore        = require "cosy.util.ignore"
-local Email         = require "cosy.util.email"
 
 Backend.pool = {}
 
@@ -67,94 +66,183 @@ end
 -- * secrets: all secrets metadata (password, keys, ...)
 -- * contents: all subresources
 
-Backend.__index = Backend
-
 Backend.coroutine = require "coroutine.make" ()
 
-local Parameters = {}
-
-Parameters.username = {}
-Parameters.username.type = "string"
-Parameters.username.hint = "username"
-Parameters.username.checks = {}
-Parameters.username.checks ["a username must be a string"] = function (t)
-  return type (t.username) == "string"
-end
-Parameters.username.checks ["a username must contain at least one character"] = function (t)
-  return #(t.username) > 0
-end
-Parameters.username.checks ["a username must be composed only of alphanumeric characters"] = function (t)
-  return t.username:find "^%w+$"
+if _G.unpack then
+  table.unpack = _G.unpack
 end
 
-Parameters.password = {}
-Parameters.password.type = "string"
-Parameters.password.hint = "password"
-
-Parameters.email = {}
-Parameters.email.type = "string"
-Parameters.email.hint = "youremail@domain.org"
-Parameters.email.checks = {}
-Parameters.email.checks ["an email must comply to the standard format"] = function (t)
-  t.email = t.email:trim ()
-  local pattern = "^[A-Za-z0-9%.%%%+%-]+@[A-Za-z0-9%.%%%+%-]+%.%w%w%w?%w?>"
-  return t.email:find (pattern)
+function Backend.__index (_, key)
+  local result = Backend [key]
+  if type (result) == "function" then
+    return function (...)
+      local args = { ... }
+      return Backend.coroutine.wrap (function ()
+        return result (table.unpack (args))
+      end) ()
+    end
+  else
+    return result
+  end
 end
 
-local function check (parameters, t)
+function Backend.localize (session, t)
+  local locale
+  if type (t) == "table" and t.locale then
+    locale = t.locale
+  elseif session.locale then
+    locale = session.locale
+  else
+    locale = Configuration.locale.default
+  end
+  session.locale = locale
+end
+
+function Backend.check (session, t, parameters)
   local reasons = {}
   for key in pairs (t) do
-    for reason, f in pairs (parameters [key].checks or {}) do
-      if not f (t) then
-        reasons [#reasons + 1] = reason
+    for i, f in ipairs (parameters [key]) do
+      local ok, r = f (session, t)
+      if not ok then
+        reasons [#reasons + 1] = r
+        break
       end
     end
   end
   if #reasons ~= 0 then
-    error (reasons)
+    error {
+      status     = "check:error",
+      message    = Platform.i18n.translate ("check:error", {
+        locale = locale,
+      }),
+      reasons    = reasons,
+      parameters = parameters,
+    }
   end
 end
 
-function Backend.information (session, t, interactive)
-  ignore (session)
-  ignore (t)
-  ignore (interactive)
-  return Backend.coroutine.wrap (function ()
-    return {
-      url = "http://${host}:${port}/" % {
-        host = Configuration.server.host,
-        port = Configuration.server.port,
+-- All methods can return:
+-- * `true, data`
+-- * `false, data`
+-- Data can be:
+-- * `parameters`
+-- * `reasons`
+-- * ...
+
+-- locale is specified:
+-- * as a request parameter;
+-- * in the session;
+-- * in user's account;
+-- * in the global configuration.
+
+local Parameters = {}
+
+Parameters.username = {}
+Parameters.username [1] = function (session, t)
+  return type (t.username) == "string"
+      or nil, Platform.i18n.translate ("check:username:is-string", {
+           locale = session.locale,
+         })
+end
+Parameters.username [2] = function (session, t)
+  t.username = t.username:trim ()
+  return #(t.username) > 0
+      or nil, Platform.i18n.translate ( "check:username:non-empty", {
+           locale = session.locale,
+         })
+end
+Parameters.username [2] = function (session, t)
+  return t.username:find "^%w+$"
+      or nil, Platform.i18n.translate ( "check:username:alphanumeric", {
+           locale = session.locale,
+         })
+end
+
+Parameters.password = {}
+Parameters.password [1] = function (session, t)
+  return type (t.password) == "string"
+      or nil, Platform.i18n.translate ( "check:password:is-string", {
+           locale = session.locale,
+         })
+end
+Parameters.password [2] = function (session, t)
+  t.password = t.password:trim ()
+  return #(t.password) >= Configuration.security.password_size
+      or nil, Platform.i18n.translate ("check:password:min-size" % {
+           locale = session.locale,
+           count  = Configuration.security.password_size,
+         })
+end
+
+Parameters.email = {}
+Parameters.email [1] = function (session, t)
+  t.email = t.email:trim ()
+  local pattern = "^[A-Za-z0-9%.%%%+%-]+@[A-Za-z0-9%.%%%+%-]+%.%w%w%w?%w?"
+  return t.email:find (pattern)
+      or nil, Platform.i18n "check:email:pattern"
+end
+
+Parameters.resource = {}
+Parameters.resource [1] = function (session, t)
+  return true -- TODO
+end
+
+-- TODO: access lists:
+-- * groups defined by the owner(s)
+-- * access is "public"/"private" with optional "owner" "share", "read" or "hide" for group/user
+
+function Backend.authenticate (session, t)
+  local parameters = {
+    username = Parameters.username,
+    password = Parameters.password,
+  }
+  Backend.localize (session, t)
+  Backend.check    (session, t, parameters)
+  local id = "/%{username}" % {
+    username = t.username,
+  }
+  session.username = nil
+  Backend.pool.transaction ({ id }, function (redis)
+    local metadata = redis:hget (id, "metadata")
+    if not metadata then
+      error {
+        status  = "authenticate:non-existing",
+        message = "authenticate:non-existing",
       }
-      -- TODO: fill with public server information
-    }
-  end) ()
+    end
+    metadata = Platform.json.decode (metadata)
+    if metadata.type ~= "user" then
+      error {
+        status  = "authenticate:non-user",
+        message = "authenticate:non-user",
+      }
+    end
+    local secrets  = redis:hget (id, "secrets")
+    secrets = Platform.json.decode (secrets)
+    if Platform.password.verify (t.password, secrets.password) then
+      session.username = t.username
+    else
+      error {
+        status  = "authenticate:erroneous",
+        message = "authenticate:erroneous",
+      }
+    end
+    if Platform.password.is_too_cheap (secrets.password) then
+      Platform.logger.debug {
+        "authenticate:cheap-password",
+        username = t.username,
+      }
+      secrets.password = Platform.password.hash (t.password)
+      redis:hset (id, "secrets", Platform.json.encode (secrets))
+    end
+    if metadata.locale then
+      session.locale = metadata.locale
+    end
+  end)
+  return true
 end
 
-function Backend.authenticate (session, t, interactive)
-  ignore (interactive)
-  return Backend.coroutine.wrap (function ()
-    local username = t.username
-    local id = "/${username}" % {
-      username = username,
-    }
-    session.username = nil
-    Backend.pool.using (function (redis)
-      local secrets  = redis:hget (id, "secrets")
-      if not secrets then
-        error "Incorrect username/password"
-      end
-      secrets = Platform.json.decode (secrets)
-      if Platform.password.verify (t.password, secrets.password) then
-        session.username = username
-      else
-        error "Incorrect username/password"
-      end
-    end)
-    return true
-  end) ()
-end
-
-function Backend.create_user (session, t, interactive)
+function Backend.create_user (session, t)
   return Backend.coroutine.wrap (function ()
     local parameters = {
       username = Parameters.username,
@@ -163,10 +251,14 @@ function Backend.create_user (session, t, interactive)
       email    = Parameters.email,
       language = Parameters.language,
     }
-    if interactive then
-      t = Backend.coroutine.yield (parameters)
-    end
-    check (parameters, t)
+    repeat
+      local ok, reason = check (parameters, t)
+      if not ok then
+        Backend.coroutine.yield {
+          
+        }
+      end
+    until ok
     local id = "/${username}" % {
       username = t.username,
     }
@@ -203,6 +295,21 @@ function Backend.create_user (session, t, interactive)
 end
 
 function Backend:delete_user (t)
+end
+
+function Backend.metadata (session, t)
+  local parameters = {
+    Parameters.resource,
+  }
+  localize (session, t)
+  check    (session, t, parameters)
+  return {
+    url = "http://${host}:${port}/" % {
+      host = Configuration.server.host,
+      port = Configuration.server.port,
+    }
+    -- TODO: fill with public server information
+  }
 end
 
 function Backend:create_project (t)
