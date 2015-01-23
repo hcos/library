@@ -340,7 +340,7 @@ end
 -- ================
 Platform.password = function ()
   local Configuration = require "cosy.configuration"
-  Platform.password.computation_time = Configuration.server.password_computation -- milliseconds
+  Platform.password.computation_time = Configuration.security.password_computation
   if pcall (function ()
     local bcrypt = require "bcrypt"
     local socket = require "socket"
