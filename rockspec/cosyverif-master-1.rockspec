@@ -27,10 +27,6 @@ dependencies = {
   "luafilesystem ~> 1",
   "redis-lua ~> 2",
   "i18n ~> 0",
-  -- for testing:
-  "fakeredis ~> 0",
-  "luabitop ~> 1",
-  "busted ~> 2",
 }
 
 build = {
