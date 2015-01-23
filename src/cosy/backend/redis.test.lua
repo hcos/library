@@ -33,9 +33,13 @@ describe ("Redis backend", function ()
 
   before_each (function()
     Configuration:reload ()
+    Configuration.data.username.min_size = 2
+    Configuration.data.username.max_size = 10
+    Configuration.data.password.min_size = 2
+    Configuration.data.password.max_size = 10
   end)
 
-  describe ("'authenticate' method", function ()
+  describe ("authenticate method", function ()
 
     it ("requires a string username", function ()
       assert.has.error (function ()
@@ -47,10 +51,9 @@ describe ("Redis backend", function ()
     end)
 
     it ("requires a username with a minimum size", function ()
-      Configuration.data.username.min_size = 5
       assert.has.error (function ()
         session:authenticate {
-          username = "1234",
+          username = "1",
           password = "password",
         }
       end)
@@ -60,7 +63,7 @@ describe ("Redis backend", function ()
       Configuration.data.username.max_size = 5
       assert.has.error (function ()
         session:authenticate {
-          username = "123456",
+          username = "1234567890",
           password = "password",
         }
       end)
@@ -75,12 +78,28 @@ describe ("Redis backend", function ()
       end)
     end)
 
-    it ("does not authenticate non-existing username", function ()
+    it ("does not authenticate a non-existing username", function ()
       assert.has.error (function ()
         session:authenticate {
           username = "missing",
           password = "password",
         }
+      end)
+    end)
+
+    it ("does not authenticate a non-user", function ()
+      Backend.pool [1]:hset ("/something", "metadata", Platform.json.encode {
+        type   = "other",
+        locale = "en",
+      })
+      Backend.pool [1]:hset ("/something", "secrets", Platform.json.encode {
+        password = Platform.password.hash "password",
+      })
+      assert.has.error (function ()
+        session:authenticate {
+          username = "something",
+          password = "password",
+          }
       end)
     end)
 
@@ -93,28 +112,25 @@ describe ("Redis backend", function ()
       end)
     end)
 
-    it ("does a password with a minimum size", function ()
-      Configuration.data.password.min_size = 5
+    it ("requires a password with a minimum size", function ()
       assert.has.error (function ()
         session:authenticate {
           username = "username",
-          password = "1234",
+          password = "1",
         }
       end)
     end)
 
-    it ("does a password with a maximum size", function ()
-      Configuration.data.password.max_size = 5
+    it ("requires a password with a maximum size", function ()
       assert.has.error (function ()
         session:authenticate {
           username = "username",
-          password = "123456",
+          password = "1234567890",
         }
       end)
     end)
 
     it ("authenticates a valid username/password", function ()
-      Configuration.data.password.min_size = #"password"
       assert.has.no.error (function ()
         session:authenticate {
           username = "username",
@@ -125,7 +141,6 @@ describe ("Redis backend", function ()
     end)
 
     it ("rehashes password if necessary", function ()
-      Configuration.data.password.min_size = #"password"
       Platform.password.rounds = 4
       Backend.pool [1]:hset ("/username", "secrets", Platform.json.encode {
         password = Platform.password.hash "password",
@@ -142,7 +157,6 @@ describe ("Redis backend", function ()
     end)
 
     it ("does not rehash password unless necessary", function ()
-      Configuration.data.password.min_size = #"password"
       Platform.password.rounds = 5
       Backend.pool [1]:hset ("/username", "secrets", Platform.json.encode {
         password = Platform.password.hash "password",
@@ -159,7 +173,6 @@ describe ("Redis backend", function ()
     end)
 
     it ("sets the session locale", function ()
-      Configuration.data.password.min_size = #"password"
       assert.has.no.error (function ()
         session:authenticate {
           username = "username",
