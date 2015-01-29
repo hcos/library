@@ -342,14 +342,13 @@ Platform.password = function ()
   local Configuration = require "cosy.configuration"
   if pcall (function ()
     local bcrypt = require "bcrypt"
-    local socket = require "socket"
     local function compute_rounds ()
       for _ = 1, 5 do
         local rounds = 5
         while true do
-          local start = socket.gettime ()
+          local start = Platform.time ()
           bcrypt.digest ("some random string", rounds)
-          local delta = socket.gettime () - start
+          local delta = Platform.time () - start
           if delta > Configuration.data.password.time then
             Platform.password.rounds = math.max (Platform.password.rounds or 0, rounds)
             break
@@ -425,6 +424,27 @@ Platform.redis = function ()
     Platform.logger.debug {
       "platform:missing-dependency",
       component  = "redis",
+    }
+    error "Missing dependency"
+  end
+end
+
+-- Time
+-- ====
+Platform.time = function ()
+  if pcall (function ()
+    local socket  = require "socket"
+    Platform.time = socket.gettime
+  end) then
+    Platform.logger.debug {
+      "platform:available-dependency",
+      component  = "time",
+      dependency = "luasocket",
+    }
+  else
+    Platform.logger.debug {
+      "platform:missing-dependency",
+      component  = "time",
     }
     error "Missing dependency"
   end
