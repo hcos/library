@@ -4,7 +4,7 @@ local assert      = require "luassert"
 local Platform      = require "cosy.platform"
 local Configuration = require "cosy.configuration"
 local Backend       = require "cosy.backend.redis"
-Platform.logger.enabled = false
+Platform.logger.enabled = true
 
 describe ("Redis backend", function ()
 
@@ -284,6 +284,33 @@ describe ("Redis backend", function ()
         }
       end)
       assert.are.equal (session.locale, "en")
+    end)
+  
+    it ("should execute in less than 5 milliseconds (hash excepted)", function ()
+      Platform.password.rounds = 4
+      local n_iterations = 100
+      local password_duration
+      do
+        local start = Platform.time ()
+        for _ = 1, n_iterations do
+          Platform.password.hash "password"
+        end
+        password_duration = Platform.time () - start
+      end
+      local authenticate_duration
+      do
+        local start = Platform.time ()
+        for _ = 1, n_iterations do
+          session.username = nil
+          session.authenticate {
+            username = "username",
+            password = "password",
+          }
+        end
+        authenticate_duration = Platform.time () - start
+      end
+      local average = (authenticate_duration - password_duration) / n_iterations
+      assert.is_truthy (average < 0.005)
     end)
   end)
 
