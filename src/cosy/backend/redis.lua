@@ -2,7 +2,10 @@ local Backend = {}
 
 local Platform      = require "cosy.platform"
 local Configuration = require "cosy.configuration"
-local ignore        = require "cosy.util.ignore"
+
+Configuration.special_keys = {
+  email_user = "//email->user",
+}
 
 Backend.pool = {}
 
@@ -24,22 +27,6 @@ Platform.scheduler:addthread (function ()
   end
 end)
 
-function Backend.pool.using (f)
-  local pool = Backend.pool
-  while #pool == 0 do
-    Platform.scheduler:pass ()
-  end
-  local client     = pool [#pool]
-  pool [#pool]     = nil
-  local ok, result = pcall (f, client)
-  pool [#pool + 1] = client
-  if ok then
-    return result
-  else
-    error (result)
-  end
-end
-
 function Backend.pool.transaction (keys, f)
   local pool = Backend.pool
   while #pool == 0 do
@@ -51,7 +38,23 @@ function Backend.pool.transaction (keys, f)
     watch = keys,
     cas   = true,
     retry = 5,
-  }, f)
+  }, function (redis)
+    local t = {}
+    for _, k in ipairs (keys) do
+      if redis:exists (k) then
+        t [k] = Platform.json.decode (redis:get (k))
+      end
+    end
+    f (t)
+    redis:multi ()
+    for _, k in ipairs (keys) do
+      if t [k] == nil then
+        redis:del (k)
+      else
+        redis:set (k, Platform.json.encode (t [k]))
+      end
+    end
+  end)
   pool [#pool + 1] = client
   if ok then
     return result
@@ -60,28 +63,46 @@ function Backend.pool.transaction (keys, f)
   end
 end
 
--- Data representation:
--- Every resource is a hash containing:
--- * metadata: all public metadata
--- * secrets: all secrets metadata (password, keys, ...)
--- * contents: all subresources
-
 Backend.coroutine = require "coroutine.make" ()
 
 -- Fix missing `table.unpack` in lua 5.1:
 table.unpack = table.unpack or _G.unpack
 
-function Backend.__index (_, key)
-  local result = Backend [key]
-  if type (result) == "function" then
-    return function (...)
-      local args = { ... }
-      return Backend.coroutine.wrap (function ()
-        return result (table.unpack (args))
-      end) ()
+local Message_mt = {}
+
+function Message_mt:__tostring ()
+  return self.message
+end
+
+function Backend.__index (session, key)
+  local value = Backend [key]
+  if type (value) == "function" then
+    local first = true
+    local co    = Backend.coroutine.create (value)
+    return function (t)
+      local ok, r, e
+      if first then
+        ok, r, e = Backend.coroutine.resume (co, session, t)
+        first = false
+      else
+        ok, r, e = Backend.coroutine.resume (co, t)
+      end
+      if ok and r ~= nil then
+        return r
+      elseif ok and r == nil then
+        e.locale  = session.locale or Configuration.locale.default
+        e.message = Platform.i18n.translate (e.request, e)
+        return nil, setmetatable (e, Message_mt)
+      elseif type (r) == "table" then
+        r.locale  = session.locale or Configuration.locale.default
+        r.message = Platform.i18n.translate (r.status, r)
+        error (setmetatable (r, Message_mt))
+      else
+        error (r)
+      end
     end
   else
-    return result
+    return value
   end
 end
 
@@ -100,7 +121,7 @@ end
 function Backend.check (session, t, parameters)
   local reasons = {}
   for key in pairs (t) do
-    for i, f in ipairs (parameters [key]) do
+    for _, f in ipairs (parameters [key]) do
       local ok, r = f (session, t)
       if not ok then
         reasons [#reasons + 1] = r
@@ -111,9 +132,6 @@ function Backend.check (session, t, parameters)
   if #reasons ~= 0 then
     error {
       status     = "check:error",
-      message    = Platform.i18n.translate ("check:error", {
-        locale = locale,
-      }),
       reasons    = reasons,
       parameters = parameters,
     }
@@ -176,6 +194,7 @@ Parameters.new_string "password"
 
 Parameters.new_string "email"
 Parameters.email [#(Parameters.email) + 1] = function (session, t)
+  local _ = session
   t.email = t.email:trim ()
   local pattern = "^[A-Za-z0-9%.%%%+%-]+@[A-Za-z0-9%.%%%+%-]+%.%w%w%w?%w?"
   return t.email:find (pattern)
@@ -186,6 +205,7 @@ Parameters.new_string "name"
 
 Parameters.new_string "locale"
 Parameters.locale [#(Parameters.locale) + 1] = function (session, t)
+  local _ = session
   t.locale = t.locale:trim ()
   local pattern = "^[A-Za-z][A-Za-z](_[A-Za-z][A-Za-z])?"
   return t.locale:find (pattern)
@@ -194,12 +214,20 @@ end
 
 Parameters.resource = {}
 Parameters.resource [1] = function (session, t)
+  local _ = session
+        _ = t
   return true -- TODO
 end
 
 -- TODO: access lists:
 -- * groups defined by the owner(s)
 -- * access is "public"/"private" with optional "owner" "share", "read" or "hide" for group/user
+
+-- User:
+-- * type: "user"
+-- * password: ...
+-- * locale: ...
+-- * license-md5: ...
 
 function Backend.authenticate (session, t)
   local parameters = {
@@ -212,49 +240,66 @@ function Backend.authenticate (session, t)
     username = t.username,
   }
   session.username = nil
-  Backend.pool.transaction ({ id }, function (redis)
-    local metadata = redis:hget (id, "metadata")
-    if not metadata then
+  Backend.pool.transaction ({ id }, function (p)
+    local data = p [id]
+    if not data then
       error {
-        status  = "authenticate:non-existing",
-        message = "authenticate:non-existing",
+        status = "authenticate:non-existing",
       }
     end
-    metadata = Platform.json.decode (metadata)
-    if metadata.type ~= "user" then
+    if data.type ~= "user" then
       error {
-        status  = "authenticate:non-user",
-        message = "authenticate:non-user",
+        status = "authenticate:non-user",
       }
     end
-    local secrets  = redis:hget (id, "secrets")
-    secrets = Platform.json.decode (secrets)
-    -- end of reads
-    redis:multi ()
-    if Platform.password.verify (t.password, secrets.password) then
-      session.username = t.username
-    else
+    session.locale = data.locale or session.locale
+    if not Platform.password.verify (t.password, data.password) then
       error {
-        status  = "authenticate:erroneous",
-        message = "authenticate:erroneous",
+        status = "authenticate:erroneous",
       }
     end
-    if Platform.password.is_too_cheap (secrets.password) then
+    if Platform.password.is_too_cheap (data.password) then
       Platform.logger.debug {
         "authenticate:cheap-password",
         username = t.username,
       }
-      secrets.password = Platform.password.hash (t.password)
-      redis:hset (id, "secrets", Platform.json.encode (secrets))
+      data.password = Platform.password.hash (t.password)
     end
-    if metadata.locale then
-      session.locale = metadata.locale
+    local license = Platform.i18n.translate ("license", {
+      locale = session.locale
+    }):trim ()
+    local license_md5 = Platform.md5.digest (license)
+    if license_md5 ~= data.accepted_license then
+      local answer = Backend.coroutine.yield (nil, {
+        request = "license:accept?",
+        license = license,
+        digest  = license_md5,
+      })
+      if answer.response:trim () ~= license_md5 then
+        error {
+          status   = "license:reject",
+          username = t.username,
+          digest   = license_md5,
+        }
+      end
+      data.accepted_license = license_md5
+      Platform.logger.debug {
+        "license:accept",
+        username = t.username,
+        digest   = license_md5,
+      }
     end
   end)
+  session.username = t.username
   return true
 end
 
 function Backend.create_user (session, t)
+  if session.username ~= nil then
+    error {
+      status = "create-user:connected-already",
+    }
+  end
   local parameters = {
     username = Parameters.username,
     password = Parameters.password,
@@ -267,21 +312,56 @@ function Backend.create_user (session, t)
   local id = "/${username}" % {
     username = t.username,
   }
-  local validation_key = Platform.unique.uuid ()
-  Backend.pool.transaction ({ id }, function (redis)
-    if redis:exists (id) then
-      error ("${username} exists already" % {
-        username = t.username,
-      })
+  Backend.pool.transaction ({
+    Configuration.special_keys.email_user,
+    id,
+  }, function (redis)
+    local email_user = redis:get (Configuration.special_keys.email_user)
+    
+    local exists = redis:hexists (Configuration.special_keys.email_user, t.email)
+    if exists then
+      error {
+        status   = "create-user:email-already",
+        email    = t.email,
+        username = redis:hget (Configuration.special_keys.email_user, t.email),
+      }
     end
+    if redis:exists (id) then
+      error {
+        status   = "create-user:username-already",
+        username = t.username,
+      }
+    end
+    local license     = Platform.i18n.translate ("license", session.locale):trim ()
+    local license_md5 = Platform.md5.digest (license)
+    local answer = Backend.coroutine.yield {
+      "accept-license",
+      license = license,
+      md5     = license_md5,
+    }
+    if answer:trim () ~= license_md5 then
+      error {
+        status = "create-user:reject-license",
+      }
+    end
+    redis:multi ()
+    local validation_key = Platform.unique.uuid ()
     redis:hset (id, "metadata", Platform.json.encode {
       username = t.username,
+      name     = t.name,
+      locale   = t.locale,
+      license  = license_md5,
+      access   = {
+        public = true,
+      },
     })
     redis:hset (id, "secrets", Platform.json.encode {
-      password   = t.password,
+      password   = Platform.password.hash (t.password),
       validation = validation_key,
     })
     redis:hset (id, "contents", Platform.json.encode {})
+    all_users [t.email] = t.username
+    redis:hset (Configuration.special_keys.email_user, t.email, t.username)
   end)
   Email.send {
     from    = "CosyVerif Platform <test.cosyverif@gmail.com>",
@@ -295,7 +375,11 @@ function Backend.create_user (session, t)
       key      = validation_key,
     },
   }
+  session.username = nil
   return true
+end
+
+function Backend:validate_user (t)
 end
 
 function Backend:delete_user (t)
