@@ -1,9 +1,5 @@
                     require "busted"
 local assert      = require "luassert"
-local before_each = _G.before_each
-local describe    = _G.describe
-local it          = _G.it
-local spy         = _G.spy
 
 local Platform      = require "cosy.platform"
 local Configuration = require "cosy.configuration"
