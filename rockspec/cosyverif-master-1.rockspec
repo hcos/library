@@ -27,6 +27,7 @@ dependencies = {
   "luafilesystem ~> 1",
   "redis-lua ~> 2",
   "i18n ~> 0",
+  "md5 ~> 1",
 }
 
 build = {
