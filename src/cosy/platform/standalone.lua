@@ -389,6 +389,27 @@ Platform.password = function ()
   end
 end
 
+-- MD5
+-- ===
+Platform.md5 = function ()
+  if pcall (function ()
+    Platform.md5 = require "md5"
+  end) then
+    Platform.md5.digest = Platform.md5.sumhexa
+    Platform.logger.debug {
+      "platform:available-dependency",
+      component  = "md5",
+      dependency = "md5",
+    }
+  else
+    Platform.logger.debug {
+      "platform:missing-dependency",
+      component  = "md5",
+    }
+    error "Missing dependency"
+  end
+end
+
 -- Redis
 -- =====
 Platform.redis = function ()
