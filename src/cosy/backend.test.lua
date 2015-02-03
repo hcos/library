@@ -3,85 +3,113 @@ local assert      = require "luassert"
 
 local Platform      = require "cosy.platform"
 local Configuration = require "cosy.configuration"
-local Backend       = require "cosy.backend.redis"
-Platform.logger.enabled = true
+local Backend       = require "cosy.backend"
+Platform.logger.enabled = false
+
+do
+  local say = require "say"
+
+  local function raises (state, arguments)
+    if  type (arguments [1]) ~= "function"
+    and type (arguments [2]) ~= "string" then
+      return false
+    end
+    local ok, err = pcall (arguments [1])
+    if ok then
+      return false
+    else
+      return type (err) == "table" and err.status == arguments [2]
+    end
+  end
+
+  say:set ("assertion.raises.positive", "Expected function %s to throw %s error")
+  say:set ("assertion.raises.negative", "Expected function %s to not throw %s error")
+  assert:register ("assertion", "raises", raises,
+                   "assertion.raises.positive",
+                   "assertion.raises.negative")
+end
 
 describe ("Redis backend", function ()
 
+  local session
+
+  before_each (function()
+    Configuration:reload ()
+    Configuration.data.password.time = 0.001
+    Configuration.data.username.min_size = 2
+    Configuration.data.username.max_size = 10
+    Configuration.data.password.min_size = 2
+    Configuration.data.password.max_size = 10
+    Configuration.data.name.min_size = 2
+    Configuration.data.name.max_size = 10
+    Configuration.data.email.max_size = 10
+    Backend.pool [1] = require "fakeredis" .new ()
+    Backend.pool [1].transaction = function (client, _, f)
+      return f (client)
+    end
+    Backend.pool [1].multi = function () end
+    session      = setmetatable ({}, Backend)
+  end)
+
   describe ("authenticate method", function ()
 
-    local session
     local authenticate
     local license     = (Platform.i18n.translate "license"):trim ()
     local license_md5 = Platform.md5.digest (license)
 
     before_each (function()
-      Configuration:reload ()
-      Configuration.data.password.time = 0.001
-      Configuration.data.password.min_size = 5
-      Configuration.data.username.min_size = 2
-      Configuration.data.username.max_size = 10
-      Configuration.data.password.min_size = 2
-      Configuration.data.password.max_size = 10
-      Backend.pool [1] = require "fakeredis" .new ()
-      Backend.pool [1].transaction = function (client, _, f)
-        return f (client)
-      end
-      Backend.pool [1].multi = function () end
       Backend.pool [1]:set ("/username", Platform.json.encode {
         type             = "user",
         locale           = "en",
         password         = Platform.password.hash "password",
         accepted_license = license_md5,
       })
-      session      = setmetatable ({}, Backend)
       authenticate = session.authenticate
     end)
 
     it ("requires a string username", function ()
-      assert.has.error (function ()
+      assert.raises (function ()
         authenticate {
           username = 123456,
           password = "password",
         }
-      end)
+      end, "check:error")
     end)
 
     it ("requires a username with a minimum size", function ()
-      assert.has.error (function ()
+      assert.raises (function ()
         authenticate {
-          username = "1",
+          username = "a",
           password = "password",
         }
-      end)
+      end, "check:error")
     end)
     
     it ("requires a username with a maximum size", function ()
-      Configuration.data.username.max_size = 5
-      assert.has.error (function ()
+      assert.raises (function ()
         authenticate {
-          username = "1234567890",
+          username = "abcdefghijk",
           password = "password",
         }
-      end)
+      end, "check:error")
     end)
 
     it ("requires a username containing only alphanumerical characters", function ()
-      assert.has.error (function ()
+      assert.raises (function ()
         authenticate {
           username = "abc!def",
           password = "password",
         }
-      end)
+      end, "check:error")
     end)
 
     it ("does not authenticate a non-existing username", function ()
-      assert.has.error (function ()
+      assert.raises (function ()
         authenticate {
           username = "missing",
           password = "password",
         }
-      end)
+      end, "authenticate:non-existing")
     end)
 
     it ("does not authenticate a non-user", function ()
@@ -91,39 +119,39 @@ describe ("Redis backend", function ()
         password         = Platform.password.hash "password",
         accepted_license = license_md5,
       })
-      assert.has.error (function ()
+      assert.raises (function ()
         authenticate {
           username = "something",
           password = "password",
         }
-      end)
+      end, "authenticate:non-user")
     end)
 
     it ("does not authenticate an erroneous username/password", function ()
-      assert.has.error (function ()
+      assert.raises (function ()
         authenticate {
           username = "username",
           password = "erroneous",
         }
-      end)
+      end, "authenticate:erroneous")
     end)
 
     it ("requires a password with a minimum size", function ()
-      assert.has.error (function ()
+      assert.raises (function ()
         authenticate {
           username = "username",
           password = "1",
         }
-      end)
+      end, "check:error")
     end)
 
     it ("requires a password with a maximum size", function ()
-      assert.has.error (function ()
+      assert.raises (function ()
         authenticate {
           username = "username",
-          password = "1234567890",
+          password = "abcdefghijkl",
         }
-      end)
+      end, "check:error")
     end)
 
     it ("authenticates a valid username/password", function ()
@@ -200,7 +228,7 @@ describe ("Redis backend", function ()
         password         = Platform.password.hash "password",
         accepted_license = nil,
       })
-      assert.has.error (function ()
+      assert.raises (function ()
         authenticate {
           username = "username",
           password = "password",
@@ -208,7 +236,7 @@ describe ("Redis backend", function ()
         authenticate {
           response = "ABCDE",
         }
-      end)
+      end, "license:reject")
     end)
 
     it ("stores license acceptance", function ()
@@ -314,26 +342,128 @@ describe ("Redis backend", function ()
     end)
   end)
 
---[[
+--[==[
   describe ("'create_user' method", function ()
 
-    it ("does not create an existing user", function ()
+    local create_user
+    local license     = (Platform.i18n.translate "license"):trim ()
+    local license_md5 = Platform.md5.digest (license)
+
+    before_each (function()
+      create_user = session.create_user
+    end)
+
+    it ("requires a string username", function ()
       assert.has.error (function ()
-        Backend:create_user {
-          username = "username",
+        create_user {
+          username = 123456,
           password = "password",
         }
       end)
     end)
 
-    it ("creates a valid user", function ()
-      assert.has.no.error (function ()
-        Backend:create_user {
-          username = "myself",
+    it ("requires a username with a minimum size", function ()
+      assert.has.error (function ()
+        create_user {
+          username = 123456,
           password = "password",
         }
       end)
     end)
+    
+    it ("requires a username with a maximum size", function ()
+      assert.has.error (function ()
+      end)
+    end)
+
+    it ("requires a username containing only alphanumerical characters", function ()
+      assert.has.error (function ()
+      end)
+    end)
+
+    it ("requires a password with a minimum size", function ()
+      assert.has.error (function ()
+      end)
+    end)
+    
+    it ("requires a password with a maximum size", function ()
+      assert.has.error (function ()
+      end)
+    end)
+
+    it ("requires a name with a minimum size", function ()
+      assert.has.error (function ()
+      end)
+    end)
+    
+    it ("requires a name with a maximum size", function ()
+      assert.has.error (function ()
+      end)
+    end)
+
+    it ("requires an email with a minimum size", function ()
+      assert.has.error (function ()
+      end)
+    end)
+    
+    it ("requires an email with a maximum size", function ()
+      assert.has.error (function ()
+      end)
+    end)
+  
+    it ("requires an email matching the email pattern", function ()
+      assert.has.error (function ()
+      end)
+    end)
+  
+    it ("requires a locale with a minimum size", function ()
+      assert.has.error (function ()
+      end)
+    end)
+    
+    it ("requires a locale with a maximum size", function ()
+      assert.has.error (function ()
+      end)
+    end)
+  
+    it ("requires a locale matching the locale pattern", function ()
+      assert.has.error (function ()
+      end)
+    end)
+  
+    it ("does not create a user when already authenticated", function ()
+      assert.has.error (function ()
+      end)
+    end)
+  
+    it ("does not create a user when the email is already registered", function ()
+      assert.has.error (function ()
+      end)
+    end)
+  
+    it ("does not create a user when the username exists already", function ()
+      assert.has.error (function ()
+      end)
+    end)
+  
+    it ("asks for license acceptance on license change", function ()
+    end)
+
+    it ("creates a user with license acceptance", function ()
+    end)
+
+    it ("does not create a user with license refusal", function ()
+    end)
+
+    it ("stores license acceptance", function ()
+    end)
+
+    it ("send the validation key to the email address", function ()
+    end)
+
+    it ("send the validation key to the email address", function ()
+    end)
   end)
---]]
+  --]==]
+
 end)

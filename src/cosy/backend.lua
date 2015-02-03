@@ -40,18 +40,18 @@ function Backend.pool.transaction (keys, f)
     retry = 5,
   }, function (redis)
     local t = {}
-    for _, k in ipairs (keys) do
-      if redis:exists (k) then
-        t [k] = Platform.json.decode (redis:get (k))
+    for k, v in pairs (keys) do
+      if redis:exists (v) then
+        t [k] = Platform.json.decode (redis:get (v))
       end
     end
     f (t)
     redis:multi ()
-    for _, k in ipairs (keys) do
+    for k, v in pairs (keys) do
       if t [k] == nil then
-        redis:del (k)
+        redis:del (v)
       else
-        redis:set (k, Platform.json.encode (t [k]))
+        redis:set (v, Platform.json.encode (t [k]))
       end
     end
   end)
@@ -119,22 +119,17 @@ function Backend.localize (session, t)
 end
 
 function Backend.check (session, t, parameters)
-  local reasons = {}
   for key in pairs (t) do
     for _, f in ipairs (parameters [key]) do
       local ok, r = f (session, t)
       if not ok then
-        reasons [#reasons + 1] = r
-        break
+        error {
+          status     = "check:error",
+          reason     = r,
+          parameters = parameters,
+        }
       end
     end
-  end
-  if #reasons ~= 0 then
-    error {
-      status     = "check:error",
-      reasons    = reasons,
-      parameters = parameters,
-    }
   end
 end
 
@@ -172,7 +167,7 @@ function Parameters.new_string (key)
            })
   end
   Parameters [key] [3] = function (session, t)
-    return #(t.username) <= Configuration.data [key] .max_size
+    return #(t [key]) <= Configuration.data [key] .max_size
         or nil, Platform.i18n.translate ("check:max-size", {
              locale = session.locale,
              key    = key,
@@ -193,6 +188,7 @@ end
 Parameters.new_string "password"
 
 Parameters.new_string "email"
+Configuration.data.email.min_size = 6
 Parameters.email [#(Parameters.email) + 1] = function (session, t)
   local _ = session
   t.email = t.email:trim ()
@@ -204,6 +200,8 @@ end
 Parameters.new_string "name"
 
 Parameters.new_string "locale"
+Configuration.data.locale.min_size = 2
+Configuration.data.locale.max_size = 5
 Parameters.locale [#(Parameters.locale) + 1] = function (session, t)
   local _ = session
   t.locale = t.locale:trim ()
@@ -236,12 +234,13 @@ function Backend.authenticate (session, t)
   }
   Backend.localize (session, t)
   Backend.check    (session, t, parameters)
-  local id = "/%{username}" % {
-    username = t.username,
-  }
   session.username = nil
-  Backend.pool.transaction ({ id }, function (p)
-    local data = p [id]
+  Backend.pool.transaction ({
+    data = "/%{username}" % {
+      username = t.username,
+    }
+  }, function (p)
+    local data = p.data
     if not data then
       error {
         status = "authenticate:non-existing",
@@ -307,26 +306,23 @@ function Backend.create_user (session, t)
     name     = Parameters.name,
     locale   = Parameters.locale,
   }
+  local data
   Backend.localize (session, t)
   Backend.check    (session, t, parameters)
-  local id = "/${username}" % {
-    username = t.username,
-  }
   Backend.pool.transaction ({
-    Configuration.special_keys.email_user,
-    id,
-  }, function (redis)
-    local email_user = redis:get (Configuration.special_keys.email_user)
-    
-    local exists = redis:hexists (Configuration.special_keys.email_user, t.email)
-    if exists then
+    emails = Configuration.special_keys.email_user,
+    data   = "/${username}" % {
+      username = t.username,
+    },
+  }, function (p)
+    if p.emails [t.email] then
       error {
         status   = "create-user:email-already",
         email    = t.email,
-        username = redis:hget (Configuration.special_keys.email_user, t.email),
+        username = p.emails [t.email],
       }
     end
-    if redis:exists (id) then
+    if p.data then
       error {
         status   = "create-user:username-already",
         username = t.username,
@@ -344,36 +340,39 @@ function Backend.create_user (session, t)
         status = "create-user:reject-license",
       }
     end
-    redis:multi ()
-    local validation_key = Platform.unique.uuid ()
-    redis:hset (id, "metadata", Platform.json.encode {
-      username = t.username,
-      name     = t.name,
-      locale   = t.locale,
-      license  = license_md5,
-      access   = {
+    p.data = {
+      username          = t.username,
+      password          = Platform.password.hash (t.password),
+      name              = t.name,
+      locale            = t.locale,
+      accepted_license  = license_md5,
+      validation_key    = Platform.unique.uuid (),
+      access            = {
         public = true,
       },
-    })
-    redis:hset (id, "secrets", Platform.json.encode {
-      password   = Platform.password.hash (t.password),
-      validation = validation_key,
-    })
-    redis:hset (id, "contents", Platform.json.encode {})
-    all_users [t.email] = t.username
-    redis:hset (Configuration.special_keys.email_user, t.email, t.username)
+      contents          = {},
+    }
+    p.emails [t.email]  = t.username
+    data = p.data
   end)
-  Email.send {
-    from    = "CosyVerif Platform <test.cosyverif@gmail.com>",
+  Platform.Email.send {
+    from    = Platform.i18n.translate ("email:new_account:from", {
+      locale  = session.locale,
+      address = Configuration.smtp.username,
+    }),
     to      = "${name} <${email}>" % {
-      name  = t.name,
-      email = t.email,
+      name  = data.name,
+      email = data.email,
     },
-    subject = "[CosyVerif] New account",
-    body    = Configuration.message.registration % {
-      username = t.username,
-      key      = validation_key,
-    },
+    subject = Platform.i18n.translate ("email:new_account:subject", {
+      locale   = session.locale,
+      username = data.username,
+    }),
+    body    = Platform.i18n.translate ("email:new_account:body", {
+      locale   = session.locale,
+      username = data.username,
+      key      = data.validation_key,
+    }),
   }
   session.username = nil
   return true
@@ -382,22 +381,13 @@ end
 function Backend:validate_user (t)
 end
 
+function Backend:reset_user (t)
+end
+
 function Backend:delete_user (t)
 end
 
 function Backend.metadata (session, t)
-  local parameters = {
-    Parameters.resource,
-  }
-  localize (session, t)
-  check    (session, t, parameters)
-  return {
-    url = "http://${host}:${port}/" % {
-      host = Configuration.server.host,
-      port = Configuration.server.port,
-    }
-    -- TODO: fill with public server information
-  }
 end
 
 function Backend:create_project (t)
