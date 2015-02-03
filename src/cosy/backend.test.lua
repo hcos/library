@@ -5,6 +5,10 @@ local Platform      = require "cosy.platform"
 local Configuration = require "cosy.configuration"
 local Backend       = require "cosy.backend"
 Platform.logger.enabled = false
+Platform:register ("email", function ()
+  Platform.email = {}
+  Platform.email.send = function () end
+end)
 
 do
   local say = require "say"
@@ -17,24 +21,31 @@ do
     local ok, err = pcall (arguments [1])
     if ok then
       return false
+    elseif type (err) ~= "table" then
+      arguments [3] = err
+      arguments [4] = ""
+      return false
     else
-      return type (err) == "table" and err.status == arguments [2]
+      arguments [3] = err.status or ""
+      arguments [4] = err.reason or ""
+      return err.status == arguments [2]
     end
   end
 
-  say:set ("assertion.raises.positive", "Expected function %s to throw %s error")
-  say:set ("assertion.raises.negative", "Expected function %s to not throw %s error")
+  say:set ("assertion.raises.positive", "Expected %s to throw %s error, but received %s: %s.")
+  say:set ("assertion.raises.negative", "Expected %s to not throw %s error.")
   assert:register ("assertion", "raises", raises,
                    "assertion.raises.positive",
                    "assertion.raises.negative")
 end
 
-describe ("Redis backend", function ()
+describe ("...", function ()
 
   local session
+  local license     = (Platform.i18n.translate "license"):trim ()
+  local license_md5 = Platform.md5.digest (license)
 
   before_each (function()
-    Configuration:reload ()
     Configuration.data.password.time = 0.001
     Configuration.data.username.min_size = 2
     Configuration.data.username.max_size = 10
@@ -44,18 +55,229 @@ describe ("Redis backend", function ()
     Configuration.data.name.max_size = 10
     Configuration.data.email.max_size = 10
     Backend.pool [1] = require "fakeredis" .new ()
+    Backend.pool [1].multi       = function () end
     Backend.pool [1].transaction = function (client, _, f)
       return f (client)
     end
-    Backend.pool [1].multi = function () end
-    session      = setmetatable ({}, Backend)
+    session = setmetatable ({}, Backend)
   end)
+
+  describe ("user creation", function ()
+    
+    it ("requires a string username", function ()
+      assert.raises (function ()
+        session.create_user {
+          username = 123456,
+          password = "password",
+          email    = "a@b.fr",
+          name     = "User Name",
+          locale   = "en",
+        }
+      end, "check:error")
+    end)
+
+    it ("requires a username with a minimum size", function ()
+      assert.raises (function ()
+        session.create_user {
+          username = "a",
+          password = "password",
+          email    = "a@b.fr",
+          name     = "User Name",
+          locale   = "en",
+        }
+      end, "check:error")
+    end)
+
+    it ("requires a username with a maximum size", function ()
+      assert.raises (function ()
+        session.create_user {
+          username = "abcdefghijkl",
+          password = "password",
+          email    = "a@b.fr",
+          name     = "User Name",
+          locale   = "en",
+        }
+      end, "check:error")
+    end)
+
+    it ("requires a username containing only alphanumerical characters", function ()
+      assert.raises (function ()
+        session.create_user {
+          username = "abc!def",
+          password = "password",
+          email    = "a@b.fr",
+          name     = "User Name",
+          locale   = "en",
+        }
+      end, "check:error")
+    end)
+
+    it ("requires a password with a minimum size", function ()
+      assert.raises (function ()
+        session.create_user {
+          username = "username",
+          password = "p",
+          email    = "a@b.fr",
+          name     = "User Name",
+          locale   = "en",
+        }
+      end, "check:error")
+    end)
+    
+    it ("requires a password with a maximum size", function ()
+      assert.raises (function ()
+        session.create_user {
+          username = "username",
+          password = "abcdefghijkl",
+          email    = "a@b.fr",
+          name     = "User Name",
+          locale   = "en",
+        }
+      end, "check:error")
+   end)
+
+    it ("requires a name with a minimum size", function ()
+      assert.raises (function ()
+        session.create_user {
+          username = "username",
+          password = "password",
+          email    = "a@b.fr",
+          name     = "U",
+          locale   = "en",
+        }
+      end, "check:error")
+    end)
+    
+    it ("requires a name with a maximum size", function ()
+      assert.raises (function ()
+        session.create_user {
+          username = "username",
+          password = "password",
+          email    = "a@b.fr",
+          name     = "User Long Name",
+          locale   = "en",
+        }
+      end, "check:error")
+    end)
+
+    it ("requires an email with a maximum size", function ()
+      assert.raises (function ()
+        session.create_user {
+          username = "username",
+          password = "password",
+          email    = "username@username.fr",
+          name     = "User Name",
+          locale   = "en",
+        }
+      end, "check:error")
+    end)
+  
+    it ("requires an email matching the email pattern", function ()
+      assert.raises (function ()
+        session.create_user {
+          username = "username",
+          password = "password",
+          email    = "username@username",
+          name     = "User Name",
+          locale   = "en",
+        }
+      end, "check:error")
+    end)
+  
+    it ("requires a locale matching the locale pattern", function ()
+      assert.raises (function ()
+        session.create_user {
+          username = "username",
+          password = "password",
+          email    = "a@b.fr",
+          name     = "User Name",
+          locale   = "G",
+        }
+      end, "check:error")
+    end)
+
+    it ("does not create a user when already authenticated", function ()
+      local extracted     = {}
+      Platform.email.send = function (t)
+        for word in t.body:gmatch "<(%x+)>" do
+          if #word == 32 then
+            extracted.validation_key = word
+          end
+        end
+      end
+      assert.raises (function ()
+        session.create_user {
+          username = "username",
+          password = "password",
+          email    = "a@b.fr",
+          name     = "User Name",
+          locale   = "en",
+        }
+        session.validate_user {
+          username       = "username",
+          validation_key = extracted.validation_key,
+        }
+        local r = session.license {
+          locale   = "en",
+        }
+        session.authenticate {
+          username = "username",
+          password = "password",
+          license  = r.digest,
+        }
+        session.create_user {
+          username = "othername",
+          password = "password",
+          email    = "c@b.fr",
+          name     = "Other Name",
+          locale   = "en",
+        }
+      end, "create-user:connected-already")
+    end)
+
+    it ("does not create a user whose email is already registered", function ()
+      assert.raises (function ()
+        session.create_user {
+          username = "username",
+          password = "password",
+          email    = "a@b.fr",
+          name     = "User Name",
+          locale   = "en",
+        }
+        session.create_user {
+          username = "othername",
+          password = "password",
+          email    = "a@b.fr",
+          name     = "Other Name",
+          locale   = "en",
+        }
+      end, "create-user:email-already")
+    end)
+
+    it ("does not create a user whose username is already registered", function ()
+      assert.raises (function ()
+        session.create_user {
+          username = "username",
+          password = "password",
+          email    = "a@b.fr",
+          name     = "User Name",
+          locale   = "en",
+        }
+        session.create_user {
+          username = "username",
+          password = "password",
+          email    = "c@b.fr",
+          name     = "Other Name",
+          locale   = "en",
+        }
+      end, "create-user:username-already")
+    end)
+  end)
+
 
   describe ("authenticate method", function ()
 
     local authenticate
-    local license     = (Platform.i18n.translate "license"):trim ()
-    local license_md5 = Platform.md5.digest (license)
 
     before_each (function()
       Backend.pool [1]:set ("/username", Platform.json.encode {
@@ -66,7 +288,7 @@ describe ("Redis backend", function ()
       })
       authenticate = session.authenticate
     end)
-
+--[==[
     it ("requires a string username", function ()
       assert.raises (function ()
         authenticate {
@@ -340,102 +562,11 @@ describe ("Redis backend", function ()
       local average = (authenticate_duration - password_duration) / n_iterations
       assert.is_truthy (average < 0.005)
     end)
+--]==]
   end)
-
---[==[
   describe ("'create_user' method", function ()
 
-    local create_user
-    local license     = (Platform.i18n.translate "license"):trim ()
-    local license_md5 = Platform.md5.digest (license)
-
-    before_each (function()
-      create_user = session.create_user
-    end)
-
-    it ("requires a string username", function ()
-      assert.has.error (function ()
-        create_user {
-          username = 123456,
-          password = "password",
-        }
-      end)
-    end)
-
-    it ("requires a username with a minimum size", function ()
-      assert.has.error (function ()
-        create_user {
-          username = 123456,
-          password = "password",
-        }
-      end)
-    end)
-    
-    it ("requires a username with a maximum size", function ()
-      assert.has.error (function ()
-      end)
-    end)
-
-    it ("requires a username containing only alphanumerical characters", function ()
-      assert.has.error (function ()
-      end)
-    end)
-
-    it ("requires a password with a minimum size", function ()
-      assert.has.error (function ()
-      end)
-    end)
-    
-    it ("requires a password with a maximum size", function ()
-      assert.has.error (function ()
-      end)
-    end)
-
-    it ("requires a name with a minimum size", function ()
-      assert.has.error (function ()
-      end)
-    end)
-    
-    it ("requires a name with a maximum size", function ()
-      assert.has.error (function ()
-      end)
-    end)
-
-    it ("requires an email with a minimum size", function ()
-      assert.has.error (function ()
-      end)
-    end)
-    
-    it ("requires an email with a maximum size", function ()
-      assert.has.error (function ()
-      end)
-    end)
-  
-    it ("requires an email matching the email pattern", function ()
-      assert.has.error (function ()
-      end)
-    end)
-  
-    it ("requires a locale with a minimum size", function ()
-      assert.has.error (function ()
-      end)
-    end)
-    
-    it ("requires a locale with a maximum size", function ()
-      assert.has.error (function ()
-      end)
-    end)
-  
-    it ("requires a locale matching the locale pattern", function ()
-      assert.has.error (function ()
-      end)
-    end)
-  
-    it ("does not create a user when already authenticated", function ()
-      assert.has.error (function ()
-      end)
-    end)
-  
+--[==[
     it ("does not create a user when the email is already registered", function ()
       assert.has.error (function ()
       end)
@@ -463,7 +594,7 @@ describe ("Redis backend", function ()
 
     it ("send the validation key to the email address", function ()
     end)
-  end)
   --]==]
+  end)
 
 end)

@@ -75,24 +75,20 @@ function Message_mt:__tostring ()
 end
 
 function Backend.__index (session, key)
-  local value = Backend [key]
-  if type (value) == "function" then
-    local first = true
-    local co    = Backend.coroutine.create (value)
+  local f = Backend [key]
+  if f then
     return function (t)
-      local ok, r, e
-      if first then
-        ok, r, e = Backend.coroutine.resume (co, session, t)
-        first = false
-      else
-        ok, r, e = Backend.coroutine.resume (co, t)
+      local ok, r = pcall (f, session, t)
+      if r == nil then
+        r = {}
       end
-      if ok and r ~= nil then
-        return r
-      elseif ok and r == nil then
-        e.locale  = session.locale or Configuration.locale.default
-        e.message = Platform.i18n.translate (e.request, e)
-        return nil, setmetatable (e, Message_mt)
+      if ok and type (r) == "table" and r.status == nil then
+        r.status = "ok"
+      end
+      if ok then
+        r.locale  = session.locale or Configuration.locale.default
+        r.message = Platform.i18n.translate (r.status, r)
+        return setmetatable (r, Message_mt)
       elseif type (r) == "table" then
         r.locale  = session.locale or Configuration.locale.default
         r.message = Platform.i18n.translate (r.status, r)
@@ -101,8 +97,6 @@ function Backend.__index (session, key)
         error (r)
       end
     end
-  else
-    return value
   end
 end
 
@@ -119,15 +113,31 @@ function Backend.localize (session, t)
 end
 
 function Backend.check (session, t, parameters)
-  for key in pairs (t) do
-    for _, f in ipairs (parameters [key]) do
-      local ok, r = f (session, t)
-      if not ok then
-        error {
-          status     = "check:error",
-          reason     = r,
-          parameters = parameters,
-        }
+  for key, parameter in pairs (parameters) do
+    local optional = key:find "?$"
+    if optional then
+      key = key:sub (1, #key-1)
+    end
+    local value = t [key]
+    if value == nil and not optional then
+      error {
+        status     = "check:error",
+        reason     = Platform.i18n.translate ("check:missing", {
+           locale = session.locale,
+           key    = key,
+         }),
+        parameters = parameters,
+      }
+    elseif value ~= nil then
+      for _, f in ipairs (parameter) do
+        local ok, r = f (session, t)
+        if not ok then
+          error {
+            status     = "check:error",
+            reason     = r,
+            parameters = parameters,
+          }
+        end
       end
     end
   end
@@ -151,6 +161,9 @@ local Parameters = {}
 
 function Parameters.new_string (key)
   Parameters [key] = {}
+  if not Configuration.data [key] then
+    Configuration.data [key] = {}
+  end
   Parameters [key] [1] = function (session, t)
     return type (t [key]) == "string"
         or nil, Platform.i18n.translate ("check:is-string", {
@@ -205,9 +218,19 @@ Configuration.data.locale.max_size = 5
 Parameters.locale [#(Parameters.locale) + 1] = function (session, t)
   local _ = session
   t.locale = t.locale:trim ()
-  local pattern = "^[A-Za-z][A-Za-z](_[A-Za-z][A-Za-z])?"
-  return t.locale:find (pattern)
+  return t.locale:find "^%a%a$"
+      or t.locale:find "^%a%a_%a%a$"
       or nil, Platform.i18n "check:locale:pattern"
+end
+
+Parameters.new_string "validation_key"
+Configuration.data.validation_key.min_size = 32
+Configuration.data.validation_key.max_size = 32
+Parameters.validation_key [#(Parameters.validation_key) + 1] = function (session, t)
+  local _ = session
+  t.validation_key = t.validation_key:trim ()
+  return t.validation_key:find "^%x+$"
+      or nil, Platform.i18n "check:validation_key:pattern"
 end
 
 Parameters.resource = {}
@@ -227,10 +250,27 @@ end
 -- * locale: ...
 -- * license-md5: ...
 
+function Backend.license (session, t)
+  local parameters = {
+    locale       = Parameters.locale,
+  }
+  Backend.localize (session, t)
+  Backend.check    (session, t, parameters)
+  local license = Platform.i18n.translate ("license", {
+    locale = session.locale
+  }):trim ()
+  local license_md5 = Platform.md5.digest (license)
+  return {
+    license = license,
+    digest  = license_md5,
+  }
+end
+
 function Backend.authenticate (session, t)
   local parameters = {
     username = Parameters.username,
     password = Parameters.password,
+    ["license?"] = Parameters.license,
   }
   Backend.localize (session, t)
   Backend.check    (session, t, parameters)
@@ -252,6 +292,11 @@ function Backend.authenticate (session, t)
       }
     end
     session.locale = data.locale or session.locale
+    if data.validation_key then
+      error {
+        status = "authenticate:non-validated",
+      }
+    end
     if not Platform.password.verify (t.password, data.password) then
       error {
         status = "authenticate:erroneous",
@@ -269,28 +314,24 @@ function Backend.authenticate (session, t)
     }):trim ()
     local license_md5 = Platform.md5.digest (license)
     if license_md5 ~= data.accepted_license then
-      local answer = Backend.coroutine.yield (nil, {
-        request = "license:accept?",
-        license = license,
-        digest  = license_md5,
-      })
-      if answer.response:trim () ~= license_md5 then
+      if t.license and t.license == license_md5 then
+        data.accepted_license = license_md5
+      elseif t.license and t.license ~= license_md5 then
+        error {
+          status   = "license:oudated",
+          username = t.username,
+          digest   = license_md5,
+        }
+      else
         error {
           status   = "license:reject",
           username = t.username,
           digest   = license_md5,
         }
       end
-      data.accepted_license = license_md5
-      Platform.logger.debug {
-        "license:accept",
-        username = t.username,
-        digest   = license_md5,
-      }
     end
   end)
   session.username = t.username
-  return true
 end
 
 function Backend.create_user (session, t)
@@ -305,16 +346,20 @@ function Backend.create_user (session, t)
     email    = Parameters.email,
     name     = Parameters.name,
     locale   = Parameters.locale,
+    license  = Parameters.license,
   }
   local data
   Backend.localize (session, t)
   Backend.check    (session, t, parameters)
   Backend.pool.transaction ({
     emails = Configuration.special_keys.email_user,
-    data   = "/${username}" % {
+    data   = "/%{username}" % {
       username = t.username,
     },
   }, function (p)
+    if not p.emails then
+      p.emails = {}
+    end
     if p.emails [t.email] then
       error {
         status   = "create-user:email-already",
@@ -328,25 +373,13 @@ function Backend.create_user (session, t)
         username = t.username,
       }
     end
-    local license     = Platform.i18n.translate ("license", session.locale):trim ()
-    local license_md5 = Platform.md5.digest (license)
-    local answer = Backend.coroutine.yield {
-      "accept-license",
-      license = license,
-      md5     = license_md5,
-    }
-    if answer:trim () ~= license_md5 then
-      error {
-        status = "create-user:reject-license",
-      }
-    end
     p.data = {
+      type              = "user",
       username          = t.username,
       password          = Platform.password.hash (t.password),
       name              = t.name,
       locale            = t.locale,
-      accepted_license  = license_md5,
-      validation_key    = Platform.unique.uuid (),
+      validation_key    = Platform.unique.key (),
       access            = {
         public = true,
       },
@@ -355,12 +388,12 @@ function Backend.create_user (session, t)
     p.emails [t.email]  = t.username
     data = p.data
   end)
-  Platform.Email.send {
+  Platform.email.send {
     from    = Platform.i18n.translate ("email:new_account:from", {
       locale  = session.locale,
       address = Configuration.smtp.username,
     }),
-    to      = "${name} <${email}>" % {
+    to      = "%{name} <%{email}>" % {
       name  = data.name,
       email = data.email,
     },
@@ -369,16 +402,54 @@ function Backend.create_user (session, t)
       username = data.username,
     }),
     body    = Platform.i18n.translate ("email:new_account:body", {
-      locale   = session.locale,
-      username = data.username,
-      key      = data.validation_key,
+      locale         = session.locale,
+      username       = data.username,
+      validation_key = data.validation_key,
     }),
   }
   session.username = nil
-  return true
 end
 
-function Backend:validate_user (t)
+function Backend.validate_user (session, t)
+  if session.username ~= nil then
+    error {
+      status = "validate-user:connected-already",
+    }
+  end
+  local parameters = {
+    username       = Parameters.username,
+    validation_key = Parameters.validation_key,
+  }
+  Backend.localize (session, t)
+  Backend.check    (session, t, parameters)
+  Backend.pool.transaction ({
+    data   = "/%{username}" % {
+      username = t.username,
+    },
+  }, function (p)
+    if not p.data then
+      error {
+        status   = "validate-user:non-existing",
+        username = t.username,
+      }
+    end
+    if p.data.type ~= "user" then
+      error {
+        status = "validate-user:non-user",
+      }
+    end
+    if p.data.validation_key == nil then
+      error {
+        status = "validate-user:validated-already",
+      }
+    end
+    if p.data.validation_key ~= t.validation_key then
+      error {
+        status = "validate-user:erroneous",
+      }
+    end
+    p.data.validation_key = nil
+  end)
 end
 
 function Backend:reset_user (t)

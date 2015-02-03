@@ -36,10 +36,15 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
 ]],
   ["license:reject"] =
     "license %{digest} is rejected by user %{username}",
+  ["license:outdated"] =
+    "license %{digest} is not up to date, or in wrong locale",
   ["license:accept"] =
     "license %{digest} is accepted by user %{username}",
   ["license:accept?"] =
     "accepting the license is required",
+    
+  ["ok"] =
+    "success",
 
   ["platform:available-dependency"] =
     "%{component} is available using '%{dependency}'",
@@ -68,6 +73,8 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
   ["check:error"] =
     "some parameters are invalid or missing",
 
+  ["check:missing"] =
+    "parameter %{key} is missing",
   ["check:is-string"] =
     "a %{key} must be a string",
   ["check:min-size"] = {
@@ -85,11 +92,15 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
     "an email address must comply to the standard",
   ["check:locale:pattern"] =
     "a locale must comply to the standard",
+  ["check:validation_key:pattern"] =
+    "a validation key must be a a sequence of alphanumeric characters separated by '-'",
 
   ["authenticate:non-existing"] =
     "authentication failed, because the given user does not exist",
   ["authenticate:non-user"] =
     "authentication failed, because the given username is not a user",
+  ["authenticate:non-validated"] =
+    "authentication failed, because the account has not been validated",
   ["authenticate:erroneous"] =
     "authentication failed, because of an erroneous username/password couple",
   ["authenticate:cheap-password"] =
@@ -102,4 +113,19 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
   ["create-user:username-already"] =
     "username %{username} is already a user account",
 
+  ["validate-user:non-existing"] =
+    "validation failed, because the given user does not exist",
+  ["validate-user:non-user"] =
+    "validation failed, because the given username is not a user",
+  ["validate-user:validated-already"] =
+    "validation failed, because the given user is already validated",
+  ["validate-user:erroneous"] =
+    "validation failed, because of an erroneous validation key",
+  
+  ["email:new_account:from"] =
+    "CosyVerif Platform <%{address}>",
+  ["email:new_account:subject"] =
+    "[CosyVerif] Welcome, %{username}!",
+  ["email:new_account:body"] =
+    "%{username}, your validation key is <%{validation_key}>.",
 }
