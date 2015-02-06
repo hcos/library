@@ -2,13 +2,30 @@
 local assert      = require "luassert"
 
 local Platform      = require "cosy.platform"
-local Configuration = require "cosy.configuration"
-local Backend       = require "cosy.backend"
+Platform.configuration.paths = {}
 Platform.logger.enabled = false
+
+local Configuration = require "cosy.configuration"
+
 Platform:register ("email", function ()
   Platform.email = {}
   Platform.email.send = function () end
 end)
+Platform:register ("redis", function ()
+  Configuration.redis.pool_size = 1
+  Platform.redis                = require "fakeredis" .new ()
+  Platform.redis.is_fake        = true
+  Platform.redis.connect        = function ()
+    return Platform.redis
+  end
+  Platform.redis.multi          = function ()
+  end
+  Platform.redis.transaction    = function (client, _, f)
+    return f (client)
+  end
+end)
+
+local Backend = require "cosy.backend"
 
 do
   local say = require "say"
@@ -46,19 +63,15 @@ describe ("...", function ()
   local license_md5 = Platform.md5.digest (license)
 
   before_each (function()
-    Configuration.data.password.time = 0.001
+    Configuration.data.password.time     = 0.001
     Configuration.data.username.min_size = 2
     Configuration.data.username.max_size = 10
     Configuration.data.password.min_size = 2
     Configuration.data.password.max_size = 10
-    Configuration.data.name.min_size = 2
-    Configuration.data.name.max_size = 10
-    Configuration.data.email.max_size = 10
-    Backend.pool [1] = require "fakeredis" .new ()
-    Backend.pool [1].multi       = function () end
-    Backend.pool [1].transaction = function (client, _, f)
-      return f (client)
-    end
+    Configuration.data.name.min_size     = 2
+    Configuration.data.name.max_size     = 10
+    Configuration.data.email.max_size    = 10
+    Platform.redis:flushdb ()
     session = setmetatable ({}, Backend)
   end)
 
@@ -217,13 +230,12 @@ describe ("...", function ()
           username       = "username",
           validation_key = extracted.validation_key,
         }
-        local r = session.license {
-          locale   = "en",
-        }
         session.authenticate {
           username = "username",
           password = "password",
-          license  = r.digest,
+          license  = session.license {
+            locale   = "en",
+          }.digest,
         }
         session.create_user {
           username = "othername",

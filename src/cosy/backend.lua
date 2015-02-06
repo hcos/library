@@ -1,4 +1,5 @@
 local Backend = {}
+local Methods = {}
 
 local Platform      = require "cosy.platform"
 local Configuration = require "cosy.configuration"
@@ -7,33 +8,41 @@ Configuration.special_keys = {
   email_user = "//email->user",
 }
 
-Backend.pool = {}
-
-Platform.scheduler:addthread (function ()
-  local socket    = require "socket"
-  local coroutine = require "coroutine.make" ()
-  local host      = Configuration.redis.host
-  local port      = Configuration.redis.port
-  local database  = Configuration.redis.database
-  local size      = Configuration.redis.size
-  for _ = 1, size do
-    local skt    = Platform.scheduler:wrap (socket.tcp ()):connect (host, port)
-    local client = Platform.redis.connect {
-      socket    = skt,
-      coroutine = coroutine,
-    }
-    client:select (database)
-    Backend.pool [#(Backend.pool) + 1] = client
-  end
-end)
+Backend.pool = {
+  created = {},
+  free    = {},
+}
 
 function Backend.pool.transaction (keys, f)
-  local pool = Backend.pool
-  while #pool == 0 do
-    Platform.scheduler:pass ()
+  local client
+  while true do
+    client = pairs (Backend.pool.free) (Backend.pool.free)
+    if client then
+      Backend.pool.free [client] = nil
+      break
+    end
+    if #(Backend.pool.created) < Configuration.redis.pool_size then
+      if Platform.redis.is_fake then
+        client = Platform.redis.connect ()
+      else
+        local socket    = require "socket"
+        local coroutine = require "coroutine.make" ()
+        local host      = Configuration.redis.host
+        local port      = Configuration.redis.port
+        local database  = Configuration.redis.database
+        local skt       = Platform.scheduler:wrap (socket.tcp ()):connect (host, port)
+        client = Platform.redis.connect {
+          socket    = skt,
+          coroutine = coroutine,
+        }
+        client:select (database)
+      end
+      Backend.pool.created [#(Backend.pool.created) + 1] = client
+      Backend.pool.free [client] = true
+    else
+      Platform.scheduler:pass ()
+    end
   end
-  local client     = pool [#pool]
-  pool [#pool]     = nil
   local ok, result = pcall (client.transaction, client, {
     watch = keys,
     cas   = true,
@@ -45,7 +54,7 @@ function Backend.pool.transaction (keys, f)
         t [k] = Platform.json.decode (redis:get (v))
       end
     end
-    f (t)
+    f (t, client)
     redis:multi ()
     for k, v in pairs (keys) do
       if t [k] == nil then
@@ -55,15 +64,13 @@ function Backend.pool.transaction (keys, f)
       end
     end
   end)
-  pool [#pool + 1] = client
+  Backend.pool.free [client] = true
   if ok then
     return result
   else
     error (result)
   end
 end
-
-Backend.coroutine = require "coroutine.make" ()
 
 -- Fix missing `table.unpack` in lua 5.1:
 table.unpack = table.unpack or _G.unpack
@@ -74,8 +81,8 @@ function Message_mt:__tostring ()
   return self.message
 end
 
-function Backend.__index (session, key)
-  local f = Backend [key]
+function Methods.__index (session, key)
+  local f = Methods [key]
   if f then
     return function (t)
       local ok, r = pcall (f, session, t)
@@ -244,13 +251,7 @@ end
 -- * groups defined by the owner(s)
 -- * access is "public"/"private" with optional "owner" "share", "read" or "hide" for group/user
 
--- User:
--- * type: "user"
--- * password: ...
--- * locale: ...
--- * license-md5: ...
-
-function Backend.license (session, t)
+function Methods.license (session, t)
   local parameters = {
     locale       = Parameters.locale,
   }
@@ -266,7 +267,7 @@ function Backend.license (session, t)
   }
 end
 
-function Backend.authenticate (session, t)
+function Methods.authenticate (session, t)
   local parameters = {
     username = Parameters.username,
     password = Parameters.password,
@@ -334,7 +335,7 @@ function Backend.authenticate (session, t)
   session.username = t.username
 end
 
-function Backend.create_user (session, t)
+function Methods.create_user (session, t)
   if session.username ~= nil then
     error {
       status = "create-user:connected-already",
@@ -375,6 +376,7 @@ function Backend.create_user (session, t)
     end
     p.data = {
       type              = "user",
+      status            = "created",
       username          = t.username,
       password          = Platform.password.hash (t.password),
       name              = t.name,
@@ -410,7 +412,7 @@ function Backend.create_user (session, t)
   session.username = nil
 end
 
-function Backend.validate_user (session, t)
+function Methods.validate_user (session, t)
   if session.username ~= nil then
     error {
       status = "validate-user:connected-already",
@@ -452,37 +454,37 @@ function Backend.validate_user (session, t)
   end)
 end
 
-function Backend:reset_user (t)
+function Methods.reset_user (session, t)
 end
 
-function Backend:delete_user (t)
+function Methods:delete_user (t)
 end
 
-function Backend.metadata (session, t)
+function Methods.metadata (session, t)
 end
 
-function Backend:create_project (t)
+function Methods:create_project (t)
 end
 
-function Backend:delete_project (t)
+function Methods:delete_project (t)
 end
 
-function Backend:create_resource (t)
+function Methods:create_resource (t)
 end
 
-function Backend:delete_resource (t)
+function Methods:delete_resource (t)
 end
 
-function Backend:list (t)
+function Methods:list (t)
 end
 
-function Backend:update (t)
+function Methods:update (t)
 end
 
-function Backend:edit (t)
+function Methods:edit (t)
 end
 
-function Backend:patch (t)
+function Methods:patch (t)
 end
 
-return Backend
+return Methods

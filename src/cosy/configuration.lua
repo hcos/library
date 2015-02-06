@@ -11,7 +11,44 @@
 local Platform  = require "cosy.platform"
 
 local Metatable = {}
-local Configuration = setmetatable ({}, Metatable)
+local Configuration = Platform.yaml.decode [[
+redis:
+  host: "127.0.0.1"
+  port: 6379
+  database: 0
+  pool_size: 5
+
+server:
+  host: "127.0.0.1"
+  port: 8080
+  threads: 2
+
+data:
+  username:
+    min_size: 1
+    max_size: 32
+  password:
+    min_size: 10
+    max_size: 128
+    time: 0.020
+  name:
+    min_size: 1
+    max_size: 128
+  email:
+    max_size: 128
+  locale:
+    min_size: 2
+    max_size: 5
+
+smtp:
+
+network:
+  compression: "snappy"
+
+locale:
+  default: "en"
+]]
+setmetatable (Configuration, Metatable)
 
 -- This function imports the `source` table inside the `target` one.
 local function import (source, target)
@@ -32,12 +69,7 @@ end
 
 Metatable.__index = Metatable
 
-function Metatable.reload ()
-  for k in pairs (Configuration) do
-    if k ~= "reload" then
-      Configuration [k] = nil
-    end
-  end
+do
   for _, path in ipairs (Platform.configuration.paths) do
     local found = false
     for name, loader in pairs {
@@ -65,7 +97,5 @@ function Metatable.reload ()
     end
   end
 end
-
-Configuration:reload ()
 
 return Configuration
