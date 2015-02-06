@@ -5,26 +5,33 @@ local global = _G
 
 local Platform = setmetatable ({
     _pending = {},
+    _running = {},
   }, {
   __index = function (self, key)
-    local pending = rawget (self._pending, key)
-    if pending then
-      rawset (self, key, {})
+    local running = self._running [key]
+    local pending = self._pending [key]
+    if running then
+      return running
+    elseif pending then
+      self._running [key] = {}
       pending ()
-      return self [key]
+      return self._running [key]
     else
       return nil
     end
   end,
   __newindex = function (self, key, value)
-    assert (type (key) == "string" and type (value) == "function")
-    self._pending [key] = value
+    self._running [key] = value
   end,
 })
+function Platform:register (key, value)
+  assert (type (key) == "string" and type (value) == "function")
+  self._pending [key] = value
+end
 
 -- Logger
 -- ======
-Platform.logger = function ()
+Platform:register ("logger", function ()
   if pcall (function ()
     local logging   = require "logging"
     logging.console = require "logging.console"
@@ -97,11 +104,11 @@ Platform.logger = function ()
     function Platform.logger.error ()
     end
   end
-end
+end)
 
 -- Internationalization
 -- ====================
-Platform.i18n = function ()
+Platform:register ("i18n", function ()
   Platform.i18n = require "i18n"
   Platform.i18n.load { en = require "cosy.i18n.en" }
   if pcall (require, "lfs") then
@@ -136,7 +143,7 @@ Platform.i18n = function ()
     }
     error "Missing dependency"
   end
-end
+end)
 
 -- Foreign Function Interface
 -- ==========================
@@ -164,7 +171,8 @@ end
 
 -- Unique ID generator
 -- ===================
-Platform.unique = function ()
+Platform:register ("unique", function ()
+  math.randomseed (os.time ())
   function Platform.unique.id ()
     error "Not implemented yet"
   end
@@ -174,11 +182,14 @@ Platform.unique = function ()
     run:close ()
     return result
   end
-end
+  function Platform.unique.key ()
+    return Platform.md5.digest (tostring (math.random ()))
+  end
+end)
 
 -- Table dump
 -- ==========
-Platform.table = function ()
+Platform:register ("table", function ()
   if pcall (function ()
     local serpent = require "serpent"
     function Platform.table.encode (t)
@@ -200,11 +211,11 @@ Platform.table = function ()
     }
     error "Missing dependency"
   end
-end
+end)
 
 -- JSON
 -- ====
-Platform.json = function ()
+Platform:register ("json", function ()
   if pcall (function ()
     Platform.json = require "cjson"
   end) then
@@ -238,11 +249,11 @@ Platform.json = function ()
     }
     error "Missing dependency"
   end
-end
+end)
 
 -- YAML
 -- ====
-Platform.yaml = function ()
+Platform:register ("yaml", function ()
   if pcall (function ()
     local yaml = require "lyaml"
     Platform.yaml = {
@@ -286,11 +297,11 @@ Platform.yaml = function ()
     }
     error "Missing dependency"
   end
-end
+end)
 
 -- Compression
 -- ===========
-Platform.compression = function ()
+Platform:register ("compression", function ()
 
   Platform.compression.available = {}
   do
@@ -334,11 +345,11 @@ Platform.compression = function ()
           format = format,
         })
   end
-end
+end)
 
 -- Password Hashing
 -- ================
-Platform.password = function ()
+Platform:register ("password", function ()
   local Configuration = require "cosy.configuration"
   if pcall (function ()
     local bcrypt = require "bcrypt"
@@ -386,11 +397,11 @@ Platform.password = function ()
     }
     error "Missing dependency"
   end
-end
+end)
 
 -- MD5
 -- ===
-Platform.md5 = function ()
+Platform:register ("md5", function ()
   if pcall (function ()
     Platform.md5 = require "md5"
   end) then
@@ -407,11 +418,11 @@ Platform.md5 = function ()
     }
     error "Missing dependency"
   end
-end
+end)
 
 -- Redis
 -- =====
-Platform.redis = function ()
+Platform:register ("redis", function ()
   if pcall (function ()
     Platform.redis = require "redis"
   end) then
@@ -427,11 +438,11 @@ Platform.redis = function ()
     }
     error "Missing dependency"
   end
-end
+end)
 
 -- Time
 -- ====
-Platform.time = function ()
+Platform:register ("time", function ()
   if pcall (function ()
     local socket  = require "socket"
     Platform.time = socket.gettime
@@ -448,11 +459,11 @@ Platform.time = function ()
     }
     error "Missing dependency"
   end
-end
+end)
 
 -- Configuration
 -- =============
-Platform.configuration = function ()
+Platform:register ("configuration", function ()
   Platform.configuration.paths = {
     "/etc",
     os.getenv "HOME" .. "/.cosy",
@@ -468,17 +479,17 @@ Platform.configuration = function ()
       return nil
     end
   end
-end
+end)
 
 -- Scheduler
 -- =========
-Platform.scheduler = function ()
+Platform:register ("scheduler", function ()
   Platform.scheduler = require "cosy.util.scheduler" .create ()
-end
+end)
 
 -- Email
 -- =====
-Platform.email = function ()
+Platform:register ("email", function ()
   local Email = require "cosy.util.email"
   if not Email.discover () then
     Platform.logger.warning ("No SMTP server discovered, sending of emails will not work.")
@@ -492,6 +503,6 @@ Platform.email = function ()
     protocol = Configuration.smtp.protocol,
   })
   Platform.email.send = Email.send
-end
+end)
 
 return Platform
