@@ -10,17 +10,19 @@ local function c3 (data)
   if #(data [PARENTS]) == 0 then
     data [LAYERS] = { data }
   else
+    local n  = { 1 }
     local l  = { { data } }
     local parents = data [PARENTS]
     for i = #parents, 1, -1 do
       local parent = parents [i]
       local layers = parent  [LAYERS]
       if layers then
-        l [#l+1] = table.pack (table.unpack (layers))
+        l [#l+1] = layers
+        n [#n+1] = #layers
       end
     end
     l [#l+1] = parents
-    local layers = {}
+    n [#n+1] = #parents
     local tails  = {}
     for i = 1, #l do
       local v = l [i]
@@ -29,16 +31,17 @@ local function c3 (data)
         tails [w] = (tails [w] or 0) + 1
       end
     end
+    local layers = {}
     while #l ~= 0 do
       for i = 1, #l do
-        local v       = l [i]
-        local first   = v [#v]
+        local vl, vn  = l [i], n [i]
+        local first   = vl [vn]
         tails [first] = tails [first] - 1
       end
       local head
       for i = 1, #l do
-        local v     = l [i]
-        local first = v [#v]
+        local vl, vn = l [i], n [i]
+        local first  = vl [vn]
         if tails [first] == 0 then
           head = first
           break
@@ -49,21 +52,22 @@ local function c3 (data)
       end
       layers [#layers + 1] = head
       for i = 1, #l do
-        local v     = l [i]
-        local first = v [#v]
+        local vl, vn = l [i], n [i]
+        local first  = vl [vn]
         if first == head then
-          v [#v] = nil
+          n [i] = n [i] - 1
         else
           tails [first] = tails [first] + 1
         end
       end
-      local removed = 0
+      local nl, nn = {}, {}
       for i = 1, #l do
-        if #(l [i-removed]) == 0 then
-          table.remove (l, i-removed)
-          removed = removed + 1
+        if n [i] ~= 0 then
+          nl [#nl+1] = l [i]
+          nn [#nn+1] = n [i]
         end
       end
+      l, n = nl, nn
     end
     for i = 1, #layers / 2 do
       layers [i], layers [#layers-i+1] = layers [#layers-i+1], layers [i]
@@ -73,16 +77,14 @@ local function c3 (data)
 end
 
 local function class (name, parents)
+  local ps = {}
   if parents then
-    parents = table.pack (table.unpack (parents))
-  else
-    parents = {}
-  end
-  for i = 1, #parents/2 do
-    parents [i], parents [#parents-i+1] = parents [#parents-i+1], parents [i]
+    for i = 1, #parents do
+      ps [i] = parents [#parents-i+1]
+    end
   end
   local data = setmetatable ({
-    [PARENTS] = parents,
+    [PARENTS] = ps,
   }, {
     __tostring = function (x) return name end,
   })
@@ -95,8 +97,8 @@ end
 
 local profiler = require "profiler"
 
---profiler.start "test.log"
-for i = 1, 25000 do
+profiler.start "test.log"
+for i = 1, 5000 do
   local o = class ("o")
   local a = class ("a", { o })
   local b = class ("b", { o })
@@ -108,4 +110,4 @@ for i = 1, 25000 do
   local k3 = class ("k3", { d, a })
   local z = class ("z", { k1, k2, k3 })
 end
---profiler.stop ()
+profiler.stop ()
