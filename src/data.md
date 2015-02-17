@@ -5,16 +5,16 @@ Structure
 ---------
 
 * une donnée est composée :
-  * d'une valeur (nil, booléen, chaîne de caractères, nombre);
-  * d'un mapping de clés vers des données;
-  * d'une liste de parents (par héritage);
-  * d'une redirection (la donnée est un lien vers une autre);
+    * d'une valeur (nil, booléen, chaîne de caractères, nombre);
+    * d'un mapping de clés vers des données;
+    * d'une liste de parents (par héritage);
+    * d'une redirection (la donnée est un lien vers une autre);
   
   Exemple:
 
     { a = 1, -- valeur
       b = { c = 2 }, -- mapping
-      c = { [a, b] }, -- héritage
+      c = [a, b], -- héritage
       d = @a, -- redirection
     }
   
@@ -51,8 +51,8 @@ Calques
                         }                         state_space  = ...
                                                 }
 
-  Dans /c3/, on peut tout à fait modifier `petri_net` ou `philosophers`
-  sans que ces changements ne soient répercutés dans /c1/ ou /c2/.
+  Dans `/c3/`, on peut tout à fait modifier `petri_net` ou `philosophers`
+  sans que ces changements ne soient répercutés dans `/c1/` ou `/c2/`.
 
 * on ne peut modifier les données que dans le calque de plus haut niveau,
   ce qui évite de modifier ce dont le modèle dépend;
@@ -64,13 +64,14 @@ Calques
 Héritage
 --------
 
-* les données supportent l'héritage multiple
+* les données supportent l'héritage multiple; les parents sont classés
+  du plus prioritaire au moins prioritaire dans la liste;
 
   Exemple:
   
-    /c1/ = {
+    /c1/ = {              /c1/.c.x = 1
       a = { x = 1 },
-      b = { y = 2 },
+      b = { x = 2 },
       c = [a, b],
     }
 
@@ -79,7 +80,7 @@ Héritage
   possible de spécifier explicitement une donnée d'un calque précis comme
   parent;
 
-* l'héritage n'est pas forcément spécifié lors de la première appartition
+* l'héritage n'est pas forcément spécifié lors de la première apparition
   d'une donnée, mais peut l'être dans un calque supérieur;
   
   Exemple:
@@ -90,7 +91,9 @@ Héritage
     }
 
 * lorsqu'il est spécifié à différents endroits, l'héritage se cumule,
-  de la même manière que les parents d'un parent sont aussi des parents;
+  de la même manière que les parents d'un parent sont aussi des parents
+  dans le modèle objet classique; les parents des parents sont alors moins
+  prioritaires;
 
   Exemple:
   
@@ -114,20 +117,19 @@ Héritage
       b = { [a], y = 2 },
     }
 
-* la résolution d'une donnée se fait tout d'abord dans le calque courant;
-  si elle n'est pas trouvée, on cherche dans l'héritage spécifié dans le calque
-  courant; avant de chercher dans les calques inférieurs;
+* la résolution de l'héritage d'une donnée se fait tout d'abord dans le calque
+  courant; si elle n'est pas trouvée, on cherche dans les calques inférieurs;
 
   Exemple:
 
     /c1/ = {          /c2/ = {        aplani en /c1 < c2/ = {
-      a = {             b = [a],        a = {
+      a = {             b = {},         a = {
         b = true,     }                   b = true,
       },                                },
-      b = {                             b = {
-        b = 2,                            b = true,
-      },                                },
-    }                                 }
+      b = [a]                           b = {
+    }                                      b = true,
+                                        },
+                                      }
 
 
 * la résolution de l'héritage se fait tout d'abord au niveau le plus profond,
@@ -177,7 +179,30 @@ Redirection
     }             }               b = 3,
                                 }
 
-* ...
+* on distingue deux types de parcours des données : un parcours où l'on suit
+  les redirection, et un parcours où on les considère comme des données;
+  
+  Exemple:
+  
+    /c1/ = {                /c1/.b.c = 1, si l'on suit la redirection
+      a = { c = 1 },        /c1/.b.c = 2, si on la considère comme une donnée
+      b = { @a, c = 2 },
+    }
+
+* une redirection peut contenir un sous-arbre; celui-ci est alors considéré
+  comme étiquetant la redirection, et non sa cible;
+  
+* il est possible pour une redirection d'utiliser aussi de l'héritage;
+  dans ce cas, on considère que l'héritage porte sur les données étiquetant
+  la redirection, et non sur sa cible;
+  
+  Exemple:
+  
+    /c1/ = {              /c1/.c.x = 1, si l'on suit la redirection
+      a = { x = 1 },      /c1/.c.x = 2, si on la considère comme une donnée
+      b = { x = 2 },
+      c = { @a, [b] },
+    }
 
 Attention
 ---------
@@ -187,118 +212,9 @@ celles-ci définies. Existe-t-il un moyen simple pour interdire ce genre de
 choses ? Quel impact sur les règles définies ci-dessus ? Est-ce une si bonne
 idée de l'interdire ?
 
-
-
-
-
-
-
-Attention, il y a des cas étranges :
-calque_1 = {
-  a = {
-    a = 1,
-    b = 2,
-  },
-  b = {
-    _ = @a,
-    b = true,
-    c = 3,
-  },
-}
-Ici, nous ajoutons des clés à `b` alors que celui-ci est un lien vers `a`.
-Il n'est pas possible d'ajouter ces clés directement à `a`, car nous devons
-conserver la structure sous-jacente, et ne jouer que sur l'interprétation.
-
-interprétation à plat :
-{
-  a = {
-    a = 1,
-  },
-  b = {
-    a = 1,
-    b = ???,
-    c = 3,
-  },
-}
-En fait j'ai l'impression que tout dépend de l'interprétation qu'on souhaite :
-suivre le lien ou alors observer les attributs du lien.
-
-Exemple #4
-----------
-Cet exemple mélange calques, héritage et liens.
-
-calque_1 = {
-  a = {
-    a = 1,
-    b = 2,
-  },
-  b = {
-    _ = @a,
-    b = true,
-    c = 3,
-  },
-}
-calque_2 = {
-  b = {
-    <inherits a>
-    b = "abc",
-  },
-}
-Que signifie d'hériter de quelque chose quand on est un lien ?
-Même remarque qu'au-dessus, j'ai l'impression que tout dépend de ce qu'on
-obseve : le lien ou l'objet référencé.
-
-interprétation à plat ?
-{
-  a = {
-    a = 1,
-  },
-  b = {
-    a = 1,
-    b = ???,
-    c = 3,
-  },
-}
-
-Cas tordu
----------
-
-calque_1 = {
-  a = {
-    b = {
-      <inherits d>
-    },
-    c = 1,
-  },
-  b = {
-    b = {
-      <inherits c>
-    },
-    c = 2,
-  },
-  c = {
-    c = 3,
-  },
-  d = {
-    c = 4,
-  }
-}
-calque_2 = {
-  b = {
-    <inherits a>
-    b = {
-      <inherits a>
-    },
-  },
-}
-
 Conclusion
 ==========
 Cette structure de données est un outil très amusant pour CosyVerif, mais avec
 quelques merdes. Il faut essayer de définir les algorithmes de résolution
-pour qu'ils soient le plus intuitifs possible.
-
-1. Chercher par calque sans tenir compte de l'héritage
-   Selon le cas, suivre ou non le lien
-2. Reprendre la recherche en utilisant l'héritage
-   
+pour qu'ils soient le plus intuitifs possible, et qu'ils soient suffisamment
+efficaces.
