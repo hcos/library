@@ -8,7 +8,10 @@ Layer.VALUE    = "_"
 Layer.DEPENDS  = "cosy:depends"
 Layer.INHERITS = "cosy:inherits"
 Layer.REFERS   = "cosy:refers"
-Layer.IS_PATH  = "cosy:is_path"
+
+Layer.placeholder = setmetatable ({
+  [Proxy.KEYS] = { true },
+}, Proxy)
 
 function Layer.new (data)
   local function replace_proxy (t, within)
@@ -26,7 +29,14 @@ function Layer.new (data)
           t [i-1] = keys [i]
         end
       else
-        assert (false)
+        local keys   = t [Proxy.KEYS]
+        local refers = {}
+        t = {
+          [Layer.REFERS ] = refers,
+        }
+        for i = 2, #keys do
+          refers [i-1] = keys [i]
+        end
       end
       return t
     end
@@ -184,15 +194,18 @@ function Proxy.get (proxy)
   for i = #layers, 1, -1 do
     local data = layers [i]
     for j = 2, #keys do
+      if type (data) ~= "table" then
+        data = nil
+        break
+      end
       data = data [keys [j]]
       if data == nil then
         break
       end
       -- Special cases:
-      if keys [j] == Layer.REFERS then
-        local pkeys = { keys [1] }
-        assert (data [Layer.IS_PATH])
-        local keys = { root }
+      local key = keys [j]
+      if key == Layer.REFERS then
+        local pkeys = { root }
         for k = 1, #data do
           pkeys [#pkeys + 1] = data [k]
         end
@@ -236,12 +249,28 @@ function Proxy.__index (proxy, key)
   end
 end
 
+function Proxy.__call (proxy, n)
+  -- TODO: what happens when the key is a table or proxy?
+  if n == nil then
+    n = 1
+  end
+  local keys = proxy [Proxy.KEYS]
+  keys = table.pack (table.unpack (keys))
+  for _ = 1, n do
+    keys [#keys+1] = Layer.REFERS
+  end
+  return setmetatable ({
+    [Proxy.KEYS] = keys,
+  }, Proxy)
+end
+
+--[[
 function Proxy.__concat (proxy, key)
   -- TODO: what happens when the key is a table or proxy?
   local keys = proxy [Proxy.KEYS]
   keys = table.pack (table.unpack (keys))
   keys [#keys+1] = Layer.REFERS
-  if key ~= "_" then
+  if key ~= Layer.placeholder then
     keys [#keys+1] = key
     return setmetatable ({
       [Proxy.KEYS] = keys,
@@ -253,6 +282,7 @@ function Proxy.__concat (proxy, key)
     return Proxy.get (proxy)
   end
 end
+--]]
 
 function Proxy.__newindex (proxy, key, value)
   local keys = proxy [Proxy.KEYS]
