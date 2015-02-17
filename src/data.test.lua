@@ -1,11 +1,11 @@
                require "busted"
-
 local assert = require "luassert"
 local Layer  = require "data"
 
 describe ("c3 linearization", function ()
 
-  it ("works", function ()
+  it ("works as expected", function ()
+    -- See: [C3 Linearization](http://en.wikipedia.org/wiki/C3_linearization)
     local o = {
       name = "o",
     }
@@ -79,49 +79,90 @@ describe ("c3 linearization", function ()
 
 end)
 
-describe ("layers", function ()
+describe ("a layer", function ()
 
-  it ("", function ()
+  it ("allows to read values", function ()
     local c1 = Layer.import {
       a = 1,
-      b = {
-        x = 1,
-      },
-      name = "c1",
+    }
+    assert.are.equal (c1.a._, 1)
+    assert.is_nil (c1.b._)
+  end)
+
+  it ("exposes the nearest value", function ()
+    local c1 = Layer.import {
+      a = 1,
     }
     local c2 = Layer.import {
       a = 2,
-      b = {
-        y = 2,
-      },
-      c = 3,
-      name = "c2",
       [Layer.DEPENDS] = {
         Layer.export (c1),
       },
     }
-    assert.are.equal (c2.a._  , 2)
-    assert.are.equal (c2.b.x._, 1)
-    assert.are.equal (c2.b.y._, 2)
-    assert.are.equal (c2.c._  , 3)
+    assert.are.equal (c1.a._, 1)
+    assert.are.equal (c2.a._, 2)
   end)
---[[
-  it ("", function ()
+
+  it ("uses its dependencies from last to first", function ()
+    local c1 = Layer.import {
+      a = 1,
+    }
+    local c2 = Layer.import {
+      a = 2,
+    }
+    local c3 = Layer.import {
+      [Layer.DEPENDS] = {
+        Layer.export (c1),
+        Layer.export (c2),
+      },
+    }
+    assert.are.equal (c3.a._, 2)
+  end)
+
+  it ("allows diamond in dependencies", function ()
+    local c1 = Layer.import {
+      a = 1,
+      b = 1,
+    }
+    local c2 = Layer.import {
+      b = 2,
+      [Layer.DEPENDS] = {
+        Layer.export (c1),
+      },
+    }
+    local c3 = Layer.import {
+      b = 3,
+      [Layer.DEPENDS] = {
+        Layer.export (c1),
+      },
+    }
+    local c4 = Layer.import {
+      [Layer.DEPENDS] = {
+        Layer.export (c2),
+        Layer.export (c3),
+      },
+    }
+    assert.are.equal (c4.a._, 1)
+    assert.are.equal (c4.b._, 3)
+  end)
+
+  it ("merges layers in all the data tree", function ()
     local c1 = Layer.import {
       a = {
         x = 1,
+        y = 1,
       },
     }
     local c2 = Layer.import {
-      b = {
-        [Layer.INHERITS] = { "a" },
+      a = {
+        y = 2,
+      },
+      [Layer.DEPENDS] = {
+        Layer.export (c1),
       },
     }
-    local c3 = Layer.above {
-      c1,
-      c2,
-    }
-    assert.are.equal (c3.a._  , 2)
+    assert.are.equal (c2.a.x._, 1)
+    assert.are.equal (c2.a.y._, 2)
   end)
---]]
+
 end)

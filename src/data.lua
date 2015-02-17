@@ -8,7 +8,44 @@ Layer.VALUE    = "_"
 Layer.DEPENDS  = "cosy:depends"
 Layer.INHERITS = "cosy:inherits"
 Layer.REFERS   = "cosy:refers"
-Layer.IS_PATH = "cosy:is_path"
+Layer.IS_PATH  = "cosy:is_path"
+
+function Layer.new (data)
+  local function replace_proxy (t, within)
+    if type (t) ~= "table" then
+      return t
+    end
+    if getmetatable (t) == Proxy then
+      if within == Layer.DEPENDS then
+        t = t [Proxy.KEYS] [1]
+      elseif within == Layer.INHERITS 
+          or within == Layer.REFERS   then
+        local keys = t [Proxy.KEYS]
+        t = {}
+        for i = 2, #keys do
+          t [i-1] = keys [i]
+        end
+      else
+        assert (false)
+      end
+      return t
+    end
+    for k, v in pairs (t) do
+      local w = within
+      if k == Layer.DEPENDS
+      or k == Layer.INHERITS
+      or k == Layer.REFERS then
+        w = k
+      end
+      t [k] = replace_proxy (v, w)
+    end
+    return t
+  end
+  data = replace_proxy (data)
+  return setmetatable ({
+    [Proxy.KEYS] = { data },
+  }, Proxy)
+end
 
 function Layer.import (data)
   return setmetatable ({
@@ -151,6 +188,7 @@ function Proxy.get (proxy)
       if data == nil then
         break
       end
+      -- Special cases:
       if keys [j] == Layer.REFERS then
         local pkeys = { keys [1] }
         assert (data [Layer.IS_PATH])
@@ -200,28 +238,19 @@ end
 
 function Proxy.__concat (proxy, key)
   -- TODO: what happens when the key is a table or proxy?
+  local keys = proxy [Proxy.KEYS]
+  keys = table.pack (table.unpack (keys))
+  keys [#keys+1] = Layer.REFERS
   if key ~= "_" then
-    local keys = proxy [Proxy.KEYS]
-    keys = table.pack (table.unpack (keys))
-    keys [#keys+1] = Layer.REFERS
     keys [#keys+1] = key
     return setmetatable ({
       [Proxy.KEYS] = keys,
     }, Proxy)
   else
+    proxy = setmetatable ({
+      [Proxy.KEYS] = keys,
+    }, Proxy)
     return Proxy.get (proxy)
-  end
-end
-
-function Layer.fix_data (t)
-  if type (t) ~= "table" then
-    return t
-  end
-  if getmetatable (t) == Proxy then
-    local result = {}
-    
-  else
-    
   end
 end
 
