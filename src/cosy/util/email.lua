@@ -1,7 +1,7 @@
 local Email = {}
 
 local Platform      = require "cosy.platform"
-local Configuration = require "cosy.configuration"
+local Configuration = require "cosy.configuration" . whole
 local _             = require "cosy.util.string"
 
 local socket        = require "socket"

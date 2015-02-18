@@ -5,7 +5,7 @@ local Platform      = require "cosy.platform"
 Platform.configuration.paths = {}
 Platform.logger.enabled = false
 
-local Configuration = require "cosy.configuration"
+local Configuration = require "cosy.configuration" . whole
 
 Platform:register ("email", function ()
   Platform.email = {}

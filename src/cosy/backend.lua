@@ -2,7 +2,7 @@ local Backend = {}
 local Methods = {}
 
 local Platform      = require "cosy.platform"
-local Configuration = require "cosy.configuration"
+local Configuration = require "cosy.configuration" . whole
 
 Configuration.special_keys = {
   email_user = "//email->user",
@@ -251,90 +251,6 @@ end
 -- * groups defined by the owner(s)
 -- * access is "public"/"private" with optional "owner" "share", "read" or "hide" for group/user
 
-function Methods.license (session, t)
-  local parameters = {
-    locale       = Parameters.locale,
-  }
-  Backend.localize (session, t)
-  Backend.check    (session, t, parameters)
-  local license = Platform.i18n.translate ("license", {
-    locale = session.locale
-  }):trim ()
-  local license_md5 = Platform.md5.digest (license)
-  return {
-    license = license,
-    digest  = license_md5,
-  }
-end
-
-function Methods.authenticate (session, t)
-  local parameters = {
-    username = Parameters.username,
-    password = Parameters.password,
-    ["license?"] = Parameters.license,
-  }
-  Backend.localize (session, t)
-  Backend.check    (session, t, parameters)
-  session.username = nil
-  Backend.pool.transaction ({
-    data = "/%{username}" % {
-      username = t.username,
-    }
-  }, function (p)
-    local data = p.data
-    if not data then
-      error {
-        status = "authenticate:non-existing",
-      }
-    end
-    if data.type ~= "user" then
-      error {
-        status = "authenticate:non-user",
-      }
-    end
-    session.locale = data.locale or session.locale
-    if data.validation_key then
-      error {
-        status = "authenticate:non-validated",
-      }
-    end
-    if not Platform.password.verify (t.password, data.password) then
-      error {
-        status = "authenticate:erroneous",
-      }
-    end
-    if Platform.password.is_too_cheap (data.password) then
-      Platform.logger.debug {
-        "authenticate:cheap-password",
-        username = t.username,
-      }
-      data.password = Platform.password.hash (t.password)
-    end
-    local license = Platform.i18n.translate ("license", {
-      locale = session.locale
-    }):trim ()
-    local license_md5 = Platform.md5.digest (license)
-    if license_md5 ~= data.accepted_license then
-      if t.license and t.license == license_md5 then
-        data.accepted_license = license_md5
-      elseif t.license and t.license ~= license_md5 then
-        error {
-          status   = "license:oudated",
-          username = t.username,
-          digest   = license_md5,
-        }
-      else
-        error {
-          status   = "license:reject",
-          username = t.username,
-          digest   = license_md5,
-        }
-      end
-    end
-  end)
-  session.username = t.username
-end
-
 function Methods.create_user (session, t)
   if session.username ~= nil then
     error {
@@ -452,6 +368,90 @@ function Methods.validate_user (session, t)
     end
     p.data.validation_key = nil
   end)
+end
+
+function Methods.license (session, t)
+  local parameters = {
+    locale = Parameters.locale,
+  }
+  Backend.localize (session, t)
+  Backend.check    (session, t, parameters)
+  local license = Platform.i18n.translate ("license", {
+    locale = session.locale
+  }):trim ()
+  local license_md5 = Platform.md5.digest (license)
+  return {
+    license = license,
+    digest  = license_md5,
+  }
+end
+
+function Methods.authenticate (session, t)
+  local parameters = {
+    username = Parameters.username,
+    password = Parameters.password,
+    ["license?"] = Parameters.license,
+  }
+  Backend.localize (session, t)
+  Backend.check    (session, t, parameters)
+  session.username = nil
+  Backend.pool.transaction ({
+    data = "/%{username}" % {
+      username = t.username,
+    }
+  }, function (p)
+    local data = p.data
+    if not data then
+      error {
+        status = "authenticate:non-existing",
+      }
+    end
+    if data.type ~= "user" then
+      error {
+        status = "authenticate:non-user",
+      }
+    end
+    session.locale = data.locale or session.locale
+    if data.validation_key then
+      error {
+        status = "authenticate:non-validated",
+      }
+    end
+    if not Platform.password.verify (t.password, data.password) then
+      error {
+        status = "authenticate:erroneous",
+      }
+    end
+    if Platform.password.is_too_cheap (data.password) then
+      Platform.logger.debug {
+        "authenticate:cheap-password",
+        username = t.username,
+      }
+      data.password = Platform.password.hash (t.password)
+    end
+    local license = Platform.i18n.translate ("license", {
+      locale = session.locale
+    }):trim ()
+    local license_md5 = Platform.md5.digest (license)
+    if license_md5 ~= data.accepted_license then
+      if t.license and t.license == license_md5 then
+        data.accepted_license = license_md5
+      elseif t.license and t.license ~= license_md5 then
+        error {
+          status   = "license:oudated",
+          username = t.username,
+          digest   = license_md5,
+        }
+      else
+        error {
+          status   = "license:reject",
+          username = t.username,
+          digest   = license_md5,
+        }
+      end
+    end
+  end)
+  session.username = t.username
 end
 
 function Methods.reset_user (session, t)
