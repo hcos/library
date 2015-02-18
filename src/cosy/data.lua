@@ -15,6 +15,8 @@ Proxy     .__metatable = "cosy.data.proxy"
 
 Repository.CONTENTS   = make_tag "Repository.CONTENTS"
 Repository.LINEARIZED = make_tag "Repository.LINEARIZED"
+Repository.ON_READ    = make_tag "Repository.ON_READ"
+Repository.ON_WRITE   = make_tag "Repository.ON_WRITE"
 
 Proxy.REPOSITORY      = make_tag "Proxy.REPOSITORY"
 Proxy.KEYS            = make_tag "Proxy.KEYS"
@@ -28,6 +30,8 @@ function Repository.as_table (repository)
   return setmetatable ({
     [Repository.CONTENTS  ] = repository [Repository.CONTENTS  ],
     [Repository.LINEARIZED] = repository [Repository.LINEARIZED],
+    [Repository.ON_READ   ] = repository [Repository.ON_READ   ],
+    [Repository.ON_WRITE  ] = repository [Repository.ON_WRITE  ],
   }, {
     __index = function (r, k)
       return Repository.get (r, k)
@@ -41,7 +45,9 @@ end
 function Repository.new ()
   return setmetatable ({
     [Repository.CONTENTS  ] = {},
-    [Repository.LINEARIZED] = setmetatable ({}, { __mode = "kv" })
+    [Repository.LINEARIZED] = setmetatable ({}, { __mode = "kv" }),
+    [Repository.ON_READ   ] = {},
+    [Repository.ON_WRITE  ] = {},
   }, Repository)
 end
 
@@ -275,11 +281,19 @@ function Proxy.__index (proxy, key)
         end
       end
       if data ~= nil then
+        local result
         if type (data) == "table" then
-          return data [Repository.VALUE]
+          result = data [Repository.VALUE]
         else
-          return data
+          result = data
         end
+        local on_read = repository [Repository.ON_READ]
+        for _, f in pairs (on_read) do
+          if f (proxy, result) == nil then
+            return nil
+          end
+        end
+        return result
       end
     end
     return nil
@@ -332,6 +346,11 @@ function Proxy.__newindex (proxy, key, value)
     end
   else
     data [last] = value
+  end
+  local repository = proxy [Proxy.REPOSITORY]
+  local on_write = repository [Repository.ON_WRITE]
+  for _, f in pairs (on_write) do
+    f (proxy, key, value)
   end
 end
 

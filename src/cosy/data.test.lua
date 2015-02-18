@@ -123,6 +123,26 @@ describe ("a layer", function ()
     assert.is_nil    (repository.c1.b._)
   end)
 
+  it ("invokes hook on read", function ()
+    repository.c1 = {
+      a = 1,
+    }
+    local s = spy.new (function () end)
+    repository [Data.ON_READ] [1] = s
+    local x = repository.c1.a._
+    assert.spy (s).was.called ()
+  end)
+
+  it ("invokes hook on write", function ()
+    repository.c1 = {
+      a = 1,
+    }
+    local s = spy.new (function () end)
+    repository [Data.ON_WRITE] [1] = s
+    repository.c1.a._ = 2
+    assert.spy (s).was.called ()
+  end)
+
   it ("allows to overwrite values", function ()
     repository.c1 = {
       a = 1,
