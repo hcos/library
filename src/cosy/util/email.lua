@@ -1,7 +1,7 @@
 local Email = {}
 
 local Platform      = require "cosy.platform"
-local Configuration = require "cosy.configuration" . whole
+local Configuration = require "cosy.configuration" .whole
 local _             = require "cosy.util.string"
 
 local socket        = require "socket"
@@ -109,7 +109,7 @@ function STARTTLS_mt:connect (host, port)
     return false
   end
   self.socket:receive "*l"
-  self.socket:send ("EHLO " .. Configuration.server.root .. "\r\n")
+  self.socket:send ("EHLO " .. Configuration.server.root._ .. "\r\n")
   repeat
     local line = self.socket:receive "*l"
   until line == nil
@@ -120,7 +120,7 @@ function STARTTLS_mt:connect (host, port)
     protocol = tls_alias [self.protocol],
   })
   local result = self:dohandshake ()
-  self.socket:send ("EHLO " .. Configuration.server.root .. "\r\n")
+  self.socket:send ("EHLO " .. Configuration.server.root._ .. "\r\n")
   return result
 end
 function Tcp.STARTTLS (protocol, make)
@@ -134,11 +134,11 @@ function Tcp.STARTTLS (protocol, make)
 end
 
 function Email.discover ()
-  local domain    = Configuration.server.root
-  local host      = Configuration.smtp.host
-  local username  = Configuration.smtp.username
-  local password  = Configuration.smtp.password
-  local methods   = { Configuration.smtp.method }
+  local domain    = Configuration.server.root._
+  local host      = Configuration.smtp.host._
+  local username  = Configuration.smtp.username._
+  local password  = Configuration.smtp.password._
+  local methods   = { Configuration.smtp.method._ }
   if #methods == 0 then
     methods = {
       "STARTTLS",
@@ -146,7 +146,7 @@ function Email.discover ()
       "PLAINTEXT",
     }
   end
-  local protocols = { Configuration.smtp.protocol }
+  local protocols = { Configuration.smtp.protocol._ }
   if #protocols == 0 then
     protocols = {
       "TLS v1.2",
@@ -156,7 +156,7 @@ function Email.discover ()
       "SSL v2",
     }
   end
-  local ports     = { Configuration.smtp.port }
+  local ports     = { Configuration.smtp.port._ }
   if #ports == 0 then
     ports = {
       25,
@@ -224,11 +224,11 @@ function Email.send (message)
       },
       body = message.body
     },
-    user     = Configuration.smtp.username,
-    password = Configuration.smtp.password,
-    server   = Configuration.smtp.host,
-    port     = Configuration.smtp.port,
-    create   = Tcp [Configuration.smtp.method] (Configuration.smtp.protocol, make),
+    user     = Configuration.smtp.username._,
+    password = Configuration.smtp.password._,
+    server   = Configuration.smtp.host._,
+    port     = Configuration.smtp.port._,
+    create   = Tcp [Configuration.smtp.method._] (Configuration.smtp.protocol._, make),
   }
 end
 

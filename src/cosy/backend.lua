@@ -1,10 +1,12 @@
+                      require "compat53"
+local Platform      = require "cosy.platform"
+local Configuration = require "cosy.configuration" .whole
+local Internal      = require "cosy.configuration" .internal
+
 local Backend = {}
 local Methods = {}
 
-local Platform      = require "cosy.platform"
-local Configuration = require "cosy.configuration" . whole
-
-Configuration.special_keys = {
+Internal.special_keys = {
   email_user = "//email->user",
 }
 
@@ -21,15 +23,15 @@ function Backend.pool.transaction (keys, f)
       Backend.pool.free [client] = nil
       break
     end
-    if #(Backend.pool.created) < Configuration.redis.pool_size then
+    if #(Backend.pool.created) < Configuration.redis.pool_size._ then
       if Platform.redis.is_fake then
         client = Platform.redis.connect ()
       else
         local socket    = require "socket"
         local coroutine = require "coroutine.make" ()
-        local host      = Configuration.redis.host
-        local port      = Configuration.redis.port
-        local database  = Configuration.redis.database
+        local host      = Configuration.redis.host._
+        local port      = Configuration.redis.port._
+        local database  = Configuration.redis.database._
         local skt       = Platform.scheduler:wrap (socket.tcp ()):connect (host, port)
         client = Platform.redis.connect {
           socket    = skt,
@@ -72,9 +74,6 @@ function Backend.pool.transaction (keys, f)
   end
 end
 
--- Fix missing `table.unpack` in lua 5.1:
-table.unpack = table.unpack or _G.unpack
-
 local Message_mt = {}
 
 function Message_mt:__tostring ()
@@ -93,11 +92,11 @@ function Methods.__index (session, key)
         r.status = "ok"
       end
       if ok then
-        r.locale  = session.locale or Configuration.locale.default
+        r.locale  = session.locale or Configuration.locale.default._
         r.message = Platform.i18n.translate (r.status, r)
         return setmetatable (r, Message_mt)
       elseif type (r) == "table" then
-        r.locale  = session.locale or Configuration.locale.default
+        r.locale  = session.locale or Configuration.locale.default._
         r.message = Platform.i18n.translate (r.status, r)
         error (setmetatable (r, Message_mt))
       else
@@ -114,7 +113,7 @@ function Backend.localize (session, t)
   elseif session.locale then
     locale = session.locale
   else
-    locale = Configuration.locale.default
+    locale = Configuration.locale.default._
   end
   session.locale = locale
 end
@@ -168,9 +167,6 @@ local Parameters = {}
 
 function Parameters.new_string (key)
   Parameters [key] = {}
-  if not Configuration.data [key] then
-    Configuration.data [key] = {}
-  end
   Parameters [key] [1] = function (session, t)
     return type (t [key]) == "string"
         or nil, Platform.i18n.translate ("check:is-string", {
@@ -179,19 +175,19 @@ function Parameters.new_string (key)
            })
   end
   Parameters [key] [2] = function (session, t)
-    return #(t [key]) >= Configuration.data [key] .min_size
+    return #(t [key]) >= Configuration.data [key] .min_size._
         or nil, Platform.i18n.translate ("check:min-size", {
              locale = session.locale,
              key    = key,
-             count  = Configuration.data [key] .min_size,
+             count  = Configuration.data [key] .min_size._,
            })
   end
   Parameters [key] [3] = function (session, t)
-    return #(t [key]) <= Configuration.data [key] .max_size
+    return #(t [key]) <= Configuration.data [key] .max_size._
         or nil, Platform.i18n.translate ("check:max-size", {
              locale = session.locale,
              key    = key,
-             count  = Configuration.data [key].max_size,
+             count  = Configuration.data [key].max_size._,
            })
   end
   return Parameters [key]
@@ -208,7 +204,7 @@ end
 Parameters.new_string "password"
 
 Parameters.new_string "email"
-Configuration.data.email.min_size = 6
+Internal.data.email.min_size = 6
 Parameters.email [#(Parameters.email) + 1] = function (session, t)
   local _ = session
   t.email = t.email:trim ()
@@ -220,8 +216,8 @@ end
 Parameters.new_string "name"
 
 Parameters.new_string "locale"
-Configuration.data.locale.min_size = 2
-Configuration.data.locale.max_size = 5
+Internal.data.locale.min_size = 2
+Internal.data.locale.max_size = 5
 Parameters.locale [#(Parameters.locale) + 1] = function (session, t)
   local _ = session
   t.locale = t.locale:trim ()
@@ -231,8 +227,8 @@ Parameters.locale [#(Parameters.locale) + 1] = function (session, t)
 end
 
 Parameters.new_string "validation_key"
-Configuration.data.validation_key.min_size = 32
-Configuration.data.validation_key.max_size = 32
+Internal.data.validation_key.min_size = 32
+Internal.data.validation_key.max_size = 32
 Parameters.validation_key [#(Parameters.validation_key) + 1] = function (session, t)
   local _ = session
   t.validation_key = t.validation_key:trim ()
@@ -269,7 +265,7 @@ function Methods.create_user (session, t)
   Backend.localize (session, t)
   Backend.check    (session, t, parameters)
   Backend.pool.transaction ({
-    emails = Configuration.special_keys.email_user,
+    emails = Configuration.special_keys.email_user._,
     data   = "/%{username}" % {
       username = t.username,
     },
@@ -309,7 +305,7 @@ function Methods.create_user (session, t)
   Platform.email.send {
     from    = Platform.i18n.translate ("email:new_account:from", {
       locale  = session.locale,
-      address = Configuration.smtp.username,
+      address = Configuration.smtp.username._,
     }),
     to      = "%{name} <%{email}>" % {
       name  = data.name,

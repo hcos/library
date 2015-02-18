@@ -350,7 +350,7 @@ end)
 -- Password Hashing
 -- ================
 Platform:register ("password", function ()
-  local Configuration = require "cosy.configuration" . whole
+  local Configuration = require "cosy.configuration" .whole
   if pcall (function ()
     local bcrypt = require "bcrypt"
     local function compute_rounds ()
@@ -360,7 +360,7 @@ Platform:register ("password", function ()
           local start = Platform.time ()
           bcrypt.digest ("some random string", rounds)
           local delta = Platform.time () - start
-          if delta > Configuration.data.password.time then
+          if delta > Configuration.data.password.time._ then
             Platform.password.rounds = math.max (Platform.password.rounds or 0, rounds)
             break
           end
@@ -495,12 +495,12 @@ Platform:register ("email", function ()
     Platform.logger.warning ("No SMTP server discovered, sending of emails will not work.")
     error "SMTP missing"
   end
-  local Configuration = require "cosy.configuration" . whole
+  local Configuration = require "cosy.configuration" .whole
   Platform.logger.debug ("SMTP on ${host}:${port} uses ${method} (encrypted with ${protocol})." % {
-    host     = Configuration.smtp.host,
-    port     = Configuration.smtp.port,
-    method   = Configuration.smtp.method,
-    protocol = Configuration.smtp.protocol,
+    host     = Configuration.smtp.host._,
+    port     = Configuration.smtp.port._,
+    method   = Configuration.smtp.method._,
+    protocol = Configuration.smtp.protocol._,
   })
   Platform.email.send = Email.send
 end)
