@@ -1,502 +1,413 @@
-require "cosy.util.string"
+                 require "compat53"
+coroutine.make = require "coroutine.make"
 
-local PREVIOUS_DATA = {}
-local PREVIOUS_KEY  = {}
-local ROOT          = {}
-local DEPTH         = {}
+local Repository = {}
+local Proxy      = {}
 
-local PARENT  = "cosy:parent"
-local PARENTS = "cosy:parents"
-local VALUE   = "cosy:value"
-local NAME    = "cosy:name"
+local function make_tag (name)
+  return setmetatable ({}, {
+    __tostring = function () return name end
+  })
+end
 
-local Data = {
-  tags = {
-    PARENT  = PARENT,
-    PARENTS = PARENTS,
-    VALUE   = VALUE,
-    NAME    = NAME,
-  },
-}
+Repository.__metatable = "cosy.data"
+Proxy     .__metatable = "cosy.data.proxy"
 
-Data.on_write = {}
+Repository.CONTENTS   = make_tag "Repository.CONTENTS"
+Repository.LINEARIZED = make_tag "Repository.LINEARIZED"
 
-local Expression = {}
+Proxy.REPOSITORY      = make_tag "Proxy.REPOSITORY"
+Proxy.KEYS            = make_tag "Proxy.KEYS"
 
-function Data.new (x)
+Repository.VALUE    = "_"
+Repository.DEPENDS  = "cosy:depends"
+Repository.INHERITS = "cosy:inherits"
+Repository.REFERS   = "cosy:refers"
+
+function Repository.as_table (repository)
   return setmetatable ({
-    [ROOT         ] = x,
-    [PREVIOUS_DATA] = false,
-    [PREVIOUS_KEY ] = false,
-    [DEPTH        ] = 1,
-  }, Data)
+    [Repository.CONTENTS  ] = repository [Repository.CONTENTS  ],
+    [Repository.LINEARIZED] = repository [Repository.LINEARIZED],
+  }, {
+    __index = function (r, k)
+      return Repository.get (r, k)
+    end,
+    __newindex = function (r, k, v)
+      Repository.set (r, k, v)
+    end,
+  })
 end
 
-local function data_path (x)
-  local r = {}
-  while not x [ROOT] do
-    r [#r + 1] = x [PREVIOUS_KEY]
-    x = x [PREVIOUS_DATA]
-  end
-  r [#r + 1] = x [ROOT]
-  local result = {}
-  for i = #r, 1, -1 do
-    result [#result + 1] = r [i]
-  end
-  return result
-end
-
-function Data.path (x)
-  assert (type (x) == "table" and getmetatable (x) == Data)
-  return data_path (x)
-end
-
-function Data.root (x)
-  assert (type (x) == "table" and getmetatable (x) == Data)
-  return x [ROOT]
-end
-
-function Data.key (x)
-  assert (type (x) == "table" and getmetatable (x) == Data)
-  return x [PREVIOUS_KEY]
-end
-
-function Data:__index (key)
+function Repository.new ()
   return setmetatable ({
-    [PREVIOUS_DATA] = self,
-    [PREVIOUS_KEY ] = key,
-    [ROOT         ] = false,
-    [DEPTH        ] = self [DEPTH] + 1
-  }, Data)
+    [Repository.CONTENTS  ] = {},
+    [Repository.LINEARIZED] = setmetatable ({}, { __mode = "kv" })
+  }, Repository)
 end
 
-function Data.clear (x)
-  local parent = x [PREVIOUS_DATA]
-  local key    = x [PREVIOUS_KEY ]
-  parent [key] = nil
-  parent [key] = {}
+function Repository.get (repository, key)
+  local found = repository [Repository.CONTENTS] [key]
+  if found == nil then
+    return nil
+  else
+    return setmetatable ({
+      [Proxy.REPOSITORY] = repository,
+      [Proxy.KEYS      ] = { key },
+    }, Proxy)
+  end
 end
 
-function Data:__newindex (key, value)
-  local target = self [key]
-  local path   = data_path (self)
-  local data   = path [1]
-  local traversed = { data }
-  for i = 2, #path do
-    local k = path [i]
-    local v = data [k]
-    if type (v) ~= "table" then
-      data [k] = { [VALUE] = v }
-    end
-    data = data [k]
-    traversed [#traversed + 1] = data
+function Repository.raw (repository, key)
+  if key == nil then
+    return repository [Repository.CONTENTS]
+  else
+    return repository [Repository.CONTENTS] [key]
   end
-  local v = data [key]
-  local reverse
-  local new_is_value = type (value) ~= "table" or getmetatable (value) ~= nil
-  local old_is_value = type (v    ) ~= "table" or getmetatable (v    ) ~= nil
-  if new_is_value and old_is_value then
-    reverse = function () self [key] = v end
-    data [key] = value
-  elseif new_is_value and not old_is_value then
-    local old_value = v [VALUE]
-    reverse = function () self [key] = old_value end
-    v [VALUE] = value
-  elseif not new_is_value and old_is_value then
-    reverse = function () Data.clear (target); self [key] = v end
-    if value [VALUE] == nil then
-      value [VALUE] = v
-    end
-    data [key] = value
-  elseif not new_is_value and not old_is_value then
-    reverse = function () Data.clear (target); self [key] = v end
-    if value [VALUE] == nil then
-      value [VALUE] = v [VALUE]
-    end
-    data [key] = value
+end
+
+function Repository.deproxify (t, within)
+  if type (t) ~= "table" then
+    return t
   end
-  traversed [#traversed + 1] = data [key]
-  path      [#path      + 1] = key
-  -- Clean:
-  for i = #traversed, 2, -1 do
-    local d = traversed [i]
-    if  type (d) == "table"
-    and not getmetatable (d)
-    and pairs (d) (d) == nil then
-      traversed [i-1] [path [i]] = nil
+  if getmetatable (t) == Proxy.__metatable then
+    if within == Repository.DEPENDS then
+      t = t [Proxy.KEYS] [1]
+    elseif within == Repository.INHERITS 
+        or within == Repository.REFERS   then
+      local keys = t [Proxy.KEYS]
+      local path = {}
+      for i = 2, #keys do
+        path [i-1] = keys [i]
+      end
+      t = path
     else
-      break
+      local keys = t [Proxy.KEYS]
+      local path = {}
+      for i = 2, #keys do
+        path [i-1] = keys [i]
+      end
+      t = {
+        [Repository.REFERS ] = path,
+      }
     end
+    return t
   end
-  --
-  for _, f in pairs (Data.on_write) do
-    assert (type (f) == "function")
-    f (target, value, reverse)
+  for k, v in pairs (t) do
+    local w = within
+    if k == Repository.DEPENDS
+    or k == Repository.INHERITS
+    or k == Repository.REFERS then
+      w = k
+    end
+    t [k] = Repository.deproxify (v, w)
   end
+  return t
 end
 
-function Data:__len ()
-  local i = 1
-  while true do
-    if not Data.exists (self [i]) then
-      break
-    end
-    i = i + 1
-  end
-  return i - 1
+function Repository.set (repository, key, value)
+  repository [Repository.CONTENTS] [key] = Repository.deproxify (value)
 end
 
-function Data:__ipairs ()
-  return coroutine.wrap (
-    function ()
-      local i = 1
-      while true do
-        local r = self [i]
-        if not Data.exists (r) then
+Repository.placeholder = setmetatable ({
+  [Proxy.REPOSITORY] = false,
+  [Proxy.KEYS      ] = { false },
+}, Proxy)
+
+function Repository.linearize (repository, key)
+  local function linearize (t)
+    local cached = repository [Repository.LINEARIZED] [t]
+    if cached then
+      return cached
+    end
+    -- Prepare:
+    local depends = t [Repository.DEPENDS]
+    local l, n = {}, {}
+    if depends then
+      depends = table.pack (table.unpack (depends))
+      for i = 1, #depends do
+        depends [i] = Repository.raw (repository, depends [i])
+      end
+      l [#l+1] = depends
+      n [#n+1] = #depends
+      for i = 1, #depends do
+        l [#l+1] = linearize (depends [i])
+        n [#n+1] = # (l [#l])
+      end
+    end
+    l [#l+1] = { t }
+    n [#n+1] = 1
+--[[
+    do
+      local dump = {}
+      for i = 1, #l do
+        local x = {}
+        for j = 1, #(l [i]) do
+          x [j] = l [i] [j].name
+        end
+        dump [i] = "{ " .. table.concat (x, ", ") .. " }"
+      end
+      print ("l", table.concat (dump, ", "))
+    end
+--]]
+    -- Compute tails:
+    local tails = {}
+    for i = 1, #l do
+      local v = l [i]
+      for j = 1, #v do
+        local w   = v [j]
+        tails [w] = (tails [w] or 0) + 1
+      end
+    end
+--[[
+    do
+      local dump = {}
+      for k, v in pairs (tails) do
+        dump [#dump+1] = k.name .. " = " .. tostring (v)
+      end
+      print ("tails", table.concat (dump, ", "))
+    end
+--]]
+    -- Compute linearization:
+    local result = {}
+    while #l ~= 0 do
+      for i = #l, 1, -1 do
+        local vl, vn  = l [i], n [i]
+        local first   = vl [vn]
+        tails [first] = tails [first] - 1
+      end
+      local head
+      for i = #l, 1, -1 do
+        local vl, vn = l [i], n [i]
+        local first  = vl [vn]
+        if tails [first] == 0 then
+          head = first
           break
         end
-        coroutine.yield (i, r)
-        i = i +1
       end
-    end
-  )
-end
-
-function Data:__pairs ()
-  local path = data_path (self)
-  local function compute (data, i)
-    local seen = {}
-    if not data then
-      return
-    end
-    local key = path [i]
-    if key then
-      assert (type (data) == "table")
-      local subdata = data [key]
-      for k, v in coroutine.wrap (function () compute (subdata, i+1) end) do
-        if not seen [k] then
-          coroutine.yield (k, v)
-          seen [k] = true
+      if head == nil then
+        error "Linearization failed"
+      end
+      result [#result + 1] = head
+      for i = 1, #l do
+        local vl, vn = l [i], n [i]
+        local first  = vl [vn]
+        if first == head then
+          n [i] = n [i] - 1
+        else
+          tails [first] = tails [first] + 1
         end
       end
-    else
-      if type (data) == "table" then
-        for k, _ in pairs (data) do
-          if k ~= PARENT and k ~= PARENTS then
-            coroutine.yield (k, self [k])
+      local nl, nn = {}, {}
+      for i = 1, #l do
+        if n [i] ~= 0 then
+          nl [#nl+1] = l [i]
+          nn [#nn+1] = n [i]
+        end
+      end
+      l, n = nl, nn
+    end
+    for i = 1, #result/2 do
+      result [i], result [#result-i+1] = result [#result-i+1], result [i]
+    end
+    repository [Repository.LINEARIZED] [t] = result
+--[[
+    do
+      local dump = {}
+      for i = 1, #result do
+        dump [i] = result [i].name
+      end
+      print ("result", table.concat (dump, ", "))
+    end
+--]]
+    return result
+  end
+  return linearize (Repository.raw (repository, key))
+end
+
+function Proxy.__index (proxy, key)
+  if type (key) == "table" then
+    error "Not implemented"
+  end
+  if key ~= "_" then
+    local repository = proxy [Proxy.REPOSITORY]
+    local keys       = proxy [Proxy.KEYS      ]
+    keys = table.pack (table.unpack (keys))
+    keys [#keys+1] = key
+    return setmetatable ({
+      [Proxy.REPOSITORY] = repository,
+      [Proxy.KEYS      ] = keys,
+    }, Proxy)
+  else
+    local keys       = proxy [Proxy.KEYS]
+    local repository = proxy [Proxy.REPOSITORY]
+    local layers     = Repository.linearize (repository, keys [1])
+    for i = #layers, 1, -1 do
+      local data = layers [i]
+      for j = 2, #keys do
+        if type (data) ~= "table" then
+          data = nil
+          break
+        end
+        data = data [keys [j]]
+        if data == nil then
+          break
+        end
+        -- Special cases:
+        local key = keys [j]
+        if key == Repository.REFERS then
+          local pkeys = { keys [1] }
+          for k = 1, #data do
+            pkeys [#pkeys + 1] = data [k]
           end
+          for k = j+1, #keys do
+            pkeys [#pkeys+1] = keys [k]
+          end
+          proxy = setmetatable ({
+            [Proxy.REPOSITORY] = repository,
+            [Proxy.KEYS      ] = pkeys,
+          }, Proxy)
+          return proxy._
+        elseif key == Repository.INHERITS then
+          -- TODO
+          error "Not implemented"
+        elseif key == Repository.DEPENDS then
+          -- Do nothing
+        end
+      end
+      if data ~= nil then
+        if type (data) == "table" then
+          return data [Repository.VALUE]
+        else
+          return data
         end
       end
     end
-    for _, subpath in ipairs (data [PARENTS] or { data [PARENT] }) do
-      for j = i, #path do
-        subpath = subpath [path [j]]
-      end
-      for k, _ in pairs (subpath) do
-        if not seen [k] then
-          coroutine.yield (k, self [k])
-          seen [k] = true
-        end
-      end
-    end
+    return nil
   end
-  return coroutine.wrap (
-    function ()
-      compute (path [1], 2)
-    end
-  )
 end
 
-function Data:__tostring ()
-  local current = self
-  local result  = {}
-  while not current [ROOT] do
-    local key = current [PREVIOUS_KEY]
-    if type (key) == "string" then
-      if key:is_identifier () then
-        result [#result + 1] = "." .. key
-      else
-        result [#result + 1] = "[ " .. key:quote () .. " ]"
-      end
+function Proxy.__call (proxy, n)
+  if n == nil then
+    n = 1
+  end
+  local repository = proxy [Proxy.REPOSITORY]
+  local keys       = proxy [Proxy.KEYS      ]
+  keys = table.pack (table.unpack (keys))
+  for _ = 1, n do
+    keys [#keys+1] = Repository.REFERS
+  end
+  return setmetatable ({
+    [Proxy.REPOSITORY] = repository,
+    [Proxy.KEYS      ] = keys,
+  }, Proxy)
+end
+
+function Proxy.__newindex (proxy, key, value)
+  if type (key) == "table" then
+    error "Not implemented"
+  end
+  value = Repository.deproxify (value)
+  local keys = proxy [Proxy.KEYS]
+  if key ~= "_" then
+    keys = table.pack (table.unpack (keys))
+    keys [#keys + 1] = key
+  end
+  local data = proxy [Proxy.REPOSITORY]
+  data = Repository.raw (data)
+  for i = 1, #keys-1 do
+    local key = keys [i]
+    if data [key] == nil then
+      data [key] = {}
+    end
+    data = data [key]
+  end
+  local last = keys [#keys]
+  if key == "_" then
+    if type (value) == "table" then
+      error "Illegal value"
+    elseif type (data [last]) == "table" then
+      data [last] [Repository.VALUE] = value
     else
-      result [#result + 1] = "[" .. tostring (key) .. "]"
+      data [last] = value
     end
-    current = current [PREVIOUS_DATA]
+  else
+    data [last] = value
   end
-  local root = current [ROOT]
-  result [#result + 1] = (root [NAME] or "@" .. tostring (root):sub (8))
-  local size = #result
-  for i = 1, size / 2 do
-    result [i], result [size+1-i] = result [size+1-i], result [i]
-  end
-  return table.concat (result)
 end
 
-function Data:__eq (x)
-  local lhs = data_path (self)
-  local rhs = data_path (x)
-  if #lhs ~= #rhs then
+Proxy.coroutine = coroutine.make ()
+
+function Proxy.__pairs (proxy)
+  error "Not implemented"
+  return Proxy.coroutine.wrap (function ()
+  end)
+end
+
+function Proxy.__len (proxy)
+  error "Not implemented"
+end
+
+function Proxy.__tostring (proxy)
+  error "Not implemented"
+end
+
+function Proxy.__unm (proxy)
+  error "Not implemented"
+end
+
+function Proxy.__add (lhs, rhs)
+  error "Not implemented"
+end
+
+function Proxy.__sub (lhs, rhs)
+  error "Not implemented"
+end
+
+function Proxy.__mul (lhs, rhs)
+  error "Not implemented"
+end
+
+function Proxy.__div (lhs, rhs)
+  error "Not implemented"
+end
+
+function Proxy.__mod (lhs, rhs)
+  error "Not implemented"
+end
+
+function Proxy.__pow (lhs, rhs)
+  error "Not implemented"
+end
+
+function Proxy.__concat (lhs, rhs)
+  error "Not implemented"
+end
+
+function Proxy.__eq (lhs, rhs)
+  local lrepository = lhs [Proxy.REPOSITORY]
+  local rrepository = rhs [Proxy.REPOSITORY]
+  if lrepository [Repository.CONTENTS] ~= rrepository [Repository.CONTENTS] then
     return false
   end
-  for i, l in ipairs (lhs) do
-    if l ~= rhs [i] then
+  local lkeys = lhs [Proxy.KEYS]
+  local rkeys = rhs [Proxy.KEYS]
+  if #lkeys ~= #rkeys then
+    return false
+  end
+  for i = 1, #lkeys do
+    if lkeys [i] ~= rkeys [i] then
       return false
     end
   end
   return true
 end
 
--- `x / n` restricts `x` to the `n` first (or last) parts of its path.
-function Data:__div (x)
-  assert (type (x) == "number" and x % 1 == 0 and x ~= 0)
-  local depth  = self [DEPTH]
-  local steps
-  if x > 0 then
-    if x >= depth then
-      return self
-    end
-    steps = depth - x
-  elseif x < 0 then
-    if -x >= depth then
-      return nil
-    end
-    steps = x
-  end
-  local result = self
-  for _ = 1, steps do
-    result = result [PREVIOUS_DATA]
-  end
-  return result
+function Proxy.__lt (lhs, rhs)
+  error "Not implemented"
 end
 
-function Data:__unm ()
-  return Data.dereference (self)
+function Proxy.__le (lhs, rhs)
+  error "Not implemented"
 end
 
-function Data:__call (...)
-  return Data.value (self)
-end
-
-function Data:__mul (x)
-  assert (type (x) == "table")
-  x [PARENT] = self
-  return x
-end
-
-function Data:__add (x)
-  assert (type (x) == "table")
-  local parents = {}
-  parents [#parents + 1] = self
-  if getmetatable (x) == Data then
-    parents [#parents + 1] = x
-  elseif getmetatable (x) == Expression then
-    for _, v in ipairs (x [PARENTS]) do
-      parents [#parents + 1] = v
-    end
-  else
-    assert (false)
-  end
-  return Expression.new (parents)
-end
-
-function Data:__le (x)
-  if type (self) ~= "table" or getmetatable (self) ~= Data
-  or type (x   ) ~= "table" or getmetatable (x   ) ~= Data then
-    return nil
-  end
-  return self == x or self < x
-end
-
-function Data:__lt (x)
-  if type (self) ~= "table" or getmetatable (self) ~= Data
-  or type (x   ) ~= "table" or getmetatable (x   ) ~= Data then
-    return nil
-  end
-  local path    = data_path (x)
-  local data    = path [1]
-  local visited = { data }
-  for i = 2, #path do
-    data = data [path [i]]
-    if type (data) ~= "table" then
-      break
-    end
-    visited [i] = data
-  end
-  for i = #visited, 1, -1 do
-    data = visited [i]
-    for _, subpath in ipairs (data [PARENTS] or { data [PARENT] }) do
-      for j = i+1, #path do
-        subpath = subpath [path [j]]
-      end
-      local result = subpath == self or self < subpath
-      if result then
-        return result
-      end
-    end
-  end
-  return false
-end
-
-function Expression.new (...)
-  local parents = {}
-  for _, p in ipairs (...) do
-    parents [#parents + 1] = p
-  end
-  return setmetatable ({
-    [PARENTS] = parents
-  }, Expression)
-end
-
-function Expression:__mul (x)
-  assert (type (x) == "table")
-  local parents = x [PARENTS] or {}
-  for _, v in ipairs (self [PARENTS]) do
-    parents [#parents + 1] = v
-  end
-  x [PARENTS] = parents
-  return x
-end
-
-function Expression:__add (x)
-  assert (type (x) == "table")
-  local parents = {}
-  for _, v in ipairs (self [PARENTS]) do
-    parents [#parents + 1] = v
-  end
-  if getmetatable (x) == Data then
-    parents [#parents + 1] = x
-  elseif getmetatable (x) == Expression then
-    for _, v in ipairs (x [PARENTS]) do
-      parents [#parents + 1] = v
-    end
-  else
-    assert (false)
-  end
-  return Expression.new (parents)
-end
-
-function Data.is (x)
-  return type (x) == "table"
-     and getmetatable (x) == Data
-end
-
-function Data.exists (x)
-  if type (x) ~= "table" or getmetatable (x) ~= Data then
-    return false
-  end
-  local path    = data_path (x)
-  local data    = path [1]
-  local visited = { data }
-  for i = 2, #path do
-    data = data [path [i]]
-    if data == nil then
-      break
-    end
-    visited [#visited + 1] = data
-  end
-  if data ~= nil then
-    return true
-  end
-  for i = #visited, 1, -1 do
-    data = visited [i]
-    for _, subpath in ipairs (data [PARENTS] or { data [PARENT] }) do
-      for j = i+1, #path do
-        subpath = subpath [path [j]]
-      end
-      if Data.exists (subpath) then
-        return true
-      end
-    end
-  end
-  return false
-end
-
-function Data.dereference (x)
-  if type (x) ~= "table" or getmetatable (x) ~= Data then
-    return nil
-  end
-  local path    = data_path (x)
-  local data    = path [1]
-  local visited = { data }
-  for i = 2, #path do
-    data = data [path [i]]
-    if type (data) ~= "table" then
-      break
-    end
-    visited [i] = data
-  end
-  local result
-  if type (data) == "table" then
-    local mt = getmetatable (data)
-    if mt == Data then
-      result = data
-    elseif mt ~= nil then
-      result = data
-    else
-      result = data [VALUE]
-    end
-  else
-    result = data
-  end
-  if result  ~= nil then
-    return result
-  end
-  for i = #visited, 1, -1 do
-    data = visited [i]
-    for _, subpath in ipairs (data [PARENTS] or { data [PARENT] }) do
-      for j = i+1, #path do
-        subpath = subpath [path [j]]
-      end
-      result = Data.dereference (subpath)
-      if result then
-        return result
-      end
-    end
-  end
-  return nil
-end
-
-function Data.dump (x)
-  if x == nil then
-    return "nil"
-  elseif type (x) == "boolean" then
-    return tostring (x)
-  elseif type (x) == "number" then
-    return tostring (x)
-  elseif type (x) == "string" then
-    return x:quote ()
-  elseif type (x) == "table" and Data.is (x) then
-    return tostring (x)
-  elseif type (x) == "table" then
-    local result = {}
-    for k, v in pairs (x) do
-      if type (k) == "string" and k:is_identifier () then
-        result [#result + 1] = "${k} = ${v}" % {
-          k = k,
-          v = dump (v)
-        }
-      else
-        result [#result + 1] = "[ ${k} ] = ${v}" % {
-          k = dump (k),
-          v = dump (v),
-        }
-      end
-    end
-    return "{ " .. table.concat (result, ", ") .. " }"
-  elseif type (x) == "function" then
-    return string.dump (x)
-  else
-    error ("Unable to dump x for data type ${type}." % {
-      type = type (x)
-    })
-  end
-end
-
-function Data.value (x)
-  repeat
-    x = Data.dereference (x)
-  until type (x) ~= "table" or getmetatable (x) ~= Data
-  return x
-end
-
-return Data
+return Repository

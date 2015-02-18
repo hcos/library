@@ -1,4 +1,4 @@
-local Data     = require "data"
+local Data     = require "cosy.data"
 local Platform = require "cosy.platform"
 
 local repository = Data.as_table (Data.new {})
