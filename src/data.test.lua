@@ -1,81 +1,100 @@
                require "busted"
 local assert = require "luassert"
-local Layer  = require "data"
+local Data   = require "data"
 
 local Platform = require "cosy.platform"
+Platform.logger.enabled = false
 
 describe ("c3 linearization", function ()
 
+  local repository
+
+  before_each (function ()
+    repository = Data.as_table (Data.new {})
+  end)
+
   it ("works as expected", function ()
     -- See: [C3 Linearization](http://en.wikipedia.org/wiki/C3_linearization)
-    local o = {
+    repository.o = {
       name = "o",
     }
-    local a = {
+    repository.a = {
       name = "a",
-      [Layer.DEPENDS] = { o },
+      [Data.DEPENDS] = { repository.o },
     }
-    local b = {
+    repository.b = {
       name = "b",
-      [Layer.DEPENDS] = { o },
+      [Data.DEPENDS] = { repository.o },
     }
-    local c = {
+    repository.c = {
       name = "c",
-      [Layer.DEPENDS] = { o },
+      [Data.DEPENDS] = { repository.o },
     }
-    local d = {
+    repository.d = {
       name = "d",
-      [Layer.DEPENDS] = { o },
+      [Data.DEPENDS] = { repository.o },
     }
-    local e = {
+    repository.e = {
       name = "e",
-      [Layer.DEPENDS] = { o },
+      [Data.DEPENDS] = { repository.o },
     }
-    local i = {
+    repository.i = {
       name = "i",
-      [Layer.DEPENDS] = { c, b, a },
+      [Data.DEPENDS] = { repository.c, repository.b, repository.a },
     }
-    local j = {
+    repository.j = {
       name = "j",
-      [Layer.DEPENDS] = { e, b, d },
+      [Data.DEPENDS] = { repository.e, repository.b, repository.d },
     }
-    local k = {
+    repository.k = {
       name = "k",
-      [Layer.DEPENDS] = { a, d },
+      [Data.DEPENDS] = { repository.a, repository.d },
     }
-    local z = {
+    repository.z = {
       name = "z",
-      [Layer.DEPENDS] = { k, j, i },
+      [Data.DEPENDS] = { repository.k, repository.j, repository.i },
     }
-    assert.are.same (Layer.linearize (o), {
+    
+    local o = Data.raw (repository, "o")
+    local a = Data.raw (repository, "a")
+    local b = Data.raw (repository, "b")
+    local c = Data.raw (repository, "c")
+    local d = Data.raw (repository, "d")
+    local e = Data.raw (repository, "e")
+    local i = Data.raw (repository, "i")
+    local j = Data.raw (repository, "j")
+    local k = Data.raw (repository, "k")
+    local z = Data.raw (repository, "z")
+    
+    assert.are.same (Data.linearize (repository, "o"), {
       o
     })
-    assert.are.same (Layer.linearize (a), {
+    assert.are.same (Data.linearize (repository, "a"), {
       o, a,
     })
-    assert.are.same (Layer.linearize (b), {
+    assert.are.same (Data.linearize (repository, "b"), {
       o, b,
     })
-    assert.are.same (Layer.linearize (c), {
+    assert.are.same (Data.linearize (repository, "c"), {
       o, c,
     })
-    assert.are.same (Layer.linearize (d), {
+    assert.are.same (Data.linearize (repository, "d"), {
       o, d,
     })
-    assert.are.same (Layer.linearize (e), {
+    assert.are.same (Data.linearize (repository, "e"), {
       o, e,
     })
-    assert.are.same (Layer.linearize (i), {
+    assert.are.same (Data.linearize (repository, "i"), {
       o, c, b, a, i
     })
-    assert.are.same (Layer.linearize (j), {
+    assert.are.same (Data.linearize (repository, "j"), {
       o, e, b, d, j
     })
-    assert.are.same (Layer.linearize (k), {
+    assert.are.same (Data.linearize (repository, "k"), {
       o, a, d, k
     })
-    assert.are.same (Layer.linearize (z), {
-      o, e, c, b, a, d, k, j, i , z
+    assert.are.same (Data.linearize (repository, "z"), {
+      o, e, c, b, a, d, k, j, i, z,
     })
   end)
 
@@ -83,137 +102,237 @@ end)
 
 describe ("a layer", function ()
 
+  local repository
+
+  before_each (function ()
+    repository = Data.as_table (Data.new {})
+  end)
+
   it ("allows to read values", function ()
-    local c1 = Layer.new {
+    repository.c1 = {
       a = 1,
     }
-    assert.are.equal (c1.a._, 1)
-    assert.is_nil (c1.b._)
+    assert.are.equal (repository.c1.a._, 1)
+    assert.is_nil    (repository.c1.b._)
   end)
 
   it ("handles proxies in depends", function ()
-    local c1 = Layer.new {
+    repository.c1 = {
       a = 1,
     }
-    local c2 = Layer.new {
-      [Layer.DEPENDS] = { c1 },
+    repository.c2 = {
+      [Data.DEPENDS] = { repository.c1 },
     }
-    assert.are.equal (c2.a._, 1)
+    assert.are.equal (repository.c2.a._, 1)
   end)
 
   it ("exposes the nearest value", function ()
-    local c1 = Layer.new {
+    repository.c1 = {
       a = 1,
     }
-    local c2 = Layer.new {
+    repository.c2 = {
       a = 2,
-      [Layer.DEPENDS] = { c1 },
+      [Data.DEPENDS] = { repository.c1 },
     }
-    assert.are.equal (c1.a._, 1)
-    assert.are.equal (c2.a._, 2)
+    assert.are.equal (repository.c1.a._, 1)
+    assert.are.equal (repository.c2.a._, 2)
   end)
 
+
   it ("uses its dependencies from last to first", function ()
-    local c1 = Layer.new {
+    repository.c1 = {
       a = 1,
     }
-    local c2 = Layer.new {
+    repository.c2 = {
       a = 2,
     }
-    local c3 = Layer.new {
-      [Layer.DEPENDS] = { c1, c2 },
+    repository.c3 = {
+      [Data.DEPENDS] = { repository.c1, repository.c2 },
     }
-    assert.are.equal (c3.a._, 2)
+    assert.are.equal (repository.c3.a._, 2)
   end)
 
   it ("allows diamond in dependencies", function ()
-    local c1 = Layer.new {
+    repository.c1 = {
       a = 1,
       b = 1,
     }
-    local c2 = Layer.new {
+    repository.c2 = {
       b = 2,
-      [Layer.DEPENDS] = { c1 },
+      [Data.DEPENDS] = { repository.c1 },
     }
-    local c3 = Layer.new {
+    repository.c3 = {
       b = 3,
-      [Layer.DEPENDS] = { c1 },
+      [Data.DEPENDS] = { repository.c1 },
     }
-    local c4 = Layer.new {
-      [Layer.DEPENDS] = { c2, c3 },
+    repository.c4 = {
+      [Data.DEPENDS] = { repository.c2, repository.c3 },
     }
-    assert.are.equal (c4.a._, 1)
-    assert.are.equal (c4.b._, 3)
+    assert.are.equal (repository.c4.a._, 1)
+    assert.are.equal (repository.c4.b._, 3)
   end)
 
   it ("merges layers in all the data tree", function ()
-    local c1 = Layer.new {
+    repository.c1 = {
       a = {
         x = 1,
         y = 1,
       },
     }
-    local c2 = Layer.new {
+    repository.c2 = {
       a = {
         y = 2,
       },
-      [Layer.DEPENDS] = { c1 },
+      [Data.DEPENDS] = { repository.c1 },
     }
-    assert.are.equal (c2.a.x._, 1)
-    assert.are.equal (c2.a.y._, 2)
+    assert.are.equal (repository.c2.a.x._, 1)
+    assert.are.equal (repository.c2.a.y._, 2)
   end)
-
+--[[
+  it ("is efficient enough", function ()
+    do
+      local quantity = 1000
+      local start    = Platform.time ()
+      local depends  = {}
+      for i = 1, quantity do
+        repository [i] = {
+          [i] = i,
+        }
+        depends [#depends+1] = repository [i]
+      end
+      repository.all = {
+        [Data.DEPENDS] = depends
+      }
+      local finish   = Platform.time ()
+      print ("# create / second:", math.floor (quantity / (finish - start)))
+    end
+    for _, depth in ipairs {
+      1, 2, 5,
+      10, 20, 50,
+      100, 200, 500,
+    } do
+      local quantity = 10000
+      local depends  = {}
+      for i = 1, depth do
+        repository [i] = {
+          [i] = i,
+        }
+        depends [#depends+1] = repository [i]
+      end
+      repository.all = {
+        [Data.DEPENDS] = depends
+      }
+      local start    = Platform.time ()
+      for i = 1, quantity do
+        local _ = repository.all [i % depth + 1]._
+      end
+      local finish   = Platform.time ()
+      print ("# read / second / depth", depth, math.floor (quantity / (finish - start)))
+    end
+  end)
+--]]
 end)
 
 describe ("a reference", function ()
 
-  local _ = Layer.placeholder
+  local _ = Data.placeholder
+  local repository
+
+  before_each (function ()
+    repository = Data.as_table (Data.new {})
+  end)
 
   it ("handles proxies without layer", function ()
-    local c1 = Layer.new {
+    repository.c1 = {
       a = 1,
       b = _.a,
     }
-    assert.are.equal (c1.b()._, 1)
+    assert.are.equal (repository.c1.b()._, 1)
   end)
 
   it ("can follow multiple redirects", function ()
-    local c1 = Layer.new {
+    repository.c1 = {
       a = 1,
       b = _.a,
       c = _.b,
     }
-    assert.are.equal (c1.c()()._, 1)
-    assert.are.equal (c1.c(2)._ , 1)
-    assert.is_nil    (c1.c(3)._)
+    assert.are.equal (repository.c1.c()()._, 1)
+    assert.are.equal (repository.c1.c(2)._ , 1)
+    assert.is_nil    (repository.c1.c(3)._)
   end)
 
   it ("is followed from the top layer", function ()
-    local c1 = Layer.new {
+    repository.c1 = {
       b = _.a,
     }
-    local c2 = Layer.new {
+    repository.c2 = {
       c = _.b,
     }
-    local c3 = Layer.new {
+    repository.c3 = {
       a = 1,
-      [Layer.DEPENDS] = { c1, c2 },
+      [Data.DEPENDS] = { repository.c1, repository.c2 },
     }
-    assert.are.equal (c3.c()()._, 1)
-    assert.are.equal (c3.c(2)._ , 1)
+    assert.are.equal (repository.c3.c()()._, 1)
+    assert.are.equal (repository.c3.c(2)._ , 1)
   end)
 
   it ("can also have a value", function ()
-    local c1 = Layer.new {
+    repository.c1 = {
       a = 1,
       b = _.a,
       c = _.b,
     }
-    local c2 = Layer.new {
+    repository.c2 = {
       b = 2,
-      [Layer.DEPENDS] = { c1 },
+      [Data.DEPENDS] = { repository.c1 },
     }
-    assert.are.equal (c2.c()._, 2)
+    assert.are.equal (repository.c2.c()._, 2)
+  end)
+
+end)
+
+describe ("a repository", function ()
+
+  local repository
+
+  before_each (function ()
+    repository = Data.as_table (Data.new {})
+  end)
+
+  it ("can be exported to Lua table", function ()
+    repository.c1 = {
+      a = 1,
+    }
+    repository.c2 = {
+      [Data.DEPENDS] = { repository.c1 },
+    }
+    assert.has.no.error (function ()
+      Platform.table.encode (Data.raw (repository))
+    end)
+  end)
+
+  it ("can be exported to JSON", function ()
+    repository.c1 = {
+      a = 1,
+    }
+    repository.c2 = {
+      [Data.DEPENDS] = { repository.c1 },
+    }
+    assert.has.no.error (function ()
+      Platform.json.encode (Data.raw (repository))
+    end)
+  end)
+
+  it ("can be exported to YAML", function ()
+    repository.c1 = {
+      a = 1,
+    }
+    repository.c2 = {
+      [Data.DEPENDS] = { repository.c1 },
+    }
+    assert.has.no.error (function ()
+      Platform.yaml.encode (Data.raw (repository))
+    end)
   end)
 
 end)
