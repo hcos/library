@@ -1,16 +1,23 @@
-require "compat52"
+                 require "compat53"
+coroutine.make = require "coroutine.make"
 
 local Repository = {}
 local Proxy      = {}
 
-Repository.CONTENTS   =
-  setmetatable ({}, { __tostring = function () return "Repository.CONTENTS"   end })
-Repository.LINEARIZED =
-  setmetatable ({}, { __tostring = function () return "Repository.LINEARIZED" end })
-Proxy.REPOSITORY      =
-  setmetatable ({}, { __tostring = function () return "Proxy.REPOSITORY"      end })
-Proxy.KEYS            =
-  setmetatable ({}, { __tostring = function () return "Proxy.KEYS"            end })
+local function make_tag (name)
+  return setmetatable ({}, {
+    __tostring = function () return name end
+  })
+end
+
+Repository.__metatable = "cosy.data"
+Proxy     .__metatable = "cosy.data.proxy"
+
+Repository.CONTENTS   = make_tag "Repository.CONTENTS"
+Repository.LINEARIZED = make_tag "Repository.LINEARIZED"
+
+Proxy.REPOSITORY      = make_tag "Proxy.REPOSITORY"
+Proxy.KEYS            = make_tag "Proxy.KEYS"
 
 Repository.VALUE    = "_"
 Repository.DEPENDS  = "cosy:depends"
@@ -31,7 +38,7 @@ function Repository.as_table (repository)
   })
 end
 
-function Repository.new (options)
+function Repository.new ()
   return setmetatable ({
     [Repository.CONTENTS  ] = {},
     [Repository.LINEARIZED] = setmetatable ({}, { __mode = "kv" })
@@ -62,7 +69,7 @@ function Repository.deproxify (t, within)
   if type (t) ~= "table" then
     return t
   end
-  if getmetatable (t) == Proxy then
+  if getmetatable (t) == Proxy.__metatable then
     if within == Repository.DEPENDS then
       t = t [Proxy.KEYS] [1]
     elseif within == Repository.INHERITS 
@@ -105,52 +112,6 @@ Repository.placeholder = setmetatable ({
   [Proxy.REPOSITORY] = false,
   [Proxy.KEYS      ] = { false },
 }, Proxy)
-
---[[
-function Repository.new (data)
-  local function replace_proxy (t, within)
-    if type (t) ~= "table" then
-      return t
-    end
-    if getmetatable (t) == Proxy then
-      if within == Repository.DEPENDS then
-        t = t [Proxy.KEYS] [1]
-      elseif within == Repository.INHERITS 
-          or within == Repository.REFERS   then
-        local keys = t [Proxy.KEYS]
-        t = {}
-        for i = 2, #keys do
-          t [i-1] = keys [i]
-        end
-      else
-        local keys   = t [Proxy.KEYS]
-        local refers = {}
-        t = {
-          [Repository.REFERS ] = refers,
-        }
-        for i = 2, #keys do
-          refers [i-1] = keys [i]
-        end
-      end
-      return t
-    end
-    for k, v in pairs (t) do
-      local w = within
-      if k == Repository.DEPENDS
-      or k == Repository.INHERITS
-      or k == Repository.REFERS then
-        w = k
-      end
-      t [k] = replace_proxy (v, w)
-    end
-    return t
-  end
-  data = replace_proxy (data)
-  return setmetatable ({
-    [Proxy.KEYS] = { data },
-  }, Proxy)
-end
---]]
 
 function Repository.linearize (repository, key)
   local function linearize (t)
@@ -263,73 +224,6 @@ function Repository.linearize (repository, key)
   return linearize (Repository.raw (repository, key))
 end
 
-function Proxy.__eq (lhs, rhs)
-  local lrepository = lhs [Proxy.REPOSITORY]
-  local rrepository = rhs [Proxy.REPOSITORY]
-  if lrepository [Repository.CONTENTS] ~= rrepository [Repository.CONTENTS] then
-    return false
-  end
-  local lkeys = lhs [Proxy.KEYS]
-  local rkeys = rhs [Proxy.KEYS]
-  if #lkeys ~= #rkeys then
-    return false
-  end
-  for i = 1, #lkeys do
-    if lkeys [i] ~= rkeys [i] then
-      return false
-    end
-  end
-  return true
-end
-
-function Proxy.get (proxy)
-  local keys       = proxy [Proxy.KEYS]
-  local repository = proxy [Proxy.REPOSITORY]
-  local layers     = Repository.linearize (repository, keys [1])
-  for i = #layers, 1, -1 do
-    local data = layers [i]
-    for j = 2, #keys do
-      if type (data) ~= "table" then
-        data = nil
-        break
-      end
-      data = data [keys [j]]
-      if data == nil then
-        break
-      end
-      -- Special cases:
-      local key = keys [j]
-      if key == Repository.REFERS then
-        local pkeys = { keys [1] }
-        for k = 1, #data do
-          pkeys [#pkeys + 1] = data [k]
-        end
-        for k = j+1, #keys do
-          pkeys [#pkeys+1] = keys [k]
-        end
-        proxy = setmetatable ({
-          [Proxy.REPOSITORY] = repository,
-          [Proxy.KEYS      ] = pkeys,
-        }, Proxy)
-        return Proxy.get (proxy)
-      elseif key == Repository.INHERITS then
-        -- TODO
-        error "Not implemented"
-      elseif key == Repository.DEPENDS then
-        -- Do nothing
-      end
-    end
-    if data ~= nil then
-      if type (data) == "table" then
-        return data [Repository.VALUE]
-      else
-        return data
-      end
-    end
-  end
-  return nil
-end
-
 function Proxy.__index (proxy, key)
   if type (key) == "table" then
     error "Not implemented"
@@ -344,7 +238,51 @@ function Proxy.__index (proxy, key)
       [Proxy.KEYS      ] = keys,
     }, Proxy)
   else
-    return Proxy.get (proxy)
+    local keys       = proxy [Proxy.KEYS]
+    local repository = proxy [Proxy.REPOSITORY]
+    local layers     = Repository.linearize (repository, keys [1])
+    for i = #layers, 1, -1 do
+      local data = layers [i]
+      for j = 2, #keys do
+        if type (data) ~= "table" then
+          data = nil
+          break
+        end
+        data = data [keys [j]]
+        if data == nil then
+          break
+        end
+        -- Special cases:
+        local key = keys [j]
+        if key == Repository.REFERS then
+          local pkeys = { keys [1] }
+          for k = 1, #data do
+            pkeys [#pkeys + 1] = data [k]
+          end
+          for k = j+1, #keys do
+            pkeys [#pkeys+1] = keys [k]
+          end
+          proxy = setmetatable ({
+            [Proxy.REPOSITORY] = repository,
+            [Proxy.KEYS      ] = pkeys,
+          }, Proxy)
+          return proxy._
+        elseif key == Repository.INHERITS then
+          -- TODO
+          error "Not implemented"
+        elseif key == Repository.DEPENDS then
+          -- Do nothing
+        end
+      end
+      if data ~= nil then
+        if type (data) == "table" then
+          return data [Repository.VALUE]
+        else
+          return data
+        end
+      end
+    end
+    return nil
   end
 end
 
@@ -395,6 +333,81 @@ function Proxy.__newindex (proxy, key, value)
   else
     data [last] = value
   end
+end
+
+Proxy.coroutine = coroutine.make ()
+
+function Proxy.__pairs (proxy)
+  error "Not implemented"
+  return Proxy.coroutine.wrap (function ()
+  end)
+end
+
+function Proxy.__len (proxy)
+  error "Not implemented"
+end
+
+function Proxy.__tostring (proxy)
+  error "Not implemented"
+end
+
+function Proxy.__unm (proxy)
+  error "Not implemented"
+end
+
+function Proxy.__add (lhs, rhs)
+  error "Not implemented"
+end
+
+function Proxy.__sub (lhs, rhs)
+  error "Not implemented"
+end
+
+function Proxy.__mul (lhs, rhs)
+  error "Not implemented"
+end
+
+function Proxy.__div (lhs, rhs)
+  error "Not implemented"
+end
+
+function Proxy.__mod (lhs, rhs)
+  error "Not implemented"
+end
+
+function Proxy.__pow (lhs, rhs)
+  error "Not implemented"
+end
+
+function Proxy.__concat (lhs, rhs)
+  error "Not implemented"
+end
+
+function Proxy.__eq (lhs, rhs)
+  local lrepository = lhs [Proxy.REPOSITORY]
+  local rrepository = rhs [Proxy.REPOSITORY]
+  if lrepository [Repository.CONTENTS] ~= rrepository [Repository.CONTENTS] then
+    return false
+  end
+  local lkeys = lhs [Proxy.KEYS]
+  local rkeys = rhs [Proxy.KEYS]
+  if #lkeys ~= #rkeys then
+    return false
+  end
+  for i = 1, #lkeys do
+    if lkeys [i] ~= rkeys [i] then
+      return false
+    end
+  end
+  return true
+end
+
+function Proxy.__lt (lhs, rhs)
+  error "Not implemented"
+end
+
+function Proxy.__le (lhs, rhs)
+  error "Not implemented"
 end
 
 return Repository
