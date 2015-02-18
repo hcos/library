@@ -58,41 +58,52 @@ function Repository.raw (repository, key)
   end
 end
 
-function Repository.set (repository, key, value)
-  local function replace_proxy (t, within)
-    if type (t) ~= "table" then
-      return t
-    end
-    if getmetatable (t) == Proxy then
-      if within == Repository.DEPENDS then
-        t = t [Proxy.KEYS] [1]
-      elseif within == Repository.INHERITS 
-          or within == Repository.REFERS   then
-        t = t [Proxy.KEYS]
-      else
-        t = {
-          [Repository.REFERS ] = t [Proxy.KEYS],
-        }
+function Repository.deproxify (t, within)
+  if type (t) ~= "table" then
+    return t
+  end
+  if getmetatable (t) == Proxy then
+    if within == Repository.DEPENDS then
+      t = t [Proxy.KEYS] [1]
+    elseif within == Repository.INHERITS 
+        or within == Repository.REFERS   then
+      local keys = t [Proxy.KEYS]
+      local path = {}
+      for i = 2, #keys do
+        path [i-1] = keys [i]
       end
-      return t
-    end
-    for k, v in pairs (t) do
-      local w = within
-      if k == Repository.DEPENDS
-      or k == Repository.INHERITS
-      or k == Repository.REFERS then
-        w = k
+      t = path
+    else
+      local keys = t [Proxy.KEYS]
+      local path = {}
+      for i = 2, #keys do
+        path [i-1] = keys [i]
       end
-      t [k] = replace_proxy (v, w)
+      t = {
+        [Repository.REFERS ] = path,
+      }
     end
     return t
   end
-  repository [Repository.CONTENTS] [key] = replace_proxy (value)
+  for k, v in pairs (t) do
+    local w = within
+    if k == Repository.DEPENDS
+    or k == Repository.INHERITS
+    or k == Repository.REFERS then
+      w = k
+    end
+    t [k] = Repository.deproxify (v, w)
+  end
+  return t
+end
+
+function Repository.set (repository, key, value)
+  repository [Repository.CONTENTS] [key] = Repository.deproxify (value)
 end
 
 Repository.placeholder = setmetatable ({
   [Proxy.REPOSITORY] = false,
-  [Proxy.KEYS      ] = {},
+  [Proxy.KEYS      ] = { false },
 }, Proxy)
 
 --[[
@@ -320,7 +331,9 @@ function Proxy.get (proxy)
 end
 
 function Proxy.__index (proxy, key)
-  -- TODO: what happens when the key is a table or proxy?
+  if type (key) == "table" then
+    error "Not implemented"
+  end
   if key ~= "_" then
     local repository = proxy [Proxy.REPOSITORY]
     local keys       = proxy [Proxy.KEYS      ]
@@ -336,7 +349,6 @@ function Proxy.__index (proxy, key)
 end
 
 function Proxy.__call (proxy, n)
-  -- TODO: what happens when the key is a table or proxy?
   if n == nil then
     n = 1
   end
@@ -353,27 +365,36 @@ function Proxy.__call (proxy, n)
 end
 
 function Proxy.__newindex (proxy, key, value)
+  if type (key) == "table" then
+    error "Not implemented"
+  end
+  value = Repository.deproxify (value)
   local keys = proxy [Proxy.KEYS]
-  if key == "_" then
-    key   = keys [#keys]
-    keys  = table.pack (table.unpack (keys))
-    keys [#keys] = nil
-    proxy = setmetatable ({
-      [Proxy.KEYS ] = keys,
-    }, Proxy)
-    proxy [key] = value
-    return
+  if key ~= "_" then
+    keys = table.pack (table.unpack (keys))
+    keys [#keys + 1] = key
   end
-  -- Fix value
-  
-  local data = proxy [Proxy.DATA]
-  for i = 1, #keys do
-    if data [keys [i]] == nil then
-      data [keys [i]] = {}
+  local data = proxy [Proxy.REPOSITORY]
+  data = Repository.raw (data)
+  for i = 1, #keys-1 do
+    local key = keys [i]
+    if data [key] == nil then
+      data [key] = {}
     end
-    data = data [keys [i]]
+    data = data [key]
   end
-  -- TODO
+  local last = keys [#keys]
+  if key == "_" then
+    if type (value) == "table" then
+      error "Illegal value"
+    elseif type (data [last]) == "table" then
+      data [last] [Repository.VALUE] = value
+    else
+      data [last] = value
+    end
+  else
+    data [last] = value
+  end
 end
 
 return Repository

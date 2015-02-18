@@ -116,6 +116,47 @@ describe ("a layer", function ()
     assert.is_nil    (repository.c1.b._)
   end)
 
+  it ("allows to write values", function ()
+    repository.c1 = {}
+    repository.c1.a._ = 1
+    assert.are.equal (repository.c1.a._, 1)
+    assert.is_nil    (repository.c1.b._)
+  end)
+
+  it ("allows to overwrite values", function ()
+    repository.c1 = {
+      a = 1,
+      b = {
+        x = 1,
+      },
+    }
+    repository.c1.a._ = 2
+    assert.are.equal (repository.c1.a._, 2)
+    assert.has.error (function ()
+      repository.c1.a._ = { y = 1 }
+    end)
+    repository.c1.b = { x = 2 }
+    assert.are.equal (repository.c1.b.x._, 2)
+    repository.c1.b._ = 2
+    assert.are.equal (repository.c1.b._, 2)
+    assert.are.equal (repository.c1.b.x._, 2)
+    repository.c1.b = 2
+    assert.are.equal (repository.c1.b._, 2)
+    assert.is_nil    (repository.c1.b.x._)
+  end)
+
+  it ("writes in the nearest layer", function ()
+    repository.c1 = {
+      a = 1,
+    }
+    repository.c2 = {
+      [Data.DEPENDS] = { repository.c1 },
+    }
+    repository.c2.a = 2
+    assert.are.equal (repository.c2.a._, 2)
+    assert.are_equal (repository.c1.a._, 1)
+  end)
+
   it ("handles proxies in depends", function ()
     repository.c1 = {
       a = 1,
@@ -250,6 +291,14 @@ describe ("a reference", function ()
     assert.are.equal (repository.c1.b()._, 1)
   end)
 
+  it ("writes references", function ()
+    repository.c1 = {
+      a = 1,
+    }
+    repository.c1.b = repository.c1.a
+    assert.are.equal (repository.c1.b()._, 1)
+  end)
+  
   it ("can follow multiple redirects", function ()
     repository.c1 = {
       a = 1,
