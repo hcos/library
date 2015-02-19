@@ -11,7 +11,7 @@
 local Platform = require "cosy.platform"
 local Data     = require "cosy.data"
 
-local Configuration = Data.as_table (Data.new ())
+local Configuration = Data.new ()
 
 Configuration.internal = {}
 Configuration.default  = require "cosy.configuration.default"
