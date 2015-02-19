@@ -10,7 +10,7 @@ describe ("c3 linearization", function ()
   local repository
 
   before_each (function ()
-    repository = Data.as_table (Data.new {})
+    repository = Data.new {}
   end)
 
   it ("works as expected", function ()
@@ -105,7 +105,7 @@ describe ("a layer", function ()
   local repository
 
   before_each (function ()
-    repository = Data.as_table (Data.new {})
+    repository = Data.new {}
   end)
 
   it ("allows to read values", function ()
@@ -123,22 +123,12 @@ describe ("a layer", function ()
     assert.is_nil    (repository.c1.b._)
   end)
 
-  it ("invokes hook on read", function ()
-    repository.c1 = {
-      a = 1,
-    }
-    local s = spy.new (function () end)
-    repository [Data.ON_READ] [1] = s
-    local x = repository.c1.a._
-    assert.spy (s).was.called ()
-  end)
-
   it ("invokes hook on write", function ()
     repository.c1 = {
       a = 1,
     }
     local s = spy.new (function () end)
-    repository [Data.ON_WRITE] [1] = s
+    Data.on_write (repository, "name", s)
     repository.c1.a._ = 2
     assert.spy (s).was.called ()
   end)
@@ -300,7 +290,7 @@ describe ("a reference", function ()
   local repository
 
   before_each (function ()
-    repository = Data.as_table (Data.new {})
+    repository = Data.new {}
   end)
 
   it ("handles proxies without layer", function ()
@@ -365,7 +355,7 @@ describe ("a repository", function ()
   local repository
 
   before_each (function ()
-    repository = Data.as_table (Data.new {})
+    repository = Data.new {}
   end)
 
   it ("can be exported to Lua table", function ()

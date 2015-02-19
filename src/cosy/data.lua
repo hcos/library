@@ -15,8 +15,8 @@ Proxy     .__metatable = "cosy.data.proxy"
 
 Repository.CONTENTS   = make_tag "Repository.CONTENTS"
 Repository.LINEARIZED = make_tag "Repository.LINEARIZED"
-Repository.ON_READ    = make_tag "Repository.ON_READ"
 Repository.ON_WRITE   = make_tag "Repository.ON_WRITE"
+Repository.OPTIONS    = make_tag "Repository.OPTIONS"
 
 Proxy.REPOSITORY      = make_tag "Proxy.REPOSITORY"
 Proxy.KEYS            = make_tag "Proxy.KEYS"
@@ -26,32 +26,16 @@ Repository.DEPENDS  = "cosy:depends"
 Repository.INHERITS = "cosy:inherits"
 Repository.REFERS   = "cosy:refers"
 
-function Repository.as_table (repository)
-  return setmetatable ({
-    [Repository.CONTENTS  ] = repository [Repository.CONTENTS  ],
-    [Repository.LINEARIZED] = repository [Repository.LINEARIZED],
-    [Repository.ON_READ   ] = repository [Repository.ON_READ   ],
-    [Repository.ON_WRITE  ] = repository [Repository.ON_WRITE  ],
-  }, {
-    __index = function (r, k)
-      return Repository.get (r, k)
-    end,
-    __newindex = function (r, k, v)
-      Repository.set (r, k, v)
-    end,
-  })
-end
-
-function Repository.new ()
+function Repository.new (options)
   return setmetatable ({
     [Repository.CONTENTS  ] = {},
     [Repository.LINEARIZED] = setmetatable ({}, { __mode = "kv" }),
-    [Repository.ON_READ   ] = {},
     [Repository.ON_WRITE  ] = {},
+    [Repository.OPTIONS   ] = options or {},
   }, Repository)
 end
 
-function Repository.get (repository, key)
+function Repository.__index (repository, key)
   local found = repository [Repository.CONTENTS] [key]
   if found == nil then
     return nil
@@ -63,6 +47,10 @@ function Repository.get (repository, key)
   end
 end
 
+function Repository.__newindex (repository, key, value)
+  repository [Repository.CONTENTS] [key] = Repository.deproxify (value)
+end
+
 function Repository.raw (repository, key)
   if key == nil then
     return repository [Repository.CONTENTS]
@@ -71,7 +59,16 @@ function Repository.raw (repository, key)
   end
 end
 
+function Repository.on_write (repository, name, f)
+  repository [Repository.ON_WRITE] [name] = f
+end
+
+function Repository.options (repository)
+  return repository [Repository.OPTIONS]
+end
+
 function Repository.deproxify (t, within)
+  local deproxify = Repository.deproxify
   if type (t) ~= "table" then
     return t
   end
@@ -79,7 +76,7 @@ function Repository.deproxify (t, within)
     if within == Repository.DEPENDS then
       t = t [Proxy.KEYS] [1]
     elseif within == Repository.INHERITS 
-        or within == Repository.REFERS   then
+        or within == Repository.REFERS then
       local keys = t [Proxy.KEYS]
       local path = {}
       for i = 2, #keys do
@@ -105,13 +102,9 @@ function Repository.deproxify (t, within)
     or k == Repository.REFERS then
       w = k
     end
-    t [k] = Repository.deproxify (v, w)
+    t [k] = deproxify (v, w)
   end
   return t
-end
-
-function Repository.set (repository, key, value)
-  repository [Repository.CONTENTS] [key] = Repository.deproxify (value)
 end
 
 Repository.placeholder = setmetatable ({
@@ -281,19 +274,11 @@ function Proxy.__index (proxy, key)
         end
       end
       if data ~= nil then
-        local result
         if type (data) == "table" then
-          result = data [Repository.VALUE]
+          return data [Repository.VALUE]
         else
-          result = data
+          return data
         end
-        local on_read = repository [Repository.ON_READ]
-        for _, f in pairs (on_read) do
-          if f (proxy, result) == nil then
-            return nil
-          end
-        end
-        return result
       end
     end
     return nil
