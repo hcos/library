@@ -13,13 +13,12 @@ end
 Repository.__metatable = "cosy.data"
 Proxy     .__metatable = "cosy.data.proxy"
 
-Repository.CONTENTS   = make_tag "Repository.CONTENTS"
-Repository.LINEARIZED = make_tag "Repository.LINEARIZED"
-Repository.ON_WRITE   = make_tag "Repository.ON_WRITE"
-Repository.OPTIONS    = make_tag "Repository.OPTIONS"
-
-Proxy.REPOSITORY      = make_tag "Proxy.REPOSITORY"
-Proxy.KEYS            = make_tag "Proxy.KEYS"
+CONTENTS   = make_tag "CONTENTS"
+LINEARIZED = make_tag "LINEARIZED"
+ON_WRITE   = make_tag "ON_WRITE"
+OPTIONS    = make_tag "OPTIONS"
+REPOSITORY = make_tag "REPOSITORY"
+KEYS       = make_tag "KEYS"
 
 Repository.VALUE    = "_"
 Repository.DEPENDS  = "cosy:depends"
@@ -28,43 +27,43 @@ Repository.REFERS   = "cosy:refers"
 
 function Repository.new (options)
   return setmetatable ({
-    [Repository.CONTENTS  ] = {},
-    [Repository.LINEARIZED] = setmetatable ({}, { __mode = "kv" }),
-    [Repository.ON_WRITE  ] = {},
-    [Repository.OPTIONS   ] = options or {},
+    [CONTENTS  ] = {},
+    [LINEARIZED] = setmetatable ({}, { __mode = "kv" }),
+    [ON_WRITE  ] = {},
+    [OPTIONS   ] = options or {},
   }, Repository)
 end
 
 function Repository.__index (repository, key)
-  local found = repository [Repository.CONTENTS] [key]
+  local found = repository [CONTENTS] [key]
   if found == nil then
     return nil
   else
     return setmetatable ({
-      [Proxy.REPOSITORY] = repository,
-      [Proxy.KEYS      ] = { key },
+      [REPOSITORY] = repository,
+      [KEYS      ] = { key },
     }, Proxy)
   end
 end
 
 function Repository.__newindex (repository, key, value)
-  repository [Repository.CONTENTS] [key] = Repository.deproxify (value)
+  repository [CONTENTS] [key] = Repository.deproxify (value)
 end
 
 function Repository.raw (repository, key)
   if key == nil then
-    return repository [Repository.CONTENTS]
+    return repository [CONTENTS]
   else
-    return repository [Repository.CONTENTS] [key]
+    return repository [CONTENTS] [key]
   end
 end
 
 function Repository.on_write (repository, name, f)
-  repository [Repository.ON_WRITE] [name] = f
+  repository [ON_WRITE] [name] = f
 end
 
 function Repository.options (repository)
-  return repository [Repository.OPTIONS]
+  return repository [OPTIONS]
 end
 
 function Repository.deproxify (t, within)
@@ -74,17 +73,17 @@ function Repository.deproxify (t, within)
   end
   if getmetatable (t) == Proxy.__metatable then
     if within == Repository.DEPENDS then
-      t = t [Proxy.KEYS] [1]
+      t = t [KEYS] [1]
     elseif within == Repository.INHERITS 
         or within == Repository.REFERS then
-      local keys = t [Proxy.KEYS]
+      local keys = t [KEYS]
       local path = {}
       for i = 2, #keys do
         path [i-1] = keys [i]
       end
       t = path
     else
-      local keys = t [Proxy.KEYS]
+      local keys = t [KEYS]
       local path = {}
       for i = 2, #keys do
         path [i-1] = keys [i]
@@ -108,13 +107,13 @@ function Repository.deproxify (t, within)
 end
 
 Repository.placeholder = setmetatable ({
-  [Proxy.REPOSITORY] = false,
-  [Proxy.KEYS      ] = { false },
+  [REPOSITORY] = false,
+  [KEYS      ] = { false },
 }, Proxy)
 
 function Repository.linearize (repository, key)
   local function linearize (t)
-    local cached = repository [Repository.LINEARIZED] [t]
+    local cached = repository [LINEARIZED] [t]
     if cached then
       return cached
     end
@@ -208,7 +207,7 @@ function Repository.linearize (repository, key)
     for i = 1, #result/2 do
       result [i], result [#result-i+1] = result [#result-i+1], result [i]
     end
-    repository [Repository.LINEARIZED] [t] = result
+    repository [LINEARIZED] [t] = result
 --[[
     do
       local dump = {}
@@ -228,17 +227,17 @@ function Proxy.__index (proxy, key)
     error "Not implemented"
   end
   if key ~= "_" then
-    local repository = proxy [Proxy.REPOSITORY]
-    local keys       = proxy [Proxy.KEYS      ]
+    local repository = proxy [REPOSITORY]
+    local keys       = proxy [KEYS      ]
     keys = table.pack (table.unpack (keys))
     keys [#keys+1] = key
     return setmetatable ({
-      [Proxy.REPOSITORY] = repository,
-      [Proxy.KEYS      ] = keys,
+      [REPOSITORY] = repository,
+      [KEYS      ] = keys,
     }, Proxy)
   else
-    local keys       = proxy [Proxy.KEYS]
-    local repository = proxy [Proxy.REPOSITORY]
+    local repository = proxy [REPOSITORY]
+    local keys       = proxy [KEYS]
     local layers     = Repository.linearize (repository, keys [1])
     for i = #layers, 1, -1 do
       local data = layers [i]
@@ -262,8 +261,8 @@ function Proxy.__index (proxy, key)
             pkeys [#pkeys+1] = keys [k]
           end
           proxy = setmetatable ({
-            [Proxy.REPOSITORY] = repository,
-            [Proxy.KEYS      ] = pkeys,
+            [REPOSITORY] = repository,
+            [KEYS      ] = pkeys,
           }, Proxy)
           return proxy._
         elseif key == Repository.INHERITS then
@@ -289,15 +288,15 @@ function Proxy.__call (proxy, n)
   if n == nil then
     n = 1
   end
-  local repository = proxy [Proxy.REPOSITORY]
-  local keys       = proxy [Proxy.KEYS      ]
+  local repository = proxy [REPOSITORY]
+  local keys       = proxy [KEYS      ]
   keys = table.pack (table.unpack (keys))
   for _ = 1, n do
     keys [#keys+1] = Repository.REFERS
   end
   return setmetatable ({
-    [Proxy.REPOSITORY] = repository,
-    [Proxy.KEYS      ] = keys,
+    [REPOSITORY] = repository,
+    [KEYS      ] = keys,
   }, Proxy)
 end
 
@@ -306,12 +305,12 @@ function Proxy.__newindex (proxy, key, value)
     error "Not implemented"
   end
   value = Repository.deproxify (value)
-  local keys = proxy [Proxy.KEYS]
+  local keys = proxy [KEYS]
   if key ~= "_" then
     keys = table.pack (table.unpack (keys))
     keys [#keys + 1] = key
   end
-  local data = proxy [Proxy.REPOSITORY]
+  local data = proxy [REPOSITORY]
   data = Repository.raw (data)
   for i = 1, #keys-1 do
     local key = keys [i]
@@ -332,8 +331,8 @@ function Proxy.__newindex (proxy, key, value)
   else
     data [last] = value
   end
-  local repository = proxy [Proxy.REPOSITORY]
-  local on_write = repository [Repository.ON_WRITE]
+  local repository = proxy [REPOSITORY]
+  local on_write = repository [ON_WRITE]
   for _, f in pairs (on_write) do
     f (proxy, key, value)
   end
@@ -388,13 +387,13 @@ function Proxy.__concat (lhs, rhs)
 end
 
 function Proxy.__eq (lhs, rhs)
-  local lrepository = lhs [Proxy.REPOSITORY]
-  local rrepository = rhs [Proxy.REPOSITORY]
-  if lrepository [Repository.CONTENTS] ~= rrepository [Repository.CONTENTS] then
+  local lrepository = lhs [REPOSITORY]
+  local rrepository = rhs [REPOSITORY]
+  if lrepository [CONTENTS] ~= rrepository [CONTENTS] then
     return false
   end
-  local lkeys = lhs [Proxy.KEYS]
-  local rkeys = rhs [Proxy.KEYS]
+  local lkeys = lhs [KEYS]
+  local rkeys = rhs [KEYS]
   if #lkeys ~= #rkeys then
     return false
   end

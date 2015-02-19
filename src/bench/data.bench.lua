@@ -5,6 +5,7 @@ local Platform = require "cosy.platform"
 do
   local repository =Data.new {}
   local quantity = 1000000
+  collectgarbage ()
   local start    = Platform.time ()
   local depends  = {}
   for i = 1, quantity do
@@ -24,6 +25,7 @@ do
   local repository =Data.new {}
   local quantity = 1000000
   Data.on_write (repository, "name", function () end)
+  collectgarbage ()
   local start    = Platform.time ()
   local depends  = {}
   for i = 1, quantity do
@@ -64,6 +66,7 @@ for _, width in ipairs {
     repository.all = {
       [Data.DEPENDS] = { repository [width] }
     }
+    collectgarbage ()
     local start    = Platform.time ()
     for i = 1, quantity do
       local d = repository.all [i % width + 1]
