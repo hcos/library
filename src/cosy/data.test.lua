@@ -123,12 +123,22 @@ describe ("a layer", function ()
     assert.is_nil    (repository.c1.b._)
   end)
 
+  it ("invokes filter on read", function ()
+    repository.c1 = {
+      a = 1,
+    }
+    local s = spy.new (function () end)
+    Data.options (repository) .filter = s
+    local _ = repository.c1.a._
+    assert.spy (s).was.called ()
+  end)
+
   it ("invokes hook on write", function ()
     repository.c1 = {
       a = 1,
     }
     local s = spy.new (function () end)
-    Data.on_write (repository, "name", s)
+    Data.options (repository) .on_write.name = s
     repository.c1.a._ = 2
     assert.spy (s).was.called ()
   end)

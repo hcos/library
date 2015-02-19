@@ -15,7 +15,6 @@ Proxy     .__metatable = "cosy.data.proxy"
 
 CONTENTS   = make_tag "CONTENTS"
 LINEARIZED = make_tag "LINEARIZED"
-ON_WRITE   = make_tag "ON_WRITE"
 OPTIONS    = make_tag "OPTIONS"
 REPOSITORY = make_tag "REPOSITORY"
 KEYS       = make_tag "KEYS"
@@ -26,10 +25,22 @@ Repository.INHERITS = "cosy:inherits"
 Repository.REFERS   = "cosy:refers"
 
 function Repository.new (options)
+  if options == nil then
+    options = {}
+  end
+  if options.filter ~= nil and type (options.filter) ~= "function" then
+    error "options.filter must be a function"
+  end
+  if options.on_write ~= nil and type (options.on_write) ~= "table" then
+    error "options.on_write must be a table of name -> functions"
+  end
+  options = {
+    filter   = options.filter   or nil,
+    on_write = options.on_write or {},
+  }
   return setmetatable ({
     [CONTENTS  ] = {},
     [LINEARIZED] = setmetatable ({}, { __mode = "kv" }),
-    [ON_WRITE  ] = {},
     [OPTIONS   ] = options or {},
   }, Repository)
 end
@@ -56,10 +67,6 @@ function Repository.raw (repository, key)
   else
     return repository [CONTENTS] [key]
   end
-end
-
-function Repository.on_write (repository, name, f)
-  repository [ON_WRITE] [name] = f
 end
 
 function Repository.options (repository)
@@ -237,6 +244,10 @@ function Proxy.__index (proxy, key)
     }, Proxy)
   else
     local repository = proxy [REPOSITORY]
+    local filter     = repository [OPTIONS].filter
+    if filter and not filter (proxy) then
+      return nil
+    end
     local keys       = proxy [KEYS]
     local layers     = Repository.linearize (repository, keys [1])
     for i = #layers, 1, -1 do
@@ -332,7 +343,7 @@ function Proxy.__newindex (proxy, key, value)
     data [last] = value
   end
   local repository = proxy [REPOSITORY]
-  local on_write = repository [ON_WRITE]
+  local on_write   = repository [OPTIONS].on_write
   for _, f in pairs (on_write) do
     f (proxy, key, value)
   end
