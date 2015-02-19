@@ -41,7 +41,7 @@ function Repository.new (options)
   return setmetatable ({
     [CONTENTS  ] = {},
     [LINEARIZED] = setmetatable ({}, { __mode = "kv" }),
-    [OPTIONS   ] = options or {},
+    [OPTIONS   ] = options,
   }, Repository)
 end
 
