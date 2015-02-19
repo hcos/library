@@ -20,6 +20,7 @@ do
   local loaded = {
     Configuration.internal,
     Configuration.default,
+    nil, -- required for 100% code coverage :-(
   }
   for _, path in ipairs (Platform.configuration.paths) do
     local found = false
