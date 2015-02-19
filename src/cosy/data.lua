@@ -13,6 +13,7 @@ end
 Repository.__metatable = "cosy.data"
 Proxy     .__metatable = "cosy.data.proxy"
 
+CURRENT    = make_tag "CURRENT"
 CONTENTS   = make_tag "CONTENTS"
 LINEARIZED = make_tag "LINEARIZED"
 OPTIONS    = make_tag "OPTIONS"
@@ -24,24 +25,78 @@ Repository.DEPENDS  = "cosy:depends"
 Repository.INHERITS = "cosy:inherits"
 Repository.REFERS   = "cosy:refers"
 
-function Repository.new (options)
-  if options == nil then
-    options = {}
-  end
-  if options.filter ~= nil and type (options.filter) ~= "function" then
-    error "options.filter must be a function"
-  end
-  if options.on_write ~= nil and type (options.on_write) ~= "table" then
-    error "options.on_write must be a table of name -> functions"
-  end
-  options = {
-    filter   = options.filter   or nil,
-    on_write = options.on_write or {},
+local Options = {}
+
+function Options.new ()
+  return {
+    filter   = nil,
+    on_write = {},
   }
+end
+
+function Options.wrap (options)
+  return setmetatable ({
+    [OPTIONS] = options,
+    [CURRENT] = options,
+  }, Options)
+end
+
+function Options.__index (options, key)
+  local found = options [CURRENT] [key]
+  if type (found) ~= "table" then
+    return found
+  else
+    return setmetatable ({
+      [OPTIONS] = options [OPTIONS],
+      [CURRENT] = found,
+    }, Options)
+  end
+end
+
+function Options.__newindex (options, key, value)
+  local found = options [CURRENT] [key]
+  options [CURRENT] [key] = value
+  local err = Options.check (options [OPTIONS])
+  if err then
+    options [CURRENT] [key] = found
+    error (err)
+  end
+end
+
+function Options.check (options)
+  local function is_function (f)
+    return type (f) == "function"
+        or type (f) == "thread"
+        or (    type (f) == "table"
+            and getmetatable (f) ~= nil
+            and getmetatable (f).__call ~= nil)
+  end
+  for key, value in pairs (options) do
+    if key == "filter" then
+      if not is_function (value) then
+        return "options.filter must be a function"
+      end
+    elseif key == "on_write" then
+      if type (value) ~= "table" then
+        return "options.on_write must be a table of name -> functions"
+      else
+        for k, v in pairs (value) do
+          if not is_function (v) then
+            return "options.on_write must be a table of name -> functions"
+          end
+        end
+      end
+    else
+      error ("unknown option: " .. tostring (key))
+    end
+  end
+end
+
+function Repository.new ()
   return setmetatable ({
     [CONTENTS  ] = {},
     [LINEARIZED] = setmetatable ({}, { __mode = "kv" }),
-    [OPTIONS   ] = options,
+    [OPTIONS   ] = Options.new (),
   }, Repository)
 end
 
@@ -70,7 +125,7 @@ function Repository.raw (repository, key)
 end
 
 function Repository.options (repository)
-  return repository [OPTIONS]
+  return Options.wrap (repository [OPTIONS])
 end
 
 function Repository.deproxify (t, within)
@@ -119,11 +174,15 @@ Repository.placeholder = setmetatable ({
 }, Proxy)
 
 function Repository.linearize (repository, key)
-  local function linearize (t)
+  local function linearize (t, seen)
     local cached = repository [LINEARIZED] [t]
     if cached then
       return cached
     end
+    if seen [t] then
+      return {}
+    end
+    seen [t] = true
     -- Prepare:
     local depends = t [Repository.DEPENDS]
     local l, n = {}, {}
@@ -135,8 +194,18 @@ function Repository.linearize (repository, key)
       l [#l+1] = depends
       n [#n+1] = #depends
       for i = 1, #depends do
-        l [#l+1] = linearize (depends [i])
-        n [#n+1] = # (l [#l])
+        local linearized = linearize (depends [i], seen)
+        if #linearized ~= 0 then
+          local ll = {}
+          for j = 1, #linearized do
+            local x = linearized [j]
+            if x ~= t then
+              ll [#ll+1] = x
+            end
+          end
+          l [#l+1] = ll
+          n [#n+1] = # (l [#l])
+        end
       end
     end
     l [#l+1] = { t }
@@ -226,7 +295,7 @@ function Repository.linearize (repository, key)
 --]]
     return result
   end
-  return linearize (Repository.raw (repository, key))
+  return linearize (Repository.raw (repository, key), {})
 end
 
 function Proxy.__index (proxy, key)

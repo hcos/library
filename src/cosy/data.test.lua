@@ -67,7 +67,7 @@ describe ("c3 linearization", function ()
     local z = Data.raw (repository, "z")
     
     assert.are.same (Data.linearize (repository, "o"), {
-      o
+      o,
     })
     assert.are.same (Data.linearize (repository, "a"), {
       o, a,
@@ -98,6 +98,104 @@ describe ("c3 linearization", function ()
     })
   end)
 
+  it ("works on cycles", function ()
+    repository.a = {
+      name = "a",
+      [Data.DEPENDS] = { "b" },
+    }
+    repository.b = {
+      name = "b",
+      [Data.DEPENDS] = { "a" },
+    }
+    
+    local a = Data.raw (repository, "a")
+    local b = Data.raw (repository, "b")
+    
+    assert.are.same (Data.linearize (repository, "a"), {
+      b, a,
+    })
+    assert.are.same (Data.linearize (repository, "b"), {
+      a, b,
+    })
+  end)
+
+ it ("can fail", function ()
+    repository.a = {
+      name = "a",
+      [Data.DEPENDS] = { "b" },
+    }
+    repository.b = {
+      name = "b",
+      [Data.DEPENDS] = { "a" },
+    }
+    repository.c = {
+      name = "c",
+      [Data.DEPENDS] = { "a", "b" },
+    }
+    assert.has.error (function ()
+      Data.linearize (repository, "c")
+    end)
+  end)
+
+end)
+
+describe ("a repository", function ()
+
+  it ("can be created", function ()
+    assert.has.no.error (function ()
+      local _ = Data.new ()
+    end)
+  end)
+
+  it ("can define a filter", function ()
+    assert.has.no.error (function ()
+      local r = Data.new ()
+      Data.options (r).filter = function () end
+    end)
+  end)
+
+  it ("requires a function as filter", function ()
+    assert.has.error (function ()
+      local r = Data.new ()
+      Data.options (r).filter = true
+    end)
+  end)
+
+  it ("can define a write hook", function ()
+    assert.has.no.error (function ()
+      local r = Data.new ()
+      Data.options (r).on_write.name = function () end
+    end)
+  end)
+
+  it ("requires a table of write hooks", function ()
+    assert.has.error (function ()
+      local r = Data.new ()
+      Data.options (r).on_write = true
+    end)
+  end)
+
+  it ("requires a function as write hook", function ()
+    assert.has.error (function ()
+      local r = Data.new ()
+      Data.options (r).on_write.name = true
+    end)
+  end)
+
+  it ("can read any value", function ()
+    assert.has.no.error (function ()
+      local r = Data.new ()
+      local _ = Data.options (r).x
+    end)
+  end)
+
+  it ("cannot define an arbitrary value", function ()
+    assert.has.error (function ()
+      local r = Data.new ()
+      Data.options (r).x = 1
+    end)
+  end)
+
 end)
 
 describe ("a layer", function ()
@@ -105,7 +203,11 @@ describe ("a layer", function ()
   local repository
 
   before_each (function ()
-    repository = Data.new {}
+    repository = Data.new ()
+  end)
+
+  it ("can be missing", function ()
+    assert.is_nil    (repository.c1)
   end)
 
   it ("allows to read values", function ()
@@ -300,7 +402,7 @@ describe ("a reference", function ()
   local repository
 
   before_each (function ()
-    repository = Data.new {}
+    repository = Data.new ()
   end)
 
   it ("handles proxies without layer", function ()
@@ -365,7 +467,7 @@ describe ("a repository", function ()
   local repository
 
   before_each (function ()
-    repository = Data.new {}
+    repository = Data.new ()
   end)
 
   it ("can be exported to Lua table", function ()
@@ -402,6 +504,38 @@ describe ("a repository", function ()
     assert.has.no.error (function ()
       Platform.yaml.encode (Data.raw (repository))
     end)
+  end)
+
+end)
+
+describe ("a proxy", function ()
+
+  local r1
+  local r2
+  
+  before_each (function ()
+    r1 = Data.new ()
+    r1.a = {
+      x = 1,
+    }
+    r1.b = {
+      x = 1,
+    }
+    r2 = Data.new ()
+    r2.a = {
+      x = 1,
+    }
+    r2.b = {
+      x = 1,
+    }
+  end)
+
+  it ("equality works", function ()
+    assert.are.equal     (r1.a.x, r1.a.x)
+    assert.are_not.equal (r1.a.x, r1.a.y)
+    assert.are_not.equal (r1.a.x, r1.b.x)
+    assert.are_not.equal (r1.a.x, r1.a  )
+    assert.are_not.equal (r1.a.x, r2.a.y)
   end)
 
 end)
