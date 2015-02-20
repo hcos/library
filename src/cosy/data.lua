@@ -30,7 +30,8 @@ local Options = {}
 function Options.new ()
   return {
     filter   = nil,
-    on_write = {},
+    on_read  = nil,
+    on_write = nil,
   }
 end
 
@@ -76,15 +77,13 @@ function Options.check (options)
       if not is_function (value) then
         return "options.filter must be a function"
       end
+    elseif key == "on_read" then
+      if not is_function (value) then
+        return "options.on_read must be a function"
+      end
     elseif key == "on_write" then
-      if type (value) ~= "table" then
-        return "options.on_write must be a table of name -> functions"
-      else
-        for k, v in pairs (value) do
-          if not is_function (v) then
-            return "options.on_write must be a table of name -> functions"
-          end
-        end
+      if not is_function (value) then
+        return "options.on_write must be a function"
       end
     else
       error ("unknown option: " .. tostring (key))
@@ -108,6 +107,7 @@ function Repository.__index (repository, key)
     return setmetatable ({
       [REPOSITORY] = repository,
       [KEYS      ] = { key },
+      [OPTIONS   ] = {},
     }, Proxy)
   end
 end
@@ -171,6 +171,7 @@ end
 Repository.placeholder = setmetatable ({
   [REPOSITORY] = false,
   [KEYS      ] = { false },
+  [OPTIONS   ] = {},
 }, Proxy)
 
 function Repository.linearize (repository, key)
@@ -300,25 +301,41 @@ end
 
 function Proxy.__index (proxy, key)
   if type (key) == "table" then
+    print (key)
     error "Not implemented"
   end
   if key ~= "_" then
     local repository = proxy [REPOSITORY]
     local keys       = proxy [KEYS      ]
+    local options    = proxy [OPTIONS   ]
     keys = table.pack (table.unpack (keys))
     keys [#keys+1] = key
     return setmetatable ({
       [REPOSITORY] = repository,
       [KEYS      ] = keys,
+      [OPTIONS   ] = options,
     }, Proxy)
   else
     local repository = proxy [REPOSITORY]
-    local filter     = repository [OPTIONS].filter
-    if filter and not filter (proxy) then
-      return nil
-    end
     local keys       = proxy [KEYS]
+    local options    = proxy [OPTIONS]
+    local within     = { within = true }
+    local filter     = repository [OPTIONS].filter
+    local on_read    = repository [OPTIONS].on_read
     local layers     = Repository.linearize (repository, keys [1])
+    if not options.within and filter then
+      nkeys = {}
+      for i = 1, #keys do
+        nkeys [#nkeys+1] = keys [i]
+        if not filter (setmetatable ({
+            [REPOSITORY] = repository,
+            [KEYS      ] = nkeys,
+            [OPTIONS   ] = within,
+          }, Proxy)) then
+          return nil
+        end
+      end
+    end
     for i = #layers, 1, -1 do
       local data = layers [i]
       for j = 2, #keys do
@@ -343,6 +360,7 @@ function Proxy.__index (proxy, key)
           proxy = setmetatable ({
             [REPOSITORY] = repository,
             [KEYS      ] = pkeys,
+            [OPTIONS   ] = options,
           }, Proxy)
           return proxy._
         elseif key == Repository.INHERITS then
@@ -353,11 +371,16 @@ function Proxy.__index (proxy, key)
         end
       end
       if data ~= nil then
+        local result
         if type (data) == "table" then
-          return data [Repository.VALUE]
+          result = data [Repository.VALUE]
         else
-          return data
+          result = data
         end
+        if not options.within and on_read then
+          on_read (proxy, result)
+        end
+        return result
       end
     end
     return nil
@@ -370,6 +393,7 @@ function Proxy.__call (proxy, n)
   end
   local repository = proxy [REPOSITORY]
   local keys       = proxy [KEYS      ]
+  local options    = proxy [OPTIONS   ]
   keys = table.pack (table.unpack (keys))
   for _ = 1, n do
     keys [#keys+1] = Repository.REFERS
@@ -377,6 +401,7 @@ function Proxy.__call (proxy, n)
   return setmetatable ({
     [REPOSITORY] = repository,
     [KEYS      ] = keys,
+    [OPTIONS   ] = options,
   }, Proxy)
 end
 
@@ -412,9 +437,10 @@ function Proxy.__newindex (proxy, key, value)
     data [last] = value
   end
   local repository = proxy [REPOSITORY]
+  local options    = proxy [OPTIONS]
   local on_write   = repository [OPTIONS].on_write
-  for _, f in pairs (on_write) do
-    f (proxy, key, value)
+  if not options.within and on_write then
+    on_write (proxy, key, value)
   end
 end
 

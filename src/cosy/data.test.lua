@@ -161,24 +161,31 @@ describe ("a repository", function ()
     end)
   end)
 
-  it ("can define a write hook", function ()
+  it ("can define a read hook", function ()
     assert.has.no.error (function ()
       local r = Data.new ()
-      Data.options (r).on_write.name = function () end
+      Data.options (r).on_read = function () end
     end)
   end)
 
-  it ("requires a table of write hooks", function ()
+  it ("requires a function as read hook", function ()
     assert.has.error (function ()
       local r = Data.new ()
-      Data.options (r).on_write = true
+      Data.options (r).on_read = true
+    end)
+  end)
+
+  it ("can define a write hook", function ()
+    assert.has.no.error (function ()
+      local r = Data.new ()
+      Data.options (r).on_write = function () end
     end)
   end)
 
   it ("requires a function as write hook", function ()
     assert.has.error (function ()
       local r = Data.new ()
-      Data.options (r).on_write.name = true
+      Data.options (r).on_write = true
     end)
   end)
 
@@ -235,12 +242,22 @@ describe ("a layer", function ()
     assert.spy (s).was.called ()
   end)
 
-  it ("invokes hook on write", function ()
+  it ("invokes on_read on read", function ()
     repository.c1 = {
       a = 1,
     }
     local s = spy.new (function () end)
-    Data.options (repository) .on_write.name = s
+    Data.options (repository) .on_read = s
+    local _ = repository.c1.a._
+    assert.spy (s).was.called ()
+  end)
+
+  it ("invokes on_write on write", function ()
+    repository.c1 = {
+      a = 1,
+    }
+    local s = spy.new (function () end)
+    Data.options (repository) .on_write = s
     repository.c1.a._ = 2
     assert.spy (s).was.called ()
   end)
