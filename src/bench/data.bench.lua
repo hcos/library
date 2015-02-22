@@ -24,7 +24,7 @@ end
 do
   local repository =Data.new {}
   local quantity = 1000000
-  Data.options (repository) .on_write.name = function () end
+  Data.options (repository) .on_write = function () end
   collectgarbage ()
   local start    = Platform.time ()
   local depends  = {}

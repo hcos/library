@@ -104,16 +104,21 @@ function Repository.__index (repository, key)
   if found == nil then
     return nil
   else
+    local options = repository [OPTIONS]
     return setmetatable ({
       [REPOSITORY] = repository,
       [KEYS      ] = { key },
-      [OPTIONS   ] = {},
+      [OPTIONS   ] = {
+        filter   = options.filter,
+        on_read  = options.on_read,
+        on_write = options.on_write,
+      },
     }, Proxy)
   end
 end
 
 function Repository.__newindex (repository, key, value)
-  repository [CONTENTS] [key] = Repository.deproxify (value)
+  repository [CONTENTS] [key] = Repository.import (value)
 end
 
 function Repository.raw (repository, key)
@@ -128,8 +133,8 @@ function Repository.options (repository)
   return Options.wrap (repository [OPTIONS])
 end
 
-function Repository.deproxify (t, within)
-  local deproxify = Repository.deproxify
+function Repository.import (t, within)
+  local import = Repository.import
   if type (t) ~= "table" then
     return t
   end
@@ -163,7 +168,10 @@ function Repository.deproxify (t, within)
     or k == Repository.REFERS then
       w = k
     end
-    t [k] = deproxify (v, w)
+    t [k] = import (v, w)
+    if k == Repository.DEPENDS then
+      -- TODO: clean selectively the repository [LINEARIZED] cache
+    end
   end
   return t
 end
@@ -174,7 +182,7 @@ Repository.placeholder = setmetatable ({
   [OPTIONS   ] = {},
 }, Proxy)
 
-function Repository.linearize (repository, key)
+function Repository.linearize (repository, key, parents)
   local function linearize (t, seen)
     local cached = repository [LINEARIZED] [t]
     if cached then
@@ -185,12 +193,12 @@ function Repository.linearize (repository, key)
     end
     seen [t] = true
     -- Prepare:
-    local depends = t [Repository.DEPENDS]
+    local depends = parents (t)
     local l, n = {}, {}
     if depends then
       depends = table.pack (table.unpack (depends))
       for i = 1, #depends do
-        depends [i] = Repository.raw (repository, depends [i])
+        depends [i] = depends [i]
       end
       l [#l+1] = depends
       n [#n+1] = #depends
@@ -296,7 +304,7 @@ function Repository.linearize (repository, key)
 --]]
     return result
   end
-  return linearize (Repository.raw (repository, key), {})
+  return linearize (key, {})
 end
 
 function Proxy.__index (proxy, key)
@@ -304,10 +312,10 @@ function Proxy.__index (proxy, key)
     print (key)
     error "Not implemented"
   end
+  local repository = proxy [REPOSITORY]
+  local keys       = proxy [KEYS]
+  local options    = proxy [OPTIONS]
   if key ~= "_" then
-    local repository = proxy [REPOSITORY]
-    local keys       = proxy [KEYS      ]
-    local options    = proxy [OPTIONS   ]
     keys = table.pack (table.unpack (keys))
     keys [#keys+1] = key
     return setmetatable ({
@@ -316,14 +324,18 @@ function Proxy.__index (proxy, key)
       [OPTIONS   ] = options,
     }, Proxy)
   else
-    local repository = proxy [REPOSITORY]
-    local keys       = proxy [KEYS]
-    local options    = proxy [OPTIONS]
-    local within     = { within = true }
-    local filter     = repository [OPTIONS].filter
-    local on_read    = repository [OPTIONS].on_read
-    local layers     = Repository.linearize (repository, keys [1])
-    if not options.within and filter then
+    local filter     = options.filter
+    local on_read    = options.on_read
+    local contents   = repository [CONTENTS]
+    local layers     = Repository.linearize (repository, keys [1], function (t)
+      return Repository.raw (repository) [t] [Repository.DEPENDS]
+    end)
+    local within     = {
+      filter   = nil,
+      on_read  = nil,
+      on_write = nil,
+    }
+    if filter then
       nkeys = {}
       for i = 1, #keys do
         nkeys [#nkeys+1] = keys [i]
@@ -337,7 +349,7 @@ function Proxy.__index (proxy, key)
       end
     end
     for i = #layers, 1, -1 do
-      local data = layers [i]
+      local data = contents [layers [i]]
       for j = 2, #keys do
         if type (data) ~= "table" then
           data = nil
@@ -377,7 +389,7 @@ function Proxy.__index (proxy, key)
         else
           result = data
         end
-        if not options.within and on_read then
+        if on_read then
           on_read (proxy, result)
         end
         return result
@@ -409,7 +421,7 @@ function Proxy.__newindex (proxy, key, value)
   if type (key) == "table" then
     error "Not implemented"
   end
-  value = Repository.deproxify (value)
+  value = Repository.import (value)
   local keys = proxy [KEYS]
   if key ~= "_" then
     keys = table.pack (table.unpack (keys))
@@ -436,10 +448,8 @@ function Proxy.__newindex (proxy, key, value)
   else
     data [last] = value
   end
-  local repository = proxy [REPOSITORY]
-  local options    = proxy [OPTIONS]
-  local on_write   = repository [OPTIONS].on_write
-  if not options.within and on_write then
+  local on_write = proxy [OPTIONS].on_write
+  if on_write then
     on_write (proxy, key, value)
   end
 end
