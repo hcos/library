@@ -13,12 +13,13 @@ end
 Repository.__metatable = "cosy.data"
 Proxy     .__metatable = "cosy.data.proxy"
 
-CURRENT    = make_tag "CURRENT"
-CONTENTS   = make_tag "CONTENTS"
-LINEARIZED = make_tag "LINEARIZED"
-OPTIONS    = make_tag "OPTIONS"
-REPOSITORY = make_tag "REPOSITORY"
-KEYS       = make_tag "KEYS"
+local CURRENT    = make_tag "CURRENT"
+local CONTENTS   = make_tag "CONTENTS"
+local LINEARIZED = make_tag "LINEARIZED"
+local OPTIONS    = make_tag "OPTIONS"
+local REPOSITORY = make_tag "REPOSITORY"
+local KEYS       = make_tag "KEYS"
+local UNIQUES    = make_tag "UNIQUES"
 
 Repository.VALUE    = "_"
 Repository.DEPENDS  = "cosy:depends"
@@ -94,8 +95,9 @@ end
 function Repository.new ()
   return setmetatable ({
     [CONTENTS  ] = {},
-    [LINEARIZED] = setmetatable ({}, { __mode = "kv" }),
+    [LINEARIZED] = setmetatable ({}, { __mode = "k" }),
     [OPTIONS   ] = Options.new (),
+    [UNIQUES   ] = setmetatable ({}, { __mode = "v" }),
   }, Repository)
 end
 
@@ -104,89 +106,88 @@ function Repository.__index (repository, key)
   if found == nil then
     return nil
   else
-    local options = repository [OPTIONS]
-    return setmetatable ({
+    return Proxy.new {
       [REPOSITORY] = repository,
       [KEYS      ] = { key },
-      [OPTIONS   ] = {
-        filter   = options.filter,
-        on_read  = options.on_read,
-        on_write = options.on_write,
-      },
-    }, Proxy)
+    }
   end
 end
 
 function Repository.__newindex (repository, key, value)
-  repository [CONTENTS] [key] = Repository.import (value)
+  local proxy   = Proxy.new {
+    [REPOSITORY] = repository,
+    [KEYS      ] = {},
+  }
+  proxy [key] = Repository.import (key, value)
 end
 
-function Repository.raw (repository, key)
-  if key == nil then
-    return repository [CONTENTS]
-  else
-    return repository [CONTENTS] [key]
-  end
+function Repository.raw (repository)
+  return repository [CONTENTS]
 end
 
 function Repository.options (repository)
   return Options.wrap (repository [OPTIONS])
 end
 
-function Repository.import (t, within)
-  local import = Repository.import
-  if type (t) ~= "table" then
-    return t
+function Repository.import (key, value, within)
+  if type (value) ~= "table" then
+    return value
   end
-  if getmetatable (t) == Proxy.__metatable then
+  if key == Repository.DEPENDS then
+    within = Repository.DEPENDS
+  elseif key == Repository.INHERITS then
+    within = Repository.INHERITS
+  elseif key == Repository.REFERS then
+    within = Repository.REFERS
+  end
+  if getmetatable (value) == Proxy.__metatable then
     if within == Repository.DEPENDS then
-      t = t [KEYS] [1]
+      value = value [KEYS] [1]
     elseif within == Repository.INHERITS 
         or within == Repository.REFERS then
-      local keys = t [KEYS]
+      local keys = value [KEYS]
       local path = {}
       for i = 2, #keys do
         path [i-1] = keys [i]
       end
-      t = path
+      value = path
     else
-      local keys = t [KEYS]
+      local keys = value [KEYS]
       local path = {}
       for i = 2, #keys do
         path [i-1] = keys [i]
       end
-      t = {
+      value = {
         [Repository.REFERS ] = path,
       }
     end
-    return t
+    return value
   end
-  for k, v in pairs (t) do
-    local w = within
-    if k == Repository.DEPENDS
-    or k == Repository.INHERITS
-    or k == Repository.REFERS then
-      w = k
-    end
-    t [k] = import (v, w)
-    if k == Repository.DEPENDS then
-      -- TODO: clean selectively the repository [LINEARIZED] cache
-    end
+  local import = Repository.import
+  for k, v in pairs (value) do
+    value [k] = import (k, v, within)
   end
-  return t
+  return value
 end
 
-Repository.placeholder = setmetatable ({
-  [REPOSITORY] = false,
-  [KEYS      ] = { false },
-  [OPTIONS   ] = {},
-}, Proxy)
-
-function Repository.linearize (repository, key, parents)
-  local function linearize (t, seen)
-    local cached = repository [LINEARIZED] [t]
+function Repository.linearize (proxy, parents)
+  local repository = proxy [REPOSITORY]
+  local cache      = repository [LINEARIZED]
+  if not cache [parents] then
+    -- Store proxy -> result
+    cache [parents] = setmetatable ({}, { __mode = "k" })
+  end
+  cache = cache [parents]
+  local seen = {}
+  local function linearize (t)
+--[[
+    do
+      print ("t", t)
+    end
+--]]
+    local cached = cache [t]
     if cached then
-      return cached
+--      return cached
     end
     if seen [t] then
       return {}
@@ -225,7 +226,7 @@ function Repository.linearize (repository, key, parents)
       for i = 1, #l do
         local x = {}
         for j = 1, #(l [i]) do
-          x [j] = l [i] [j].name
+          x [j] = tostring (l [i] [j])
         end
         dump [i] = "{ " .. table.concat (x, ", ") .. " }"
       end
@@ -245,7 +246,7 @@ function Repository.linearize (repository, key, parents)
     do
       local dump = {}
       for k, v in pairs (tails) do
-        dump [#dump+1] = k.name .. " = " .. tostring (v)
+        dump [#dump+1] = tostring (k) .. " = " .. tostring (v)
       end
       print ("tails", table.concat (dump, ", "))
     end
@@ -292,89 +293,120 @@ function Repository.linearize (repository, key, parents)
     for i = 1, #result/2 do
       result [i], result [#result-i+1] = result [#result-i+1], result [i]
     end
-    repository [LINEARIZED] [t] = result
+    cache [t] = result
 --[[
     do
       local dump = {}
       for i = 1, #result do
-        dump [i] = result [i].name
+        dump [i] = tostring (result [i])
       end
       print ("result", table.concat (dump, ", "))
     end
 --]]
     return result
   end
-  return linearize (key, {})
+  return linearize (proxy)
+end
+
+function Proxy.new (t)
+  local repository = t [REPOSITORY]
+  local keys       = t [KEYS]
+  local uniques    = repository [UNIQUES]
+  local parts      = {}
+  parts [1] = tostring (repository)
+  for i = 1, #(keys) do
+    local key = keys [i]
+    parts [i+1] = type (key) .. ":" .. tostring (key)
+  end
+  local identifier = table.concat (parts, "|")
+  local result     = uniques [identifier]
+  if not result then
+    result = setmetatable (t, Proxy)
+    uniques [identifier] = result
+  end
+  return result
+end
+
+function Repository.depends (proxy)
+  local repository = proxy [REPOSITORY]
+  local keys       = proxy [KEYS      ]
+  local contents   = repository [CONTENTS]
+  assert (#keys == 1)
+  local key        = keys [1]
+  if contents [key] then
+    local depends = contents [key] [Repository.DEPENDS]
+    if not depends then
+      return nil
+    end
+    depends = table.pack (table.unpack (depends))
+    for i = 1, #depends do
+      depends [i] = Proxy.new {
+        [REPOSITORY] = repository,
+        [KEYS      ] = { depends [i] },
+      }
+    end
+    return depends
+  else
+    return nil
+  end
 end
 
 function Proxy.__index (proxy, key)
   if type (key) == "table" then
-    print (key)
     error "Not implemented"
   end
   local repository = proxy [REPOSITORY]
   local keys       = proxy [KEYS]
-  local options    = proxy [OPTIONS]
   if key ~= "_" then
     keys = table.pack (table.unpack (keys))
     keys [#keys+1] = key
-    return setmetatable ({
+    return Proxy.new {
       [REPOSITORY] = repository,
       [KEYS      ] = keys,
-      [OPTIONS   ] = options,
-    }, Proxy)
+    }
   else
+    proxy = Proxy.dereference (proxy)
+    if proxy == nil then
+      return nil
+    end
+    local keys       = proxy [KEYS]
+    local contents   = repository [CONTENTS]
+    local options    = repository [OPTIONS ]
     local filter     = options.filter
     local on_read    = options.on_read
-    local contents   = repository [CONTENTS]
-    local layers     = Repository.linearize (repository, keys [1], function (t)
-      return Repository.raw (repository) [t] [Repository.DEPENDS]
-    end)
-    local within     = {
-      filter   = nil,
-      on_read  = nil,
-      on_write = nil,
+    local root       = Proxy.new {
+      [REPOSITORY] = repository,
+      [KEYS      ] = { keys [1] },
     }
+    local layers     = Repository.linearize (root, Repository.depends)
     if filter then
-      nkeys = {}
+      local nkeys = {}
       for i = 1, #keys do
         nkeys [#nkeys+1] = keys [i]
-        if not filter (setmetatable ({
+        if not filter (Proxy.new {
             [REPOSITORY] = repository,
             [KEYS      ] = nkeys,
-            [OPTIONS   ] = within,
-          }, Proxy)) then
+          }) then
           return nil
         end
       end
     end
     for i = #layers, 1, -1 do
-      local data = contents [layers [i]]
+      local layer = layers [i] [KEYS] [1]
+      local data  = contents [layer]
       for j = 2, #keys do
         if type (data) ~= "table" then
           data = nil
           break
         end
-        data = data [keys [j]]
+        local key = keys [j]
+        data = data [key]
         if data == nil then
           break
         end
         -- Special cases:
-        local key = keys [j]
         if key == Repository.REFERS then
-          local pkeys = { keys [1] }
-          for k = 1, #data do
-            pkeys [#pkeys + 1] = data [k]
-          end
-          for k = j+1, #keys do
-            pkeys [#pkeys+1] = keys [k]
-          end
-          proxy = setmetatable ({
-            [REPOSITORY] = repository,
-            [KEYS      ] = pkeys,
-            [OPTIONS   ] = options,
-          }, Proxy)
-          return proxy._
+          assert (false)
         elseif key == Repository.INHERITS then
           -- TODO
           error "Not implemented"
@@ -405,50 +437,118 @@ function Proxy.__call (proxy, n)
   end
   local repository = proxy [REPOSITORY]
   local keys       = proxy [KEYS      ]
-  local options    = proxy [OPTIONS   ]
   keys = table.pack (table.unpack (keys))
   for _ = 1, n do
     keys [#keys+1] = Repository.REFERS
   end
-  return setmetatable ({
+  return Proxy.new {
     [REPOSITORY] = repository,
     [KEYS      ] = keys,
-    [OPTIONS   ] = options,
-  }, Proxy)
+  }
+end
+
+function Proxy.dereference (proxy)
+  local repository = proxy [REPOSITORY]
+  local keys       = proxy [KEYS      ]
+  local contents   = repository [CONTENTS]
+  local root       = Proxy.new {
+    [REPOSITORY] = repository,
+    [KEYS      ] = { keys [1] },
+  }
+  local layers = Repository.linearize (root, Repository.depends)
+  while true do
+    keys = proxy [KEYS]
+    local n = 0
+    for i = 1, #keys do
+      if keys [i] == Repository.REFERS then
+        n = i
+        break
+      end
+    end
+    if n == 0 then
+      return proxy
+    end
+    proxy = nil
+    for l = #layers, 1, -1 do
+      local layer = layers [l] [KEYS] [1]
+      local data  = contents [layer]
+      if type (data) ~= "table" then
+        break
+      end
+      for j = 2, n do
+        local key = keys [j]
+        data = data [key]
+        if type (data) ~= "table" then
+          data = nil
+          break
+        end
+      end
+      if data ~= nil then
+        local pkeys = { keys [1] }
+        for k = 1, #data do
+          pkeys [#pkeys + 1] = data [k]
+        end
+        for k = n+1, #keys do
+          pkeys [#pkeys+1] = keys [k]
+        end
+        proxy = Proxy.new {
+          [REPOSITORY] = repository,
+          [KEYS      ] = pkeys,
+        }
+        break
+      end
+    end
+    if proxy == nil then
+      return nil
+    end
+  end
 end
 
 function Proxy.__newindex (proxy, key, value)
   if type (key) == "table" then
     error "Not implemented"
   end
-  value = Repository.import (value)
-  local keys = proxy [KEYS]
-  if key ~= "_" then
-    keys = table.pack (table.unpack (keys))
-    keys [#keys + 1] = key
+  local repository = proxy [REPOSITORY]
+  local keys       = proxy [KEYS      ]
+  local options    = repository [OPTIONS ]
+  local contents   = repository [CONTENTS]
+  local nkeys = table.pack (table.unpack (keys))
+  nkeys [#nkeys+1] = key
+  proxy = Proxy.dereference (Proxy.new {
+    [REPOSITORY] = repository,
+    [KEYS      ] = nkeys,
+  })
+  if proxy == nil then
+    error "Unknown location"
   end
-  local data = proxy [REPOSITORY]
-  data = Repository.raw (data)
-  for i = 1, #keys-1 do
-    local key = keys [i]
-    if data [key] == nil then
-      data [key] = {}
+  value = Repository.import (key, value)
+  local data     = contents
+  local is_      = (key == "_")
+  keys = proxy [KEYS]
+  for i = 1, #keys - 1 do
+    key = keys [i]
+    if type (data [key]) ~= "table" then
+      data [key] = {
+        [Repository.VALUE] = data [key],
+      }
     end
     data = data [key]
   end
-  local last = keys [#keys]
-  if key == "_" then
+  key = keys [#keys]
+  if is_ then
     if type (value) == "table" then
       error "Illegal value"
-    elseif type (data [last]) == "table" then
-      data [last] [Repository.VALUE] = value
+    elseif type (data [key]) == "table" then
+      data [key] [Repository.VALUE] = value
     else
-      data [last] = value
+      data [key] = value
     end
   else
-    data [last] = value
+    data [key] = value
   end
-  local on_write = proxy [OPTIONS].on_write
+  local updated = keys [1]
+  -- Call on_write handler:
+  local on_write = options.on_write
   if on_write then
     on_write (proxy, key, value)
   end
@@ -467,7 +567,12 @@ function Proxy.__len (proxy)
 end
 
 function Proxy.__tostring (proxy)
-  error "Not implemented"
+  local t    = {}
+  local keys = proxy [KEYS]
+  for i = 1, #keys do
+    t [i] = tostring (keys [i])
+  end
+  return table.concat (t, ".")
 end
 
 function Proxy.__unm (proxy)
@@ -502,25 +607,6 @@ function Proxy.__concat (lhs, rhs)
   error "Not implemented"
 end
 
-function Proxy.__eq (lhs, rhs)
-  local lrepository = lhs [REPOSITORY]
-  local rrepository = rhs [REPOSITORY]
-  if lrepository [CONTENTS] ~= rrepository [CONTENTS] then
-    return false
-  end
-  local lkeys = lhs [KEYS]
-  local rkeys = rhs [KEYS]
-  if #lkeys ~= #rkeys then
-    return false
-  end
-  for i = 1, #lkeys do
-    if lkeys [i] ~= rkeys [i] then
-      return false
-    end
-  end
-  return true
-end
-
 function Proxy.__lt (lhs, rhs)
   error "Not implemented"
 end
@@ -528,5 +614,12 @@ end
 function Proxy.__le (lhs, rhs)
   error "Not implemented"
 end
+
+Repository.nouse = Repository.new ()
+
+Repository.placeholder = Proxy.new {
+  [REPOSITORY] = Repository.nouse,
+  [KEYS      ] = { false },
+}
 
 return Repository

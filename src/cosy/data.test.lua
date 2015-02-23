@@ -8,12 +8,10 @@ Platform.logger.enabled = false
 describe ("c3 linearization", function ()
 
   local repository
-  local parents = function (t)
-    return Data.raw (repository) [t] [Data.DEPENDS]
-  end
+  local parents = Data.depends
   
   before_each (function ()
-    repository = Data.new {}
+    repository = Data.new ()
   end)
 
   it ("works as expected", function ()
@@ -58,35 +56,36 @@ describe ("c3 linearization", function ()
       [Data.DEPENDS] = { repository.k, repository.j, repository.i },
     }
 
-    assert.are.same (Data.linearize (repository, "o", parents), {
-      "o",
+    assert.are.same (Data.linearize (repository.o, parents), {
+      repository.o,
     })
-    assert.are.same (Data.linearize (repository, "a", parents), {
-      "o", "a",
+    assert.are.same (Data.linearize (repository.a, parents), {
+      repository.o, repository.a,
     })
-    assert.are.same (Data.linearize (repository, "b", parents), {
-      "o", "b",
+    assert.are.same (Data.linearize (repository.b, parents), {
+      repository.o, repository.b,
     })
-    assert.are.same (Data.linearize (repository, "c", parents), {
-      "o", "c",
+    assert.are.same (Data.linearize (repository.c, parents), {
+      repository.o, repository.c,
     })
-    assert.are.same (Data.linearize (repository, "d", parents), {
-      "o", "d",
+    assert.are.same (Data.linearize (repository.d, parents), {
+      repository.o, repository.d,
     })
-    assert.are.same (Data.linearize (repository, "e", parents), {
-      "o", "e",
+    assert.are.same (Data.linearize (repository.e, parents), {
+      repository.o, repository.e,
     })
-    assert.are.same (Data.linearize (repository, "i", parents), {
-      "o", "c", "b", "a", "i"
+    assert.are.same (Data.linearize (repository.i, parents), {
+      repository.o, repository.c, repository.b, repository.a, repository.i
     })
-    assert.are.same (Data.linearize (repository, "j", parents), {
-      "o", "e", "b", "d", "j"
+    assert.are.same (Data.linearize (repository.j, parents), {
+      repository.o, repository.e, repository.b, repository.d, repository.j
     })
-    assert.are.same (Data.linearize (repository, "k", parents), {
-      "o", "a", "d", "k"
+    assert.are.same (Data.linearize (repository.k, parents), {
+      repository.o, repository.a, repository.d, repository.k
     })
-    assert.are.same (Data.linearize (repository, "z", parents), {
-      "o", "e", "c", "b", "a", "d", "k", "j", "i", "z",
+    assert.are.same (Data.linearize (repository.z, parents), {
+      repository.o, repository.e, repository.c, repository.b, repository.a,
+      repository.d, repository.k, repository.j, repository.i, repository.z,
     })
   end)
 
@@ -99,12 +98,11 @@ describe ("c3 linearization", function ()
       name = "b",
       [Data.DEPENDS] = { "a" },
     }
-
-    assert.are.same (Data.linearize (repository, "a", parents), {
-      "b", "a",
+    assert.are.same (Data.linearize (repository.a, parents), {
+      repository.b, repository.a,
     })
-    assert.are.same (Data.linearize (repository, "b", parents), {
-      "a", "b",
+    assert.are.same (Data.linearize (repository.b, parents), {
+      repository.a, repository.b,
     })
   end)
 
@@ -122,7 +120,7 @@ describe ("c3 linearization", function ()
       [Data.DEPENDS] = { "a", "b" },
     }
     assert.has.error (function ()
-      Data.linearize (repository, "c", parents)
+      Data.linearize (repository.c, parents)
     end)
   end)
 
@@ -216,9 +214,11 @@ describe ("a layer", function ()
 
   it ("allows to write values", function ()
     repository.c1 = {}
+    repository.c1.c   = 2
     repository.c1.a._ = 1
     assert.are.equal (repository.c1.a._, 1)
     assert.is_nil    (repository.c1.b._)
+    assert.are.equal (repository.c1.c._, 2)
   end)
 
   it ("invokes filter on read", function ()
