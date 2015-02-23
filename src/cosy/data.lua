@@ -187,7 +187,7 @@ function Repository.linearize (proxy, parents)
 --]]
     local cached = cache [t]
     if cached then
---      return cached
+      return cached
     end
     if seen [t] then
       return {}
@@ -546,7 +546,27 @@ function Proxy.__newindex (proxy, key, value)
   else
     data [key] = value
   end
-  local updated = keys [1]
+  -- Clean cache:
+  if #keys == 1 or (#keys >= 2 and keys [2] == Repository.DEPENDS) then
+    local updated = Proxy.new {
+      [REPOSITORY] = repository,
+      [KEYS      ] = { keys [1] },
+    }
+    local cache = repository [LINEARIZED]
+    for f, c in pairs (cache) do -- iterate over caches
+      local remove = {}
+      for k, l in pairs (c) do
+        for j = 1, #l do
+          if l [j] == updated then
+            remove [#remove+1] = l [j]
+          end
+        end
+      end
+      for i = 1, #remove do
+        c [remove [i]] = nil
+      end
+    end
+  end
   -- Call on_write handler:
   local on_write = options.on_write
   if on_write then
