@@ -3,8 +3,8 @@ local Data     = require "cosy.data"
 local Platform = require "cosy.platform"
 
 do
-  local repository =Data.new {}
-  local quantity = 1000000
+  local repository = Data.new {}
+  local quantity = 100000
   collectgarbage ()
   local start    = Platform.time ()
   local depends  = {}
@@ -22,8 +22,8 @@ do
 end
 
 do
-  local repository =Data.new {}
-  local quantity = 1000000
+  local repository = Data.new {}
+  local quantity = 100000
   Data.options (repository) .on_write = function () end
   collectgarbage ()
   local start    = Platform.time ()
@@ -47,8 +47,8 @@ for _, width in ipairs {
   for _, depth in ipairs {
     1, 2, 5, 10, 20,
   } do
-    local repository =Data.new {}
-    local quantity = 1000000
+    local repository = Data.new {}
+    local quantity = 100000
     repository [0] = {}
     for i = 1, width do
       local t = {}
@@ -73,6 +73,7 @@ for _, width in ipairs {
       for j = 1, depth do
         d = d [j]
       end
+      local _ = d._
 --      assert.are.equal (d._, i % width + 1)
     end
     local finish   = Platform.time ()
