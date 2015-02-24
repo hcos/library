@@ -201,7 +201,7 @@ describe ("a layer", function ()
   end)
 
   it ("can be missing", function ()
-    assert.is_nil    (repository.c1)
+    assert.is_not_nil (repository.c1)
   end)
 
   it ("allows to read values", function ()
@@ -510,6 +510,28 @@ describe ("a repository", function ()
     assert.has.no.error (function ()
       Platform.yaml.encode (Data.raw (repository))
     end)
+  end)
+
+end)
+
+describe ("garbage collection", function ()
+
+  it ("works", function ()
+    local data   = Data.new ()
+    local count1 = collectgarbage "count"
+    local stored = {}
+    local n      = 1000
+    for i = 1, n do
+      stored [i] = data [i].a.b.c.d.e.f.g.h.i.j.k.l.m.n.o.p.q.r.s.t.u.v.w.x.y.z
+    end
+    local count2 = collectgarbage "count"
+    collectgarbage ()
+    local count3 = collectgarbage "count"
+    stored = nil
+    collectgarbage ()
+    local count4 = collectgarbage "count"
+    assert.is_true (math.abs (count2 - count3) < 10)
+    assert.is_true (count3 - count4 > n)
   end)
 
 end)

@@ -19,7 +19,8 @@ local LINEARIZED = make_tag "LINEARIZED"
 local OPTIONS    = make_tag "OPTIONS"
 local REPOSITORY = make_tag "REPOSITORY"
 local KEYS       = make_tag "KEYS"
-local UNIQUES    = make_tag "UNIQUES"
+local PROXIES    = make_tag "PROXIES"
+local PARENT     = make_tag "PARENT"
 
 Repository.VALUE    = "_"
 Repository.DEPENDS  = "cosy:depends"
@@ -93,32 +94,27 @@ function Options.check (options)
 end
 
 function Repository.new ()
-  return setmetatable ({
+  local repository = setmetatable ({
     [CONTENTS  ] = {},
-    [LINEARIZED] = setmetatable ({}, { __mode = "k" }),
+    [LINEARIZED] = {},
     [OPTIONS   ] = Options.new (),
-    [UNIQUES   ] = setmetatable ({}, { __mode = "v" }),
+    [PROXIES   ] = false,
   }, Repository)
+  repository [PROXIES] = setmetatable ({
+    [REPOSITORY] = repository,
+    [KEYS      ] = {},
+    [PROXIES   ] = setmetatable ({}, { __mode = "kv" }),
+    [PARENT    ] = false,
+  }, Proxy)
+  return repository
 end
 
 function Repository.__index (repository, key)
-  local found = repository [CONTENTS] [key]
-  if found == nil then
-    return nil
-  else
-    return Proxy.new {
-      [REPOSITORY] = repository,
-      [KEYS      ] = { key },
-    }
-  end
+  return repository [PROXIES] [key]
 end
 
 function Repository.__newindex (repository, key, value)
-  local proxy   = Proxy.new {
-    [REPOSITORY] = repository,
-    [KEYS      ] = {},
-  }
-  proxy [key] = Repository.import (key, value)
+  repository [PROXIES] [key] = Repository.import (key, value)
 end
 
 function Repository.raw (repository)
@@ -180,15 +176,15 @@ function Repository.linearize (proxy, parents)
   cache = cache [parents]
   local seen = {}
   local function linearize (t)
-    local identifier = Proxy.identifier (t)
-    local cached = cache [identifier]
+--    local identifier = Proxy.identifier (t)
+    local cached = cache [t]
     if cached then
       return cached
     end
-    if seen [identifier] then
+    if seen [t] then
       return {}
     end
-    seen [identifier] = true
+    seen [t] = true
     -- Prepare:
     local depends = parents (t)
     local l, n = {}, {}
@@ -234,7 +230,8 @@ function Repository.linearize (proxy, parents)
     for i = 1, #l do
       local v = l [i]
       for j = 1, #v do
-        local w   = Proxy.identifier (v [j])
+--        local w   = Proxy.identifier (v [j])
+        local w   = v [j]
         tails [w] = (tails [w] or 0) + 1
       end
     end
@@ -253,14 +250,14 @@ function Repository.linearize (proxy, parents)
       for i = #l, 1, -1 do
         local vl, vn    = l [i], n [i]
         local first     = vl [vn]
-        local first_id = Proxy.identifier (first)
+        local first_id = first -- Proxy.identifier (first)
         tails [first_id] = tails [first_id] - 1
       end
       local head
       for i = #l, 1, -1 do
         local vl, vn   = l [i], n [i]
         local first    = vl [vn]
-        local first_id = Proxy.identifier (first)
+        local first_id = first -- Proxy.identifier (first)
         if tails [first_id] == 0 then
           head = first
           break
@@ -276,7 +273,7 @@ function Repository.linearize (proxy, parents)
         if first == head then
           n [i] = n [i] - 1
         else
-          local first_id = Proxy.identifier (first)
+          local first_id = first -- Proxy.identifier (first)
           tails [first_id] = tails [first_id] + 1
         end
       end
@@ -292,7 +289,7 @@ function Repository.linearize (proxy, parents)
     for i = 1, #result/2 do
       result [i], result [#result-i+1] = result [#result-i+1], result [i]
     end
-    cache [identifier] = result
+    cache [t] = result
 --[[
     do
       local dump = {}
@@ -307,28 +304,7 @@ function Repository.linearize (proxy, parents)
   return linearize (proxy)
 end
 
-function Proxy.new (t)
-  return setmetatable (t, Proxy)
 --[[
-  local repository = t [REPOSITORY]
-  local keys       = t [KEYS]
-  local uniques    = repository [UNIQUES]
-  local parts      = {}
-  parts [1] = tostring (repository)
-  for i = 1, #(keys) do
-    local key = keys [i]
-    parts [i+1] = type (key) .. ":" .. tostring (key)
-  end
-  local identifier = table.concat (parts, "|")
-  local result     = uniques [identifier]
-  if not result then
-    result = setmetatable (t, Proxy)
-    uniques [identifier] = result
-  end
-  return result
---]]
-end
-
 function Proxy.identifier (t)
   local repository = t [REPOSITORY]
   local keys       = t [KEYS]
@@ -340,6 +316,7 @@ function Proxy.identifier (t)
   end
   return table.concat (parts, "|")
 end
+--]]
 
 function Repository.depends (proxy)
   local repository = proxy [REPOSITORY]
@@ -347,37 +324,45 @@ function Repository.depends (proxy)
   local contents   = repository [CONTENTS]
   assert (#keys == 1)
   local key        = keys [1]
-  if contents [key] then
-    local depends = contents [key] [Repository.DEPENDS]
-    if not depends then
-      return nil
-    end
-    depends = table.pack (table.unpack (depends))
-    for i = 1, #depends do
-      depends [i] = Proxy.new {
-        [REPOSITORY] = repository,
-        [KEYS      ] = { depends [i] },
-      }
-    end
-    return depends
-  else
+  local data       = contents [key]
+  if data == nil then
     return nil
   end
+  local depends = data [Repository.DEPENDS]
+  if depends == nil then
+    return nil
+  end
+  depends = table.pack (table.unpack (depends))
+  for i = 1, #depends do
+    depends [i] = repository [depends [i]]
+  end
+  return depends
 end
 
 function Proxy.__index (proxy, key)
   if type (key) == "table" then
     error "Not implemented"
   end
+  do
+    local proxies = proxy [PROXIES]
+    local found   = proxies [key]
+    if found then
+      return found
+    end
+  end
   local repository = proxy [REPOSITORY]
   local keys       = proxy [KEYS]
   if key ~= "_" then
     keys = table.pack (table.unpack (keys))
     keys [#keys+1] = key
-    return Proxy.new {
+    local result = setmetatable ({
       [REPOSITORY] = repository,
       [KEYS      ] = keys,
-    }
+      [PROXIES   ] = setmetatable ({}, { __mode = "kv" }),
+      [PARENT    ] = proxy,
+    }, Proxy)
+    proxy [PROXIES] [key] = result
+    return result
   else
     proxy = Proxy.dereference (proxy)
     if proxy == nil then
@@ -388,19 +373,13 @@ function Proxy.__index (proxy, key)
     local options    = repository [OPTIONS ]
     local filter     = options.filter
     local on_read    = options.on_read
-    local root       = Proxy.new {
-      [REPOSITORY] = repository,
-      [KEYS      ] = { keys [1] },
-    }
+    local root       = repository [keys [1]]
     local layers     = Repository.linearize (root, Repository.depends)
     if filter then
-      local nkeys = {}
+      local p = repository
       for i = 1, #keys do
-        nkeys [#nkeys+1] = keys [i]
-        if not filter (Proxy.new {
-            [REPOSITORY] = repository,
-            [KEYS      ] = nkeys,
-          }) then
+        p = p [keys [i]]
+        if not filter (p) then
           return nil
         end
       end
@@ -446,30 +425,18 @@ function Proxy.__index (proxy, key)
 end
 
 function Proxy.__call (proxy, n)
-  if n == nil then
-    n = 1
+  for _ = 1, n or 1 do
+    proxy = proxy [Repository.REFERS]
   end
-  local repository = proxy [REPOSITORY]
-  local keys       = proxy [KEYS      ]
-  keys = table.pack (table.unpack (keys))
-  for _ = 1, n do
-    keys [#keys+1] = Repository.REFERS
-  end
-  return Proxy.new {
-    [REPOSITORY] = repository,
-    [KEYS      ] = keys,
-  }
+  return proxy
 end
 
 function Proxy.dereference (proxy)
   local repository = proxy [REPOSITORY]
   local keys       = proxy [KEYS      ]
   local contents   = repository [CONTENTS]
-  local root       = Proxy.new {
-    [REPOSITORY] = repository,
-    [KEYS      ] = { keys [1] },
-  }
-  local layers = Repository.linearize (root, Repository.depends)
+  local root       = repository [keys [1]]
+  local layers     = Repository.linearize (root, Repository.depends)
   while true do
     keys = proxy [KEYS]
     local n = 0
@@ -498,17 +465,13 @@ function Proxy.dereference (proxy)
         end
       end
       if data ~= nil then
-        local pkeys = { keys [1] }
+        proxy = repository [keys [1]]
         for k = 1, #data do
-          pkeys [#pkeys + 1] = data [k]
+          proxy = proxy [data [k]]
         end
         for k = n+1, #keys do
-          pkeys [#pkeys+1] = keys [k]
+          proxy = proxy [keys [k]]
         end
-        proxy = Proxy.new {
-          [REPOSITORY] = repository,
-          [KEYS      ] = pkeys,
-        }
         break
       end
     end
@@ -523,22 +486,18 @@ function Proxy.__newindex (proxy, key, value)
     error "Not implemented"
   end
   local repository = proxy [REPOSITORY]
-  local keys       = proxy [KEYS      ]
   local options    = repository [OPTIONS ]
   local contents   = repository [CONTENTS]
-  local nkeys = table.pack (table.unpack (keys))
-  nkeys [#nkeys+1] = key
-  proxy = Proxy.dereference (Proxy.new {
-    [REPOSITORY] = repository,
-    [KEYS      ] = nkeys,
-  })
+  if key ~= "_" then
+    proxy = Proxy.dereference (proxy [key])
+  end
   if proxy == nil then
     error "Unknown location"
   end
   value = Repository.import (key, value)
   local data     = contents
   local is_      = (key == "_")
-  keys = proxy [KEYS]
+  local keys = proxy [KEYS]
   for i = 1, #keys - 1 do
     key = keys [i]
     if type (data [key]) ~= "table" then
@@ -562,17 +521,15 @@ function Proxy.__newindex (proxy, key, value)
   end
   -- Clean cache:
   if #keys == 1 or (#keys >= 2 and keys [2] == Repository.DEPENDS) then
-    local updated = Proxy.new {
-      [REPOSITORY] = repository,
-      [KEYS      ] = { keys [1] },
-    }
-    local cache = repository [LINEARIZED]
-    for f, c in pairs (cache) do -- iterate over caches
+ --   repository [LINEARIZED] = {}
+    local updated = repository [keys [1]]
+    local cache   = repository [LINEARIZED]
+    for _, c in pairs (cache) do -- iterate over caches
       local remove = {}
       for k, l in pairs (c) do
         for j = 1, #l do
           if l [j] == updated then
-            remove [#remove+1] = Proxy.identifier (l [j])
+            remove [#remove+1] = k
           end
         end
       end
@@ -592,8 +549,6 @@ Proxy.coroutine = coroutine.make ()
 
 function Proxy.__pairs (proxy)
   error "Not implemented"
-  return Proxy.coroutine.wrap (function ()
-  end)
 end
 
 function Proxy.__len (proxy)
@@ -670,9 +625,6 @@ end
 
 Repository.nouse = Repository.new ()
 
-Repository.placeholder = Proxy.new {
-  [REPOSITORY] = Repository.nouse,
-  [KEYS      ] = { false },
-}
+Repository.placeholder = Repository.nouse [false]
 
 return Repository
