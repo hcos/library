@@ -180,19 +180,15 @@ function Repository.linearize (proxy, parents)
   cache = cache [parents]
   local seen = {}
   local function linearize (t)
---[[
-    do
-      print ("t", t)
-    end
---]]
-    local cached = cache [t]
+    local identifier = Proxy.identifier (t)
+    local cached = cache [identifier]
     if cached then
       return cached
     end
-    if seen [t] then
+    if seen [identifier] then
       return {}
     end
-    seen [t] = true
+    seen [identifier] = true
     -- Prepare:
     local depends = parents (t)
     local l, n = {}, {}
@@ -238,7 +234,7 @@ function Repository.linearize (proxy, parents)
     for i = 1, #l do
       local v = l [i]
       for j = 1, #v do
-        local w   = v [j]
+        local w   = Proxy.identifier (v [j])
         tails [w] = (tails [w] or 0) + 1
       end
     end
@@ -255,15 +251,17 @@ function Repository.linearize (proxy, parents)
     local result = {}
     while #l ~= 0 do
       for i = #l, 1, -1 do
-        local vl, vn  = l [i], n [i]
-        local first   = vl [vn]
-        tails [first] = tails [first] - 1
+        local vl, vn    = l [i], n [i]
+        local first     = vl [vn]
+        local first_id = Proxy.identifier (first)
+        tails [first_id] = tails [first_id] - 1
       end
       local head
       for i = #l, 1, -1 do
-        local vl, vn = l [i], n [i]
-        local first  = vl [vn]
-        if tails [first] == 0 then
+        local vl, vn   = l [i], n [i]
+        local first    = vl [vn]
+        local first_id = Proxy.identifier (first)
+        if tails [first_id] == 0 then
           head = first
           break
         end
@@ -278,7 +276,8 @@ function Repository.linearize (proxy, parents)
         if first == head then
           n [i] = n [i] - 1
         else
-          tails [first] = tails [first] + 1
+          local first_id = Proxy.identifier (first)
+          tails [first_id] = tails [first_id] + 1
         end
       end
       local nl, nn = {}, {}
@@ -293,7 +292,7 @@ function Repository.linearize (proxy, parents)
     for i = 1, #result/2 do
       result [i], result [#result-i+1] = result [#result-i+1], result [i]
     end
-    cache [t] = result
+    cache [identifier] = result
 --[[
     do
       local dump = {}
@@ -309,6 +308,8 @@ function Repository.linearize (proxy, parents)
 end
 
 function Proxy.new (t)
+  return setmetatable (t, Proxy)
+--[[
   local repository = t [REPOSITORY]
   local keys       = t [KEYS]
   local uniques    = repository [UNIQUES]
@@ -325,6 +326,19 @@ function Proxy.new (t)
     uniques [identifier] = result
   end
   return result
+--]]
+end
+
+function Proxy.identifier (t)
+  local repository = t [REPOSITORY]
+  local keys       = t [KEYS]
+  local parts      = {}
+  parts [1] = tostring (repository)
+  for i = 1, #(keys) do
+    local key = keys [i]
+    parts [i+1] = type (key) .. ":" .. tostring (key)
+  end
+  return table.concat (parts, "|")
 end
 
 function Repository.depends (proxy)
@@ -558,7 +572,7 @@ function Proxy.__newindex (proxy, key, value)
       for k, l in pairs (c) do
         for j = 1, #l do
           if l [j] == updated then
-            remove [#remove+1] = l [j]
+            remove [#remove+1] = Proxy.identifier (l [j])
           end
         end
       end
@@ -625,6 +639,25 @@ end
 
 function Proxy.__concat (lhs, rhs)
   error "Not implemented"
+end
+
+function Proxy.__eq (lhs, rhs)
+  local lrepository = lhs [REPOSITORY]
+  local rrepository = rhs [REPOSITORY]
+  if lrepository [CONTENTS] ~= rrepository [CONTENTS] then
+    return false
+  end
+  local lkeys = lhs [KEYS]
+  local rkeys = rhs [KEYS]
+  if #lkeys ~= #rkeys then
+    return false
+  end
+  for i = 1, #lkeys do
+    if lkeys [i] ~= rkeys [i] then
+      return false
+    end
+  end
+  return true
 end
 
 function Proxy.__lt (lhs, rhs)
