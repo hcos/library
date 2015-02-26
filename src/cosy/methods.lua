@@ -23,7 +23,7 @@ local Parameters = {}
 --
 -- This module depends on the following modules:
                       require "compat53"
-                      require "cosy.util.string"
+                      require "cosy.string"
 local Platform      = require "cosy.platform"
 local Configuration = require "cosy.configuration" .whole
 local Internal      = require "cosy.configuration" .internal
@@ -41,21 +41,26 @@ local Data          = require "cosy.data"
 --    >> Configuration = require "cosy.configuration" .whole
 --    (...)
 
---    > Configuration.token.secret = "secret"
+--    >  Configuration.token.secret = "secret"
+--    >> Configuration.server.name  = "CosyTest"
+--    >> Configuration.server.email = "test@cosy.org"
+--    (...)
+
+--    >  local response = Methods.create_user (nil, {
+--    >>   username       = "username",
+--    >>   password       = "password",
+--    >>   email          = "username@domain.org",
+--    >>   name           = "User Name",
+--    >>   license_digest = "d41d8cd98f00b204e9800998ecf8427e",
+--    >> })
+--    >> print (Platform.table.representation (response))
+--    >> print (Platform.table.representation (Platform.email.last_sent))
+--    ...
+--    {locale="en",success=true}
+--    {body={"email:new_account:body",username="username",validation="..."},from={"email:new_account:from",email="test@cosy.org",name="CosyTest"},locale="en",subject={"email:new_account:subject",servername="CosyTest",username="username"},to={"email:new_account:to",email="username@domain.org",name="User Name"}}
 --    (...)
 
 function Methods.create_user (_, request)
-  --    >  local response = Methods.create_user (nil, {
-  --    >>   username       = "username",
-  --    >>   password       = "password",
-  --    >>   email          = "username@domain.org",
-  --    >>   name           = "User Name",
-  --    >>   license_digest = "d41d8cd98f00b204e9800998ecf8427e",
-  --    >> })
-  --    >> print (Platform.table.representation (response))
-  --    ...
-  --    {locale="en",success=true}
-  --    (...)
   request:required {
     username        = Parameters.username,
     password        = Parameters.password,
@@ -66,62 +71,83 @@ function Methods.create_user (_, request)
   request:optional {
     locale          = Parameters.locale,
   }
+  local validation_token = Platform.token.encode {
+    username = request.username,
+  }
   Utility.redis.transaction ({
-    emails = Configuration.redis.key.emails._,
-    data   = Configuration.redis.key.user._ % { username = request.username },
+    email = Configuration.redis.key.email._ % { email    = request.email    },
+    token = Configuration.redis.key.token._ % { token    = validation_token },
+    data  = Configuration.redis.key.user._  % { username = request.username },
   }, function (p)
-    p.emails = p.emails or {}
-    if p.emails [request.email]._ then
+    if p.email._ then
       error {
-        status   = "create-user:email-already",
+        status   = "create-user:email-exists",
         email    = request.email,
       }
     end
-    if p.data.username._ then
+    if p.token._ then
       error {
-        status   = "create-user:username-already",
+        status   = "token:exists",
+        email    = request.email,
+      }
+    end
+    if p.data._ then
+      error {
+        status   = "create-user:username-exists",
         username = request.username,
       }
     end
+    local expire_at = Platform.time () + Configuration.account.expire._
     p.data = {
-      type              = "user",
-      status            = "created",
-      username          = request.username,
-      password          = Platform.password.hash (request.password),
-      name              = request.name,
-      locale            = request.locale or Configuration.locale.default._,
-      expire_at         = Platform.time () + Configuration.account.expire._,
-      validation_key    = Platform.token.encode {
-        username = request.username,
-      },
-      access            = {
+      _           = true,
+      type        = "user",
+      status      = "created",
+      username    = request.username,
+      email       = request.email,
+      password    = Platform.password.hash (request.password),
+      name        = request.name,
+      locale      = request.locale or Configuration.locale.default._,
+      expire_at   = expire_at,
+      validation  = validation_token,
+      access      = {
         public = true,
       },
-      contents          = {},
+      contents    = {},
     }
-    p.emails [request.email] = request.username
+    p.email = {
+      _         = true,
+      expire_at = expire_at,
+    }
+    p.token = {
+      _         = true,
+      expire_at = expire_at,
+    }
   end)
   Utility.redis.transaction ({
     data = Configuration.redis.key.user._ % { username = request.username },
   }, function (p)
     Platform.email.send {
-      from    = Platform.i18n.translate ("email:new_account:from", {
-        locale  = p.locale._,
-        address = Configuration.smtp.username._,
-      }),
-      to      = "%{name} <%{email}>" % {
-        name  = p.name._,
-        email = p.email._,
+      locale  = p.data.locale._,
+      from    = {
+        "email:new_account:from",
+        name  = Configuration.server.name._,
+        email = Configuration.server.email._,
       },
-      subject = Platform.i18n.translate ("email:new_account:subject", {
-        locale   = p.locale._,
-        username = p.username._,
-      }),
-      body    = Platform.i18n.translate ("email:new_account:body", {
-        locale         = p.locale._,
-        username       = p.username._,
-        validation_key = p.validation_key._,
-      }),
+      to      = {
+        "email:new_account:to",
+        name  = p.data.name._,
+        email = p.data.email._,
+      },
+      subject = {
+        "email:new_account:subject",
+        servername = Configuration.server.name._,
+        username   = p.data.username._,
+      },
+      body    = {
+        "email:new_account:body",
+        username   = p.data.username._,
+        validation = p.data.validation._,
+      },
     }
   end)
 end
@@ -130,10 +156,10 @@ end
 -- ------------
 
 Internal.redis.key = {
-  user   = "/%{username}",
-  emails = "//email->user",
+  user  = "user:%{username}",
+  email = "email:%{email}",
+  token = "token:%{token}",
 }
-
 
 -- Request
 -- -------
@@ -341,6 +367,11 @@ function Utility.redis.transaction (keys, f)
     data.default = {}
     local t    = data.default
     local raw  = Data.raw (data).default
+    for k, v in pairs (keys) do
+      if redis:exists (v) then
+        raw [k] = Platform.json.decode (redis:get (v))
+      end
+    end
     Data.options (data) .filter = function (d)
       local expire_at = d.expire_at._
       return expire_at
@@ -350,12 +381,9 @@ function Utility.redis.transaction (keys, f)
     Data.options (data) .on_write = function (d)
       written [Data.path (d) [2]] = true
     end
-    for k, v in pairs (keys) do
-      if redis:exists (v) then
-        t [k] = Platform.json.decode (redis:get (v))
-      end
-    end
     f (t, client)
+    Data.options (data) .filter   = nil
+    Data.options (data) .on_write = nil
     if pairs (written) (written) then
       redis:multi ()
       for k in pairs (written) do
