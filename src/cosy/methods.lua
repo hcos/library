@@ -41,9 +41,10 @@ local Data          = require "cosy.data"
 --    >> Configuration = require "cosy.configuration" .whole
 --    (...)
 
---    >  Configuration.token.secret = "secret"
---    >> Configuration.server.name  = "CosyTest"
---    >> Configuration.server.email = "test@cosy.org"
+--    >  Configuration.token  .secret = "secret"
+--    >> Configuration.server .name   = "CosyTest"
+--    >> Configuration.server .email  = "test@cosy.org"
+--    >> Configuration.account.expire = 1 -- seconds
 --    (...)
 
 --    >  local response = Methods.create_user (nil, {
@@ -58,6 +59,52 @@ local Data          = require "cosy.data"
 --    ...
 --    {locale="en",success=true}
 --    {body={"email:new_account:body",username="username",validation="..."},from={"email:new_account:from",email="test@cosy.org",name="CosyTest"},locale="en",subject={"email:new_account:subject",servername="CosyTest",username="username"},to={"email:new_account:to",email="username@domain.org",name="User Name"}}
+--    (...)
+
+--    >  local response = Methods.create_user (nil, {
+--    >>   username       = "username",
+--    >>   password       = "password",
+--    >>   email          = "username@domain.org",
+--    >>   name           = "User Name",
+--    >>   license_digest = "d41d8cd98f00b204e9800998ecf8427e",
+--    >> })
+--    ...
+--    error: {email="username@domain.org",status="create-user:email-exists"}
+--    (...)
+
+--    >  local response = Methods.create_user (nil, {
+--    >>   username       = "othername",
+--    >>   password       = "password",
+--    >>   email          = "username@domain.org",
+--    >>   name           = "User Name",
+--    >>   license_digest = "d41d8cd98f00b204e9800998ecf8427e",
+--    >> })
+--    ...
+--    error: {email="username@domain.org",status="create-user:email-exists"}
+--    (...)
+
+--    >  local response = Methods.create_user (nil, {
+--    >>   username       = "username",
+--    >>   password       = "password",
+--    >>   email          = "othername@domain.org",
+--    >>   name           = "User Name",
+--    >>   license_digest = "d41d8cd98f00b204e9800998ecf8427e",
+--    >> })
+--    ...
+--    error: {status="create-user:username-exists",username="username"}
+--    (...)
+
+--    >  os.execute("sleep 2")
+--    >> local response = Methods.create_user (nil, {
+--    >>   username       = "username",
+--    >>   password       = "password",
+--    >>   email          = "username@domain.org",
+--    >>   name           = "User Name",
+--    >>   license_digest = "d41d8cd98f00b204e9800998ecf8427e",
+--    >> })
+--    >> print (Platform.table.representation (response))
+--    ...
+--    {locale="en",success=true}
 --    (...)
 
 function Methods.create_user (_, request)
@@ -107,6 +154,7 @@ function Methods.create_user (_, request)
       password    = Platform.password.hash (request.password),
       name        = request.name,
       locale      = request.locale or Configuration.locale.default._,
+      license     = request.license_digest,
       expire_at   = expire_at,
       validation  = validation_token,
       access      = {
@@ -374,9 +422,11 @@ function Utility.redis.transaction (keys, f)
     end
     Data.options (data) .filter = function (d)
       local expire_at = d.expire_at._
-      return expire_at
-         and expire_at < Platform.time ()
-          or true
+      if expire_at then
+        return expire_at > Platform.time ()
+      else
+        return true
+      end
     end
     Data.options (data) .on_write = function (d)
       written [Data.path (d) [2]] = true
