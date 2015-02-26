@@ -1,7 +1,4 @@
-               require "cosy.util.string"
-local ignore = require "cosy.util.ignore"
-
-local global = _G
+require "cosy.util.string"
 
 local Platform = setmetatable ({
     _pending = {},
@@ -148,7 +145,7 @@ end)
 -- Foreign Function Interface
 -- ==========================
 --[[
-if global.jit then
+if _G.jit then
   Platform.ffi = require "ffi"
   Platform.logger.debug (Platform.i18n ("platform:available-dependency", {
     component  = "ffi",
@@ -193,10 +190,26 @@ Platform:register ("table", function ()
   if pcall (function ()
     local serpent = require "serpent"
     function Platform.table.encode (t)
-      return serpent.dump (t)
+      return serpent.dump (t, {
+        sortkeys = false,
+        compact  = true,
+        fatal    = true,
+        comment  = false,
+      })
+    end
+    function Platform.table.representation (t)
+      return serpent.line (t, {
+        sortkeys = true,
+        compact  = true,
+        fatal    = true,
+        comment  = false,
+        nocode   = true,
+      })
     end
     function Platform.table.decode (s)
-      return loadstring (s) ()
+      return serpent.load (s, {
+        safe = true,
+      })
     end
   end) then
     Platform.logger.debug {
@@ -217,7 +230,7 @@ end)
 -- ====
 Platform:register ("json", function ()
   if pcall (function ()
-    Platform.json = require "cjson"
+    Platform.json = require "cjson" .new ()
   end) then
     Platform.logger.debug {
       "platform:available-dependency",
@@ -225,7 +238,7 @@ Platform:register ("json", function ()
       dependency = "cjson",
     }
   elseif pcall (function ()
-    global.always_try_using_lpeg = true
+    _G.always_try_using_lpeg = true
     Platform.json = require "dkjson"
   end) then
     Platform.logger.debug {
@@ -234,7 +247,7 @@ Platform:register ("json", function ()
       dependency = "dkjson+lpeg",
     }
   elseif pcall (function ()
-    global.always_try_using_lpeg = false
+    _G.always_try_using_lpeg = false
     Platform.json = require "dkjson"
   end) then
     Platform.logger.debug {
@@ -314,20 +327,20 @@ Platform:register ("compression", function ()
       compression = "none",
     }
   end
-  ignore (pcall (function ()
+  pcall (function ()
     Platform.compression.available.lz4 = require "lz4"
     Platform.logger.debug {
       "platform:available-compression",
       compression = "lz4",
     }
-  end))
-  ignore (pcall (function ()
+  end)
+  pcall (function ()
     Platform.compression.available.snappy = require "snappy"
     Platform.logger.debug {
       "platform:available-compression",
       compression = "snappy",
     }
-  end))
+  end)
 
   function Platform.compression.format (x)
     return x:match "^(%w+):"
@@ -388,7 +401,7 @@ Platform:register ("password", function ()
     Platform.logger.debug {
       "platform:bcrypt-rounds",
       count = Platform.password.rounds,
-      time  = Configuration.data.password.time * 1000,
+      time  = Configuration.data.password.time._ * 1000,
     }
   else
     Platform.logger.debug {
@@ -423,21 +436,64 @@ end)
 -- Redis
 -- =====
 Platform:register ("redis", function ()
-  if pcall (function ()
-    Platform.redis = require "redis"
-  end) then
-    Platform.logger.debug {
-      "platform:available-dependency",
-      component  = "redis",
-      dependency = "redis-lua",
-    }
+  if _G.__TEST__ then
+    if pcall (function ()
+      Platform.redis = require "fakeredis" .new ()
+      Platform.redis.is_fake     = true
+      Platform.redis.connect     = function ()
+        return Platform.redis
+      end
+      Platform.redis.expireat    = function ()
+      end
+      Platform.redis.persist     = function ()
+      end
+      Platform.redis.multi       = function ()
+      end
+      Platform.redis.transaction = function (client, _, f)
+        return f (client)
+      end
+    end) then
+      Platform.logger.debug {
+        "platform:available-dependency",
+        component  = "redis",
+        dependency = "fakeredis",
+      }
+    else
+      Platform.logger.debug {
+        "platform:missing-dependency",
+        component  = "redis",
+      }
+      error "Missing dependency"
+    end
   else
-    Platform.logger.debug {
-      "platform:missing-dependency",
-      component  = "redis",
-    }
-    error "Missing dependency"
+    if pcall (function ()
+      Platform.redis = require "redis"
+    end) then
+      Platform.logger.debug {
+        "platform:available-dependency",
+        component  = "redis",
+        dependency = "redis-lua",
+      }
+    else
+      Platform.logger.debug {
+        "platform:missing-dependency",
+        component  = "redis",
+      }
+      error "Missing dependency"
+    end
   end
+end)
+
+-- Random
+-- ======
+Platform:register ("random", function ()
+  math.randomseed (Platform.time ())
+  Platform.random = math.random
+  Platform.logger.debug {
+    "platform:available-dependency",
+    component  = "random",
+    dependency = "math.random",
+  }
 end)
 
 -- Time
@@ -461,22 +517,87 @@ Platform:register ("time", function ()
   end
 end)
 
+-- Token
+-- =====
+Platform:register ("token", function ()
+  if pcall (function ()
+    local jwt           = require "luajwt"
+    local Configuration = require "cosy.configuration" .whole
+    local Internal      = require "cosy.configuration" .internal
+    if Configuration.token.secret._ == nil then
+      Platform.logger.debug {
+        "platform:no-token-secret",
+      }
+      error "No token secret"
+    end
+    Internal.token.algorithm._ = "HS512"
+    Internal.token.validity._ = 600 -- seconds
+    Platform.token = {}
+    function Platform.token.encode (contents)
+      local token = {}
+      token.iat = Platform.time ()
+      token.nbf = token.iat
+      token.exp = token.nbf + Configuration.token.validity._
+      token.iss = Configuration.server.name._
+      token.aud = nil
+      token.sub = "cosy:token"
+      token.jti = Platform.md5.digest (tostring (token.iat + Platform.random ()))
+      token.contents = contents
+      local key       = Configuration.token.secret._
+      local algorithm = Configuration.token.algorithm._
+      local result, err = jwt.encode (token, key, algorithm)
+      if not result then
+        error (err)
+      end
+      return result
+    end
+    function Platform.token.decode (s)
+      local key       = Configuration.token.secret._
+      local algorithm = Configuration.token.algorithm._
+      local result, err = jwt.decode (s, key, algorithm)
+      if not result then
+        error (err)
+      end
+      return result.contents
+    end
+  end) then
+    Platform.logger.debug {
+      "platform:available-dependency",
+      component  = "token",
+      dependency = "jwt",
+    }
+  else
+    Platform.logger.debug {
+      "platform:missing-dependency",
+      component  = "token",
+    }
+    error "Missing dependency"
+  end
+end)
+
 -- Configuration
 -- =============
 Platform:register ("configuration", function ()
-  Platform.configuration.paths = {
-    "/etc",
-    os.getenv "HOME" .. "/.cosy",
-    os.getenv "PWD",
-  }
-  function Platform.configuration.read (path)
-    local handle = io.open (path, "r")
-    if handle ~=nil then
-      local content = handle:read "*all"
-      io.close (handle)
-      return content
-    else
+  if _G.__TEST__ then
+    Platform.configuration.paths = {}
+    function Platform.configuration.read ()
       return nil
+    end
+  else
+    Platform.configuration.paths = {
+      "/etc",
+      os.getenv "HOME" .. "/.cosy",
+      os.getenv "PWD",
+    }
+    function Platform.configuration.read (path)
+      local handle = io.open (path, "r")
+      if handle ~=nil then
+        local content = handle:read "*all"
+        io.close (handle)
+        return content
+      else
+        return nil
+      end
     end
   end
 end)
@@ -490,19 +611,39 @@ end)
 -- Email
 -- =====
 Platform:register ("email", function ()
-  local Email = require "cosy.util.email"
-  if not Email.discover () then
-    Platform.logger.warning ("No SMTP server discovered, sending of emails will not work.")
-    error "SMTP missing"
+  if _G.__TEST__ then
+    Platform.email = {}
+    Platform.email.send = function (t)
+      Platform.email.last_sent = t
+    end
+    Platform.logger.debug {
+      "platform:available-dependency",
+      component  = "email",
+      dependency = "mock",
+    }
+  else
+    local Email = require "cosy.util.email"
+    Platform.email.send = Email.send
+    Platform.logger.debug {
+      "platform:available-dependency",
+      component  = "email",
+      dependency = "cosy.util.email",
+    }
+    if not Email.discover () then
+      Platform.logger.warning {
+        "platform:no-smtp",
+      }
+    else
+      local Configuration = require "cosy.configuration" .whole
+      Platform.logger.debug {
+        "platform:smtp",
+        host     = Configuration.smtp.host._,
+        port     = Configuration.smtp.port._,
+        method   = Configuration.smtp.method._,
+        protocol = Configuration.smtp.protocol._,
+      }
+    end
   end
-  local Configuration = require "cosy.configuration" .whole
-  Platform.logger.debug ("SMTP on ${host}:${port} uses ${method} (encrypted with ${protocol})." % {
-    host     = Configuration.smtp.host._,
-    port     = Configuration.smtp.port._,
-    method   = Configuration.smtp.method._,
-    protocol = Configuration.smtp.protocol._,
-  })
-  Platform.email.send = Email.send
 end)
 
 return Platform
