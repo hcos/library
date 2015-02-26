@@ -28,11 +28,6 @@ return {
       max_size = 128,
     },
   },
-  smtp = {
-  },
-  network = {
-    compression = "snappy",
-  },
   locale = {
     default = "en",
   },
