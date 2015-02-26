@@ -1,5 +1,4 @@
-                 require "compat53"
-coroutine.make = require "coroutine.make"
+require "compat53"
 
 local Repository = {}
 local Proxy      = {}
@@ -123,6 +122,10 @@ end
 
 function Repository.options (repository)
   return Options.wrap (repository [OPTIONS])
+end
+
+function Repository.path (proxy)
+  return proxy [KEYS]
 end
 
 function Repository.import (key, value, within)
@@ -376,6 +379,8 @@ function Proxy.__index (proxy, key)
     local root       = repository [keys [1]]
     local layers     = Repository.linearize (root, Repository.depends)
     if filter then
+      options.filter  = nil
+      options.on_read = nil
       local p = repository
       for i = 1, #keys do
         p = p [keys [i]]
@@ -383,6 +388,8 @@ function Proxy.__index (proxy, key)
           return nil
         end
       end
+      options.filter  = filter
+      options.on_read = on_read
     end
     for i = #layers, 1, -1 do
       local layer = layers [i] [KEYS] [1]
@@ -415,7 +422,11 @@ function Proxy.__index (proxy, key)
           result = data
         end
         if on_read then
+          options.filter   = nil
+          options.on_read  = nil
           on_read (proxy, result)
+          options.filter   = filter
+          options.on_read  = on_read
         end
         return result
       end
@@ -541,11 +552,17 @@ function Proxy.__newindex (proxy, key, value)
   -- Call on_write handler:
   local on_write = options.on_write
   if on_write then
+    local filter  = options.filter
+    local on_read = options.on_read
+    options.filter   = nil
+    options.on_read  = nil
+    options.on_write = nil
     on_write (proxy, key, value)
+    options.filter   = filter
+    options.on_read  = on_read
+    options.on_write = on_write
   end
 end
-
-Proxy.coroutine = coroutine.make ()
 
 function Proxy.__pairs (proxy)
   error "Not implemented"
