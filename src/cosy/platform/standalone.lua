@@ -1,4 +1,4 @@
-require "cosy.util.string"
+require "cosy.string"
 
 local Platform = setmetatable ({
     _pending = {},
@@ -605,7 +605,7 @@ end)
 -- Scheduler
 -- =========
 Platform:register ("scheduler", function ()
-  Platform.scheduler = require "cosy.util.scheduler" .create ()
+  Platform.scheduler = require "cosy.scheduler" .create ()
 end)
 
 -- Email
@@ -622,12 +622,12 @@ Platform:register ("email", function ()
       dependency = "mock",
     }
   else
-    local Email = require "cosy.util.email"
+    local Email = require "cosy.email"
     Platform.email.send = Email.send
     Platform.logger.debug {
       "platform:available-dependency",
       component  = "email",
-      dependency = "cosy.util.email",
+      dependency = "cosy.email",
     }
     if not Email.discover () then
       Platform.logger.warning {
