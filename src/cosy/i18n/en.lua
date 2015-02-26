@@ -58,6 +58,15 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
     one   = "using one round in bcrypt for at least %{time} milliseconds of computation",
     other = "using %{count} rounds in bcrypt for at least %{time} milliseconds of computation",
   },
+  
+  ["platform:no-token-secret"] =
+    "token secret is not defined in configuration",
+
+  ["platform:no-smtp"] =
+    "no SMTP server discovered, sending of emails will not work",
+  ["platform:smtp"] =
+    "SMTP on ${host}:${port} uses ${method} (encrypted with ${protocol})",
+
   ["configuration:conflict"] =
     "directory %{path} contains several configuration files, instead of just one",
   ["configuration:using"] =
@@ -92,8 +101,8 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
     "an email address must comply to the standard",
   ["check:locale:pattern"] =
     "a locale must comply to the standard",
-  ["check:validation_key:pattern"] =
-    "a validation key must be a a sequence of alphanumeric characters separated by '-'",
+  ["check:license_digest:pattern"] =
+    "a license digest must be a MD5 digest, and thus a sequence of alphanumeric characters",
 
   ["authenticate:non-existing"] =
     "authentication failed, because the given user does not exist",
@@ -106,10 +115,8 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
   ["authenticate:cheap-password"] =
     "password for %{username} is hashed using too few rounds and thus rehashed",
 
-  ["create-user:connected-already"] =
-    "an already connected user cannot create a user account",
   ["create-user:email-already"] =
-    "email address %{email} is already bound to user account %{username}",
+    "email address %{email} is already bound to an account",
   ["create-user:username-already"] =
     "username %{username} is already a user account",
 
