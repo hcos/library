@@ -71,6 +71,7 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
     "directory %{path} contains several configuration files, instead of just one",
   ["configuration:using"] =
     "using configuration in directory %{path}",
+
   ["turing:what-is-round"] =
     "What is represented as a circle in Petri nets: a *place* or a *transition*?",
   ["turing:what-is-rectangular"] =
@@ -79,6 +80,7 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
     "place",
   ["transition"] =
     "transition",
+
   ["check:error"] =
     "some parameters are invalid or missing",
 
@@ -104,6 +106,13 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
   ["check:license_digest:pattern"] =
     "a license digest must be a MD5 digest, and thus a sequence of alphanumeric characters",
 
+  ["create-user:email-exists"] =
+    "email address %{email} is already bound to an account",
+  ["create-user:username-exists"] =
+    "username %{username} is already a user account",
+  ["token:exists"] =
+    "token %{email} exists already",
+
   ["authenticate:non-existing"] =
     "authentication failed, because the given user does not exist",
   ["authenticate:non-user"] =
@@ -115,11 +124,6 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
   ["authenticate:cheap-password"] =
     "password for %{username} is hashed using too few rounds and thus rehashed",
 
-  ["create-user:email-already"] =
-    "email address %{email} is already bound to an account",
-  ["create-user:username-already"] =
-    "username %{username} is already a user account",
-
   ["validate-user:non-existing"] =
     "validation failed, because the given user does not exist",
   ["validate-user:non-user"] =
@@ -130,9 +134,11 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
     "validation failed, because of an erroneous validation key",
   
   ["email:new_account:from"] =
-    "CosyVerif Platform <%{address}>",
+    '"%{name}" <%{address}>',
+  ["email:new_account:from"] =
+    '"%{name}" <%{address}>',
   ["email:new_account:subject"] =
-    "[CosyVerif] Welcome, %{username}!",
+    "[%{servername}] Welcome, %{username}!",
   ["email:new_account:body"] =
-    "%{username}, your validation key is <%{validation_key}>.",
+    "%{username}, your validation token is <%{validation}>.",
 }
