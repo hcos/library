@@ -16,7 +16,7 @@ return {
       max_size = 32,
     },
     password = {
-      min_size = 10,
+      min_size = 1,
       max_size = 128,
       time     = 0.020,
     },
@@ -27,10 +27,6 @@ return {
     email = {
       max_size = 128,
     },
-    locale = {
-      min_size = 2,
-      max_size = 5,
-    },
   },
   smtp = {
   },
@@ -39,5 +35,8 @@ return {
   },
   locale = {
     default = "en",
+  },
+  account = {
+    expire = 24 * 3600, -- 1 day
   },
 }
