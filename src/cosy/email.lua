@@ -2,7 +2,7 @@ local Email = {}
 
 local Platform      = require "cosy.platform"
 local Configuration = require "cosy.configuration" .whole
-local _             = require "cosy.util.string"
+                      require "cosy.string"
 
 local socket        = require "socket"
 local smtp          = require "socket.smtp"
@@ -191,35 +191,26 @@ function Email.discover ()
   end
 end
 
-local function extract (source, t)
-  if source == nil then
-    source = {}
-  elseif type (source) == "string" then
-    source = { source }
-  end
-  for _, s in ipairs (source) do
-    t [#t + 1] = s:match (email_pattern)
-  end
-end
-
 function Email.send (message)
-  local from       = {}
-  local recipients = {}
-  extract (message.from, from)
-  extract (message.to  , recipients)
-  extract (message.cc  , recipients)
-  extract (message.bcc , recipients)
+  local locale     = message.locale or Configuration.locale.default._
+  message.from   .locale = locale
+  message.to     .locale = locale
+  message.subject.locale = locale
+  message.body   .locale = locale
+  message.from    = Platform.i18n.translate (message.from    [1], message.from   )
+  message.to      = Platform.i18n.translate (message.to      [1], message.to     )
+  message.subject = Platform.i18n.translate (message.subject [1], message.subject)
+  message.body    = Platform.i18n.translate (message.body    [1], message.body   )
   local make = Platform.scheduler.IN_THREAD
            and make_socket.async
             or make_socket.sync
   return smtp.send {
-    from     = from [1],
-    rcpt     = recipients,
+    from     = message.from:match (email_pattern),
+    rcpt     = message.to  :match (email_pattern),
     source   = smtp.message {
       headers = {
         from    = message.from,
         to      = message.to,
-        cc      = message.cc,
         subject = message.subject,
       },
       body = message.body
