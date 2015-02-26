@@ -385,6 +385,8 @@ function Proxy.__index (proxy, key)
       for i = 1, #keys do
         p = p [keys [i]]
         if not filter (p) then
+          options.filter  = filter
+          options.on_read = on_read
           return nil
         end
       end
