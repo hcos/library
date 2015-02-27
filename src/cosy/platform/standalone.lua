@@ -536,7 +536,7 @@ Platform:register ("token", function ()
     function Platform.token.encode (contents)
       local token = {}
       token.iat = Platform.time ()
-      token.nbf = token.iat
+      token.nbf = token.iat - 1
       token.exp = token.nbf + Configuration.token.validity._
       token.iss = Configuration.server.name._
       token.aud = nil
