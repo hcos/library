@@ -48,6 +48,19 @@ local Data          = require "cosy.data"
 --    (...)
 
 --    >  local response = Methods.create_user (nil, {
+--    >>   username       = nil,
+--    >>   password       = true,
+--    >>   email          = "username_domain.org",
+--    >>   name           = 1,
+--    >>   license_digest = "",
+--    >>   locale         = "anything",
+--    >> })
+--    >> print (Platform.table.representation (response))
+--    ...
+--    error: {reasons={{"check:missing",key="username"},{"check:is-string",key="name"},{"check:is-string",key="password"},{"check:min-size",count=32,key="license_digest"},{"check:email:pattern",email="username_domain.org"},{"check:max-size",count=5,key="locale"}},request={email="username_domain.org",license_digest="",locale="anything",name=1,optional={...},password=true,required={...},status="check:error"}
+--    (...)
+
+--    >  local response = Methods.create_user (nil, {
 --    >>   username       = "username",
 --    >>   password       = "password",
 --    >>   email          = "username@domain.org",
@@ -108,16 +121,17 @@ local Data          = require "cosy.data"
 --    (...)
 
 function Methods.create_user (_, request)
-  request:required {
+  request.required = {
     username        = Parameters.username,
     password        = Parameters.password,
     email           = Parameters.email,
     name            = Parameters.name,
     license_digest  = Parameters.license_digest,
   }
-  request:optional {
+  request.optional = {
     locale          = Parameters.locale,
   }
+  request:check ()
   local validation_token = Platform.token.encode {
     username = request.username,
   }
@@ -219,47 +233,49 @@ function Request.new (t)
   return setmetatable (t, Request)
 end
 
-function Request.required (request, t)
-  for key, parameter in pairs (t) do
-    local value = t [key]
-    if value == nil then
-      error {
-        status     = "check:error",
-        reason     = {
+function Request.check (request)
+  local reasons  = {}
+  local required = request.required
+  if required then
+    for key, parameter in pairs (required) do
+      local value = request [key]
+      if value == nil then
+        reasons [#reasons+1] = {
           "check:missing",
           key = key,
-        },
-        parameters = t,
-      }
-    end
-    for _, f in ipairs (parameter) do
-      local ok, reason = f (request)
-      if not ok then
-        error {
-          status     = "check:error",
-          reason     = reason,
-          parameters = t,
         }
-      end
-    end
-  end
-end
-
-function Request.optional (request, t)
-  for key, parameter in pairs (t) do
-    local value = request [key]
-    if value ~= nil then
-      for _, f in ipairs (parameter) do
-        local ok, reason = f (request)
-        if not ok then
-          error {
-            status     = "check:error",
-            reason     = reason,
-            parameters = t,
-          }
+      else
+        for _, f in ipairs (parameter) do
+          local ok, reason = f (request)
+          if not ok then
+            reasons [#reasons+1] = reason
+            break
+          end
         end
       end
     end
+  end
+  local optional = request.optional
+  if optional then
+    for key, parameter in pairs (optional) do
+      local value = request [key]
+      if value ~= nil then
+        for _, f in ipairs (parameter) do
+          local ok, reason = f (request)
+          if not ok then
+            reasons [#reasons+1] = reason
+            break
+          end
+        end
+      end
+    end
+  end
+  if #reasons ~= 0 then
+    error {
+      status  = "check:error",
+      reasons = reasons,
+      request = request,
+    }
   end
 end
 
@@ -279,6 +295,12 @@ end
 
 -- Parameters
 -- ----------
+
+setmetatable (Parameters, {
+  __index = function ()
+    assert (false)
+  end,
+})
 
 function Parameters.new_string (key)
   Internal.data [key] .min_size._ = 0
