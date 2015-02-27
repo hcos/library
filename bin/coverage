@@ -1,7 +1,7 @@
 #! /usr/bin/env lua
 
 require "pl.stringx" . import ()
-local colors = require 'ansicolors'
+local colors   = require 'ansicolors'
 local runner   = require "luacov.runner"
 local reporter = require "luacov.reporter"
 local configuration = runner.load_config ()
