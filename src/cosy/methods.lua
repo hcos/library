@@ -227,17 +227,21 @@ end
 --    error: {status="validate-user:failure"}
 --    (...)
 
+--    >  local response = Methods.validate_user ("d41d8cd98f00b204e9800998ecf8427e")
+--    >> print (Platform.table.representation (response))
+--    error: {reason="Invalid token",status="token:error"}
+--    (...)
+
 function Methods.validate_user (token)
   if token.type ~= "user validation" then
     error {
       status = "validate-user:failure",
     }
   end
-  local username = token.username
-  local stoken   = Utility.tokens [token]
+  local raw_token = Utility.tokens [token]
   Utility.redis.transaction ({
     email = Configuration.redis.key.email._ % { email    = token.email    },
-    token = Configuration.redis.key.token._ % { token    = stoken         },
+    token = Configuration.redis.key.token._ % { token    = raw_token      },
     data  = Configuration.redis.key.user._  % { username = token.username },
   }, function (p)
     if not p.data._
@@ -714,10 +718,10 @@ do
         ok, contents = true, {}
       end
       if not ok then
-        return Response.new {
-          status  = "token:error",
-          locale  = Configuration.locale.default._,
-          reason  = contents,
+        contents = contents:match "^.*:%s*(.*)$"
+        error {
+          status = "token:error",
+          reason = contents,
         }
       end
       Utility.tokens [contents] = token
