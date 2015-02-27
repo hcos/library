@@ -1,5 +1,3 @@
-require "cosy.string"
-
 local Platform = {
   _pending = {},
   _running = {},
