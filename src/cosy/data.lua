@@ -128,6 +128,16 @@ function Repository.path (proxy)
   return proxy [KEYS]
 end
 
+function Repository.delete (proxy)
+  local repository = proxy [REPOSITORY]
+  local keys       = proxy [KEYS]
+  local data       = repository
+  for i = 1, #keys-1 do
+    data = data [keys [i]]
+  end
+  data [keys [#keys]] = nil
+end
+
 function Repository.import (key, value, within)
   if type (value) ~= "table" then
     return value
