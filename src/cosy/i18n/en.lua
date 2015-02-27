@@ -47,17 +47,20 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
     "success",
 
   ["platform:available-dependency"] =
-    "%{component} is available using '%{dependency}'",
+    "%{component} is available",
   ["platform:missing-dependency"] =
-    "%{component} is not available",
+    "%{component} is not available, because %{reason}",
   ["platform:available-locale"] =
-    "i18n locale '%{locale}' has been loaded",
+    "i18n locale '%{loaded}' has been loaded",
   ["platform:available-compression"] =
     "compression '%{compression}' has been loaded",
   ["platform:bcrypt-rounds"] = {
     one   = "using one round in bcrypt for at least %{time} milliseconds of computation",
     other = "using %{count} rounds in bcrypt for at least %{time} milliseconds of computation",
   },
+  
+  ["compression:missing-format"] =
+    "format %{format} is not available for decompression",
   
   ["platform:no-token-secret"] =
     "token secret is not defined in configuration",
