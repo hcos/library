@@ -1,0 +1,22 @@
+#! /bin/bash
+
+rm -f  luacov.stats.out luacov.report.out
+
+rm    -fr ../cov
+mkdir -p  ../cov
+
+rm    -rf ../doc
+mkdir -p  ../doc
+
+for file in $*
+do
+  echo      ${file}
+  luacheck  ${file}
+  doccotest ${file}
+done
+../bin/coverage
+docco --layout linear \
+      --output ../doc/src \
+      $*
+
+rm -f luacov.stats.out luacov.report.out
