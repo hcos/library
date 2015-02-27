@@ -35,16 +35,16 @@ do
         -- an error is raised as there is no way to known which one
         -- should be used.
         if found then
-          Platform.logger.error {
-            "configuration:conflict",
+          local err = {
+            _    = "configuration:conflict",
             path = path,
           }
-          error "Invalid configuration"
+          error (err)
         end
         Configuration [filename] = loader (content)
         loaded [#loaded+1] = Configuration [filename]
         Platform.logger.debug {
-          "configuration:using",
+          _    = "configuration:using",
           path = path,
         }
         found = true
