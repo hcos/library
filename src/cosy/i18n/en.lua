@@ -124,14 +124,8 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
   ["authenticate:cheap-password"] =
     "password for %{username} is hashed using too few rounds and thus rehashed",
 
-  ["validate-user:non-existing"] =
-    "validation failed, because the given user does not exist",
-  ["validate-user:non-user"] =
-    "validation failed, because the given username is not a user",
-  ["validate-user:validated-already"] =
-    "validation failed, because the given user is already validated",
-  ["validate-user:erroneous"] =
-    "validation failed, because of an erroneous validation key",
+  ["validate-user:failure"] =
+    "validation failed",
   
   ["email:new_account:from"] =
     '"%{name}" <%{address}>',

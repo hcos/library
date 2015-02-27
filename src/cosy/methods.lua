@@ -71,7 +71,7 @@ local Data          = require "cosy.data"
 --    >> print (Platform.table.representation (Platform.email.last_sent))
 --    ...
 --    {locale="en",success=true}
---    {body={"email:new_account:body",username="username",validation="..."},from={"email:new_account:from",email="test@cosy.org",name="CosyTest"},locale="en",subject={"email:new_account:subject",servername="CosyTest",username="username"},to={"email:new_account:to",email="username@domain.org",name="User Name"}}
+--    {body={"email:new_account:body",username="username",validation="?{old_token}"},from={"email:new_account:from",email="test@cosy.org",name="CosyTest"},locale="en",subject={"email:new_account:subject",servername="CosyTest",username="username"},to={"email:new_account:to",email="username@domain.org",name="User Name"}}
 --    (...)
 
 --    >  local response = Methods.create_user (nil, {
@@ -116,8 +116,10 @@ local Data          = require "cosy.data"
 --    >>   license_digest = "d41d8cd98f00b204e9800998ecf8427e",
 --    >> })
 --    >> print (Platform.table.representation (response))
+--    >> print (Platform.table.representation (Platform.email.last_sent))
 --    ...
 --    {locale="en",success=true}
+--    {body={"email:new_account:body",username="username",validation="?{token}"},from={"email:new_account:from",email="test@cosy.org",name="CosyTest"},locale="en",subject={"email:new_account:subject",servername="CosyTest",username="username"},to={"email:new_account:to",email="username@domain.org",name="User Name"}}
 --    (...)
 
 function Methods.create_user (_, request)
@@ -133,7 +135,9 @@ function Methods.create_user (_, request)
   }
   request:check ()
   local validation_token = Platform.token.encode {
+    type     = "user validation",
     username = request.username,
+    email    = request.email,
   }
   Utility.redis.transaction ({
     email = Configuration.redis.key.email._ % { email    = request.email    },
@@ -162,7 +166,7 @@ function Methods.create_user (_, request)
     p.data = {
       _           = true,
       type        = "user",
-      status      = "created",
+      status      = "validation",
       username    = request.username,
       email       = request.email,
       password    = Platform.password.hash (request.password),
@@ -170,7 +174,6 @@ function Methods.create_user (_, request)
       locale      = request.locale or Configuration.locale.default._,
       license     = request.license_digest,
       expire_at   = expire_at,
-      validation  = validation_token,
       access      = {
         public = true,
       },
@@ -208,9 +211,49 @@ function Methods.create_user (_, request)
       body    = {
         "email:new_account:body",
         username   = p.data.username._,
-        validation = p.data.validation._,
+        validation = validation_token,
       },
     }
+  end)
+end
+
+--    >  local response = Methods.validate_user ("!{token}")
+--    >> print (Platform.table.representation (response))
+--    {locale="en",success=true}
+--    (...)
+
+--    >  local response = Methods.validate_user ("!{old_token}")
+--    >> print (Platform.table.representation (response))
+--    error: {status="validate-user:failure"}
+--    (...)
+
+function Methods.validate_user (token)
+  if token.type ~= "user validation" then
+    error {
+      status = "validate-user:failure",
+    }
+  end
+  local username = token.username
+  local stoken   = Utility.tokens [token]
+  Utility.redis.transaction ({
+    email = Configuration.redis.key.email._ % { email    = token.email    },
+    token = Configuration.redis.key.token._ % { token    = stoken         },
+    data  = Configuration.redis.key.user._  % { username = token.username },
+  }, function (p)
+    if not p.data._
+    or not p.email._
+    or not p.token._
+    or p.data.type._   ~= "user"
+    or p.data.status._ ~= "validation"
+    then
+      error {
+        status   = "validate-user:failure",
+      }
+    end
+    p.data.expire_at  = nil
+    p.data.validation = nil
+    p.email.expire_at = nil
+    p.token           = nil
   end)
 end
 
@@ -230,6 +273,9 @@ Request.__index = Request
 Request.__metatable = "Request"
 
 function Request.new (t)
+  if t == nil then
+    t = {}
+  end
   return setmetatable (t, Request)
 end
 
@@ -388,6 +434,8 @@ end
 -- Utility
 -- -------
 
+Utility.tokens = setmetatable ({}, { __mode = "kv" })
+
 Utility.redis = {
   pool = {
     created = {},
@@ -483,45 +531,6 @@ function Utility.redis.transaction (keys, f)
 end
 
 --[==[
-function Methods.validate_user (session, t)
-  if session.username ~= nil then
-    error {
-      status = "validate-user:connected-already",
-    }
-  end
-  local parameters = {
-    username       = Parameters.username,
-    validation_key = Parameters.validation_key,
-  }
-  Backend.localize (session, t)
-  Backend.check    (session, t, parameters)
-  Backend.pool.transaction ({
-    data   = Configuration.redis.key.user._ % { username = t.username },
-  }, function (p)
-    if not p.data then
-      error {
-        status   = "validate-user:non-existing",
-        username = t.username,
-      }
-    end
-    if p.data.type ~= "user" then
-      error {
-        status = "validate-user:non-user",
-      }
-    end
-    if p.data.validation_key == nil then
-      error {
-        status = "validate-user:validated-already",
-      }
-    end
-    if p.data.validation_key ~= t.validation_key then
-      error {
-        status = "validate-user:erroneous",
-      }
-    end
-    p.data.validation_key = nil
-  end)
-end
 
 function Methods.license (session, t)
   local parameters = {
@@ -698,21 +707,22 @@ do
   Exported.Localized = {}
   local function wrap (method)
     return function (token, request)
-      local ok, response
+      local ok, contents, response
       if token then
-        ok, token = pcall (Platform.token.decode, token)
+        ok, contents = pcall (Platform.token.decode, token)
       else
-        ok, token = true, {}
+        ok, contents = true, {}
       end
       if not ok then
         return Response.new {
           status  = "token:error",
           locale  = Configuration.locale.default._,
-          reason  = token,
+          reason  = contents,
         }
       end
+      Utility.tokens [contents] = token
       request = Request.new (request)
-      method (token, request)
+      method (contents, request)
 --      ok, response = pcall (method, token, request)
       if type (response) ~= "table" then
         response = {
@@ -721,7 +731,7 @@ do
       end
       response = Response.new (response)
       response.success = ok
-      response.locale  = token.locale or Configuration.locale.default._
+      response.locale  = contents.locale or Configuration.locale.default._
       return response
     end
   end
