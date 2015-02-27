@@ -1,28 +1,40 @@
 -- Methods
 -- =======
 
--- The `Utility` table contains all utility functions used within methods.
-local Utility  = {}
+-- This module defines the methods exposed by CosyVerif.
+-- Methods use the standard [JSON Web Tokens](http://jwt.io/) to authenticate users.
+-- Each method takes two parameters: the decoded token contents,
+-- and the request itself.
+-- 
+-- The `cosy.methods` module returns a table containing several variants
+-- of the API:
+--
+-- * `cosy.methods.Localized` exports them as library functions to be used within
+--   the server. The `request` parameter is juste a plain table that is
+--   automatically converted to a `Request`. Responses and errors are localized
+--   using the locale chosen by the user.
+--
+-- Internally, the module makes use of `cosy.data` to represent its data,
+-- and `redis` to store and retrieve them. Any data or subdata can have
+-- an expiration date (either handled by `redis` or by `cosy.data`). After
+-- expiration, its value and subdata disappear.
+
 -- The `Methods` table contains all available methods.
 local Methods  = {}
 -- The `Request` table defines and checks requests.
 local Request  = {}
--- The `Response` table defines and checks responses.
+-- The `Response` table defines responses.
 local Response = {}
--- The `Parameters` table contains functions to check request parameters.
+-- The `Utility` table contains all utility functions used within methods.
+local Utility  = {}
+-- The `Parameters` table contains several types of parameters, and defines
+-- for each one several checking functions.
 local Parameters = {}
-
--- TODO
--- ----
---
--- * use data to represent data stored in redis
--- * create a hook to remove data after a timeout
 
 -- Dependencies
 -- ------------
 --
 -- This module depends on the following modules:
-                      require "compat53"
                       require "cosy.string"
 local Platform      = require "cosy.platform"
 local Configuration = require "cosy.configuration" .whole
@@ -36,104 +48,68 @@ local Data          = require "cosy.data"
 -- Each method takes two parameters: the decoded token contents,
 -- and the request parameters.
 
---    >  Platform      = require "cosy.platform"
---    >> Methods       = require "cosy.methods".Localized
---    >> Configuration = require "cosy.configuration" .whole
+-- In order to run the methods, we first have to load some dependencies:
+--
+-- * the `Platform` (here in test mode);
+-- * the `Methods` (localized);
+-- * the `Configuration`, with some predefined values, and a reduced expiration
+--   delay to reduce the time taken by the tests.
+--
+--    > Platform      = require "cosy.platform"
+--    > Methods       = require "cosy.methods".Localized
+--    > Configuration = require "cosy.configuration" .whole
+--    > Configuration.token  .secret = "secret"
+--    > Configuration.server .name   = "CosyTest"
+--    > Configuration.server .email  = "test@cosy.org"
+--    > Configuration.account.expire = 1 -- second
 --    (...)
 
---    >  Configuration.token  .secret = "secret"
---    >> Configuration.server .name   = "CosyTest"
---    >> Configuration.server .email  = "test@cosy.org"
---    >> Configuration.account.expire = 1 -- seconds
---    (...)
-
---    >  local response = Methods.create_user (nil, {
---    >>   username       = nil,
---    >>   password       = true,
---    >>   email          = "username_domain.org",
---    >>   name           = 1,
---    >>   license_digest = "",
---    >>   locale         = "anything",
---    >> })
---    >> print (Platform.table.representation (response))
---    ...
---    error: {reasons={{"check:missing",key="username"},{"check:is-string",key="name"},{"check:is-string",key="password"},{"check:min-size",count=32,key="license_digest"},{"check:email:pattern",email="username_domain.org"},{"check:max-size",count=5,key="locale"}},request={email="username_domain.org",license_digest="",locale="anything",name=1,optional={...},password=true,required={...},status="check:error"}
---    (...)
-
---    >  local response = Methods.create_user (nil, {
---    >>   username       = "username",
---    >>   password       = "password",
---    >>   email          = "username@domain.org",
---    >>   name           = "User Name",
---    >>   license_digest = "d41d8cd98f00b204e9800998ecf8427e",
---    >> })
---    >> print (Platform.table.representation (response))
---    >> print (Platform.table.representation (Platform.email.last_sent))
---    ...
---    {locale="en",success=true}
---    {body={"email:new_account:body",username="username",validation="?{old_token}"},from={"email:new_account:from",email="test@cosy.org",name="CosyTest"},locale="en",subject={"email:new_account:subject",servername="CosyTest",username="username"},to={"email:new_account:to",email="username@domain.org",name="User Name"}}
---    (...)
-
---    >  local response = Methods.create_user (nil, {
---    >>   username       = "username",
---    >>   password       = "password",
---    >>   email          = "username@domain.org",
---    >>   name           = "User Name",
---    >>   license_digest = "d41d8cd98f00b204e9800998ecf8427e",
---    >> })
---    ...
---    error: {email="username@domain.org",status="create-user:email-exists"}
---    (...)
-
---    >  local response = Methods.create_user (nil, {
---    >>   username       = "othername",
---    >>   password       = "password",
---    >>   email          = "username@domain.org",
---    >>   name           = "User Name",
---    >>   license_digest = "d41d8cd98f00b204e9800998ecf8427e",
---    >> })
---    ...
---    error: {email="username@domain.org",status="create-user:email-exists"}
---    (...)
-
---    >  local response = Methods.create_user (nil, {
---    >>   username       = "username",
---    >>   password       = "password",
---    >>   email          = "othername@domain.org",
---    >>   name           = "User Name",
---    >>   license_digest = "d41d8cd98f00b204e9800998ecf8427e",
---    >> })
---    ...
---    error: {status="create-user:username-exists",username="username"}
---    (...)
-
---    >  os.execute("sleep 2")
---    >> local response = Methods.create_user (nil, {
---    >>   username       = "username",
---    >>   password       = "password",
---    >>   email          = "username@domain.org",
---    >>   name           = "User Name",
---    >>   license_digest = "d41d8cd98f00b204e9800998ecf8427e",
---    >> })
---    >> print (Platform.table.representation (response))
---    >> print (Platform.table.representation (Platform.email.last_sent))
---    ...
---    {locale="en",success=true}
---    {body={"email:new_account:body",username="username",validation="?{token}"},from={"email:new_account:from",email="test@cosy.org",name="CosyTest"},locale="en",subject={"email:new_account:subject",servername="CosyTest",username="username"},to={"email:new_account:to",email="username@domain.org",name="User Name"}}
---    (...)
+-- ### User Creation
 
 function Methods.create_user (_, request)
+  -- User creation requires several parameters in its `request`:
+  --
+  -- * a `username`, that is unique on the server;
+  -- * a `password`, that is used to authenticate the user;
+  -- * an `email` address, where the validation token is sent.
   request.required = {
     username        = Parameters.username,
     password        = Parameters.password,
     email           = Parameters.email,
+  }
+
+  -- Some other parameters are optional:
+  --
+  -- a `name`, as the user wants it;
+  -- a `locale`, that is used to localize all the messages sent back to the user;
+  -- a `license_digest`, that corresponds to the license accepted by the user.
+  request.optional = {
     name            = Parameters.name,
+    locale          = Parameters.locale,
     license_digest  = Parameters.license_digest,
   }
-  request.optional = {
-    locale          = Parameters.locale,
-  }
+
+  -- Parameters are checked before going further in the method.
+  -- On error, the method raises an error containing the original `request`,
+  -- the `reasons` for the failure, and the functions used to check the
+  -- parameters.
   request:check ()
+
+  -- The test below checks that errors are correcly reported:
+  -- 
+  --    > local response = Methods.create_user (nil, {
+  --    >   username       = nil,
+  --    >   password       = true,
+  --    >   email          = "username_domain.org",
+  --    >   name           = 1,
+  --    >   license_digest = "",
+  --    >   locale         = "anything",
+  --    > })
+  --    > print (Platform.table.representation (response))
+  --    ...
+  --    error: {reasons={...},request={...},status="check:error"}
+  --    (...)
+
   local validation_token = Platform.token.encode {
     type     = "user validation",
     username = request.username,
@@ -150,18 +126,13 @@ function Methods.create_user (_, request)
         email    = request.email,
       }
     end
-    if p.token._ then
-      error {
-        status   = "token:exists",
-        email    = request.email,
-      }
-    end
     if p.data._ then
       error {
         status   = "create-user:username-exists",
         username = request.username,
       }
     end
+    assert (not p.token._)
     local expire_at = Platform.time () + Configuration.account.expire._
     p.data = {
       _           = true,
@@ -216,21 +187,69 @@ function Methods.create_user (_, request)
     }
   end)
 end
-
---    >  local response = Methods.validate_user ("!{token}")
---    >> print (Platform.table.representation (response))
+--    >  local response = Methods.create_user (nil, {
+--    >   username       = "username",
+--    >   password       = "password",
+--    >   email          = "username@domain.org",
+--    >   name           = "User Name",
+--    >   license_digest = "d41d8cd98f00b204e9800998ecf8427e",
+--    > })
+--    > print (Platform.table.representation (response))
+--    ...
 --    {locale="en",success=true}
+--    > print (Platform.table.representation (Platform.email.last_sent))
+--    ...
+--    {body={"email:new_account:body",username="username",validation="?{old_token}"},from={"email:new_account:from",email="test@cosy.org",name="CosyTest"},locale="en",subject={"email:new_account:subject",servername="CosyTest",username="username"},to={"email:new_account:to",email="username@domain.org",name="User Name"}}
 --    (...)
 
---    >  local response = Methods.validate_user ("!{old_token}")
---    >> print (Platform.table.representation (response))
---    error: {status="validate-user:failure"}
+--    >  local response = Methods.create_user (nil, {
+--    >   username       = "username",
+--    >   password       = "password",
+--    >   email          = "username@domain.org",
+--    >   name           = "User Name",
+--    >   license_digest = "d41d8cd98f00b204e9800998ecf8427e",
+--    > })
+--    ...
+--    error: {email="username@domain.org",status="create-user:email-exists"}
 --    (...)
 
---    >  local response = Methods.validate_user ("d41d8cd98f00b204e9800998ecf8427e")
---    >> print (Platform.table.representation (response))
---    error: {reason="Invalid token",status="token:error"}
+--    >  local response = Methods.create_user (nil, {
+--    >   username       = "othername",
+--    >   password       = "password",
+--    >   email          = "username@domain.org",
+--    >   name           = "User Name",
+--    >   license_digest = "d41d8cd98f00b204e9800998ecf8427e",
+--    > })
+--    ...
+--    error: {email="username@domain.org",status="create-user:email-exists"}
 --    (...)
+
+--    >  local response = Methods.create_user (nil, {
+--    >   username       = "username",
+--    >   password       = "password",
+--    >   email          = "othername@domain.org",
+--    >   name           = "User Name",
+--    >   license_digest = "d41d8cd98f00b204e9800998ecf8427e",
+--    > })
+--    ...
+--    error: {status="create-user:username-exists",username="username"}
+--    (...)
+
+--    >  os.execute("sleep 2")
+--    > local response = Methods.create_user (nil, {
+--    >   username       = "username",
+--    >   password       = "password",
+--    >   email          = "username@domain.org",
+--    >   name           = "User Name",
+--    >   license_digest = "d41d8cd98f00b204e9800998ecf8427e",
+--    > })
+--    > print (Platform.table.representation (response))
+--    > print (Platform.table.representation (Platform.email.last_sent))
+--    ...
+--    {locale="en",success=true}
+--    {body={"email:new_account:body",username="username",validation="?{token}"},from={"email:new_account:from",email="test@cosy.org",name="CosyTest"},locale="en",subject={"email:new_account:subject",servername="CosyTest",username="username"},to={"email:new_account:to",email="username@domain.org",name="User Name"}}
+--    (...)
+
 
 function Methods.validate_user (token)
   if token.type ~= "user validation" then
@@ -260,6 +279,21 @@ function Methods.validate_user (token)
     p.token           = nil
   end)
 end
+--    >  local response = Methods.validate_user ("!{token}")
+--    > print (Platform.table.representation (response))
+--    {locale="en",success=true}
+--    (...)
+
+--    >  local response = Methods.validate_user ("!{token}")
+--    > print (Platform.table.representation (response))
+--    error: {status="validate-user:failure"}
+--    (...)
+
+--    >  local response = Methods.validate_user ("d41d8cd98f00b204e9800998ecf8427e")
+--    > print (Platform.table.representation (response))
+--    error: {reason="Invalid token",status="token:error"}
+--    (...)
+
 
 -- Storage keys
 -- ------------
@@ -496,8 +530,9 @@ function Utility.redis.transaction (keys, f)
     end
     Data.options (data) .filter = function (d)
       local expire_at = d.expire_at._
-      if expire_at then
-        return expire_at > Platform.time ()
+      if expire_at and expire_at < Platform.time () then
+        Data.delete (d)
+        return false
       else
         return true
       end

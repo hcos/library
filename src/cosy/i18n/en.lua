@@ -110,8 +110,6 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
     "email address %{email} is already bound to an account",
   ["create-user:username-exists"] =
     "username %{username} is already a user account",
-  ["token:exists"] =
-    "token %{email} exists already",
 
   ["authenticate:non-existing"] =
     "authentication failed, because the given user does not exist",
