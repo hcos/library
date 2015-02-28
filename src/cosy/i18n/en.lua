@@ -125,8 +125,15 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
   ["authenticate:cheap-password"] =
     "password for %{username} is hashed using too few rounds and thus rehashed",
 
+  ["method:success"] =
+    "success",
+  ["method:failure"] =
+    "failure",
+
   ["validate-user:failure"] =
     "validation failed",
+  ["validate-user:success"] =
+    "validation successfull, authentication token is %{token}",
   
   ["email:new_account:from"] =
     '"%{name}" <%{address}>',
