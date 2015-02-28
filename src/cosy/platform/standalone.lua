@@ -285,8 +285,8 @@ end)
 -- MD5
 -- ===
 Platform:register ("digest", function ()
-  Platform.md5 = require "md5"
-  Platform.md5.digest = Platform.md5.sumhexa
+  local md5 = require "md5"
+  Platform.digest = md5.sumhexa
 end)
 --    > Platform = require "cosy.platform.standalone"
 --    > local _ = Platform.digest
