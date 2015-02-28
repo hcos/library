@@ -28,10 +28,15 @@ return {
       max_size = 128,
     },
   },
+  token = {
+    algorithm = "HS512",
+  },
   locale = {
     default = "en",
   },
-  account = {
-    expire = 24 * 3600, -- 1 day
+  expiration = {
+    account        = 24 * 3600, -- 1 day
+    validation     =  1 * 3600, -- 1 hour
+    authentication =  1 * 3600, -- 1 hour
   },
 }
