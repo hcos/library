@@ -274,7 +274,9 @@ Platform:register ("password", function ()
     time  = Configuration.data.password.time._ * 1000,
   }
 end)
---    > Platform = require "cosy.platform.standalone"
+--    > Platform      = require "cosy.platform.standalone"
+--    > Configuration = require "cosy.configuration" .whole
+--    > Configuration.data.password.time = 0.001 -- second
 --    > local _ = Platform.password
 --    ...
 --    using ... rounds in bcrypt for at least ... milliseconds of computation
