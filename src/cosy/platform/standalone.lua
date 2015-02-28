@@ -342,35 +342,24 @@ Platform:register ("token", function ()
       _ = "platform:no-token-secret",
     }
   end
-  Internal.token.algorithm._ = "HS512"
-  Internal.token.validity._ = 600 -- seconds
   Platform.token = {}
-  function Platform.token.encode (contents)
-    local token = {}
-    token.iat = Platform.time ()
-    token.nbf = token.iat - 1
-    token.exp = token.nbf + Configuration.token.validity._
-    token.iss = Configuration.server.name._
-    token.aud = nil
-    token.sub = "cosy:token"
-    token.jti = Platform.md5.digest (tostring (token.iat + Platform.random ()))
-    token.contents = contents
-    local key       = Configuration.token.secret._
-    local algorithm = Configuration.token.algorithm._
-    local result, err = jwt.encode (token, key, algorithm)
+  function Platform.token.encode (token)
+    local secret      = Configuration.token.secret._
+    local algorithm   = Configuration.token.algorithm._
+    local result, err = jwt.encode (token, secret, algorithm)
     if not result then
-      error (err:match "^.*:%s*(.*)$")
+      error (err)
     end
     return result
   end
   function Platform.token.decode (s)
-    local key       = Configuration.token.secret._
-    local algorithm = Configuration.token.algorithm._
+    local key         = Configuration.token.secret._
+    local algorithm   = Configuration.token.algorithm._
     local result, err = jwt.decode (s, key, algorithm)
     if not result then
-      error (errerr:match "^.*:%s*(.*)$")
+      error (err)
     end
-    return result.contents
+    return result
   end
 end)
 --    > Platform      = require "cosy.platform.standalone"
