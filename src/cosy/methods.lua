@@ -21,12 +21,10 @@
 
 -- The `Methods` table contains all available methods.
 local Methods  = {}
--- The `Request` table defines and checks requests.
-local Request  = {}
--- The `Response` table defines responses.
-local Response = {}
--- The `Utility` table contains all utility functions used within methods.
-local Utility  = {}
+-- The `Token` table contains utility functions for JSON Web Tokens.
+local Token    = {}
+-- The `Utility` table contains the `Redis.transaction` function.
+local Redis  = {}
 -- The `Parameters` table contains several types of parameters, and defines
 -- for each one several checking functions.
 local Parameters = {}
@@ -39,7 +37,6 @@ local Parameters = {}
 local Platform      = require "cosy.platform"
 local Configuration = require "cosy.configuration" .whole
 local Internal      = require "cosy.configuration" .internal
-local Data          = require "cosy.data"
 
 -- Methods
 -- -------
@@ -55,13 +52,18 @@ local Data          = require "cosy.data"
 -- * the `Configuration`, with some predefined values, and a reduced expiration
 --   delay to reduce the time taken by the tests.
 --
+--    > Configuration = require "cosy.configuration" .whole
 --    > Platform      = require "cosy.platform"
 --    > Methods       = require "cosy.methods".Localized
---    > Configuration = require "cosy.configuration" .whole
---    > Configuration.token  .secret = "secret"
---    > Configuration.server .name   = "CosyTest"
---    > Configuration.server .email  = "test@cosy.org"
---    > Configuration.account.expire = 1 -- second
+--    > Configuration.data.password.time        = 0.001 -- second
+--    > Configuration.token.secret              = "secret"
+--    > Configuration.token.algorithm           = "HS256"
+--    > Configuration.server.name               = "CosyTest"
+--    > Configuration.server.email              = "test@cosy.org"
+--    > Configuration.expiration.account        = 2 -- second
+--    > Configuration.expiration.validation     = 2 -- second
+--    > Configuration.expiration.authentication = 2 -- second
+--    ...
 --    (...)
 
 -- ### User Creation
@@ -93,10 +95,10 @@ function Methods.create_user (_, request)
   -- On error, the method raises an error containing the original `request`,
   -- the `reasons` for the failure, and the functions used to check the
   -- parameters.
-  request:check ()
+  Parameters.check (request)
 
   -- The test below checks that errors are correcly reported:
-  -- 
+  --
   --    > local response = Methods.create_user (nil, {
   --    >   username       = nil,
   --    >   password       = true,
@@ -107,35 +109,31 @@ function Methods.create_user (_, request)
   --    > })
   --    > print (Platform.table.representation (response))
   --    ...
-  --    error: {reasons={...},request={...},status="check:error"}
+  --    error: {_="check:error",reasons={...},request={...}}
   --    (...)
 
-  local validation_token = Platform.token.encode {
-    type     = "user validation",
-    username = request.username,
-    email    = request.email,
-  }
-  Utility.redis.transaction ({
+  local validation = Token.validation.new  (request)
+  local new_token  = Platform.token.encode (validation)
+  Redis.transaction ({
     email = Configuration.redis.key.email._ % { email    = request.email    },
-    token = Configuration.redis.key.token._ % { token    = validation_token },
+    token = Configuration.redis.key.token._ % { token    = new_token        },
     data  = Configuration.redis.key.user._  % { username = request.username },
   }, function (p)
-    if p.email._ then
+    if p.email then
       error {
-        status   = "create-user:email-exists",
-        email    = request.email,
+        _     = "create-user:email-exists",
+        email = request.email,
       }
     end
-    if p.data._ then
+    if p.data then
       error {
-        status   = "create-user:username-exists",
+        _        = "create-user:username-exists",
         username = request.username,
       }
     end
-    assert (not p.token._)
-    local expire_at = Platform.time () + Configuration.account.expire._
+    assert (not p.token)
+    local expire_at = Platform.time () + Configuration.expiration.account._
     p.data = {
-      _           = true,
       type        = "user",
       status      = "validation",
       username    = request.username,
@@ -151,38 +149,36 @@ function Methods.create_user (_, request)
       contents    = {},
     }
     p.email = {
-      _         = true,
       expire_at = expire_at,
     }
     p.token = {
-      _         = true,
       expire_at = expire_at,
     }
   end)
-  Utility.redis.transaction ({
+  Redis.transaction ({
     data = Configuration.redis.key.user._ % { username = request.username },
   }, function (p)
     Platform.email.send {
-      locale  = p.data.locale._,
+      locale  = p.data.locale,
       from    = {
-        "email:new_account:from",
+        _     = "email:new_account:from",
         name  = Configuration.server.name._,
         email = Configuration.server.email._,
       },
       to      = {
-        "email:new_account:to",
-        name  = p.data.name._,
-        email = p.data.email._,
+        _     = "email:new_account:to",
+        name  = p.data.name,
+        email = p.data.email,
       },
       subject = {
-        "email:new_account:subject",
+        _          = "email:new_account:subject",
         servername = Configuration.server.name._,
-        username   = p.data.username._,
+        username   = p.data.username,
       },
       body    = {
-        "email:new_account:body",
-        username   = p.data.username._,
-        validation = validation_token,
+        _          = "email:new_account:body",
+        username   = p.data.username,
+        validation = new_token,
       },
     }
   end)
@@ -196,7 +192,7 @@ end
 --    > })
 --    > print (Platform.table.representation (response))
 --    ...
---    {locale="en",success=true}
+--    {_="method:success",locale="en",success=true}
 --    > print (Platform.table.representation (Platform.email.last_sent))
 --    ...
 --    {body={"email:new_account:body",username="username",validation="?{old_token}"},from={"email:new_account:from",email="test@cosy.org",name="CosyTest"},locale="en",subject={"email:new_account:subject",servername="CosyTest",username="username"},to={"email:new_account:to",email="username@domain.org",name="User Name"}}
@@ -252,32 +248,38 @@ end
 
 
 function Methods.validate_user (token)
-  if token.type ~= "user validation" then
+  if token.type ~= "validation" then
     error {
-      status = "validate-user:failure",
+      _ = "validate-user:failure",
     }
   end
-  local raw_token = Utility.tokens [token]
-  Utility.redis.transaction ({
+  local authentication_token
+  local raw_token = Token.raw [token]
+  Redis.transaction ({
     email = Configuration.redis.key.email._ % { email    = token.email    },
     token = Configuration.redis.key.token._ % { token    = raw_token      },
     data  = Configuration.redis.key.user._  % { username = token.username },
   }, function (p)
-    if not p.data._
-    or not p.email._
-    or not p.token._
-    or p.data.type._   ~= "user"
-    or p.data.status._ ~= "validation"
+    if not p.data
+    or not p.email
+    or not p.token
+    or p.data.type   ~= "user"
+    or p.data.status ~= "validation"
     then
       error {
-        status   = "validate-user:failure",
+        _ = "validate-user:failure",
       }
     end
     p.data.expire_at  = nil
     p.data.validation = nil
     p.email.expire_at = nil
     p.token           = nil
+    authentication_token = Token.authentication (p.data)
   end)
+  return {
+    _     = "validate_user:success",
+    token = Platform.token.encode (authentication_token),
+  }
 end
 --    >  local response = Methods.validate_user ("!{token}")
 --    > print (Platform.table.representation (response))
@@ -295,29 +297,10 @@ end
 --    (...)
 
 
--- Storage keys
--- ------------
+-- Parameters
+-- ----------
 
-Internal.redis.key = {
-  user  = "user:%{username}",
-  email = "email:%{email}",
-  token = "token:%{token}",
-}
-
--- Request
--- -------
-
-Request.__index = Request
-Request.__metatable = "Request"
-
-function Request.new (t)
-  if t == nil then
-    t = {}
-  end
-  return setmetatable (t, Request)
-end
-
-function Request.check (request)
+function Parameters.check (request)
   local reasons  = {}
   local required = request.required
   if required then
@@ -325,7 +308,7 @@ function Request.check (request)
       local value = request [key]
       if value == nil then
         reasons [#reasons+1] = {
-          "check:missing",
+          _   = "check:missing",
           key = key,
         }
       else
@@ -356,29 +339,12 @@ function Request.check (request)
   end
   if #reasons ~= 0 then
     error {
-      status  = "check:error",
+      _       = "check:error",
       reasons = reasons,
       request = request,
     }
   end
 end
-
--- Response
--- --------
-
-Response.__index     = Response
-Response.__metatable = "Response"
-
-function Response.new (t)
-  return setmetatable (t, Response)
-end
-
-function Response.__tostring (response)
-  return Platform.i18n.translate (response.status, response)
-end
-
--- Parameters
--- ----------
 
 setmetatable (Parameters, {
   __index = function ()
@@ -393,24 +359,24 @@ function Parameters.new_string (key)
   Parameters [key] [1] = function (request)
     return  type (request [key]) == "string"
         or  nil, {
-              "check:is-string",
+              _   = "check:is-string",
               key = key,
             }
   end
   Parameters [key] [2] = function (request)
     return  #(request [key]) >= Configuration.data [key] .min_size._
         or  nil, {
-              "check:min-size",
-              key    = key,
-              count  = Configuration.data [key] .min_size._,
+              _     = "check:min-size",
+              key   = key,
+              count = Configuration.data [key] .min_size._,
             }
   end
   Parameters [key] [3] = function (request)
     return  #(request [key]) <= Configuration.data [key] .max_size._
         or  nil, {
-              "check:max-size",
-              key    = key,
-              count  = Configuration.data [key].max_size._,
+              _     = "check:max-size",
+              key   = key,
+              count = Configuration.data [key].max_size._,
             }
   end
   return Parameters [key]
@@ -421,7 +387,7 @@ Parameters.username [#(Parameters.username) + 1] = function (request)
   request.username = request.username:trim ()
   return  request.username:find "^%w+$"
       or  nil, {
-            "check:username:alphanumeric",
+            _        = "check:username:alphanumeric",
             username = request.username,
           }
 end
@@ -434,7 +400,7 @@ Parameters.email [#(Parameters.email) + 1] = function (request)
   local pattern = "^.*@[%w%.%%%+%-]+%.%w%w%w?%w?$"
   return  request.email:find (pattern)
       or  nil, {
-            "check:email:pattern",
+            _     = "check:email:pattern",
             email = request.email,
           }
 end
@@ -449,7 +415,7 @@ Parameters.locale [#(Parameters.locale) + 1] = function (request)
   return  request.locale:find "^%a%a$"
       or  request.locale:find "^%a%a_%a%a$"
       or  nil, {
-            "check:locale:pattern",
+            _      = "check:locale:pattern",
             locale = request.locale,
           }
 end
@@ -464,34 +430,117 @@ Parameters.license_digest [#(Parameters.license_digest) + 1] = function (request
   local pattern = "^%x+$"
   return  request.license_digest:find (pattern)
       or  nil, {
-            "check:license_digest:pattern",
+            _              = "check:license_digest:pattern",
             license_digest = request.license_digest,
           }
+end
+
+
+-- Token
+--------
+
+Token.raw = setmetatable ({}, { __mode = "kv" })
+
+Token.validation = {}
+
+function Token.validation.new (data)
+  local now = Platform.time ()
+  return {
+    contents = {
+      type     = "validation",
+      username = data.username,
+      email    = data.email,
+    },
+    iat      = now,
+    nbf      = now - 1,
+    exp      = now + Configuration.expiration.validation._,
+    iss      = Configuration.server.name._,
+    aud      = nil,
+    sub      = "cosy:validation",
+    jti      = Platform.digest (tostring (now + Platform.random ())),
+  }
+end
+
+Token.authentication = {}
+
+function Token.authentication.new (data)
+  local now = Platform.time ()
+  return {
+    contents = {
+      type     = "authentication",
+      username = data.username,
+    },
+    iat      = now,
+    nbf      = now - 1,
+    exp      = now + Configuration.expiration.authentication._,
+    iss      = Configuration.server.name._,
+    aud      = nil,
+    sub      = "cosy:authentication",
+    jti      = Platform.md5.digest (tostring (now + Platform.random ())),
+  }
 end
 
 -- Utility
 -- -------
 
-Utility.tokens = setmetatable ({}, { __mode = "kv" })
-
-Utility.redis = {
+Redis = {
   pool = {
     created = {},
     free    = {},
   }
 }
 
+Internal.redis.key = {
+  user  = "user:%{username}",
+  email = "email:%{email}",
+  token = "token:%{token}",
+}
+
 Internal.redis.retry._ = 5
 
-function Utility.redis.transaction (keys, f)
+local RwTable = {
+  Current  = {},
+  Modified = {},
+  Within   = {},
+}
+
+function RwTable.new (t)
+  return setmetatable ({
+    [RwTable.Current ] = t,
+    [RwTable.Modified] = {},
+    [RwTable.Within  ] = false,
+  }, RwTable)
+end
+
+function RwTable.__index (t, key)
+  local found = t [RwTable.Current] [key]
+  if type (found) ~= "table" then
+    return found
+  else
+    local within = t [RwTable.Within] or key
+    return setmetatable ({
+      [RwTable.Current ] = found,
+      [RwTable.Modified] = t [RwTable.Modified],
+      [RwTable.Within  ] = within,
+    }, RwTable)
+  end
+end
+
+function RwTable.__newindex (t, key, value)
+  local within = t [RwTable.Within] or key
+  t [RwTable.Modified] [within] = true
+  t [RwTable.Current ] [key   ] = value
+end
+
+function Redis.transaction (keys, f)
   local client
   while true do
-    client = pairs (Utility.redis.pool.free) (Utility.redis.pool.free)
+    client = pairs (Redis.pool.free) (Redis.pool.free)
     if client then
-      Utility.redis.pool.free [client] = nil
+      Redis.pool.free [client] = nil
       break
     end
-    if #Utility.redis.pool.created < Configuration.redis.pool_size._ then
+    if #Redis.pool.created < Configuration.redis.pool_size._ then
       if Platform.redis.is_fake then
         client = Platform.redis.connect ()
       else
@@ -500,14 +549,15 @@ function Utility.redis.transaction (keys, f)
         local host      = Configuration.redis.host._
         local port      = Configuration.redis.port._
         local database  = Configuration.redis.database._
-        local skt       = Platform.scheduler:wrap (socket.tcp ()):connect (host, port)
+        local skt       = Platform.scheduler:wrap (socket.tcp ())
+                          :connect (host, port)
         client = Platform.redis.connect {
           socket    = skt,
           coroutine = coroutine,
         }
         client:select (database)
       end
-      Utility.redis.pool.created [#Utility.redis.pool.created + 1] = client
+      Redis.pool.created [#Redis.pool.created + 1] = client
       break
     else
       Platform.scheduler:pass ()
@@ -518,50 +568,31 @@ function Utility.redis.transaction (keys, f)
     cas   = true,
     retry = Configuration.redis.retry_,
   }, function (redis)
-    local written = {}
-    local data = Data.new ()
-    data.default = {}
-    local t    = data.default
-    local raw  = Data.raw (data).default
-    for k, v in pairs (keys) do
-      if redis:exists (v) then
-        raw [k] = Platform.json.decode (redis:get (v))
+    local data = {}
+    for name, key in pairs (keys) do
+      if redis:exists (key) then
+        data [name] = Platform.json.decode (redis:get (key))
       end
     end
-    Data.options (data) .filter = function (d)
-      local expire_at = d.expire_at._
-      if expire_at and expire_at < Platform.time () then
-        Data.delete (d)
-        return false
+    local rw = RwTable.new (data)
+    f (rw, client)
+    redis:multi ()
+    for name in pairs (rw [RwTable.Modified]) do
+      local key   = keys [name]
+      local value = data [name]
+      if value == nil then
+        redis:del (key)
       else
-        return true
-      end
-    end
-    Data.options (data) .on_write = function (d)
-      written [Data.path (d) [2]] = true
-    end
-    f (t, client)
-    Data.options (data) .filter   = nil
-    Data.options (data) .on_write = nil
-    if pairs (written) (written) then
-      redis:multi ()
-      for k in pairs (written) do
-        local redis_key = keys [k]
-        local value     = raw  [k]
-        if value == nil then
-          redis:del (redis_key)
+        redis:set (key, Platform.json.encode (value))
+        if type (value) == "table" and value.expire_at then
+          redis:expireat (key, value.expire_at)
         else
-          redis:set (redis_key, Platform.json.encode (value))
-          if value.expire_at then
-            redis:expireat (redis_key, value.expire_at)
-          else
-            redis:persist (redis_key)
-          end
+          redis:persist (key)
         end
       end
     end
   end)
-  Utility.redis.pool.free [client] = true
+  Redis.pool.free [client] = true
   if ok then
     return result
   else
@@ -745,32 +776,29 @@ local Exported = {}
 do
   Exported.Localized = {}
   local function wrap (method)
-    return function (token, request)
-      local ok, contents, response
-      if token then
-        ok, contents = pcall (Platform.token.decode, token)
-      else
-        ok, contents = true, {}
+    return function (raw_token, request)
+      local token
+      if raw_token then
+        local ok, res = pcall (Platform.token.decode, raw_token)
+        if ok then
+          token = res
+          Token.raw [token] = raw_token
+        else
+          error {
+            _      = "token:error",
+            reason = res:match "%s*([^:]*)$",
+          }
+        end
       end
-      if not ok then
-        contents = contents:match "^.*:%s*(.*)$"
-        error {
-          status = "token:error",
-          reason = contents,
-        }
-      end
-      Utility.tokens [contents] = token
-      request = Request.new (request)
-      method (contents, request)
---      ok, response = pcall (method, token, request)
-      if type (response) ~= "table" then
+      local response = method (token, request)
+      if response == nil then
         response = {
-          reason  = response,
+          _ = "method:success",
         }
       end
-      response = Response.new (response)
-      response.success = ok
-      response.locale  = contents.locale or Configuration.locale.default._
+      response.success = true
+      response.locale  = (token and token.locale)
+                      or Configuration.locale.default._
       return response
     end
   end
