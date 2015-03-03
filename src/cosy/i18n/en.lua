@@ -1,5 +1,5 @@
 return {
-  ["license"] =
+  ["tos"] =
 [[
 Cas n°1: Utilisation du logiciel Cosyverif par téléchargement
 
@@ -34,13 +34,13 @@ Cas 3b: A l'intention des utilisateurs quand la contribution est intégrée au l
 
 Be aware the Cosyverif software contains several modules provided "as is", we do not warrant that the modules do not infringe the intellectual property rigths of a third party.
 ]],
-  ["license:reject"] =
+  ["tos:reject"] =
     "license %{digest} is rejected by user %{username}",
-  ["license:outdated"] =
+  ["tos:outdated"] =
     "license %{digest} is not up to date, or in wrong locale",
-  ["license:accept"] =
+  ["tos:accept"] =
     "license %{digest} is accepted by user %{username}",
-  ["license:accept?"] =
+  ["tos:accept?"] =
     "accepting the license is required",
     
   ["ok"] =
@@ -106,8 +106,8 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
     "an email address must comply to the standard",
   ["check:locale:pattern"] =
     "a locale must comply to the standard",
-  ["check:license_digest:pattern"] =
-    "a license digest must be a MD5 digest, and thus a sequence of alphanumeric characters",
+  ["check:tos_digest:pattern"] =
+    "a terms of service digest must be a MD5 digest, and thus a sequence of alphanumeric characters",
 
   ["create-user:email-exists"] =
     "email address %{email} is already bound to an account",
