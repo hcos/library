@@ -54,7 +54,7 @@ local Internal      = require "cosy.configuration" .internal
 --
 --    > Configuration = require "cosy.configuration" .whole
 --    > Platform      = require "cosy.platform"
---    > Methods       = require "cosy.methods".Localized
+--    > Methods       = require "cosy.methods".Raw
 --    > Configuration.data.password.time        = 0.001 -- second
 --    > Configuration.token.secret              = "secret"
 --    > Configuration.token.algorithm           = "HS256"
@@ -513,10 +513,6 @@ function RwTable.__index (t, key)
   if type (found) ~= "table" then
     return found
   else
-    local expire = found.expire_at
-    if expire and expire < Platform.time () then
-      return nil
-    end
     local within = t [RwTable.Within] or key
     return setmetatable ({
       [RwTable.Current ] = found,
@@ -593,6 +589,14 @@ function Redis.transaction (keys, f)
       end
     end
     local rw = RwTable.new (data)
+    for name in pairs (keys) do
+      if type (data [name]) == "table" then
+        local expire = data [name].expire_at
+        if expire and expire < Platform.time () then
+          data [name] = nil
+        end
+      end
+    end
     f (rw, client)
     redis:multi ()
     for name in pairs (rw [RwTable.Modified]) do
@@ -618,181 +622,14 @@ function Redis.transaction (keys, f)
   end
 end
 
---[==[
 
-function Methods.license (session, t)
-  local parameters = {
-    locale = Parameters.locale,
-  }
-  Backend.localize (session, t)
-  Backend.check    (session, t, parameters)
-  local license = Platform.i18n.translate ("license", {
-    locale = session.locale
-  }):trim ()
-  local license_md5 = Platform.md5.digest (license)
-  return {
-    license = license,
-    digest  = license_md5,
-  }
-end
-
-function Methods.authenticate (session, t)
-  local parameters = {
-    username = Parameters.username,
-    password = Parameters.password,
-    ["license?"] = Parameters.license,
-  }
-  Backend.localize (session, t)
-  Backend.check    (session, t, parameters)
-  session.username = nil
-  Backend.pool.transaction ({
-    data = "/%{username}" % {
-      username = t.username,
-    }
-  }, function (p)
-    local data = p.data
-    if not data then
-      error {
-        status = "authenticate:non-existing",
-      }
-    end
-    if data.type ~= "user" then
-      error {
-        status = "authenticate:non-user",
-      }
-    end
-    session.locale = data.locale or session.locale
-    if data.validation_key then
-      error {
-        status = "authenticate:non-validated",
-      }
-    end
-    if not Platform.password.verify (t.password, data.password) then
-      error {
-        status = "authenticate:erroneous",
-      }
-    end
-    if Platform.password.is_too_cheap (data.password) then
-      Platform.logger.debug {
-        "authenticate:cheap-password",
-        username = t.username,
-      }
-      data.password = Platform.password.hash (t.password)
-    end
-    local license = Platform.i18n.translate ("license", {
-      locale = session.locale
-    }):trim ()
-    local license_md5 = Platform.md5.digest (license)
-    if license_md5 ~= data.accepted_license then
-      if t.license and t.license == license_md5 then
-        data.accepted_license = license_md5
-      elseif t.license and t.license ~= license_md5 then
-        error {
-          status   = "license:oudated",
-          username = t.username,
-          digest   = license_md5,
-        }
-      else
-        error {
-          status   = "license:reject",
-          username = t.username,
-          digest   = license_md5,
-        }
-      end
-    end
-  end)
-  session.username = t.username
-end
-
-function Methods.reset_user (session, t)
-end
-
-function Methods:delete_user (t)
-end
-
-function Methods.metadata (session, t)
-end
-
-function Methods:create_project (t)
-end
-
-function Methods:delete_project (t)
-end
-
-function Methods:create_resource (t)
-end
-
-function Methods:delete_resource (t)
-end
-
-function Methods:list (t)
-end
-
-function Methods:update (t)
-end
-
-function Methods:edit (t)
-end
-
-function Methods:patch (t)
-end
-
-
--- 
-
-
-
-
-function Backend.localize (session, t)
-  local locale
-  if type (t) == "table" and t.locale then
-    locale = t.locale
-  elseif session.locale then
-    locale = session.locale
-  else
-    locale = Configuration.locale.default._
-  end
-  session.locale = locale
-end
-
-function Backend.check (session, t, parameters)
-  for key, parameter in pairs (parameters) do
-    local optional = key:find "?$"
-    if optional then
-      key = key:sub (1, #key-1)
-    end
-    local value = t [key]
-    if value == nil and not optional then
-      error {
-        status     = "check:error",
-        reason     = Platform.i18n.translate ("check:missing", {
-           locale = session.locale,
-           key    = key,
-         }),
-        parameters = parameters,
-      }
-    elseif value ~= nil then
-      for _, f in ipairs (parameter) do
-        local ok, r = f (session, t)
-        if not ok then
-          error {
-            status     = "check:error",
-            reason     = r,
-            parameters = parameters,
-          }
-        end
-      end
-    end
-  end
-end
-
-
---]==]
+-- Exported methods
+-- ----------------
 
 local Exported = {}
 
 do
-  Exported.Localized = {}
+  Exported.Raw = {}
   local function wrap (method)
     return function (raw_token, request)
       local token
@@ -818,7 +655,7 @@ do
     end
   end
   for k, v in pairs (Methods) do
-    Exported.Localized [k] = wrap (v)
+    Exported.Raw [k] = wrap (v)
   end
 end
 
