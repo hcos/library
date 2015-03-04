@@ -39,4 +39,8 @@ return {
     validation     =  1 * 3600, -- 1 hour
     authentication =  1 * 3600, -- 1 hour
   },
+  reputation = {
+    at_creation = 10,
+    suspend     = 50,
+  }
 }

@@ -108,6 +108,8 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
     "a locale must comply to the standard",
   ["check:tos_digest:pattern"] =
     "a terms of service digest must be a MD5 digest, and thus a sequence of alphanumeric characters",
+  ["check:tos_digest:incorrect"] =
+    "terms of service digest is does not correspond to the terms of service",
 
   ["create-user:email-exists"] =
     "email address %{email} is already bound to an account",
@@ -143,4 +145,24 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
     "[%{servername}] Welcome, %{username}!",
   ["email:new_account:body"] =
     "%{username}, your validation token is <%{validation}>.",
+
+  ["email:reset_account:from"] =
+    '"%{name}" <%{address}>',
+  ["email:reset_account:from"] =
+    '"%{name}" <%{address}>',
+  ["email:reset_account:subject"] =
+    "[%{servername}] Welcome, %{username}!",
+  ["email:reset_account:body"] =
+    "%{username}, your validation token is <%{validation}>.",
+  
+  ["token:not-validation"] =
+    "token is not a validation one",
+  ["token:not-authentication"] =
+    "token is not an authentication one",
+
+  ["forbidden"] =
+    "action is forbidden",
+
+  ["reputation:not-enough"] =
+    "this actions requires %{required} reputation, but only %{owned} is owned",
 }

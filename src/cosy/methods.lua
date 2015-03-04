@@ -38,6 +38,20 @@ local Platform      = require "cosy.platform"
 local Configuration = require "cosy.configuration" .whole
 local Internal      = require "cosy.configuration" .internal
 
+local Status = setmetatable ({
+  inactive  = "inactive",
+  active    = "active",
+  suspended = "suspended",
+}, {
+  __index = assert,
+})
+
+local Type = setmetatable ({
+  user = "user",
+}, {
+  __index = assert,
+})
+
 -- Methods
 -- -------
 --
@@ -64,36 +78,44 @@ local Internal      = require "cosy.configuration" .internal
 --    > Configuration.expiration.validation     = 2 -- second
 --    > Configuration.expiration.authentication = 2 -- second
 
+-- ### Infomration
+-- ---------------
+--
+-- The `information` method returns some useful or useless information about
+-- the running Cosy server.
+--
+--    > = Methods.information ()
+--    {...}
+
+function Methods.information ()
+  return {
+    name = Configuration.server.name._,
+  }
+end
+
+
 -- ### Terms of Service
 --
 -- In order to create an account or authenticate, users of CosyVerif must
 -- accept the "Terms of Service". Because of internationalization, we **must**
--- provide to users the "Terms of Service" in their locale (or a fallback one),
--- and they **must** accept it to use CosyVerif, by providing its digest.
+-- provide to users the "Terms of Service" in their language
+-- (or a fallback one), and they **must** accept it by providing its digest.
 --
 -- The `tos` method returns the "Terms of Service" in a selected locale
 -- (the user's one, or a locale provided in the request), and its computed
 -- digest, that can be used later for acceptation.
 
 --    > = Methods.tos (nil, { locale = "en" })
---    {tos=...,digest=...}
-
---    > = Methods.tos (nil, {})
---    error: {_="check:error",...}
+--    {tos=...,tos_digest=_.tos}
 
 function Methods.tos (token, request)
-  local locale
-  if token ~= nil and token.type == "authentication" then
-    locale = token.locale
-  elseif token ~= nil then
-    error {}
-  else
-    request.required = {
-      locale = Parameters.locale,
-    }
-    Parameters.check (request)
-    locale = request.locale
-  end
+  request.optional = {
+    locale = Parameters.locale,
+  }
+  Parameters.check (request)
+  local locale = (token and token.locale)
+              or request.locale
+              or Configuration.locale.default._
   local tos = Platform.i18n.translate ("tos", {
     locale = locale,
   })
@@ -111,22 +133,22 @@ function Methods.create_user (_, request)
   --
   -- * a `username`, that is unique on the server;
   -- * a `password`, that is used to authenticate the user;
-  -- * an `email` address, where the validation token is sent.
+  -- * an `email` address, where the validation token is sent;
+  -- a `tos_digest`, corresponding to the terms of service accepted by the user;
+  -- a `locale`, that is used to localize all the messages sent back to the user.
   request.required = {
-    username        = Parameters.username,
-    password        = Parameters.password,
-    email           = Parameters.email,
+    username   = Parameters.username,
+    password   = Parameters.password,
+    email      = Parameters.email,
+    tos_digest = Parameters.tos_digest,
+    locale     = Parameters.locale,
   }
 
   -- Some other parameters are optional:
   --
-  -- a `name`, as the user wants it;
-  -- a `locale`, that is used to localize all the messages sent back to the user;
-  -- a `tos_digest`, corresponding to the terms of service accepted by the user.
+  -- a `name`, as the user wants it.
   request.optional = {
-    name       = Parameters.name,
-    locale     = Parameters.locale,
-    tos_digest = Parameters.tos_digest,
+    name = Parameters.name,
   }
 
   -- Parameters are checked before going further in the method.
@@ -142,16 +164,13 @@ function Methods.create_user (_, request)
   --    >   password   = true,
   --    >   email      = "username_domain.org",
   --    >   name       = 1,
-  --    >   tos_digest = "",
+  --    >   tos_digest = "d41d8cd98f00b204e9800998ecf8427e",
   --    >   locale     = "anything",
   --    > })
   --    error: {_="check:error",...}
 
-  local validation = Token.validation.new  (request)
-  local new_token  = Platform.token.encode (validation)
-  Redis.transaction ({
+  local data = Redis.transaction ({
     email = Configuration.redis.key.email._ % { email    = request.email    },
-    token = Configuration.redis.key.token._ % { token    = new_token        },
     data  = Configuration.redis.key.user._  % { username = request.username },
   }, function (p)
     if p.email then
@@ -166,11 +185,10 @@ function Methods.create_user (_, request)
         username = request.username,
       }
     end
-    assert (not p.token)
     local expire_at = Platform.time () + Configuration.expiration.account._
     p.data = {
-      type        = "user",
-      status      = "validation",
+      type        = Type.user,
+      status      = Status.inactive,
       username    = request.username,
       email       = request.email,
       password    = Platform.password.hash (request.password),
@@ -184,49 +202,45 @@ function Methods.create_user (_, request)
       contents    = {},
     }
     p.email = {
+      username  = request.username,
       expire_at = expire_at,
     }
-    p.token = {
-      expire_at = expire_at,
-    }
+    return p.data
   end)
-  Redis.transaction ({
-    data = Configuration.redis.key.user._ % { username = request.username },
-  }, function (p)
-    Platform.email.send {
-      locale  = p.data.locale,
-      from    = {
-        _     = "email:new_account:from",
-        name  = Configuration.server.name._,
-        email = Configuration.server.email._,
+  Platform.email.send {
+    locale  = data.locale,
+    from    = {
+      _     = "email:new_account:from",
+      name  = Configuration.server.name._,
+      email = Configuration.server.email._,
+    },
+    to      = {
+      _     = "email:new_account:to",
+      name  = data.name,
+      email = data.email,
+    },
+    subject = {
+      _          = "email:new_account:subject",
+      servername = Configuration.server.name._,
+      username   = data.username,
+    },
+    body    = {
+      _          = "email:new_account:body",
+      username   = data.username,
+      validation = Token.validation.new (data),
+      tos        = {
+        _ = "tos",
       },
-      to      = {
-        _     = "email:new_account:to",
-        name  = p.data.name,
-        email = p.data.email,
-      },
-      subject = {
-        _          = "email:new_account:subject",
-        servername = Configuration.server.name._,
-        username   = p.data.username,
-      },
-      body    = {
-        _          = "email:new_account:body",
-        username   = p.data.username,
-        validation = new_token,
-        tos        = {
-          _ = "tos",
-        },
-      },
-    }
-  end)
+    },
+  }
 end
 --    > = Methods.create_user (nil, {
 --    >   username   = "username",
 --    >   password   = "password",
 --    >   email      = "username@domain.org",
 --    >   name       = "User Name",
---    >   tos_digest = "d41d8cd98f00b204e9800998ecf8427e",
+--    >   tos_digest = tos,
+--    >   locale     = "en",
 --    > })
 --    {...}
 --    > = Platform.email.last_sent
@@ -237,7 +251,8 @@ end
 --    >   password   = "password",
 --    >   email      = "username@other.org",
 --    >   name       = "User Name",
---    >   tos_digest = "d41d8cd98f00b204e9800998ecf8427e",
+--    >   tos_digest = tos,
+--    >   locale     = "en",
 --    > })
 --    error: {_="create-user:username-exists",username="username",...}
 
@@ -246,7 +261,8 @@ end
 --    >   password   = "password",
 --    >   email      = "username@domain.org",
 --    >   name       = "User Name",
---    >   tos_digest = "d41d8cd98f00b204e9800998ecf8427e",
+--    >   tos_digest = tos,
+--    >   locale     = "en",
 --    > })
 --    error: {_="create-user:email-exists",email="username@domain.org",...}
 
@@ -256,56 +272,213 @@ end
 --    >   password   = "password",
 --    >   email      = "username@domain.org",
 --    >   name       = "User Name",
---    >   tos_digest = "d41d8cd98f00b204e9800998ecf8427e",
+--    >   tos_digest = tos,
+--    >   locale     = "en",
 --    > })
 --    {...}
 --    > = Platform.email.last_sent
 --    {body={_="email:new_account:body",validation=_.validation,...},...}
 
-function Methods.validate_user (token)
-  if token.type ~= "validation" then
+function Methods.activate_user (token)
+  if not Token.is_validation (token) then
     error {
-      _ = "validate-user:failure",
+      _ = "token:not-validation",
     }
   end
-  local authentication_token
-  local raw_token = Token.raw [token]
-  Redis.transaction ({
+  token = Redis.transaction ({
     email = Configuration.redis.key.email._ % { email    = token.email    },
-    token = Configuration.redis.key.token._ % { token    = raw_token      },
     data  = Configuration.redis.key.user._  % { username = token.username },
   }, function (p)
     if not p.data
     or not p.email
-    or not p.token
-    or p.data.type   ~= "user"
-    or p.data.status ~= "validation"
+    or p.data.type   ~= Type.user
+    or p.data.status ~= Status.inactive
     then
-      error {
-        _ = "validate-user:failure",
-      }
+      error {}
     end
+    p.data.status     = Status.active
     p.data.expire_at  = nil
-    p.data.validation = nil
     p.email.expire_at = nil
-    p.token           = nil
-    authentication_token = Token.authentication.new (p.data)
+    return Token.authentication.new (p.data)
   end)
   return {
-    _     = "validate_user:success",
-    token = Platform.token.encode (authentication_token),
+    token = token,
   }
 end
 
---    > = Methods.validate_user (validation)
---    {_="validate_user:success",token=_.authentication,...}
+--    > = Methods.activate_user (validation)
+--    {token=_.authentication,...}
 
---    > = Methods.validate_user (validation)
---    error: {_="validate-user:failure",...}
+--    > = Methods.activate_user (validation)
+--    error: {...}
 
 --    > os.execute "sleep 1"
---    > = Methods.validate_user (validation_old)
+--    > = Methods.activate_user (validation_old)
 --    error: {_="token:error",reason="Invalid exp",...}
+
+function Methods.reset_user (_, request)
+  request.required = {
+    email = Parameters.email,
+  }
+  Parameters.check (request)
+  local username = Redis.transaction ({
+    email = Configuration.redis.key.email._ % { email = request.email },
+  }, function (p)
+    if not p.email
+    or not p.email.username then
+      error {}
+    end
+    return p.email.username
+  end)
+  local data = Redis.transaction ({
+    data  = Configuration.redis.key.user._ % { username = username },
+  }, function (p)
+    if not p.data
+    or p.data.status == Status.suspended
+    then
+      error {}
+    end
+    p.data.status = Status.inactive
+    return p.data
+  end)
+  Platform.email.send {
+    locale  = data.locale,
+    from    = {
+      _     = "email:reset_account:from",
+      name  = Configuration.server.name._,
+      email = Configuration.server.email._,
+    },
+    to      = {
+      _     = "email:reset_account:to",
+      name  = data.name,
+      email = data.email,
+    },
+    subject = {
+      _          = "email:reset_account:subject",
+      servername = Configuration.server.name._,
+      username   = data.username,
+    },
+    body    = {
+      _          = "email:reset_account:body",
+      username   = data.username,
+      validation = Token.validation.new (data),
+      tos        = {
+        _ = "tos",
+      },
+    },
+  }
+end
+
+-- ### Authentication
+
+function Methods.authenticate (_, request)
+  request.required = {
+    username   = Parameters.username,
+    password   = Parameters.password,
+  }
+  Parameters.check (request)
+  local token = Redis.transaction ({
+    data = Configuration.redis.key.user._ % { username = request.username },
+  }, function (p)
+    if not p.data
+    or p.data.type   ~= Type.user
+    or p.data.status ~= Status.active
+    then
+      error {}
+    end
+    return Token.authentication.new (p.data)
+  end)
+  return {
+    token = token,
+  }
+end
+
+--    > = Methods.authenticate (nil, {
+--    >   username = "toto",
+--    >   password = "titi",
+--    > })
+--    error: {...}
+
+--    > = Methods.authenticate (nil, {
+--    >   username = "username",
+--    >   password = "password",
+--    > })
+--    {token=_.auth,...}
+
+function Methods.suspend_user (token, request)
+  if  not Token.is_authentication (token)
+  and not Token.is_administration (token)
+  then
+    error {
+      _ = "token:not-authentication",
+    }
+  end
+  request.required = {
+    username = Parameters.username,
+  }
+  Parameters.check (request)
+  if Token.is_administration (token) then
+    Redis.transaction ({
+      target = Configuration.redis.key.user._ % { username = request.username },
+    }, function (p)
+      p.target.status   = Status.suspended
+    end)
+  elseif Token.is_authentication (token) then
+    Redis.transaction ({
+      user   = Configuration.redis.key.user._ % { username = token  .username },
+      target = Configuration.redis.key.user._ % { username = request.username },
+    }, function (p)
+      local required_reputation = Configuration.reputation.suspend._
+      if p.user.reputation < required_reputation then
+        error {
+          _ = "reputation:not-enough",
+          owned    = p.user.reputation,
+          required = required_reputation
+        }
+      end
+      p.user.reputation = p.user.reputation - required_reputation
+      p.target.status   = Status.suspended
+    end)
+  end
+  
+  if  not token.username == request.username
+  and not Token.is_administration (token)
+  then
+    error {
+      _ = "forbidden",
+    }
+  end
+
+end
+
+-- ### User Deletion
+
+function Methods.delete_user (token, _)
+  if not Token.is_authentication (token) then
+    error {
+      _ = "token:not-authentication",
+    }
+  end
+  local user = Redis.transaction ({
+    user = Configuration.redis.key.user._ % { username = token.username },
+  }, function (p)
+    p.user.status = Status.suspended
+    return p.user
+  end)
+  for _ in pairs (user.contents) do
+    -- TODO
+  end
+  Redis.transaction ({
+    email = Configuration.redis.key.email._ % { email = user.email },
+  }, function (p)
+    p.email = nil
+  end)
+  Redis.transaction ({
+    user = Configuration.redis.key.user._ % { username = token.username },
+  }, function (p)
+    p.user = nil
+  end)
+end
 
 -- Parameters
 -- ----------
@@ -445,17 +618,32 @@ Parameters.tos_digest [#Parameters.tos_digest+1] = function (_, _, value)
             tos_digest = value,
           }
 end
+Parameters.tos_digest [#Parameters.tos_digest+1] = function (request, _, value)
+  local t = Methods.tos (nil, { locale = request.locale })
+  return  t.tos_digest == value
+      or  nil, {
+            _          = "check:tos_digest:incorrect",
+            tos_digest = value,
+          }
+end
 
 -- Token
 --------
 
-Token.raw = setmetatable ({}, { __mode = "kv" })
+function Token.is_administration (token)
+  return token ~= nil and token.type == "administration"
+end
+
 
 Token.validation = {}
 
+function Token.is_validation (token)
+  return token ~= nil and token.type == "validation"
+end
+
 function Token.validation.new (data)
-  local now = Platform.time ()
-  return {
+  local now    = Platform.time ()
+  local result = {
     contents = {
       type     = "validation",
       username = data.username,
@@ -469,13 +657,18 @@ function Token.validation.new (data)
     sub      = "cosy:validation",
     jti      = Platform.digest (tostring (now + Platform.random ())),
   }
+  return Platform.token.encode (result)
 end
 
 Token.authentication = {}
 
+function Token.is_authentication (token)
+  return token ~= nil and token.type == "authentication"
+end
+
 function Token.authentication.new (data)
-  local now = Platform.time ()
-  return {
+  local now    = Platform.time ()
+  local result = {
     contents = {
       type     = "authentication",
       username = data.username,
@@ -489,6 +682,7 @@ function Token.authentication.new (data)
     sub      = "cosy:authentication",
     jti      = Platform.digest (tostring (now + Platform.random ())),
   }
+  return Platform.token.encode (result)
 end
 
 -- RwTable
@@ -597,7 +791,7 @@ function Redis.transaction (keys, f)
         end
       end
     end
-    f (rw, client)
+    local result = f (rw, client)
     redis:multi ()
     for name in pairs (rw [RwTable.Modified]) do
       local key   = keys [name]
@@ -613,6 +807,7 @@ function Redis.transaction (keys, f)
         end
       end
     end
+    return result
   end)
   Redis.pool.free [client] = true
   if ok then
@@ -647,7 +842,6 @@ do
         local ok, res = pcall (Platform.token.decode, raw_token)
         if ok then
           token = res.contents
-          Token.raw [token] = raw_token
         else
           error {
             _      = "token:error",
@@ -659,9 +853,11 @@ do
       if result == nil then
         result = {}
       end
-      result.locale    = (token and token.locale)
-                      or Configuration.locale.default._
-      result.message   = translate (result)
+      if type (result) == "table" then
+        result.locale    = (token and token.locale)
+                        or Configuration.locale.default._
+        result.message   = translate (result)
+      end
       if ok then
         return result
       else
