@@ -54,7 +54,7 @@ local Internal      = require "cosy.configuration" .internal
 --
 --    > Configuration = require "cosy.configuration" .whole
 --    > Platform      = require "cosy.platform"
---    > Methods       = require "cosy.methods".Raw
+--    > Methods       = require "cosy.methods"
 --    > Configuration.data.password.time        = 0.001 -- second
 --    > Configuration.token.secret              = "secret"
 --    > Configuration.token.algorithm           = "HS256"
@@ -629,7 +629,17 @@ end
 local Exported = {}
 
 do
-  Exported.Raw = {}
+  local function translate (x)
+    for _, v in pairs (x) do
+      if type (v) == "table" and not getmetatable (v) then
+        v.locale  = x.locale
+        v.message = translate (v)
+      end
+    end
+    if x._ then
+      x.message = Platform.i18n.translate (x._, x)
+    end
+  end
   local function wrap (method)
     return function (raw_token, request)
       local token
@@ -645,17 +655,22 @@ do
           }
         end
       end
-      local response = method (token, request)
-      if response == nil then
-        response = {}
+      local ok, result = pcall (method, token, request)
+      if result == nil then
+        result = {}
       end
-      response.locale  = (token and token.locale)
+      result.locale    = (token and token.locale)
                       or Configuration.locale.default._
-      return response
+      result.message   = translate (result)
+      if ok then
+        return result
+      else
+        error (result)
+      end
     end
   end
   for k, v in pairs (Methods) do
-    Exported.Raw [k] = wrap (v)
+    Exported [k] = wrap (v)
   end
 end
 
