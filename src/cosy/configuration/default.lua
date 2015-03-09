@@ -8,7 +8,8 @@ return {
   server = {
     host    = "127.0.0.1",
     port    = 8080,
-    threads = 2,
+    salt    = "cosyverif",
+    rounds  = 6,
   },
   data = {
     username = {
