@@ -149,7 +149,7 @@ Platform:register ("table", function ()
       comment  = false,
     })
   end
-  function Platform.table.representation (t)
+  function Platform.table.debug (t)
     return serpent.line (t, {
       sortkeys = true,
       compact  = true,
@@ -160,7 +160,7 @@ Platform:register ("table", function ()
   end
   function Platform.table.decode (s)
     return serpent.load (s, {
-      safe = true,
+      safe = false,
     })
   end
 end)
