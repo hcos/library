@@ -1,3 +1,5 @@
+_G.coroutine = require "coroutine.make" ()
+
 local Platform = {
   _pending = {},
   _running = {},
@@ -403,7 +405,33 @@ end)
 -- Scheduler
 -- =========
 Platform:register ("scheduler", function ()
-  Platform.scheduler = require "cosy.scheduler" .create ()
+  Platform.scheduler = require "copas"
+end)
+
+-- Socket
+-- ======
+Platform:register ("socket", function ()
+  local socket    = require "socket"
+  Platform.socket = {}
+  function Platform.socket.tcp ()
+    local skt    = socket.tcp ()
+    local result = Platform.scheduler.wrap (skt)
+    function result:connect (host, port)
+      self:settimeout (0)
+      repeat
+        local ret, err = skt:connect (host, port)
+        if not ret and err == "timeout" then
+          Platform.scheduler.sleep (0.001)
+        elseif not ret then
+          return nil, err
+        else
+          self:settimeout (0)
+          return ret
+        end
+      until false
+    end
+    return result
+  end
 end)
 
 -- Email
