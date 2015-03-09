@@ -50,7 +50,6 @@ build = {
     ["cosy.methods"              ] = "src/cosy/methods.lua",
     ["cosy.platform"             ] = "src/cosy/platform.lua",
     ["cosy.platform.standalone"  ] = "src/cosy/platform/standalone.lua",
-    ["cosy.scheduler"            ] = "src/cosy/scheduler.lua",
     ["cosy.string"               ] = "src/cosy/string.lua",
   },
 }
