@@ -207,6 +207,7 @@ function Methods.create_user (_, request)
     }
     return p.data
   end)
+  local validation_token = Token.validation.new (data)
   Platform.email.send {
     locale  = data.locale,
     from    = {
@@ -227,11 +228,14 @@ function Methods.create_user (_, request)
     body    = {
       _          = "email:new_account:body",
       username   = data.username,
-      validation = Token.validation.new (data),
+      validation = validation_token,
       tos        = {
         _ = "tos",
       },
     },
+  }
+  return {
+    token = validation_token,
   }
 end
 --    > = Methods.create_user (nil, {
@@ -572,7 +576,7 @@ end
 
 Parameters.trimmed (Parameters.new_string "username")
 Parameters.username [#Parameters.username+1] = function (_, _, value)
-  return  value:find "^%w+$"
+  return  value:find "^%w[%w%-_]+$"
       or  nil, {
             _        = "check:username:alphanumeric",
             username = value,
@@ -738,7 +742,7 @@ Internal.redis.key = {
   token = "token:%{token}",
 }
 
-Internal.redis.retry._ = 5
+Internal.redis.retry._ = 1
 
 function Redis.transaction (keys, f)
   local client
@@ -749,6 +753,8 @@ function Redis.transaction (keys, f)
       break
     end
     if #Redis.pool.created < Configuration.redis.pool_size._ then
+      local n = #Redis.pool.created + 1
+      Redis.pool.created [n] = true
       if Platform.redis.is_fake then
         client = Platform.redis.connect ()
       else
@@ -757,25 +763,27 @@ function Redis.transaction (keys, f)
         local host      = Configuration.redis.host._
         local port      = Configuration.redis.port._
         local database  = Configuration.redis.database._
-        local skt       = Platform.scheduler:wrap (socket.tcp ())
-                          :connect (host, port)
+        local skt       = Platform.socket.tcp ()
+        skt:connect (host, port)
         client = Platform.redis.connect {
           socket    = skt,
           coroutine = coroutine,
         }
         client:select (database)
       end
-      Redis.pool.created [#Redis.pool.created + 1] = client
+      Redis.pool.created [n] = client
       break
     else
-      Platform.scheduler:pass ()
+      Platform.scheduler.sleep (0.01)
     end
   end
-  local ok, result = pcall (client.transaction, client, {
+  local result
+  local ok = pcall (client.transaction, client, {
     watch = keys,
     cas   = true,
     retry = Configuration.redis.retry_,
   }, function (redis)
+    result = nil
     local data = {}
     for name, key in pairs (keys) do
       if redis:exists (key) then
@@ -791,7 +799,7 @@ function Redis.transaction (keys, f)
         end
       end
     end
-    local result = f (rw, client)
+    result = f (rw, client)
     redis:multi ()
     for name in pairs (rw [RwTable.Modified]) do
       local key   = keys [name]
@@ -801,13 +809,12 @@ function Redis.transaction (keys, f)
       else
         redis:set (key, Platform.json.encode (value))
         if type (value) == "table" and value.expire_at then
-          redis:expireat (key, value.expire_at)
+          redis:expireat (key, math.ceil (value.expire_at))
         else
           redis:persist (key)
         end
       end
     end
-    return result
   end)
   Redis.pool.free [client] = true
   if ok then
@@ -848,6 +855,9 @@ do
             reason = res:match "%s*([^:]*)$",
           }
         end
+      end
+      if not request then
+        request = {}
       end
       local ok, result = pcall (method, token, request)
       if result == nil then
