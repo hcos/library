@@ -468,6 +468,27 @@ describe ("a reference", function ()
 
 end)
 
+describe ("inheritance", function ()
+
+  local _ = Data.placeholder
+  local repository
+
+  before_each (function ()
+    repository = Data.new ()
+  end)
+
+  it ("machin #debug", function ()
+    repository.c1 = {
+      a = 1,
+      b = {
+        [Data.INHERITS] = { _.a },
+      },
+    }
+    assert.are.equal (repository.c1.b._, repository.c1.a._)
+  end)
+
+end)
+
 describe ("a repository", function ()
 
   local repository

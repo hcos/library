@@ -25,6 +25,7 @@ Repository.VALUE    = "_"
 Repository.DEPENDS  = "cosy:depends"
 Repository.INHERITS = "cosy:inherits"
 Repository.REFERS   = "cosy:refers"
+Repository.RELATIVE = "cosy:relative"
 
 local Options = {}
 
@@ -243,7 +244,6 @@ function Repository.linearize (proxy, parents)
     for i = 1, #l do
       local v = l [i]
       for j = 1, #v do
---        local w   = Proxy.identifier (v [j])
         local w   = v [j]
         tails [w] = (tails [w] or 0) + 1
       end
@@ -261,16 +261,16 @@ function Repository.linearize (proxy, parents)
     local result = {}
     while #l ~= 0 do
       for i = #l, 1, -1 do
-        local vl, vn    = l [i], n [i]
-        local first     = vl [vn]
-        local first_id = first -- Proxy.identifier (first)
+        local vl, vn   = l [i], n [i]
+        local first    = vl [vn]
+        local first_id = first
         tails [first_id] = tails [first_id] - 1
       end
       local head
       for i = #l, 1, -1 do
         local vl, vn   = l [i], n [i]
         local first    = vl [vn]
-        local first_id = first -- Proxy.identifier (first)
+        local first_id = first
         if tails [first_id] == 0 then
           head = first
           break
@@ -286,7 +286,7 @@ function Repository.linearize (proxy, parents)
         if first == head then
           n [i] = n [i] - 1
         else
-          local first_id = first -- Proxy.identifier (first)
+          local first_id = first
           tails [first_id] = tails [first_id] + 1
         end
       end
@@ -350,6 +350,44 @@ function Repository.depends (proxy)
     depends [i] = repository [depends [i]]
   end
   return depends
+end
+
+function Repository.parents (proxy)
+  proxy = Proxy.dereference (proxy)
+  local repository = proxy [REPOSITORY]
+  local keys       = proxy [KEYS      ]
+  local contents   = repository [CONTENTS]
+  local root       = repository [keys [1]]
+  local layers     = Repository.linearize (root, Repository.depends)
+  local parents    = {}
+  for i = 1, #layers do
+    local layer = layers [i] [KEYS] [1]
+    local data  = contents [layer]
+    for j = 2, #keys do
+      if type (data) == "table" then
+        data = data [keys [j]]
+      else
+        data = nil
+        break
+      end
+    end
+    if type (data) == "table" then
+      local inherits = data [Repository.INHERITS] or {}
+      for k = 1, #inherits do
+        local path    = inherits [k]
+        local inherit = root
+        for l = 1, #path do
+          inherit = inherit [path [l]]
+        end
+        parents [#parents+1] = inherit
+      end
+    end
+  end
+  if #parents ~= 0 then
+    return parents
+  else
+    return nil
+  end
 end
 
 function Proxy.__index (proxy, key)
@@ -426,21 +464,42 @@ function Proxy.__index (proxy, key)
           -- Do nothing
         end
       end
+      if type (data) == "table" then
+        data = data [Repository.VALUE]
+      end
       if data ~= nil then
-        local result
-        if type (data) == "table" then
-          result = data [Repository.VALUE]
-        else
-          result = data
-        end
         if on_read then
           options.filter   = nil
           options.on_read  = nil
-          on_read (proxy, result)
+          on_read (proxy, data)
           options.filter   = filter
           options.on_read  = on_read
         end
-        return result
+        return data
+      end
+    end
+    -- Search in parents:
+    print ("inherits", root, root [REPOSITORY])
+    local proxies = { root }
+    local current = root
+    for i = 2, #keys do
+      current = current [keys [i]]
+      proxies [#proxies+1] = current
+    end
+    for i = #proxies, 1, -1 do
+      local proxy   = proxies [i]
+      local parents = Repository.linearize (proxy, Repository.parents)
+      for j = #parents-1, 1, -1 do
+        local parent = parents [j]
+        for k = i+1, #keys do
+          parent = parent [keys [k]]
+        end
+        print ("looking in", parent)
+        local result = parent._
+        print ("result", result)
+        if result then
+          return result
+        end
       end
     end
     return nil
