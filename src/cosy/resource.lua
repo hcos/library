@@ -1,27 +1,30 @@
-local Platform         = require "cosy.platform"
+local Repository         = {}
+Repository.__metatable   = "cosy.repository"
+Repository.value         = "_"
+Repository.proxy         = "cosy:proxy"
+Repository.resource      = "cosy:resource"
+Repository.depends       = "cosy:depends"
+Repository.refers        = "cosy:refers"
+Repository.refines       = "cosy:refines"
+Repository.follow        = "cosy:follow"
 
-local Repository       = {}
-Repository.__metatable = "cosy.data"
-Repository.value       = "_"
-Repository.proxy       = "cosy:proxy"
-Repository.resource    = "cosy:resource"
-Repository.depends     = "cosy:depends"
-Repository.refers      = "cosy:refers"
-Repository.refines     = "cosy:refines"
+local Resource           = {}
+Resource.__metatable     = "cosy.resource"
 
-local Resource         = {}
-Resource.__metatable   = "cosy.data.resource"
+local Proxy              = {}
+Proxy.__metatable        = "cosy.resource.proxy"
 
-local Proxy            = {}
-Proxy.__metatable      = "cosy.data.proxy"
+local Cache              = {}
+Cache.__metatable        = "cosy.resource.cache"
+Cache.__mode             = "kv"
 
-local Cache            = {}
-Cache.__metatable      = "cosy.data.cache"
-Cache.__mode           = "k"
+local IgnoreKeys         = {}
+IgnoreKeys.__metatable   = "cosy.resource.ignorekeys"
+IgnoreKeys.__mode        = "k"
 
-local Cleanable        = {}
-Cache.__metatable      = "cosy.data.cleanable"
-Cache.__mode           = "k"
+local IgnoreValues       = {}
+IgnoreValues.__metatable = "cosy.resource.ignorevalues"
+IgnoreValues.__mode      = "v"
 
 local function make_tag (name)
   return setmetatable ({}, {
@@ -30,10 +33,11 @@ local function make_tag (name)
 end
 
 local CACHES     = make_tag "CACHES"
-local COROUTINE  = make_tag "COROUTINE"
+local CREATED    = make_tag "CREATED"
 local OPTIONS    = make_tag "OPTIONS"
 local PROXIES    = make_tag "PROXIES"
 
+local FOLLOW     = make_tag "FOLLOW"
 local KEYS       = make_tag "KEYS"
 local NAME       = make_tag "NAME"
 local PARENT     = make_tag "PARENT"
@@ -45,17 +49,23 @@ local RESOURCE   = make_tag "RESOURCE"
 -- ----------
 
 function Repository.new ()
-  local repository = setmetatable ({
+  local repository = {
     [CACHES    ] = {},
-    [COROUTINE ] = require "coroutine.make" (),
+    [CREATED   ] = {},
     [OPTIONS   ] = {
       create = nil,
       import = nil,
     },
-    [PROXIES   ] = setmetatable ({}, Cache),
-    [RESOURCES ] = setmetatable ({}, Cleanable),
-  }, Repository)
-  return repository
+    [PROXIES   ] = setmetatable ({}, IgnoreValues),
+    [RESOURCES ] = setmetatable ({}, IgnoreValues),
+  }
+  local placeholder = Proxy.new (setmetatable ({
+    [NAME      ] = false,
+    [REPOSITORY] = repository,
+  }, Resource))
+  repository [RESOURCES] [false] = placeholder
+  repository [CREATED  ] [placeholder] = true
+  return setmetatable (repository, Repository)
 end
 
 --    > Repository = require "cosy.resource"
@@ -75,6 +85,7 @@ end
 function Repository.__index (repository, key)
   local found    = repository [RESOURCES] [key]
   if found then
+    repository [CREATED] [found] = nil
     return found
   end
   local import   = repository [OPTIONS].import
@@ -95,13 +106,12 @@ function Repository.__newindex (repository, key, data)
   create (repository, key)
   local resource = Resource.import (repository, key, data)
   repository [RESOURCES] [key] = resource
+  repository [CREATED] [resource] = true
 end
 
 
 function Repository.placeholder (repository)
-  return Proxy.new (setmetatable ({
-    [REPOSITORY] = repository,
-  }, Resource))
+  return repository [RESOURCES] [false]
 end
 
 function Repository.flatten (resource)
@@ -110,12 +120,15 @@ end
 
 function Repository.export (proxy)
   assert (# proxy [KEYS] == 0)
-  local resource    = proxy    [RESOURCE  ]
+  local Platform    = require "cosy.platform"
+  local resource    = proxy [RESOURCE]
   local mt          = Proxy.__metatable
   Proxy.__metatable = nil
   local result     = Platform.table.dump (resource, {
+    name      = resource [NAME],
     sortkeys  = true,
-    compact   = true,
+    compact   = false,
+    indent    = "  ",
     fatal     = true,
     comment   = false,
     nocode    = false,
@@ -134,46 +147,50 @@ end
 -- Resource
 -- --------
 
+function Resource.import_proxy (repository, data)
+  local name = data [Repository.resource]
+  local proxy
+  if name == nil then
+    local placeholder = Repository.placeholder (repository)
+    proxy = placeholder
+  else
+    proxy = repository [name]
+  end
+  for i = 1, #data do
+    proxy = proxy [data [i]]
+  end
+  return proxy
+end
+
+function Resource.import_data (repository, data)
+  if type (data) ~= "table" then
+    return data
+  elseif getmetatable (data) == Proxy.__metatable then
+    return data
+  elseif getmetatable (data) == nil and data [Repository.proxy] then
+    return Resource.import_proxy (repository, data)
+  end
+  local updates = {}
+  for key, value in pairs (data) do
+    if type (key) == "table" then
+      updates [key] = Resource.import_proxy (repository, key)
+    end
+    if type (value) == "table" then
+      data [key] = Resource.import_data (repository, value)
+    end
+  end
+  for old_key, new_key in pairs (updates) do
+    data [old_key], data [new_key] = nil, data [old_key]
+  end
+  return data
+end
+
 function Resource.import (repository, name, data)
   if type (data) ~= "table" then
     data = { _ = data }
   end
   assert (getmetatable (data) == nil)
-  local resource    = data
-  local placeholder = Repository.placeholder (repository)
-  local function import_proxy (data)
-    local name = data [Repository.resource]
-    local proxy
-    if name ~= nil then
-      proxy = repository [name]
-    else
-      proxy = placeholder
-    end
-    for i = 1, #data do
-      proxy = proxy [data [i]]
-    end
-    return proxy
-  end
-  local function import_data (data)
-    if type (data) ~= "table" then
-      return
-    end
-    local updates = {}
-    for key, value in pairs (data) do
-      if type (key) == "table" and key [Repository.proxy] then
-        updates [key] = import_proxy (key)
-      end
-      if type (value) == "table" and value [Repository.proxy] then
-        data [key] = import_proxy (value)
-      elseif type (value) == "table" then
-        import_data (value)
-      end
-    end
-    for old_key, new_key in pairs (updates) do
-      data [old_key], data [new_key] = nil, data [old_key]
-    end
-  end
-  import_data (resource)
+  local resource = Resource.import_data (repository, data)
   resource [NAME      ] = name
   resource [REPOSITORY] = repository
   setmetatable (resource, Resource)
@@ -189,14 +206,16 @@ function Proxy.new (resource)
   assert (getmetatable (resource) == Resource.__metatable)
   local repository = resource   [REPOSITORY]
   local proxies    = repository [PROXIES   ]
-  local found      = proxies    [resource]
+  local found      = proxies    [resource  ]
   if found then
     return found
   end
   local proxy = setmetatable ({
     [RESOURCE] = resource,
-    [PARENT  ] = false,
+    [PARENT  ] = proxies,
     [KEYS    ] = {},
+    [FOLLOW  ] = false,
+    [PROXIES ] = setmetatable ({}, IgnoreValues),
   }, Proxy)
   proxies [resource] = proxy
   return proxy
@@ -212,40 +231,339 @@ function Proxy.__serialize (proxy)
   }
 end
 
-function Proxy.value (proxy)
-  error "Not implemented yet"
+function Proxy.__index (proxy, key)
+  if key == "_" then
+    return Proxy.value (proxy)
+  end
+  local proxies = proxy [PROXIES]
+  local found   = proxies [key]
+  if found then
+    return found
+  end
+  local keys  = proxy [KEYS]
+  local nkeys = table.pack (table.unpack (keys))
+  nkeys [#nkeys+1] = key
+  local result = setmetatable ({
+    [RESOURCE] = proxy [RESOURCE],
+    [PARENT  ] = proxy,
+    [KEYS    ] = nkeys,
+    [FOLLOW  ] = proxy [FOLLOW] or key == Repository.follow,
+    [PROXIES ] = setmetatable ({}, IgnoreValues),
+  }, Proxy)
+  proxies [key] = result
+  return result
+end
+
+function Proxy.__newindex (proxy, key, value)
+  local resource   = proxy [RESOURCE]
+  local repository = resource [REPOSITORY]
+  proxy = Proxy.deplaceholderize (proxy, resource)
+  proxy = Proxy.dereference (proxy)
+  key   = Resource.import_data (repository, key)
+  value = Resource.import_data (repository, value)
+  if key == "_"
+  and (type (value) == "table" and getmetatable (value) == Proxy.__metatable)
+  then
+    error "illegal insertion"
+  end
+  local keys   = proxy [KEYS]
+  local parent = resource
+  local seen   = {}
+  for i = 1, #keys do
+    seen [#seen+1] = parent
+    local child = parent [keys [i]]
+    if type (child) ~= "table"
+    or getmetatable (child) == Proxy.__metatable then
+      if value == nil then
+        return
+      else
+        child = {
+          _ = child,
+        }
+        parent [keys [i]] = child
+      end
+    end
+    parent = child
+  end
+  parent [key] = value
+  seen [#seen+1] = value
+  for i = #seen, 1, -1 do
+    local parent = seen [i]
+    if  type (parent) == "table"
+    and getmetatable (parent) ~= Proxy.__metatable
+    and pairs (parent) (parent) == nil then
+      parent [i-1] [keys [i-1]] = nil
+    else
+      break
+    end
+  end
+end
+
+function Proxy.__call (proxy, n)
+  assert (type (n) == "number")
+  for _ = 1, n or 1 do
+    proxy = proxy [Repository.follow]
+  end
+  return proxy
+end
+
+function Proxy.__pairs (proxy)
+  return Proxy.iterate (proxy)
+end
+
+function Proxy.__ipairs (proxy)
+  local coroutine  = require "coroutine.make" ()
+  return coroutine.wrap (function ()
+    local i = 1
+    while true do
+      local p = proxy [i]
+      if Proxy.exists (p) then
+        coroutine.yield (i, p)
+      else
+        return nil
+      end
+      i = i+1
+    end
+  end)
+end
+
+function Proxy.__len (proxy)
+  local n = 1
+  while Proxy.exists (proxy [n]) do
+    n = n+1
+  end
+  return n-1
+end
+
+function Proxy.__tostring (proxy)
+  local resource = proxy    [RESOURCE]
+  local keys     = proxy    [KEYS    ]
+  local name     = resource [NAME    ]
+  local t    = { tostring (name) }
+  for i = 1, #keys do
+    t [i+1] = tostring (keys [i])
+  end
+  return table.concat (t, ".")
+end
+
+function Proxy.apply (f, is_iterator)
+  return function (proxy)
+    local coroutine = require "coroutine.make" ()
+    local function perform (proxy, data, seen)
+      local resource = proxy [RESOURCE]
+      proxy = Proxy.deplaceholderize (proxy, resource)
+      proxy = Proxy.dereference (proxy)
+      if seen [proxy] then
+        return nil
+      end
+      seen [proxy]   = true
+      local keys     = proxy [KEYS]
+      assert (#keys < 5)
+      -- search in resources
+      local resources  = Proxy.depends (Proxy.new (resource))
+      for i = #resources, 1, -1 do
+        local current = resources [i] [RESOURCE]
+        for i = 1, #keys do
+          if type (current) ~= "table"
+          or getmetatable (current) == Proxy.__metatable then
+            current = nil
+            break
+          end
+          current = current [keys [i]]
+        end
+        if current ~= nil then
+          f {
+            proxy     = proxy,
+            current   = current,
+            coroutine = coroutine,
+            data      = data,
+          }
+        end
+      end
+      -- special case: when we are within a `cosy:` thing, do not search
+      -- for parents, as they are forbidden
+      for i = 1, #keys do
+        local key = keys [i]
+        if key:match "^cosy:" then
+          return
+        end
+      end
+      -- else search in parents
+      local current = proxy
+      for i = #keys, 0, -1 do
+        local refines = Proxy.refines (current)
+        for j = #refines-1, 1, -1 do
+          local refined = refines [j]
+          for k = i+1, #keys do
+            refined = refined [keys [k]]
+          end
+          perform (refined, data, seen)
+        end
+        current = current [PARENT]
+      end
+    end
+    local result = coroutine.wrap (function ()
+      perform (proxy, {}, {})
+    end)
+    if is_iterator then
+      return result
+    else
+      return result ()
+    end
+  end
+end
+
+Proxy.value = Proxy.apply (function (t)
+  local coroutine = t.coroutine
+  local current   = t.current
+  if type (current) ~= "table"
+  or getmetatable (current) == Proxy.__metatable then
+    coroutine.yield (current)
+  else
+    coroutine.yield (current._)
+  end
+end, false)
+
+Proxy.exists = Proxy.apply (function (t)
+  local coroutine = t.coroutine
+  coroutine.yield (true)
+end, false)
+
+Proxy.iterate = Proxy.apply (function (t)
+  local proxy     = t.proxy
+  local current   = t.current
+  local coroutine = t.coroutine
+  local yielded   = t.data
+  for k in pairs (current) do
+    if not yielded [k] then
+      yielded [k] = true
+      coroutine.yield (k, proxy [k])
+    end
+  end
+end, true)
+
+function Proxy.deplaceholderize (proxy, res)
+  local resource   = proxy    [RESOURCE  ]
+  local repository = resource [REPOSITORY]
+  local keys       = proxy    [KEYS      ]
+  if resource ~= Repository.placeholder (repository) [RESOURCE] then
+    return proxy
+  end
+  proxy = Proxy.new (res)
+  for i = 1, #keys do
+    proxy = proxy [keys [i]]
+  end
+  return proxy
 end
 
 function Proxy.dereference (proxy)
-  error "Not implemented yet"
+  if not proxy [FOLLOW] then
+    return proxy
+  end
+  local resource = proxy [RESOURCE]
+  repeat
+    local current = Proxy.new (proxy [RESOURCE] or resource)
+    local keys    = proxy [KEYS]
+    local changed = false
+    for i = 1, #keys do
+      local key = keys [i]
+      current = current [key]
+      if key == Repository.follow then
+        local target = current._
+        if target == nil then
+          return nil
+        end
+        proxy   = target
+        for j = i+1, #keys do
+          proxy = proxy [keys [j]]
+        end
+        changed = true
+        break
+      end
+    end
+  until not changed
+  return proxy
 end
+
+Proxy.depends = require "c3" .new {
+  superclass = function (proxy)
+    local resource = proxy [RESOURCE]
+    return resource [Repository.depends]
+  end,
+}
+
+Proxy.refines = require "c3" .new {
+  superclass = function (proxy)
+    local resource = proxy [RESOURCE]
+    proxy = Proxy.deplaceholderize (proxy, resource)
+    proxy = Proxy.dereference (proxy)
+    local refines = proxy [Repository.refines]
+    local result  = {}
+    for i = 1, math.huge do
+      local p = refines [i]._
+      if p == nil then
+        break
+      end
+      p = Proxy.deplaceholderize (p, resource)
+      p = Proxy.dereference (p)
+      result [#result+1] = p
+    end
+    return result
+  end,
+}
 
 -- Examples
 -- --------
 do
+  local Platform   = require "cosy.platform"
   local repository = Repository.new ()
+  local _          = Repository.placeholder (repository)
   Repository.options (repository).create = function () end
-  Repository.options (repository).import = function ()
-    return { a = 1, b = 2 }
-  end
-  local resource = repository.myresource
-  print (Repository.export (resource))
-  repository.otherresource = {
-    c = resource,
-    [resource] = 1,
-    d = { [resource] = 2 },
+  Repository.options (repository).import = function () end
+  repository.graph = {
+    vertex_type = {
+      is_vertex = true,
+    },
+    edge_type   = {
+      is_edge = true,
+    },
   }
-  print (Repository.export (resource))
-  print (Repository.export (repository.myresource))
-  print (Repository.export (repository.otherresource))
-  local str = Repository.export (repository.otherresource)
-  local _, loaded = Platform.table.decode (str)
-  repository.myresource    = nil
-  repository.otherresource = nil
-  print "loading"
-  repository.loaded        = loaded
-  print (Repository.export (repository.myresource))
-  print (Repository.export (repository.loaded))
+  repository.petrinet = {
+    [Repository.depends] = {
+      repository.graph,
+    },
+    [Repository.refines] = {
+      [1] = _,
+    },
+    place_type = {
+      [Repository.refines] = {
+        [1] = _.vertex_type,
+      }
+    },
+    transition_type = {
+      [Repository.refines] = {
+        [1] = _.vertex_type,
+      }
+    },
+    arc_type = {
+      [Repository.refines] = {
+        [1] = _.edge_type,
+      }
+    },
+  }
+  repository.philosophers = {
+    a = 1,
+  }
+--  print (Repository.export (repository.graph))
+--  print (Repository.export (repository.petrinet))
+--  print "searching place_type"
+--  print (Proxy.exists (repository.petrinet.place_type))
+  print "searching machin"
+  print (Proxy.exists (repository.petrinet.machin))
+  repository.petrinet.machin = 2
+  print (Proxy.exists (repository.petrinet.machin))
+  print (repository.graph.vertex_type.is_vertex._)
+  print (repository.petrinet.place_type.is_vertex._)
 end
 
 return Repository
