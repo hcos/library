@@ -526,11 +526,8 @@ do
     }
   }
   repository.petrinet = {
-    [Repository.depends] = {
-      repository.graph,
-    },
     [Repository.refines] = {
-      [1] = _,
+      [1] = repository.graph,
     },
     place_type = {
       [Repository.refines] = {
