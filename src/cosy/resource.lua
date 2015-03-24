@@ -1,6 +1,6 @@
 local Repository         = {}
 Repository.__metatable   = "cosy.repository"
-Repository.value         = "_"
+Repository.value         = "cosy:value"
 Repository.proxy         = "cosy:proxy"
 Repository.resource      = "cosy:resource"
 Repository.depends       = "cosy:depends"
@@ -109,7 +109,6 @@ function Repository.__newindex (repository, key, data)
   repository [CREATED] [resource] = true
 end
 
-
 function Repository.placeholder (repository)
   return repository [RESOURCES] [false]
 end
@@ -172,7 +171,9 @@ function Resource.import_data (repository, data)
   end
   local updates = {}
   for key, value in pairs (data) do
-    if type (key) == "table" then
+    if key == "_" then
+      updates [key] = Repository.value
+    elseif type (key) == "table" then
       updates [key] = Resource.import_proxy (repository, key)
     end
     if type (value) == "table" then
@@ -187,7 +188,9 @@ end
 
 function Resource.import (repository, name, data)
   if type (data) ~= "table" then
-    data = { _ = data }
+    data = {
+      [Repository.value] = data,
+    }
   end
   assert (getmetatable (data) == nil)
   local resource = Resource.import_data (repository, data)
@@ -261,14 +264,16 @@ function Proxy.__newindex (proxy, key, value)
   proxy = Proxy.dereference (proxy)
   key   = Resource.import_data (repository, key)
   value = Resource.import_data (repository, value)
-  if key == "_"
-  and (type (value) == "table" and getmetatable (value) == Proxy.__metatable)
-  then
-    error "illegal insertion"
+  if key == "_" then
+    if  type (value) == "table"
+    and getmetatable (value) == Proxy.__metatable then
+      error "illegal insertion"
+    else
+      key = Repository.value
+    end
   end
   local keys   = proxy [KEYS]
   local parent = resource
-  local seen   = {}
   for i = 1, #keys do
     seen [#seen+1] = parent
     local child = parent [keys [i]]
@@ -278,7 +283,7 @@ function Proxy.__newindex (proxy, key, value)
         return
       else
         child = {
-          _ = child,
+          [Repository.value] = child,
         }
         parent [keys [i]] = child
       end
@@ -286,17 +291,7 @@ function Proxy.__newindex (proxy, key, value)
     parent = child
   end
   parent [key] = value
-  seen [#seen+1] = value
-  for i = #seen, 1, -1 do
-    local parent = seen [i]
-    if  type (parent) == "table"
-    and getmetatable (parent) ~= Proxy.__metatable
-    and pairs (parent) (parent) == nil then
-      parent [i-1] [keys [i-1]] = nil
-    else
-      break
-    end
-  end
+  -- TODO: cancel cache
 end
 
 function Proxy.__call (proxy, n)
@@ -356,9 +351,8 @@ function Proxy.apply (f, is_iterator)
       if seen [proxy] then
         return nil
       end
-      seen [proxy]   = true
-      local keys     = proxy [KEYS]
-      assert (#keys < 5)
+      seen [proxy] = true
+      local keys   = proxy [KEYS]
       -- search in resources
       local resources  = Proxy.depends (Proxy.new (resource))
       for i = #resources, 1, -1 do
@@ -527,6 +521,9 @@ do
     edge_type   = {
       is_edge = true,
     },
+    something = {
+      _ = true,
+    }
   }
   repository.petrinet = {
     [Repository.depends] = {
@@ -558,10 +555,9 @@ do
 --  print (Repository.export (repository.petrinet))
 --  print "searching place_type"
 --  print (Proxy.exists (repository.petrinet.place_type))
-  print "searching machin"
-  print (Proxy.exists (repository.petrinet.machin))
+  print ("machin?", Proxy.exists (repository.petrinet.machin))
   repository.petrinet.machin = 2
-  print (Proxy.exists (repository.petrinet.machin))
+  print (repository.petrinet.machin._)
   print (repository.graph.vertex_type.is_vertex._)
   print (repository.petrinet.place_type.is_vertex._)
 end
