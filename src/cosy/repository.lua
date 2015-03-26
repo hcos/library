@@ -118,6 +118,7 @@ function Repository.flatten (resource)
 end
 
 function Repository.export (proxy)
+  proxy = Proxy.dereference (proxy)
   assert (# proxy [KEYS] == 0)
   local Platform    = require "cosy.platform"
   local resource    = proxy [RESOURCE]
@@ -138,6 +139,10 @@ function Repository.export (proxy)
   })
   Proxy.__metatable = mt
   return result
+end
+
+function Repository.of (proxy)
+  return proxy [RESOURCE] [REPOSITORY]
 end
 
 --    > = Repository.export (resource)
@@ -203,6 +208,7 @@ end
 -- Proxy
 -- -----
 
+table.pack   = table.pack   or function (...) return { ... } end
 table.unpack = table.unpack or unpack
 
 function Proxy.new (resource)
@@ -275,7 +281,6 @@ function Proxy.__newindex (proxy, key, value)
   local keys   = proxy [KEYS]
   local parent = resource
   for i = 1, #keys do
-    seen [#seen+1] = parent
     local child = parent [keys [i]]
     if type (child) ~= "table"
     or getmetatable (child) == Proxy.__metatable then
@@ -295,7 +300,7 @@ function Proxy.__newindex (proxy, key, value)
 end
 
 function Proxy.__call (proxy, n)
-  assert (type (n) == "number")
+  assert (n == nil or type (n) == "number")
   for _ = 1, n or 1 do
     proxy = proxy [Repository.follow]
   end
@@ -378,7 +383,7 @@ function Proxy.apply (f, is_iterator)
       -- for parents, as they are forbidden
       for i = 1, #keys do
         local key = keys [i]
-        if key:match "^cosy:" then
+        if type (key) == "string" and key:match "^cosy:" then
           return
         end
       end
@@ -461,19 +466,19 @@ function Proxy.dereference (proxy)
     local changed = false
     for i = 1, #keys do
       local key = keys [i]
-      current = current [key]
       if key == Repository.follow then
         local target = current._
         if target == nil then
           return nil
         end
+        changed = true
         proxy   = target
         for j = i+1, #keys do
           proxy = proxy [keys [j]]
         end
-        changed = true
         break
       end
+      current = current [key]
     end
   until not changed
   return proxy
@@ -506,6 +511,7 @@ Proxy.refines = require "c3" .new {
   end,
 }
 
+--[==[
 -- Examples
 -- --------
 do
@@ -558,5 +564,6 @@ do
   print (repository.graph.vertex_type.is_vertex._)
   print (repository.petrinet.place_type.is_vertex._)
 end
+--]==]
 
 return Repository
