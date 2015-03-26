@@ -16,6 +16,7 @@ description = {
 dependencies = {
   "ansicolors ~> 1",
   "bcrypt ~> 1",
+  "c3 ~> 0",
   "copas ~> 1",
   "coronest ~> 0",
   "fakeredis ~> 0",
