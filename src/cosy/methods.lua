@@ -23,7 +23,7 @@
 local Methods  = {}
 -- The `Token` table contains utility functions for JSON Web Tokens.
 local Token    = {}
--- The `Utility` table contains the `Redis.transaction` function.
+-- The `Redis` table contains the `Redis.transaction` wqrapper.
 local Redis  = {}
 -- The `Parameters` table contains several types of parameters, and defines
 -- for each one several checking functions.
@@ -33,10 +33,12 @@ local Parameters = {}
 -- ------------
 --
 -- This module depends on the following modules:
-                      require "cosy.string"
+require "cosy.string"
+local Configuration = require "cosy.configuration"
 local Platform      = require "cosy.platform"
-local Configuration = require "cosy.configuration" .whole
-local Internal      = require "cosy.configuration" .internal
+local Repository    = require "cosy.repository"
+local Internal      = Repository.of (Configuration) .internal
+
 
 local Status = setmetatable ({
   inactive  = "inactive",
@@ -66,7 +68,7 @@ local Type = setmetatable ({
 -- * the `Configuration`, with some predefined values, and a reduced expiration
 --   delay to reduce the time taken by the tests.
 --
---    > Configuration = require "cosy.configuration" .whole
+--    > Configuration = require "cosy.configuration"
 --    > Platform      = require "cosy.platform"
 --    > Methods       = require "cosy.methods"
 --    > Configuration.data.password.time        = 0.001 -- second
@@ -78,8 +80,7 @@ local Type = setmetatable ({
 --    > Configuration.expiration.validation     = 2 -- second
 --    > Configuration.expiration.authentication = 2 -- second
 
--- ### Infomration
--- ---------------
+-- ### Information
 --
 -- The `information` method returns some useful or useless information about
 -- the running Cosy server.
@@ -93,7 +94,6 @@ function Methods.information ()
   }
 end
 
-
 -- ### Terms of Service
 --
 -- In order to create an account or authenticate, users of CosyVerif must
@@ -105,30 +105,34 @@ end
 -- (the user's one, or a locale provided in the request), and its computed
 -- digest, that can be used later for acceptation.
 
---    > = Methods.tos (nil, { locale = "en" })
---    {tos=...,tos_digest=_.tos}
+--    > = Methods.tos { locale = "en" }
+--    { tos = _.tos }
 
-function Methods.tos (token, request)
-  request.optional = {
-    locale = Parameters.locale,
-  }
-  Parameters.check (request)
-  local locale = (token and token.locale)
-              or request.locale
-              or Configuration.locale.default._
-  local tos = Platform.i18n.translate ("tos", {
-    locale = locale,
+function Methods.tos (request)
+  Parameters.check (request, {
+    optional = {
+      token  = Parameters.token,
+      locale = Parameters.locale,
+    },
   })
-  local tos_digest  = Platform.digest (tos)
+  local Configuration = require "cosy.configuration"
+  local locale = Configuration.locale.default._
+  if request.locale then
+    locale = request.locale or locale
+  end
+  if request.token then
+    locale = request.token.locale or locale
+  end
   return {
-    tos        = tos,
-    tos_digest = tos_digest,
+    tos = Platform.i18n.translate ("tos", {
+      locale = locale,
+    }),
   }
 end
 
 -- ### User Creation
 
-function Methods.create_user (_, request)
+function Methods.create_user (request)
   -- User creation requires several parameters in its `request`:
   --
   -- * a `username`, that is unique on the server;
@@ -144,30 +148,11 @@ function Methods.create_user (_, request)
     locale     = Parameters.locale,
   }
 
-  -- Some other parameters are optional:
-  --
-  -- a `name`, as the user wants it.
-  request.optional = {
-    name = Parameters.name,
-  }
-
   -- Parameters are checked before going further in the method.
   -- On error, the method raises an error containing the original `request`,
   -- the `reasons` for the failure, and the functions used to check the
   -- parameters.
   Parameters.check (request)
-
-  -- The test below checks that errors are correcly reported:
-  --
-  --    > = Methods.create_user (nil, {
-  --    >   username   = nil,
-  --    >   password   = true,
-  --    >   email      = "username_domain.org",
-  --    >   name       = 1,
-  --    >   tos_digest = "d41d8cd98f00b204e9800998ecf8427e",
-  --    >   locale     = "anything",
-  --    > })
-  --    error: {_="check:error",...}
 
   local data = Redis.transaction ({
     email = Configuration.redis.key.email._ % { email    = request.email    },
@@ -192,8 +177,7 @@ function Methods.create_user (_, request)
       username    = request.username,
       email       = request.email,
       password    = Platform.password.hash (request.password),
-      name        = request.name,
-      locale      = request.locale or Configuration.locale.default._,
+      locale      = request.locale,
       tos_digest  = request.tos_digest,
       expire_at   = expire_at,
       access      = {
@@ -242,48 +226,43 @@ end
 --    >   username   = "username",
 --    >   password   = "password",
 --    >   email      = "username@domain.org",
---    >   name       = "User Name",
---    >   tos_digest = tos,
+--    >   tos_digest = Platform.digest (tos),
 --    >   locale     = "en",
 --    > })
 --    {...}
 --    > = Platform.email.last_sent
---    {body={_="email:new_account:body",validation=_.validation_old,...},...}
+--    {body={_="email:new_account:body",validation=_.v1,...},...}
 
---    > = Methods.create_user (nil, {
+--    > = Methods.create_user {
 --    >   username   = "username",
 --    >   password   = "password",
 --    >   email      = "username@other.org",
---    >   name       = "User Name",
---    >   tos_digest = tos,
+--    >   tos_digest = Platform.digest (tos),
 --    >   locale     = "en",
---    > })
+--    > }
 --    error: {_="create-user:username-exists",username="username",...}
 
---    > = Methods.create_user (nil, {
+--    > = Methods.create_user {
 --    >   username   = "othername",
 --    >   password   = "password",
 --    >   email      = "username@domain.org",
---    >   name       = "User Name",
---    >   tos_digest = tos,
+--    >   tos_digest = Platform.digest (tos),
 --    >   locale     = "en",
---    > })
+--    > }
 --    error: {_="create-user:email-exists",email="username@domain.org",...}
 
 --    > os.execute("sleep 2")
---    > = Methods.create_user (nil, {
+--    > Methods.create_user {
 --    >   username   = "username",
 --    >   password   = "password",
 --    >   email      = "username@domain.org",
---    >   name       = "User Name",
 --    >   tos_digest = tos,
 --    >   locale     = "en",
---    > })
---    {...}
+--    > }
 --    > = Platform.email.last_sent
---    {body={_="email:new_account:body",validation=_.validation,...},...}
+--    {body={_="email:new_account:body",validation=_.v2,...},...}
 
-function Methods.activate_user (token)
+function Methods.activate_user (request)
   if not Token.is_validation (token) then
     error {
       _ = "token:not-validation",
@@ -487,35 +466,24 @@ end
 -- Parameters
 -- ----------
 
-function Parameters.check (request)
+function Parameters.check (request, parameters)
+  parameters = parameters or {}
   local reasons  = {}
-  local required = request.required
-  if required then
-    for key, parameter in pairs (required) do
+  for field in ipairs { "required", "optional" } do
+    for key, parameter in pairs (parameters [field] or {}) do
       local value = request [key]
-      if value == nil then
+      if field == "required" and value == nil then
         reasons [#reasons+1] = {
           _   = "check:missing",
           key = key,
         }
-      else
+      elseif value ~= nil then
         for _, f in ipairs (parameter) do
-          local ok, reason = f (request, key, value)
-          if not ok then
-            reasons [#reasons+1] = reason
-            break
-          end
-        end
-      end
-    end
-  end
-  local optional = request.optional
-  if optional then
-    for key, parameter in pairs (optional) do
-      local value = request [key]
-      if value ~= nil then
-        for _, f in ipairs (parameter) do
-          local ok, reason = f (request, key, value)
+          local ok, reason = f {
+            parameter = parameter,
+            request   = request,
+            key       = key,
+          }
           if not ok then
             reasons [#reasons+1] = reason
             break
@@ -526,126 +494,230 @@ function Parameters.check (request)
   end
   if #reasons ~= 0 then
     error {
-      _       = "check:error",
-      reasons = reasons,
-      request = request,
+      _          = "check:error",
+      reasons    = reasons,
+      request    = request,
+      parameters = parameters,
     }
   end
 end
 
-setmetatable (Parameters, {
-  __index = assert,
-})
+do
+  local checks
 
-function Parameters.new_string (name)
-  Internal.data [name] .min_size._ = 0
-  Internal.data [name] .max_size._ = math.huge
-  Parameters [name] = {}
-  Parameters [name] [1] = function (_, key, value)
+  Internal.data.string = {
+    min_size = 0,
+    max_size = math.huge,
+  }
+  
+  checks = Internal.data.string.check
+  checks [1] = function (t)
+    local value = t.request [t.key]
     return  type (value) == "string"
         or  nil, {
               _   = "check:is-string",
-              key = key,
             }
   end
-  Parameters [name] [2] = function (_, key, value)
-    return  #value >= Configuration.data [name] .min_size._
+  checks [2] = function (t)
+    local value = t.request [t.key]
+    local size  = t.parameter.min_size._
+    return  #value >= size
         or  nil, {
               _     = "check:min-size",
-              key   = key,
-              count = Configuration.data [name] .min_size._,
+              count = size,
             }
   end
-  Parameters [name] [3] = function (_, key, value)
-    return  #value <= Configuration.data [name] .max_size._
+  checks [3] = function (t)
+    local value = t.request [t.key]
+    local size  = t.parameter.max_size._
+    return  #value <= size
         or  nil, {
               _     = "check:max-size",
-              key   = key,
-              count = Configuration.data [name].max_size._,
+              count = size,
             }
   end
-  return Parameters [name]
-end
+  
 
-function Parameters.trimmed (parameter)
-  table.insert (parameter, 2, function (request, key, value)
+  Internal.data.trimmed = {
+    [Repository.refines] = {
+      Configuration.data.string,
+    }
+  }
+  checks = Internal.data.trimmed.check
+  checks [2] = function (t)
+    local request = t.request
+    local key     = t.key
+    local value   = request [key]
     request [key] = value:trim ()
-    return true
-  end)
-end
+  end
+  checks [3] = Internal.data.string.check [2]._
+  checks [4] = Internal.data.string.check [3]._
 
-Parameters.trimmed (Parameters.new_string "username")
-Parameters.username [#Parameters.username+1] = function (_, _, value)
-  return  value:find "^%w[%w%-_]+$"
-      or  nil, {
-            _        = "check:username:alphanumeric",
-            username = value,
-          }
-end
+  Internal.data.username = {
+    [Repository.refines] = {
+      Configuration.data.trimmed,
+    }
+  }
+  checks = Internal.data.username.check
+  checks [#checks+1] = function (t)
+    local value = t.request [t.key]
+    return  value:find "^%w[%w%-_]+$"
+        or  nil, {
+              _        = "check:username:alphanumeric",
+              username = value,
+            }
+  end
 
-Parameters.new_string "password"
+  Internal.data.password = {
+    [Repository.refines] = {
+      Configuration.data.trimmed,
+    }
+  }
 
-Parameters.trimmed (Parameters.new_string "email")
-Parameters.email [#Parameters.email+1] = function (_, _, value)
-  local pattern = "^.*@[%w%.%%%+%-]+%.%w%w%w?%w?$"
-  return  value:find (pattern)
-      or  nil, {
-            _     = "check:email:pattern",
-            email = value,
-          }
-end
+  Internal.data.email = {
+    [Repository.refines] = {
+      Configuration.data.trimmed,
+    }
+  }
+  checks = Internal.data.email.check
+  checks [#checks+1] = function (t)
+    local value   = t.request [t.key]
+    local pattern = "^.*@[%w%.%%%+%-]+%.%w%w%w?%w?$"
+    return  value:find (pattern)
+        or  nil, {
+              _     = "check:email:pattern",
+              email = value,
+            }
+  end
 
-Parameters.trimmed (Parameters.new_string "name")
+  Internal.data.name = {
+    [Repository.refines] = {
+      Configuration.data.trimmed,
+    }
+  }
 
-Parameters.trimmed (Parameters.new_string "locale")
-Internal.data.locale.min_size = 2
-Internal.data.locale.max_size = 5
-Parameters.locale [#Parameters.locale+1] = function (_, _, value)
-  return  value:find "^%a%a$"
-      or  value:find "^%a%a_%a%a$"
-      or  nil, {
-            _      = "check:locale:pattern",
-            locale = value,
-          }
-end
+  Internal.data.locale = {
+    [Repository.refines] = {
+      Configuration.data.trimmed,
+    }
+  }
+  checks = Internal.data.locale.check
+  checks [#checks+1] = function (t)
+    local value = t.request [t.key]
+    return  value:find "^%a%a$"
+        or  value:find "^%a%a_%a%a$"
+        or  nil, {
+              _      = "check:locale:pattern",
+              locale = value,
+            }
+  end
 
-Parameters.new_string "validation"
+  Internal.data.tos_digest = {
+    [Repository.refines] = {
+      Configuration.data.trimmed,
+    },
+    min_size = 32,
+    max_size = 32,
+  }
+  checks = Internal.data.tos_digest.check
+  checks [#checks+1] = function (t)
+    local value   = t.request [t.key]
+    local pattern = "^%x+$"
+    return  value:find (pattern)
+        or  nil, {
+              _          = "check:tos_digest:pattern",
+              tos_digest = value,
+            }
+  end
+  checks [#checks+1] = function (t)
+    local request = t.request
+    local value   = request [t.key]
+    local tos = Methods.tos { locale = request.locale }
+    return  tos.tos_digest == value
+        or  nil, {
+              _          = "check:tos_digest:incorrect",
+              tos_digest = value,
+            }
+  end
 
-Parameters.trimmed (Parameters.new_string "tos_digest")
-Internal.data.tos_digest.min_size = 32
-Internal.data.tos_digest.max_size = 32
-Parameters.tos_digest [#Parameters.tos_digest+1] = function (_, _, value)
-  local pattern = "^%x+$"
-  return  value:find (pattern)
-      or  nil, {
-            _          = "check:tos_digest:pattern",
-            tos_digest = value,
-          }
-end
-Parameters.tos_digest [#Parameters.tos_digest+1] = function (request, _, value)
-  local t = Methods.tos (nil, { locale = request.locale })
-  return  t.tos_digest == value
-      or  nil, {
-            _          = "check:tos_digest:incorrect",
-            tos_digest = value,
-          }
+  Internal.data.token = {
+    [Repository.refines] = {
+      Configuration.data.trimmed,
+    },
+  }
+  checks = Internal.data.token.check
+  checks [#checks+1] = function (t)
+    local request    = t.request
+    local key        = t.key
+    local value      = request [key]
+    local ok, result = Platform.token.decode (value)
+    if not ok then
+      return nil, {
+        _ = "check:token:valid",
+      }
+    end
+    request [key] = result
+    ok = Redis.transaction ({
+      token = Configuration.redis.key.token._ % { token = request.token },
+    }, function (p)
+      return p.token ~= nil
+    end)
+    return  ok
+        or  nil, {
+              _ = "check:token:valid",
+            }
+  end
+
+  Internal.data.token.administration = {
+    [Repository.refines] = {
+      Configuration.data.token,
+    },
+  }
+  checks = Internal.data.token.administration.check
+  checks [#checks+1] = function (t)
+    local request = t.request
+    local value   = request [t.key]
+    return  value.type == "administration"
+        or  nil, {
+              _ = "check:token:valid",
+            }
+  end
+
+  Internal.data.token.validation = {
+    [Repository.refines] = {
+      Configuration.data.token,
+    },
+  }
+  checks = Internal.data.token.validation.check
+  checks [#checks+1] = function (t)
+    local request = t.request
+    local value   = request [t.key]
+    return  value.type == "validation"
+        or  nil, {
+              _ = "check:token:valid",
+            }
+  end
+
+  Internal.data.token.authentication = {
+    [Repository.refines] = {
+      Configuration.data.token,
+    },
+  }
+  checks = Internal.data.token.authentication.check
+  checks [#checks+1] = function (t)
+    local request = t.request
+    local value   = request [t.key]
+    return  value.type == "authentication"
+        or  nil, {
+              _ = "check:token:valid",
+            }
+  end
 end
 
 -- Token
 --------
 
-function Token.is_administration (token)
-  return token ~= nil and token.type == "administration"
-end
-
-
-Token.validation = {}
-
-function Token.is_validation (token)
-  return token ~= nil and token.type == "validation"
-end
-
-function Token.validation.new (data)
+function Token.validation (data)
   local now    = Platform.time ()
   local result = {
     contents = {
@@ -664,13 +736,7 @@ function Token.validation.new (data)
   return Platform.token.encode (result)
 end
 
-Token.authentication = {}
-
-function Token.is_authentication (token)
-  return token ~= nil and token.type == "authentication"
-end
-
-function Token.authentication.new (data)
+function Token.authentication (data)
   local now    = Platform.time ()
   local result = {
     contents = {
@@ -687,6 +753,15 @@ function Token.authentication.new (data)
     jti      = Platform.digest (tostring (now + Platform.random ())),
   }
   return Platform.token.encode (result)
+end
+
+function Token.cancel (token)
+  local raw = Platform.token.encode (token)
+  Redis.transaction ({
+    token = Configuration.redis.key.token._ % { token = raw },
+  }, function (p)
+    p.token = nil
+  end)
 end
 
 -- RwTable
@@ -758,7 +833,6 @@ function Redis.transaction (keys, f)
       if Platform.redis.is_fake then
         client = Platform.redis.connect ()
       else
-        local socket    = require "socket"
         local coroutine = require "coroutine.make" ()
         local host      = Configuration.redis.host._
         local port      = Configuration.redis.port._
@@ -799,7 +873,7 @@ function Redis.transaction (keys, f)
         end
       end
     end
-    result = f (rw, client)
+    result = { f (rw, client) }
     redis:multi ()
     for name in pairs (rw [RwTable.Modified]) do
       local key   = keys [name]
@@ -818,66 +892,10 @@ function Redis.transaction (keys, f)
   end)
   Redis.pool.free [client] = true
   if ok then
-    return result
+    return table.unpack (result)
   else
     error (result)
   end
 end
 
-
--- Exported methods
--- ----------------
-
-local Exported = {}
-
-do
-  local function translate (x)
-    for _, v in pairs (x) do
-      if type (v) == "table" and not getmetatable (v) then
-        v.locale  = x.locale
-        v.message = translate (v)
-      end
-    end
-    if x._ then
-      x.message = Platform.i18n.translate (x._, x)
-    end
-  end
-  local function wrap (method)
-    return function (raw_token, request)
-      local token
-      if raw_token then
-        local ok, res = pcall (Platform.token.decode, raw_token)
-        if ok then
-          token = res.contents
-        else
-          error {
-            _      = "token:error",
-            reason = res:match "%s*([^:]*)$",
-          }
-        end
-      end
-      if not request then
-        request = {}
-      end
-      local ok, result = pcall (method, token, request)
-      if result == nil then
-        result = {}
-      end
-      if type (result) == "table" then
-        result.locale    = (token and token.locale)
-                        or Configuration.locale.default._
-        result.message   = translate (result)
-      end
-      if ok then
-        return result
-      else
-        error (result)
-      end
-    end
-  end
-  for k, v in pairs (Methods) do
-    Exported [k] = wrap (v)
-  end
-end
-
-return Exported
+return Methods
