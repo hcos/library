@@ -71,19 +71,25 @@ Platform:register ("logger", function ()
   end
   Platform.logger.enabled = true
 end)
---    > Platform = require "cosy.platform.standalone"
---    > local _ = Platform.logger
---    ...
---    logger is available
 
 -- Internationalization
 -- ====================
 Platform:register ("i18n", function ()
   Platform.i18n = require "i18n"
-  Platform.i18n.load {
-    en = require "cosy.i18n.en",
-  }
   getmetatable (Platform.i18n).__call = function (i18n, x)
+    local locale = x.locale or "en"
+    if not package.loaded ["cosy.i18n." .. locale] then
+      local ok, loaded = pcall (require, "cosy.i18n." .. locale)
+      if ok then
+        Platform.i18n.load {
+          [locale] = loaded,
+        }
+        Platform.logger.info {
+          _      = "platform:available-locale",
+          loaded = locale,
+        }
+      end
+    end
     for k, v in pairs (x) do
       if type (v) == "table" and not getmetatable (v) then
         v.locale = x.locale
@@ -92,30 +98,7 @@ Platform:register ("i18n", function ()
     end
     return i18n.translate (x._, x)
   end
-  local lfs = require "lfs"
-  for path in package.path:gmatch "([^;]+)" do
-    if path:sub (-5) == "?.lua" then
-      path = path:sub (1, #path - 5) .. "cosy/i18n/"
-      if lfs.attributes (path, "mode") == "directory" then
-        for file in lfs.dir (path) do
-          if lfs.attributes (path .. file, "mode") == "file"
-          and file:sub (1,1) ~= "." then
-            local name = file:gsub (".lua", "")
-            Platform.i18n.load { name = require ("cosy.i18n." .. name) }
-            Platform.logger.debug {
-              _      = "platform:available-locale",
-              loaded = name,
-            }
-          end
-        end
-      end
-    end
-  end
 end)
---    > Platform = require "cosy.platform.standalone"
---    > local _ = Platform.i18n
---    ...
---    i18n is available
 
 -- Unique ID generator
 -- ===================
@@ -134,17 +117,13 @@ Platform:register ("unique", function ()
     return Platform.md5.digest (tostring (math.random ()))
   end
 end)
---    > Platform = require "cosy.platform.standalone"
---    > local _ = Platform.unique
---    ...
---    unique is available
 
 -- Table dump
 -- ==========
 Platform:register ("table", function ()
-  local serpent = require "serpent"
+  Platform.table = require "serpent"
   function Platform.table.encode (t)
-    return serpent.dump (t, {
+    return Platform.table.dump (t, {
       sortkeys = false,
       compact  = true,
       fatal    = true,
@@ -152,7 +131,7 @@ Platform:register ("table", function ()
     })
   end
   function Platform.table.debug (t)
-    return serpent.line (t, {
+    return Platform.table.line (t, {
       sortkeys = true,
       compact  = true,
       fatal    = true,
@@ -161,25 +140,17 @@ Platform:register ("table", function ()
     })
   end
   function Platform.table.decode (s)
-    return serpent.load (s, {
+    return Platform.table.load (s, {
       safe = false,
     })
   end
 end)
---    > Platform = require "cosy.platform.standalone"
---    > local _ = Platform.table
---    ...
---    table is available
 
 -- JSON
 -- ====
 Platform:register ("json", function ()
   Platform.json = require "cjson" .new ()
 end)
---    > Platform = require "cosy.platform.standalone"
---    > local _ = Platform.json
---    ...
---    json is available
 
 -- YAML
 -- ====
@@ -190,10 +161,6 @@ Platform:register ("yaml", function ()
     decode = yaml.load,
   }
 end)
---    > Platform = require "cosy.platform.standalone"
---    > local _ = Platform.yaml
---    ...
---    yaml is available
 
 -- Compression
 -- ===========
@@ -223,10 +190,6 @@ Platform:register ("compression", function ()
             }
   end
 end)
---    > Platform = require "cosy.platform.standalone"
---    > local _ = Platform.compression
---    ...
---    compression is available
 
 -- Time
 -- ====
@@ -234,15 +197,11 @@ Platform:register ("time", function ()
   local socket  = require "socket"
   Platform.time = socket.gettime
 end)
---    > Platform = require "cosy.platform.standalone"
---    > local _ = Platform.time
---    ...
---    time is available
 
 -- Password Hashing
 -- ================
 Platform:register ("password", function ()
-  local Configuration = require "cosy.configuration" .whole
+  local Configuration = require "cosy.configuration"
   local bcrypt        = require "bcrypt"
   local function compute_rounds ()
     for _ = 1, 5 do
@@ -276,13 +235,6 @@ Platform:register ("password", function ()
     time  = Configuration.data.password.time._ * 1000,
   }
 end)
---    > Platform      = require "cosy.platform.standalone"
---    > Configuration = require "cosy.configuration" .whole
---    > Configuration.data.password.time = 0.001 -- second
---    > local _ = Platform.password
---    ...
---    using ... rounds in bcrypt for at least ... milliseconds of computation
---    password is available
 
 -- MD5
 -- ===
@@ -290,10 +242,6 @@ Platform:register ("digest", function ()
   local md5 = require "md5"
   Platform.digest = md5.sumhexa
 end)
---    > Platform = require "cosy.platform.standalone"
---    > local _ = Platform.digest
---    ...
---    digest is available
 
 -- Redis
 -- =====
@@ -317,10 +265,6 @@ Platform:register ("redis", function ()
     Platform.redis = require "redis"
   end
 end)
---    > Platform = require "cosy.platform.standalone"
---    > local _ = Platform.redis
---    ...
---    redis is available
 
 -- Random
 -- ======
@@ -328,17 +272,12 @@ Platform:register ("random", function ()
   math.randomseed (Platform.time ())
   Platform.random = math.random
 end)
---    > Platform = require "cosy.platform.standalone"
---    > local _ = Platform.random
---    ...
---    random is available
 
 -- Token
 -- =====
 Platform:register ("token", function ()
   local jwt           = require "luajwt"
-  local Configuration = require "cosy.configuration" .whole
-  local Internal      = require "cosy.configuration" .internal
+  local Configuration = require "cosy.configuration"
   if Configuration.token.secret._ == nil then
     error {
       _ = "platform:no-token-secret",
@@ -364,12 +303,6 @@ Platform:register ("token", function ()
     return result
   end
 end)
---    > Platform      = require "cosy.platform.standalone"
---    > Configuration = require "cosy.configuration" .whole
---    > Configuration.token.secret = "secret"
---    > local _ = Platform.token
---    ...
---    token is available
 
 -- Configuration
 -- =============
@@ -397,10 +330,6 @@ Platform:register ("configuration", function ()
     end
   end
 end)
---    > Platform = require "cosy.platform.standalone"
---    > local _ = Platform.configuration
---    ...
---    configuration is available
 
 -- Scheduler
 -- =========
@@ -450,7 +379,7 @@ Platform:register ("email", function ()
         _ = "platform:no-smtp",
       }
     else
-      local Configuration = require "cosy.configuration" .whole
+      local Configuration = require "cosy.configuration"
       Platform.logger.debug {
         _        = "platform:smtp",
         host     = Configuration.smtp.host._,
@@ -461,9 +390,5 @@ Platform:register ("email", function ()
     end
   end
 end)
---    > Platform = require "cosy.platform.standalone"
---    > local _ = Platform.email
---    ...
---    email is available
 
 return Platform
