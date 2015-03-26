@@ -1,100 +1,64 @@
-local Configuration = require "cosy.configuration" .whole
+local coevas        = require "copas.ev"
+coevas:make_default ()
+local Configuration = require "cosy.configuration"
 local Platform      = require "cosy.platform"
 local Methods       = require "cosy.methods"
 
-local LuaRpc = {}
+local function translate (x)
+  x.locale = x.locale or Configuration.locale._
+  for _, v in pairs (x) do
+    if type (v) == "table" and not getmetatable (v) then
+      local vl  = v.locale
+      v.locale  = x.locale
+      v.message = translate (v)
+      v.locale  = vl
+    end
+  end
+  if x._ then
+    x.message = Platform.i18n.translate (x._, x)
+  end
+  return x
+end
 
-function LuaRpc.message (message)
-  local ok, res = Platform.table.decode (message)
-  if not ok then
-    return Platform.table.encode ({
-      version = "2.0",
-      id      = nil,
+local function request (message)
+  local decoded, request = Platform.table.decode (message)
+  if not decoded then
+    return Platform.table.encode (translate {
+      success = false,
       error   = {
-        code    = -32700,
-        message = "Parse error",
-        data    = res,
+        _      = "rpc:format",
+        reason = message,
       },
     })
   end
-  local results = {}
-  if #res == 0 then
-    results [#results+1] = LuaRpc.request (res)
-  else
-    for i = 1, #res do
-      results [#results+1] = LuaRpc.request (res [i])
-      if res [i].id == nil then
-        results [#results] = nil
-      end
-    end
-  end
-  if #results == 0 then
-    return
-  elseif #results == 1 then
-    return Platform.table.encode (results [1])
-  else
-    return Platform.table.encode (results)
-  end
-end
-
-function LuaRpc.request (request)
-  if request.version ~= "2.0"
-  or type (request.method) ~= "string"
-  then
-    return {
-      LuaRpc = "2.0",
-      id      = request.id,
-      error   = {
-        code    = -32600,
-        message = "Invalid Request",
-      },
-    }
-  end
-  local method = Methods [request.method:gsub ("-", "_")]
+  local identifier = request.identifier
+  local operation  = request.operation
+  local parameters = request.parameters
+  local method     = Methods [operation]
   if not method then
-    return {
-      version = "2.0",
-      id      = request.id,
-      error   = {
-        code    = -32601,
-        message = "Method not found",
+    return Platform.table.encode (translate {
+      identifier = identifier,
+      success    = false,
+      error      = {
+        _      = "rpc:no-operation",
+        reason = operation,
       },
-    }
+    })
   end
-  local ok, result = pcall (method, request.params.token, request.params.request)
-  if  not ok
-  and type (result) == "table" and result._ == "check:error" then
-    return {
-      version = "2.0",
-      id      = request.id,
-      error   = {
-        code    = -32602,
-        message = "Invalid params",
-        data    = result,
-      },
-    }
+  local called, result = pcall (method, parameters or {})
+  if not called then
+    return Platform.table.encode (translate {
+      identifier = identifier,
+      success    = false,
+      error      = result,
+    })
   end
-  if not ok then
-    return {
-      version = "2.0",
-      id      = request.id,
-      error   = {
-        code    = -32603,
-        message = "Internal error",
-        data    = result,
-      },
-    }
-  end
-  if request.id then
-    return {
-      version = "2.0",
-      id      = request.id,
-      result  = result,
-    }
-  end
+  return Platform.table.encode (translate {
+    identifier = identifier,
+    success    = true,
+    response   = result,
+  })
 end
-
-
 
 local copas     = require "copas"
 local websocket = require "websocket"
@@ -115,7 +79,7 @@ websocket.server.copas.listen {
       while true do
         local message = client:receive ()
         if message then
-          local result = LuaRpc.message (message)
+          local result = request (message)
           if result then
             client:send (result)
           end
