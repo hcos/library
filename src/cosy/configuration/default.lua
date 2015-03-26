@@ -32,9 +32,7 @@ return {
   token = {
     algorithm = "HS512",
   },
-  locale = {
-    default = "en",
-  },
+  locale = "en",
   expiration = {
     account        = 24 * 3600, -- 1 day
     validation     =  1 * 3600, -- 1 hour

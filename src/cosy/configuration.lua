@@ -1,59 +1,41 @@
--- Overall Configuration
--- =====================
+local Platform   = require "cosy.platform"
+local Repository = require "cosy.repository"
 
--- This module returns an object describing the overall configuration.
--- It tries to load files named `cosy.json` or `cosy.yaml` located in directories
--- listed in `Platform.configuration.paths` (in order).
---
--- All the found configurations are merged to obtain the result. It allows to
--- preset some configuration variables system-wide.
+local repository = Repository.new ()
+Repository.options (repository).create = function () end
+Repository.options (repository).import = function () end
 
-local Platform = require "cosy.platform"
-local Data     = require "cosy.data"
+repository.internal = {}
+repository.default  = require "cosy.configuration.default"
 
-local Configuration = Data.new ()
-
-Configuration.internal = {}
-Configuration.default  = require "cosy.configuration.default"
-
-do
-  local loaded = {
-    Configuration.internal,
-    Configuration.default,
-    nil, -- required for 100% code coverage :-(
-  }
-  for _, path in ipairs (Platform.configuration.paths) do
-    local found = false
-    for name, loader in pairs {
-      ["cosy.yaml"] = Platform.yaml.decode,
-      ["cosy.json"] = Platform.json.decode,
-    } do
-      local filename = path .. "/" .. name
-      local content  = Platform.configuration.read (filename)
-      if content then
-        -- If a directory contains both `cosy.json` and `cosy.yaml` files,
-        -- an error is raised as there is no way to known which one
-        -- should be used.
-        if found then
-          local err = {
-            _    = "configuration:conflict",
-            path = path,
-          }
-          error (err)
-        end
-        Configuration [filename] = loader (content)
-        loaded [#loaded+1] = Configuration [filename]
-        Platform.logger.debug {
-          _    = "configuration:using",
-          path = path,
-        }
-        found = true
-      end
+local loaded = {
+  repository.internal,
+  repository.default,
+  nil, -- required for 100% code coverage :-(
+}
+for _, path in ipairs (Platform.configuration.paths) do
+  local filename = path .. "/cosy.conf"
+  local content  = Platform.configuration.read (filename)
+  if content then
+    local ok, t = Platform.table.decode (content)
+    if ok then
+      repository [filename] = t
+      loaded [#loaded+1] = repository [filename]
+      Platform.logger.debug {
+        _    = "configuration:using",
+        path = path,
+      }
+    else
+      Platform.logger.warn {
+        _      = "configuration:skipping",
+        path   = path,
+        reason = t,
+      }
     end
   end
-  Configuration.whole = {
-    [Data.DEPENDS] = loaded,
-  }
 end
+repository.whole = {
+  [Repository.depends] = loaded,
+}
 
-return Configuration
+return repository.whole
