@@ -236,11 +236,27 @@ Platform:register ("password", function ()
   }
 end)
 
--- MD5
--- ===
+-- Digest
+-- ======
 Platform:register ("digest", function ()
-  local md5 = require "md5"
-  Platform.digest = md5.sumhexa
+  local Crypto = require "crypto"
+  Platform.digest = function (s)
+    return Crypto.hex (Crypto.digest ("SHA256", s))
+  end
+end)
+
+-- Encrypt
+-- =======
+Platform:register ("encryption", function ()
+  local Crypto = require "crypto"
+  local Mime   = require "mime"
+  Platform.encryption = {}
+  Platform.encryption.encode = function (s, key)
+    return Mime.b64 (Crypto.encrypt ("AES256", s, key))
+  end
+  Platform.encryption.decode = function (s, key)
+    return Crypto.decrypt ("AES256", Mime.unb64 (s), key)
+  end
 end)
 
 -- Redis
@@ -388,6 +404,83 @@ Platform:register ("email", function ()
         protocol = Configuration.smtp.protocol._,
       }
     end
+  end
+end)
+
+Platform:register ("client", function ()
+  Platform.client = function (url)
+    local Configuration = require "cosy.configuration"
+    local Methods       = require "cosy.methods"
+    local Coevas        = require "copas.ev"
+    Coevas:make_default ()
+    local Websocket     = require "websocket"
+    local Url           = require "socket.url"
+    local parsed   = Url.parse (url)
+    local host     = parsed.host
+    local port     = parsed.port
+    local ws       = Websocket.client.copas {
+      timeout = Configuration.client.timeout._,
+    }
+    ws:connect ("ws://%{host}:%{port}" % {
+      host = host,
+      port = port or 80
+    }, "cosy")
+    local waiting   = {}
+    local results   = {}
+    local running   = true
+    Coevas.addthread (function ()
+      while running do
+        local message = ws:receive ()
+        if not message then
+          break
+        end
+        message = Platform.table.decode (message)
+        local identifier = message.identifier
+        results [identifier] = message
+        local thread     = waiting [identifier]
+        if thread then
+          coroutine.wakeup (thread)
+        end
+      end
+    end)
+    local client = {}
+    function client.loop ()
+      Coevas.loop ()
+    end
+    function client.unloop ()
+      Coevas.unloop ()
+    end
+    for operation in pairs (Methods) do
+      client [operation] = function (parameters)
+        local result = nil
+        Coevas.addthread (function ()
+          local identifier = #results+1
+          waiting [identifier] = coroutine.running ()
+          results [identifier] = nil
+          ws:send {
+            identifier = identifier,
+            operation  = operation,
+            parameters = parameters,
+          }
+          Coevas.sleep (Configuration.timeout._)
+          result = results [identifier]
+          waiting [identifier] = nil
+          results [identifier] = nil
+          Coevas.unloop ()
+        end)
+        Coevas.loop ()
+        if result == nil then
+          error {
+            _ = "timeout",
+          }
+        elseif result.success then
+          return result.response
+        else
+          error (result.response)
+        end
+      end
+    end
+    return client
   end
 end)
 
