@@ -10,6 +10,10 @@ return {
     port    = 8080,
     salt    = "cosyverif",
     rounds  = 6,
+    timeout = 5,
+  },
+  client = {
+    timeout = 5,
   },
   data = {
     username = {
