@@ -1,7 +1,21 @@
-require "compat53"
+local Repository       = {}
+Repository.__metatable = "cosy.data"
+Repository.__mode      = "kv"
+Repository.value       = "_"
+Repository.proxy       = "cosy:proxy"
+Repository.depends     = "cosy:depends"
+Repository.refines     = "cosy:refines"
+Repository.refers      = "cosy:refers"
 
-local Repository = {}
-local Proxy      = {}
+local Resource         = {}
+Resource.__metatable   = "cosy.data.resource"
+
+local Proxy            = {}
+Proxy.__metatable      = "cosy.data.proxy"
+
+local Cache            = {}
+Cache.__metatable      = "cosy.data.cache"
+Cache.__mode           = "kv"
 
 local function make_tag (name)
   return setmetatable ({}, {
@@ -9,176 +23,116 @@ local function make_tag (name)
   })
 end
 
-Repository.__metatable = "cosy.data"
-Proxy     .__metatable = "cosy.data.proxy"
+local CACHES     = make_tag "CACHES"
+local COROUTINE  = make_tag "COROUTINE"
+local OPTIONS    = make_tag "OPTIONS"
+local PROXIES    = make_tag "PROXIES"
 
 local CURRENT    = make_tag "CURRENT"
-local CONTENTS   = make_tag "CONTENTS"
-local LINEARIZED = make_tag "LINEARIZED"
-local OPTIONS    = make_tag "OPTIONS"
-local REPOSITORY = make_tag "REPOSITORY"
 local KEYS       = make_tag "KEYS"
-local PROXIES    = make_tag "PROXIES"
 local PARENT     = make_tag "PARENT"
-
-Repository.VALUE    = "_"
-Repository.DEPENDS  = "cosy:depends"
-Repository.INHERITS = "cosy:inherits"
-Repository.REFERS   = "cosy:refers"
-Repository.RELATIVE = "cosy:relative"
-
-local Options = {}
-
-function Options.new ()
-  return {
-    filter   = nil,
-    on_read  = nil,
-    on_write = nil,
-  }
-end
-
-function Options.wrap (options)
-  return setmetatable ({
-    [OPTIONS] = options,
-    [CURRENT] = options,
-  }, Options)
-end
-
-function Options.__index (options, key)
-  local found = options [CURRENT] [key]
-  if type (found) ~= "table" then
-    return found
-  else
-    return setmetatable ({
-      [OPTIONS] = options [OPTIONS],
-      [CURRENT] = found,
-    }, Options)
-  end
-end
-
-function Options.__newindex (options, key, value)
-  local found = options [CURRENT] [key]
-  options [CURRENT] [key] = value
-  local err = Options.check (options [OPTIONS])
-  if err then
-    options [CURRENT] [key] = found
-    error (err)
-  end
-end
-
-function Options.check (options)
-  local function is_function (f)
-    return type (f) == "function"
-        or type (f) == "thread"
-        or (    type (f) == "table"
-            and getmetatable (f) ~= nil
-            and getmetatable (f).__call ~= nil)
-  end
-  for key, value in pairs (options) do
-    if key == "filter" then
-      if not is_function (value) then
-        return "options.filter must be a function"
-      end
-    elseif key == "on_read" then
-      if not is_function (value) then
-        return "options.on_read must be a function"
-      end
-    elseif key == "on_write" then
-      if not is_function (value) then
-        return "options.on_write must be a function"
-      end
-    else
-      error ("unknown option: " .. tostring (key))
-    end
-  end
-end
+local REPOSITORY = make_tag "REPOSITORY"
 
 function Repository.new ()
   local repository = setmetatable ({
-    [CONTENTS  ] = {},
-    [LINEARIZED] = {},
-    [OPTIONS   ] = Options.new (),
-    [PROXIES   ] = false,
+    [CACHES    ] = {},
+    [COROUTINE ] = require "coroutine.make" (),
+    [PROXIES   ] = setmetatable ({}, Cache),
+    [OPTIONS   ] = {
+      create = nil,
+      import = nil,
+    },
   }, Repository)
-  repository [PROXIES] = setmetatable ({
-    [REPOSITORY] = repository,
-    [KEYS      ] = {},
-    [PROXIES   ] = setmetatable ({}, { __mode = "kv" }),
-    [PARENT    ] = false,
-  }, Proxy)
   return repository
 end
 
-function Repository.__index (repository, key)
-  return repository [PROXIES] [key]
-end
-
-function Repository.__newindex (repository, key, value)
-  repository [PROXIES] [key] = Repository.import (key, value)
-end
-
-function Repository.raw (repository)
-  return repository [CONTENTS]
-end
-
 function Repository.options (repository)
-  return Options.wrap (repository [OPTIONS])
+  return repository [OPTIONS]
 end
 
-function Repository.path (proxy)
-  return proxy [KEYS]
+function Repository.__index (repository, key)
+  local import    = repository [OPTIONS].import
+  local data      = import (repository, key)
+  local resource  = Resource.import (repository, data)
+  rawset (repository, key, resource)
+  return resource
 end
 
-function Repository.delete (proxy)
-  local repository = proxy [REPOSITORY]
-  local keys       = proxy [KEYS]
-  local data       = repository
-  for i = 1, #keys-1 do
-    data = data [keys [i]]
-  end
-  data [keys [#keys]] = nil
+function Repository.__newindex (repository, key, data)
+  local create = repository [OPTIONS].create
+  create (repository, key)
+  resource     = Resource.import (repository, data)
+  rawset (repository, key, resource)
 end
 
-function Repository.import (key, value, within)
-  if type (value) ~= "table" then
-    return value
+function Repository.flatten (resource)
+  error "Not implemented yet"
+end
+
+function Resource.import (repository, data)
+  if type (data) ~= "table" then
+    data = { _ = data }
   end
-  if key == Repository.DEPENDS then
-    within = Repository.DEPENDS
-  elseif key == Repository.INHERITS then
-    within = Repository.INHERITS
-  elseif key == Repository.REFERS then
-    within = Repository.REFERS
-  end
-  if getmetatable (value) == Proxy.__metatable then
-    if within == Repository.DEPENDS then
-      value = value [KEYS] [1]
-    elseif within == Repository.INHERITS 
-        or within == Repository.REFERS then
-      local keys = value [KEYS]
-      local path = {}
-      for i = 2, #keys do
-        path [i-1] = keys [i]
-      end
-      value = path
-    else
-      local keys = value [KEYS]
-      local path = {}
-      for i = 2, #keys do
-        path [i-1] = keys [i]
-      end
-      value = {
-        [Repository.REFERS ] = path,
-      }
+  assert (getmetatable (data) == nil)
+  local resource = data
+  local function import (data)
+    if type (data) ~= "table" then
+      return
     end
-    return value
+    local updates = {}
+    for key, value in pairs (data) do
+      if key   [Repository.proxy] then
+        local proxy = Repository.placeholder
+        for i = 1, #key do
+          proxy = proxy [key [i]]
+        end
+        updates [key] = proxy
+      end
+      if value [Repository.proxy] then
+        local proxy = Repository.placeholder
+        for i = 1, #value do
+          proxy = proxy [value [i]]
+        end
+        data [key] = proxy
+      elseif type (value) == "table" then
+        import (value)
+      end
+    end
+    for old_key, new_key in pairs (updates) do
+      data [old_key], data [new_key] = nil, data [old_key]
+    end
   end
-  local import = Repository.import
-  for k, v in pairs (value) do
-    value [k] = import (k, v, within)
-  end
-  return value
+  resource [REPOSITORY] = repository
+  import (resource)
+  setmetatable (resource, Resource)
+  return Proxy.new (resource)
 end
+
+function Resource.export (resource)
+  return Platform.table.block (resource, {
+    sortkeys  = true,
+    compact   = true,
+    fatal     = true,
+    comment   = false,
+    nocode    = false,
+    valignore = {
+      [REPOSITORY] = true,
+    },
+  })
+end
+
+function Proxy.new (resource)
+  
+end
+
+function Proxy.__serialize (proxy)
+  
+end
+
+
+table.unpack = table.unpack or unpack
+
+local LINEARIZED = make_tag "LINEARIZED"
 
 function Repository.linearize (proxy, parents)
   local repository = proxy [REPOSITORY]
@@ -360,6 +314,17 @@ function Repository.parents (proxy)
   local root       = repository [keys [1]]
   local layers     = Repository.linearize (root, Repository.depends)
   local parents    = {}
+  local inherits   = data [Repository.INHERITS]
+  for k = 1, #inherits do
+    local path    = inherits [k]
+    local inherit = root
+    for l = 1, #path do
+      inherit = inherit [path [l]]
+    end
+    inherit = Proxy.dereference (inherit)
+    parents [#parents+1] = inherit
+  end
+--[==[
   for i = 1, #layers do
     local layer = layers [i] [KEYS] [1]
     local data  = contents [layer]
@@ -379,10 +344,12 @@ function Repository.parents (proxy)
         for l = 1, #path do
           inherit = inherit [path [l]]
         end
+        inherit = Proxy.dereference (inherit)
         parents [#parents+1] = inherit
       end
     end
   end
+--]==]
   if #parents ~= 0 then
     return parents
   else
@@ -479,31 +446,75 @@ function Proxy.__index (proxy, key)
       end
     end
     -- Search in parents:
-    print ("inherits", root, root [REPOSITORY])
-    local proxies = { root }
     local current = root
     for i = 2, #keys do
       current = current [keys [i]]
-      proxies [#proxies+1] = current
     end
-    for i = #proxies, 1, -1 do
-      local proxy   = proxies [i]
-      local parents = Repository.linearize (proxy, Repository.parents)
+    for i = #keys, 1, -1 do
+      local parents = Repository.linearize (current, Repository.parents)
       for j = #parents-1, 1, -1 do
         local parent = parents [j]
         for k = i+1, #keys do
           parent = parent [keys [k]]
         end
-        print ("looking in", parent)
         local result = parent._
-        print ("result", result)
         if result then
           return result
         end
       end
+      current = current [PARENT]
     end
     return nil
   end
+end
+
+function Proxy.exists (proxy)
+  proxy = Proxy.dereference (proxy)
+  if proxy == nil then
+    return false
+  end
+  local keys       = proxy [KEYS]
+  local repository = proxy [REPOSITORY]
+  local contents   = repository [CONTENTS]
+  local root       = repository [keys [1]]
+  local layers     = Repository.linearize (root, Repository.depends)
+  for i = #layers, 1, -1 do
+    local layer = layers [i] [KEYS] [1]
+    local data  = contents [layer]
+    for j = 2, #keys do
+      if type (data) ~= "table" then
+        data = nil
+        break
+      end
+      local key = keys [j]
+      data = data [key]
+      if data == nil then
+        break
+      end
+    end
+    if data ~= nil then
+      return true
+    end
+  end
+  -- Search in parents:
+  local current = root
+  for i = 2, #keys do
+    current = current [keys [i]]
+  end
+  for i = #keys, 1, -1 do
+    local parents = Repository.linearize (current, Repository.parents)
+    for j = #parents-1, 1, -1 do
+      local parent = parents [j]
+      for k = i+1, #keys do
+        parent = parent [keys [k]]
+      end
+      if Proxy.exists (parent) then
+        return true
+      end
+    end
+    current = current [PARENT]
+  end
+  return false
 end
 
 function Proxy.__call (proxy, n)
@@ -636,11 +647,93 @@ function Proxy.__newindex (proxy, key, value)
 end
 
 function Proxy.__pairs (proxy)
-  error "Not implemented"
+  local repository = proxy [REPOSITORY]
+  local coroutine  = repository [COROUTINE]
+  return coroutine.wrap (function ()
+    proxy = Proxy.dereference (proxy)
+    if proxy == nil then
+      return nil
+    end
+    local visited    = {
+      [Repository.DEPENDS ] = true,
+      [Repository.INHERITS] = true,
+      [Repository.REFERS  ] = true,
+      [Repository.VALUE   ] = true,
+    }
+    local keys       = proxy [KEYS]
+    local contents   = repository [CONTENTS]
+    local root       = repository [keys [1]]
+    local layers     = Repository.linearize (root, Repository.depends)
+    for i = #layers, 1, -1 do
+      local layer = layers [i] [KEYS] [1]
+      local data  = contents [layer]
+      for j = 2, #keys do
+        if type (data) ~= "table" then
+          data = nil
+          break
+        end
+        local key = keys [j]
+        data = data [key]
+        if data == nil then
+          break
+        end
+      end
+      if type (data) == "table" then
+        for k in pairs (data) do
+          if not visited [k] then
+            coroutine.yield (k, proxy [k])
+            visited [k] = true
+          end
+        end
+      end
+    end
+    -- Search in parents:
+    local current = root
+    for i = 2, #keys do
+      current = current [keys [i]]
+    end
+    for i = #keys, 1, -1 do
+      local parents = Repository.linearize (current, Repository.parents)
+      for j = #parents-1, 1, -1 do
+        local parent = parents [j]
+        for k = i+1, #keys do
+          parent = parent [keys [k]]
+        end
+        for k in pairs (parent) do
+          if not visited [k] then
+            coroutine.yield (k, proxy [k])
+            visited [k] = true
+          end
+        end
+      end
+      current = current [PARENT]
+    end
+  end)
+end
+
+function Proxy.__ipairs (proxy)
+  local repository = proxy [REPOSITORY]
+  local coroutine  = repository [COROUTINE]
+  return coroutine.wrap (function ()
+    local i = 1
+    while true do
+      local p = proxy [i]
+      if Proxy.exists (p) then
+        coroutine.yield (i, p)
+      else
+        return nil
+      end
+      i = i+1
+    end
+  end)
 end
 
 function Proxy.__len (proxy)
-  error "Not implemented"
+  local n = 1
+  while Proxy.exists (proxy [n]) do
+    n = n+1
+  end
+  return n-1
 end
 
 function Proxy.__tostring (proxy)
