@@ -414,17 +414,10 @@ Platform:register ("client", function ()
     local Coevas        = require "copas.ev"
     Coevas:make_default ()
     local Websocket     = require "websocket"
-    local Url           = require "socket.url"
-    local parsed   = Url.parse (url)
-    local host     = parsed.host
-    local port     = parsed.port
-    local ws       = Websocket.client.copas {
+    local ws = Websocket.client.copas {
       timeout = Configuration.client.timeout._,
     }
-    ws:connect ("ws://%{host}:%{port}" % {
-      host = host,
-      port = port or 80
-    }, "cosy")
+    ws:connect (url, "cosy")
     local waiting   = {}
     local results   = {}
     local running   = true

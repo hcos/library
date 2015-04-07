@@ -1,4 +1,6 @@
 return {
+  ["server:listening"] =
+    "server is listening on %{host}:%{port}",
   ["tos"] =
 [[
 Cas n°1: Utilisation du logiciel Cosyverif par téléchargement
@@ -70,19 +72,10 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
   ["platform:smtp"] =
     "SMTP on ${host}:${port} uses ${method} (encrypted with ${protocol})",
 
-  ["configuration:conflict"] =
-    "directory %{path} contains several configuration files, instead of just one",
   ["configuration:using"] =
     "using configuration in directory %{path}",
-
-  ["turing:what-is-round"] =
-    "What is represented as a circle in Petri nets: a *place* or a *transition*?",
-  ["turing:what-is-rectangular"] =
-    "What is represented as a rectangle in Petri nets: a *place* or a *transition*?",
-  ["place"] =
-    "place",
-  ["transition"] =
-    "transition",
+  ["configuration:skipping"] =
+    "skipping configuration in directory %{path}, because %{reason}",
 
   ["check:error"] =
     "some parameters are invalid or missing",
