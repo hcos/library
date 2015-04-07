@@ -14,26 +14,20 @@ description = {
 }
 
 dependencies = {
-  "ansicolors ~> 1",
   "bcrypt ~> 1",
   "c3 ~> 0",
-  "copas ~> 1",
+  "copas-ev ~> 1",
   "coronest ~> 0",
-  "fakeredis ~> 0",
   "i18n ~> 0",
   "lua >= 5.1",
-  "lua-cjson ~> 2",
-  "lua-csnappy ~> 0",
   "lua-websockets ~> 2",
   "luacrypto ~> 0",
-  "luafilesystem ~> 1",
   "luajwt ~> 1",
   "lualogging ~> 1",
   "luasec ~> 0",
   "luasocket ~> 3",
   "redis-lua ~> 2",
   "serpent ~> 0",
-  "yaml ~> 1",
 }
 
 build = {
