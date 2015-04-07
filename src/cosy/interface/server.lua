@@ -11,11 +11,9 @@ local function http (context)
     context.response.status  = 405
     context.response.message = "Method Not Allowed"
     return
-  end
-  if context.request.headers ["upgrade"] == "websocket" then
+  elseif context.request.headers ["upgrade"] == "websocket" then
     return
-  end
-  if context.request.method == "GET" then
+  elseif context.request.method == "GET" then
     if context.request.path:sub (-1) == "/" then
       context.request.path = context.request.path .. "index.html"
     end
@@ -35,9 +33,10 @@ local function http (context)
     context.response.status  = 404
     context.response.message = "Not Found"
     return
+  else
+    context.response.status  = 500
+    context.response.message = "Internal Server Error"
   end
-  context.response.status  = 500
-  context.response.message = "Internal Server Error"
 end
 
 local function translate (x)
