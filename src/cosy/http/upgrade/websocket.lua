@@ -1,6 +1,6 @@
 -- This module is a copy/paste of
 -- https://github.com/lipp/lua-websockets/blob/master/src/websocket/server_copas.lua
--- because i found no other way to 
+-- because i found no other way to do it.
 local handshake = require "websocket.handshake"
 local sync      = require "websocket.sync"
 
@@ -8,7 +8,6 @@ local sync      = require "websocket.sync"
 
 local function websocket (context)
   context.websocket.handler (context)
-  return websocket
 end
 
 return function (context)
