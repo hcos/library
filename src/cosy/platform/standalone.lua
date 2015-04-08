@@ -262,24 +262,7 @@ end)
 -- Redis
 -- =====
 Platform:register ("redis", function ()
-  if _G.__TEST__ then
-    Platform.redis = require "fakeredis" .new ()
-    Platform.redis.is_fake     = true
-    Platform.redis.connect     = function ()
-      return Platform.redis
-    end
-    Platform.redis.expireat    = function ()
-    end
-    Platform.redis.persist     = function ()
-    end
-    Platform.redis.multi       = function ()
-    end
-    Platform.redis.transaction = function (client, _, f)
-      return f (client)
-    end
-  else
-    Platform.redis = require "redis"
-  end
+  Platform.redis = require "redis"
 end)
 
 -- Random
