@@ -6,7 +6,7 @@ local Socket        = require "socket"
 local Copas         = require "copas.ev"
 Copas:make_default ()
 
-local function http (context)
+local function get (context)
   if context.request.method ~= "GET" then
     context.response.status  = 405
     context.response.message = "Method Not Allowed"
@@ -95,16 +95,16 @@ local function request (message)
   })
 end
 
-local function ws (context)
-  while context.ws_client.state ~= "CLOSED" do
-    local message = context.ws_client:receive ()
+local function wsloop (context)
+  while context.websocket.client.state ~= "CLOSED" do
+    local message = context.websocket.client:receive ()
     if message then
       local result = request (message)
       if result then
-        context.ws_client:send (result)
+        context.websocket.client:send (result)
       end
     else
-      context.ws_client:close ()
+      context.websocket.client:close ()
     end
   end
 end
@@ -121,14 +121,19 @@ do
   local host = Configuration.server.host._
   local port = Configuration.server.port._
   Copas.addserver (Socket.bind (host, port), function (socket)
-    local handler = Http.new {
-      socket       = socket,
-      http_handler = http,
-      ws_handler   = ws,
-      ws_protocols = { "cosy" },
+    local handler = Http
+    local context = {
+      socket    = socket,
+      http      = {
+        handler = get,
+      },
+      websocket = {
+        handler   = wsloop,
+        protocols = { "cosy" },
+      },
     }
     repeat
-      handler = handler ()
+      handler = handler (context)
     until not handler
   end)
   Platform.logger.debug {

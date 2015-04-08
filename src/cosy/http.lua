@@ -2,6 +2,9 @@ local Url      = require "socket.url"
 local C3       = require "c3"
                  require "cosy.string"
 
+
+local Platform = require "cosy.platform"
+
 local Headers = {}
 
 Headers.sorted = {}
@@ -36,13 +39,7 @@ function Headers.__newindex (headers, key, value)
   rawset (headers, key, value)
 end
 
-local Http = {}
-
-function Http.new (context)
-  return setmetatable (context, Http)
-end
-
-function Http.__call (context)
+return function (context)
   local socket    = context.socket
   local firstline = socket:receive "*l"
   if firstline == nil then
@@ -88,7 +85,7 @@ function Http.__call (context)
       header.request (context)
     end
   end
-  context:http_handler ()
+  context.http.handler (context)
   -- Handle headers:
   for i = #Headers.sorted, 1, -1 do
     local name   = Headers.sorted [i]
@@ -120,9 +117,3 @@ function Http.__call (context)
   end
   return context.next
 end
-
-function Http.__tostring ()
-  return "HTTP"
-end
-
-return Http
