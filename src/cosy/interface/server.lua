@@ -118,9 +118,10 @@ Platform:register ("email", function ()
 end)
 
 do
-  local host = Configuration.server.host._
-  local port = Configuration.server.port._
-  Copas.addserver (Socket.bind (host, port), function (socket)
+  local host  = Configuration.server.host._
+  local port  = Configuration.server.port._
+  local skt   = Socket.bind (host, port)
+  Copas.addserver (skt, function (socket)
     local handler = Http
     local context = {
       socket    = socket,
@@ -141,5 +142,9 @@ do
     host = host,
     port = port,
   }
+--  local profiler = require "ProFi"
+--  profiler:start ()
   Copas.loop ()
+--  profiler:stop ()
+--  profiler:writeReport "profiler.txt"
 end

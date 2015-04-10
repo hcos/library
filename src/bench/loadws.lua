@@ -1,9 +1,10 @@
 local Platform      = require "cosy.platform"
 local Copas         = require "copas.ev"
 Copas:make_default ()
+local socket        = require "socket"
 local websocket     = require "websocket"
 
-local nb_threads    = 1
+local nb_threads    = 500
 local nb_iterations = 100
 
 --local running  = 0
@@ -12,6 +13,7 @@ local closed   = 0
 local sent     = 0
 local received = 0
 
+local start = socket.gettime ()
 for thread = 1, nb_threads  do
   Copas.addthread (function ()
     local client = websocket.client.copas {
@@ -22,13 +24,13 @@ for thread = 1, nb_threads  do
     if #opened ~= nb_threads then
       Copas.sleep (-math.huge)
     else
+      start = socket.gettime ()
       for i = 1, #opened do
         Copas.wakeup (opened [i])
       end
     end
     for id = 1, nb_iterations do
-      print (thread, id)
-      Copas.sleep (1)
+--      Copas.sleep (0.1)
       client:send (Platform.table.encode {
         identifier = tostring (id),
         operation  = "information",
@@ -42,7 +44,8 @@ for thread = 1, nb_threads  do
     closed = closed + 1
     if closed == nb_threads then
       print ("sent", sent * 100 / (nb_threads * nb_iterations)        , "%",
-             "received", received * 100 / (nb_threads * nb_iterations), "%")
+             "received", received * 100 / (nb_threads * nb_iterations), "%",
+             "per second", math.floor (sent / (socket.gettime () - start)))
       os.exit (0)
     end
   end)
@@ -52,7 +55,8 @@ Copas.addthread (function ()
   while true do
     Copas.sleep (1)
     print ("sent", sent * 100 / (nb_threads * nb_iterations)        , "%",
-           "received", received * 100 / (nb_threads * nb_iterations), "%")
+           "received", received * 100 / (nb_threads * nb_iterations), "%",
+           "per second", math.floor (sent / (socket.gettime () - start)))
   end
 end)
 
