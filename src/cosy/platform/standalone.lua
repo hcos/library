@@ -262,7 +262,48 @@ end)
 -- Redis
 -- =====
 Platform:register ("redis", function ()
-  Platform.redis = require "redis"
+  local Configuration = require "cosy.configuration"
+  local scheduler     = Platform.scheduler
+  local Redis         = require "redis"
+  local assigned      = {}
+  function Platform.redis ()
+    local co    = coroutine.running ()
+    local found = assigned [co]
+    if found then
+      return found
+    end
+    repeat
+      local count = 0
+      for other, client in pairs (assigned) do
+        if coroutine.status (other) == "dead" then
+          assigned [other] = nil
+          if pcall (client.ping, client) then
+            assigned [co] = client
+            return client
+          end
+        else
+          count = count+1
+        end
+      end
+      if count < Configuration.redis.pool_size._ then
+        local coroutine = require "coroutine.make" ()
+        local host      = Configuration.redis.host._
+        local port      = Configuration.redis.port._
+        local database  = Configuration.redis.database._
+        local socket    = Platform.socket.tcp ()
+        socket:connect (host, port)
+        local client = Redis.connect {
+          socket    = socket,
+          coroutine = coroutine,
+        }
+        client:select (database)
+        assigned [co] = client
+        return client
+      else
+        Platform.scheduler.sleep (0.01)
+      end
+    until false
+  end
 end)
 
 -- Random
@@ -333,7 +374,8 @@ end)
 -- Scheduler
 -- =========
 Platform:register ("scheduler", function ()
-  Platform.scheduler = require "copas"
+  Platform.scheduler = require "copas.ev"
+  Platform.scheduler:make_default ()
 end)
 
 -- Socket
@@ -344,20 +386,6 @@ Platform:register ("socket", function ()
   function Platform.socket.tcp ()
     local skt    = socket.tcp ()
     local result = Platform.scheduler.wrap (skt)
-    function result:connect (host, port)
-      self:settimeout (0)
-      repeat
-        local ret, err = skt:connect (host, port)
-        if not ret and err == "timeout" then
-          Platform.scheduler.sleep (0.001)
-        elseif not ret then
-          return nil, err
-        else
-          self:settimeout (0)
-          return ret
-        end
-      until false
-    end
     return result
   end
 end)
