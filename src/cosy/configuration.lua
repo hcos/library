@@ -13,15 +13,17 @@ local loaded = {
   repository.default,
   nil, -- required for 100% code coverage :-(
 }
+
 for _, path in ipairs (Platform.configuration.paths) do
   local filename = path .. "/cosy.conf"
   local content  = Platform.configuration.read (filename)
   if content then
-    if pcall (function ()
+    local ok, err = pcall (function ()
       content = Platform.value.decode (content)
-      repository [filename] = t
+      repository [filename] = content
       loaded [#loaded+1] = repository [filename]
-    end) then
+    end)
+    if ok then
       Platform.logger.debug {
         _    = "configuration:using",
         path = path,
@@ -30,11 +32,12 @@ for _, path in ipairs (Platform.configuration.paths) do
       Platform.logger.warn {
         _      = "configuration:skipping",
         path   = path,
-        reason = t,
+        reason = err,
       }
     end
   end
 end
+
 repository.whole = {
   [Repository.depends] = loaded,
 }
