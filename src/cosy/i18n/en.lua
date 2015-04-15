@@ -156,6 +156,9 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
   ["forbidden"] =
     "action is forbidden",
 
+  ["redis:unavailable"] =
+    "redis server is unavailable",
+
   ["reputation:not-enough"] =
     "this actions requires %{required} reputation, but only %{owned} is owned",
 }

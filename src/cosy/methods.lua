@@ -37,8 +37,14 @@ require "cosy.string"
 local Configuration = require "cosy.configuration"
 local Platform      = require "cosy.platform"
 local Repository    = require "cosy.repository"
+local Store         = require "cosy.store"
 local Internal      = Repository.of (Configuration) .internal
 
+Internal.redis.key = {
+  users  = "user:%{key}",
+  emails = "email:%{key}",
+  tokens = "token:%{key}",
+}
 
 local Status = setmetatable ({
   inactive  = "inactive",
@@ -387,6 +393,7 @@ end
 --    >   password = "password",
 --    > })
 --    {token=_.auth,...}
+
 
 function Methods.suspend_user (token, request)
   if  not Token.is_authentication (token)
@@ -755,146 +762,31 @@ function Token.authentication (data)
   return Platform.token.encode (result)
 end
 
-function Token.cancel (token)
+function Token.cancel (token, store)
   local raw = Platform.token.encode (token)
-  Redis.transaction ({
-    token = Configuration.redis.key.token._ % { token = raw },
-  }, function (p)
-    p.token = nil
-  end)
+  store.tokens [raw] = nil
 end
 
--- RwTable
--- -------
+Internal.redis.retry = 1
 
-local RwTable = {
-  Current  = {},
-  Modified = {},
-  Within   = {},
-}
-
-function RwTable.new (t)
-  return setmetatable ({
-    [RwTable.Current ] = t,
-    [RwTable.Modified] = {},
-    [RwTable.Within  ] = false,
-  }, RwTable)
-end
-
-function RwTable.__index (t, key)
-  local found  = t [RwTable.Current] [key]
-  if type (found) ~= "table" then
-    return found
-  else
-    local within = t [RwTable.Within] or key
-    return setmetatable ({
-      [RwTable.Current ] = found,
-      [RwTable.Modified] = t [RwTable.Modified],
-      [RwTable.Within  ] = within,
-    }, RwTable)
-  end
-end
-
-function RwTable.__newindex (t, key, value)
-  local within = t [RwTable.Within] or key
-  t [RwTable.Modified] [within] = true
-  t [RwTable.Current ] [key   ] = value
-end
-
--- Redis
---------
-
-Redis = {
-  pool = {
-    created = {},
-    free    = {},
-  }
-}
-
-Internal.redis.key = {
-  user  = "user:%{username}",
-  email = "email:%{email}",
-  token = "token:%{token}",
-}
-
-Internal.redis.retry._ = 1
-
-function Redis.transaction (keys, f)
-  local client
-  while true do
-    client = pairs (Redis.pool.free) (Redis.pool.free)
-    if client then
-      Redis.pool.free [client] = nil
-      break
-    end
-    if #Redis.pool.created < Configuration.redis.pool_size._ then
-      local n = #Redis.pool.created + 1
-      Redis.pool.created [n] = true
-      if Platform.redis.is_fake then
-        client = Platform.redis.connect ()
-      else
-        local coroutine = require "coroutine.make" ()
-        local host      = Configuration.redis.host._
-        local port      = Configuration.redis.port._
-        local database  = Configuration.redis.database._
-        local skt       = Platform.socket.tcp ()
-        skt:connect (host, port)
-        client = Platform.redis.connect {
-          socket    = skt,
-          coroutine = coroutine,
-        }
-        client:select (database)
-      end
-      Redis.pool.created [n] = client
-      break
-    else
-      Platform.scheduler.sleep (0.01)
-    end
-  end
-  local result
-  local ok = pcall (client.transaction, client, {
-    watch = keys,
-    cas   = true,
-    retry = Configuration.redis.retry_,
-  }, function (redis)
-    result = nil
-    local data = {}
-    for name, key in pairs (keys) do
-      if redis:exists (key) then
-        data [name] = Platform.json.decode (redis:get (key))
+for k, f in pairs (Methods) do
+  Methods [k] = function (request)
+    for _ = 1, Configuration.redis.retry._ do
+      local ok, result = pcall (function (request)
+        local store  = Store.new ()
+        local result = f (request, store)
+        Store.commit (store)
+        return result
+      end, request)
+      if ok then
+        return result
+      elseif result ~= Store.Error then
+        error (result)
       end
     end
-    local rw = RwTable.new (data)
-    for name in pairs (keys) do
-      if type (data [name]) == "table" then
-        local expire = data [name].expire_at
-        if expire and expire < Platform.time () then
-          data [name] = nil
-        end
-      end
-    end
-    result = { f (rw, client) }
-    redis:multi ()
-    for name in pairs (rw [RwTable.Modified]) do
-      local key   = keys [name]
-      local value = data [name]
-      if value == nil then
-        redis:del (key)
-      else
-        redis:set (key, Platform.json.encode (value))
-        if type (value) == "table" and value.expire_at then
-          redis:expireat (key, math.ceil (value.expire_at))
-        else
-          redis:persist (key)
-        end
-      end
-    end
-  end)
-  Redis.pool.free [client] = true
-  if ok then
-    return table.unpack (result)
-  else
-    error (result)
+    error {
+      _ = "redis:unavailable",
+    }
   end
 end
 
