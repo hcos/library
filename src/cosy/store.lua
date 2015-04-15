@@ -6,6 +6,7 @@ local Store      = {}
 local Collection = {}
 local Document   = {}
 
+Store.Error     = setmetatable ({}, { __tostring = function () return "ERROR"   end })
 local PATTERN   = setmetatable ({}, { __tostring = function () return "PATTERN" end })
 local DATA      = setmetatable ({}, { __tostring = function () return "DATA"    end })
 local ROOT      = setmetatable ({}, { __tostring = function () return "ROOT"    end })
@@ -49,7 +50,9 @@ function Store.commit (store)
       end
     end
   end
-  client:exec ()
+  if not client:exec () then
+    error (Store.Error)
+  end
 end
 
 function Collection.new (key)
@@ -184,3 +187,5 @@ end
 function Document.__len (document)
   return # document [DATA]
 end
+
+return Store
