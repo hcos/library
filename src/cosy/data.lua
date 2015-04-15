@@ -109,7 +109,7 @@ function Resource.import (repository, data)
 end
 
 function Resource.export (resource)
-  return Platform.table.block (resource, {
+  return Platform.value.encode (resource, {
     sortkeys  = true,
     compact   = true,
     fatal     = true,

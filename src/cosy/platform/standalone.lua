@@ -118,20 +118,20 @@ Platform:register ("unique", function ()
   end
 end)
 
--- Table dump
+-- Value dump
 -- ==========
-Platform:register ("table", function ()
-  Platform.table = require "serpent"
-  function Platform.table.encode (t)
-    return Platform.table.dump (t, {
+Platform:register ("value", function ()
+  local serpent = require "serpent"
+  function Platform.value.encode (t, options)
+    return serpent.dump (t, options or {
       sortkeys = false,
       compact  = true,
       fatal    = true,
       comment  = false,
     })
   end
-  function Platform.table.debug (t)
-    return Platform.table.line (t, {
+  function Platform.value.expression (t, options)
+    return serpent.line (t, options or {
       sortkeys = true,
       compact  = true,
       fatal    = true,
@@ -139,10 +139,14 @@ Platform:register ("table", function ()
       nocode   = true,
     })
   end
-  function Platform.table.decode (s)
-    return Platform.table.load (s, {
+  function Platform.value.decode (s)
+    local ok, result = serpent.load (s, {
       safe = false,
     })
+    if not ok then
+      error (err)
+    end
+    return result
   end
 end)
 
@@ -438,7 +442,7 @@ Platform:register ("client", function ()
         if not message then
           break
         end
-        message = Platform.table.decode (message)
+        message = Platform.value.decode (message)
         local identifier = message.identifier
         results [identifier] = message
         local thread     = waiting [identifier]

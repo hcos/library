@@ -56,9 +56,9 @@ local function translate (x)
 end
 
 local function request (message)
-  local decoded, request = Platform.table.decode (message)
+  local decoded, request = pcall (Platform.value.decode, message)
   if not decoded then
-    return Platform.table.encode (translate {
+    return Platform.value.encode (translate {
       success = false,
       error   = {
         _      = "rpc:format",
@@ -71,7 +71,7 @@ local function request (message)
   local parameters = request.parameters
   local method     = Methods [operation]
   if not method then
-    return Platform.table.encode (translate {
+    return Platform.value.encode (translate {
       identifier = identifier,
       success    = false,
       error      = {
@@ -82,13 +82,13 @@ local function request (message)
   end
   local called, result = pcall (method, parameters or {})
   if not called then
-    return Platform.table.encode (translate {
+    return Platform.value.encode (translate {
       identifier = identifier,
       success    = false,
       error      = result,
     })
   end
-  return Platform.table.encode (translate {
+  return Platform.value.encode (translate {
     identifier = identifier,
     success    = true,
     response   = result,

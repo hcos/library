@@ -6,12 +6,10 @@ local Store      = {}
 local Collection = {}
 local Document   = {}
 
-local PATTERN = "PATTERN"
-local DATA    = "DATA"
-local ROOT    = "ROOT"
-local DIRTY   = "DIRTY"
-
-local coroutine = require "coroutine.make" ()
+local PATTERN   = setmetatable ({}, { __tostring = function () return "PATTERN" end })
+local DATA      = setmetatable ({}, { __tostring = function () return "DATA"    end })
+local ROOT      = setmetatable ({}, { __tostring = function () return "ROOT"    end })
+local DIRTY     = setmetatable ({}, { __tostring = function () return "DIRTY"   end })
 
 function Store.new ()
   return setmetatable ({}, Store)
@@ -34,12 +32,14 @@ function Store.commit (store)
     local pattern = collection [PATTERN]
     for key, document in pairs (collection [DATA]) do
       if document [DIRTY] then
-        local name  = pattern % { key = key }
+        local name  = pattern % {
+          key = Platform.value.expression (key),
+        }
         local value = document [DATA]
         if value == nil then
           client:del (name)
         else
-          client:set (name, Platform.table.encode (value))
+          client:set (name, Platform.value.encode (value))
           if type (value) == "table" and value.expire_at then
             client:expireat (name, math.ceil (value.expire_at))
           else
@@ -63,12 +63,14 @@ end
 
 function Collection.__index (collection, key)
   if not collection [DATA] [key] then
-    local name   = collection [PATTERN] % { key = key }
+    local name   = collection [PATTERN] % {
+      key = Platform.value.expression (key),
+    }
     local client = Platform.redis ()
     client:watch (name)
     local value  = client:get (name)
     if value ~= nil then
-      value  = Platform.table.decode (value)
+      value = Platform.value.decode (value)
     end
     collection [DATA] [key] = {
       [DIRTY] = false,
@@ -86,6 +88,7 @@ function Collection.__newindex (collection, key, value)
 end
 
 function Collection.__pairs (collection)
+  local coroutine = require "coroutine.make" ()
   return coroutine.wrap (function ()
     local name   = collection [PATTERN] % { key = "*" }
     local client = Platform.redis ()
@@ -96,11 +99,38 @@ function Collection.__pairs (collection)
         count = 100,
       })
       cursor = t [1]
-      for i = 1, # t [2] do
-        local key = t [2] [i]
-        coroutine.yield (key, collection [key])
+      local data = t [2]
+      for i = 1, #data do
+        local name  = data [i]
+        local key   = Platform.value.decode ((collection [PATTERN] / name).key)
+        local value = collection [key]
+        coroutine.yield (key, value)
       end
-    until cursor == 0
+    until cursor == "0"
+  end)
+end
+
+function Collection.__len (collection)
+  local i = 0
+  repeat
+    i = i+1
+    local value = collection [i]
+  until value == nil
+  return i-1
+end
+
+function Collection.__ipairs (collection)
+  local coroutine = require "coroutine.make" ()
+  return coroutine.wrap (function ()
+    local i = 0
+    repeat
+      i = i+1
+      local value = collection [i]
+      if value == nil then
+        return
+      end
+      coroutine.yield (i, value)
+    until true
   end)
 end
 
@@ -134,6 +164,7 @@ function Document.__newindex (document, key, value)
 end
 
 function Document.__pairs (document)
+  local coroutine = require "coroutine.make" ()
   return coroutine.wrap (function ()
     for k in pairs (document [DATA]) do
       coroutine.yield (k, document [k])
@@ -142,6 +173,7 @@ function Document.__pairs (document)
 end
 
 function Document.__ipairs (document)
+  local coroutine = require "coroutine.make" ()
   return coroutine.wrap (function ()
     for i = 1, #document do
       coroutine.yield (i, document [i])
@@ -152,20 +184,3 @@ end
 function Document.__len (document)
   return # document [DATA]
 end
-
-local scheduler = Platform.scheduler
-
-scheduler.addthread (function ()
-  Configuration.redis.key.collection = "collection:%{key}"
-  Configuration.redis.host           = "127.0.0.1"
-  Configuration.redis.port           = 6379
-  Configuration.redis.database       = 1
-  local store = Store.new ()
-  local collection = store.collection
-  collection.a = 1
-  collection.b = true
-  collection.c = { x = "x" }
-  Store.commit (store)
-end)
-
-scheduler.loop ()

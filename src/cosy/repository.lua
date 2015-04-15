@@ -124,7 +124,7 @@ function Repository.export (proxy)
   local resource    = proxy [RESOURCE]
   local mt          = Proxy.__metatable
   Proxy.__metatable = nil
-  local result     = Platform.table.dump (resource, {
+  local result     = Platform.value.encode (resource, {
     name      = resource [NAME],
     sortkeys  = true,
     compact   = false,

@@ -17,10 +17,11 @@ for _, path in ipairs (Platform.configuration.paths) do
   local filename = path .. "/cosy.conf"
   local content  = Platform.configuration.read (filename)
   if content then
-    local ok, t = Platform.table.decode (content)
-    if ok then
+    if pcall (function ()
+      content = Platform.value.decode (content)
       repository [filename] = t
       loaded [#loaded+1] = repository [filename]
+    end) then
       Platform.logger.debug {
         _    = "configuration:using",
         path = path,
