@@ -419,7 +419,7 @@ Proxy.value = Proxy.apply (function (t)
   or getmetatable (current) == Proxy.__metatable then
     coroutine.yield (current)
   else
-    coroutine.yield (current._)
+    coroutine.yield (current [Repository.value])
   end
 end, false)
 
