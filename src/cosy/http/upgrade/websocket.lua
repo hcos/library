@@ -39,10 +39,6 @@ return function (context)
     state     = "OPEN",
     is_server = true,
   }
---  if not clients [context.ws_protocol] then
---    clients [context.ws_protocol] = {}
---  end
---  clients [context.ws_protocol] [client] = true
   client.sock_send    = function (_, ...)
     return context.socket:send (...)
   end
@@ -55,16 +51,7 @@ return function (context)
   end
   client = sync.extend (client)
   client.on_close     = function (_)
---    clients [context.ws_protocol] [client] = nil
   end
---  client.broadcast    = function (_, ...)
---    for c in pairs (clients [context.ws_protocol]) do
---      if c ~= client then
---        c:send (...)
---      end
---    end
---    client:send (...)
---  end
   context.websocket.client   = client
   context.websocket.protocol = protocol or true
   context.http.handler       = function () end
