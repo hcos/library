@@ -86,15 +86,6 @@ local Type = setmetatable ({
 --    > Configuration.expiration.validation     = 2 -- second
 --    > Configuration.expiration.authentication = 2 -- second
 
--- ### Clean
-
-function Methods.clean ()
-  if Configuration.debug.clean._ then
-    local client = Platform.redis ()
-    client:flushdb ()
-  end
-end
-
 -- ### Information
 --
 -- The `information` method returns some useful or useless information about
