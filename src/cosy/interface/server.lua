@@ -3,6 +3,7 @@ local Platform      = require "cosy.platform"
 local Http          = require "cosy.http"
 local Socket        = require "socket"
 local Copas         = require "copas.ev"
+local hotswap       = require "hotswap"
 Copas:make_default ()
 
 local function get (context)
