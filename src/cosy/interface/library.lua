@@ -59,7 +59,7 @@ function Client.__index (client, operation)
     elseif result.success then
       return result.response
     else
-      error (result.response)
+      error (result.error)
     end
   end
 end
@@ -102,18 +102,6 @@ function Library.connect (url)
     }
   end
   return client
-end
-
-do
-  local lib   = Library.connect "http://127.0.0.1:8080/"
-  print (Platform.value.expression (lib.information ()))
-  local start = require "socket".gettime ()
-  local n     = 500
-  for _ = 1, n do
-    assert (lib.information ().name == Configuration.server.name._)
-  end
-  local finish = require "socket".gettime ()
-  print (math.floor (n / (finish - start)))
 end
 
 return Library

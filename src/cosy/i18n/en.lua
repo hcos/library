@@ -159,6 +159,9 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
   ["redis:unavailable"] =
     "redis server is unavailable",
 
+  ["rpc:no-operation"] =
+    "unknown operation '%{reason}'",
+
   ["reputation:not-enough"] =
     "this actions requires %{required} reputation, but only %{owned} is owned",
 }
