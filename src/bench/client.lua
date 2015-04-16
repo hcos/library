@@ -23,15 +23,24 @@ local ok, err = pcall (function ()
     locale     = "en",
   }
   show (token)
+  local token = lib.authenticate {
+    username = "alinard",
+    password = "password",
+  }
+  show (token)
   
   local start = require "socket".gettime ()
-  local n     = 0
+  local n     = 50
   for _ = 1, n do
     assert (lib.information ().name == Configuration.server.name._)
   end
   local finish = require "socket".gettime ()
-  print (math.floor (n / (finish - start)))
+  print (math.floor (n / (finish - start)), "requests/second")
 end)
 if not ok then
-  print ("error", Platform.i18n (err))
+  if type (err) == table then
+    print ("error", Platform.i18n (err))
+  else
+    print (err)
+  end
 end

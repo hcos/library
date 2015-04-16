@@ -109,16 +109,8 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
   ["create-user:username-exists"] =
     "username %{username} is already a user account",
 
-  ["authenticate:non-existing"] =
-    "authentication failed, because the given user does not exist",
-  ["authenticate:non-user"] =
-    "authentication failed, because the given username is not a user",
-  ["authenticate:non-validated"] =
-    "authentication failed, because the account has not been validated",
-  ["authenticate:erroneous"] =
-    "authentication failed, because of an erroneous username/password couple",
-  ["authenticate:cheap-password"] =
-    "password for %{username} is hashed using too few rounds and thus rehashed",
+  ["authenticate:failure"] =
+    "authentication failed",
 
   ["method:success"] =
     "success",

@@ -181,6 +181,32 @@ function Methods.create_user (request, store)
   return Token.authentication (store.users [request.username])
 end
 
+-- ### Authentication
+
+function Methods.authenticate (request, store)
+  request.required = {
+    username = Parameters.username,
+    password = Parameters.password,
+  }
+  Parameters.check (request)
+  local user = store.users [request.username]
+  if not user
+  or user.type   ~= Type.user
+  or user.status ~= Status.active
+  or not Platform.password.verify (request.password, user.password) then
+    error {
+      _ = "authenticate:failure",
+    }
+  end
+  if Platform.password.is_too_cheap (user.password) then
+    user.password = Platform.password.hash (request.password)
+  end
+  return Token.authentication (user)
+end
+
+
+
+
 function Methods.reset_user (_, request)
   request.required = {
     email = Parameters.email,
@@ -260,6 +286,7 @@ function Methods.reset_user (_, request)
   }
 end
 
+
 function Methods.activate_user (request)
   if not Token.is_validation (token) then
     error {
@@ -287,29 +314,6 @@ function Methods.activate_user (request)
   }
 end
 
--- ### Authentication
-
-function Methods.authenticate (_, request)
-  request.required = {
-    username   = Parameters.username,
-    password   = Parameters.password,
-  }
-  Parameters.check (request)
-  local token = Redis.transaction ({
-    data = Configuration.redis.key.user._ % { username = request.username },
-  }, function (p)
-    if not p.data
-    or p.data.type   ~= Type.user
-    or p.data.status ~= Status.active
-    then
-      error {}
-    end
-    return Token.authentication.new (p.data)
-  end)
-  return {
-    token = token,
-  }
-end
 
 --    > = Methods.authenticate (nil, {
 --    >   username = "toto",
