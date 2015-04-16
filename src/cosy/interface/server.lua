@@ -1,6 +1,5 @@
 local Configuration = require "cosy.configuration"
 local Platform      = require "cosy.platform"
-local Methods       = require "cosy.methods"
 local Http          = require "cosy.http"
 local Socket        = require "socket"
 local Copas         = require "copas.ev"
@@ -69,6 +68,7 @@ local function request (message)
   local identifier = request.identifier
   local operation  = request.operation
   local parameters = request.parameters
+  local Methods    = hotswap "cosy.methods"
   local method     = Methods [operation]
   if not method then
     return Platform.value.expression (translate {
