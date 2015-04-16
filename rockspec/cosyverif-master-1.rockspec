@@ -18,6 +18,7 @@ dependencies = {
   "c3 ~> 0",
   "copas-ev ~> 1",
   "coronest ~> 0",
+  "hotswap ~> 0",
   "i18n ~> 0",
   "lua >= 5.1",
   "lua-websockets ~> 2",
