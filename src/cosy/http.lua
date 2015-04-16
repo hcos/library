@@ -1,8 +1,6 @@
 local Url      = require "socket.url"
 local C3       = require "c3"
                  require "cosy.string"
-
-
 local Platform = require "cosy.platform"
 
 local Headers = {}
