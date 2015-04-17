@@ -1,48 +1,49 @@
                       require "compat53"
 local Configuration = require "cosy.configuration"
 local Platform      = require "cosy.platform"
-local Http          = require "cosy.http"
 local Socket        = require "socket"
 local Copas         = require "copas.ev"
 local hotswap       = require "hotswap"
 Copas:make_default ()
 
-local function get (context)
-  if context.request.method ~= "GET" then
-    context.response.status  = 405
-    context.response.message = "Method Not Allowed"
-    return
-  elseif context.request.headers ["upgrade"] == "websocket" then
-    return
-  elseif context.request.method == "GET" then
-    if context.request.path:sub (-1) == "/" then
-      context.request.path = context.request.path .. "index.html"
+local Server = {}
+
+function Server.get (http)
+  if http.request.method ~= "GET" then
+    http.response.status  = 405
+    http.response.message = "Method Not Allowed"
+  elseif http.request.headers ["upgrade"] == "websocket" then
+    http () -- send response
+    http.socket:send "\r\n"
+    return Server.wsloop (http)
+  elseif http.request.method == "GET" then
+    if http.request.path:sub (-1) == "/" then
+      http.request.path = http.request.path .. "index.html"
     end
-    if context.request.path:sub (-9) == "cosy.conf" then
-      context.response.status  = 403
-      context.response.message = "Forbidden"
-      context.response.body    = "Nice try ;-)\n"
+    if http.request.path:sub (-9) == "cosy.conf" then
+      http.response.status  = 403
+      http.response.message = "Forbidden"
+      http.response.body    = "Nice try ;-)\n"
     else
       for path in package.path:gmatch "([^;]+)" do
         if path:sub (-5) == "?.lua" then
-          path = path:sub (1, #path - 5) .. context.request.path
+          path = path:sub (1, #path - 5) .. http.request.path
           local file = io.open (path, "r")
           if file then
-            context.response.status  = 200
-            context.response.message = "OK"
-            context.response.body    = file:read "*all"
+            http.response.status  = 200
+            http.response.message = "OK"
+            http.response.body    = file:read "*all"
             file:close ()
             return
           end
         end
       end
     end
-    context.response.status  = 404
-    context.response.message = "Not Found"
-    return
+    http.response.status  = 404
+    http.response.message = "Not Found"
   else
-    context.response.status  = 500
-    context.response.message = "Internal Server Error"
+    http.response.status  = 500
+    http.response.message = "Internal Server Error"
   end
 end
 
@@ -62,7 +63,7 @@ local function translate (x)
   return x
 end
 
-local function request (message)
+function Server.request (message)
   local decoded, request = pcall (Platform.value.decode, message)
   if not decoded or type (request) ~= "table" then
     return Platform.value.expression (translate {
@@ -103,16 +104,16 @@ local function request (message)
   })
 end
 
-local function wsloop (context)
-  while context.websocket.client.state ~= "CLOSED" do
-    local message = context.websocket.client:receive ()
+function Server.wsloop (http)
+  while http.websocket.client.state ~= "CLOSED" do
+    local message = http.websocket.client:receive ()
     if message then
-      local result = request (message)
+      local result = Server.request (message)
       if result then
-        context.websocket.client:send (result)
+        http.websocket.client:send (result)
       end
     else
-      context.websocket.client:close ()
+      http.websocket.client:close ()
     end
   end
 end
@@ -126,24 +127,24 @@ Platform:register ("email", function ()
 end)
 
 do
-  local host  = Configuration.server.host._
-  local port  = Configuration.server.port._
-  local skt   = Socket.bind (host, port)
+  local host = Configuration.server.host._
+  local port = Configuration.server.port._
+  local skt  = Socket.bind (host, port)
   Copas.addserver (skt, function (socket)
-    local handler = Http
-    local context = {
+    local Http = hotswap "httpserver"
+    local http = Http.new {
       socket    = socket,
-      http      = {
-        handler = get,
-      },
       websocket = {
-        handler   = wsloop,
         protocols = { "cosy" },
       },
     }
-    repeat
-      handler = handler (context)
-    until not handler
+    pcall (function ()
+      repeat
+        http ()
+        Server.get (http)
+        http ()
+      until true
+    end)
   end)
   Platform.logger.debug {
     _    = "server:listening",
