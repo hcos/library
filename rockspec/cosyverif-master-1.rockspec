@@ -17,7 +17,7 @@ dependencies = {
   "bcrypt ~> 1",
   "c3 ~> 0",
   "compat53 ~> 0",
-  "copas-ev ~> 1",
+  "copas-ev ~> 0",
   "coronest ~> 0",
   "hotswap ~> 0",
   "i18n ~> 0",
