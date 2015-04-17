@@ -1,3 +1,4 @@
+                      require "compat53"
 local Configuration = require "cosy.configuration"
 local Platform      = require "cosy.platform"
 local Http          = require "cosy.http"
@@ -17,16 +18,22 @@ local function get (context)
     if context.request.path:sub (-1) == "/" then
       context.request.path = context.request.path .. "index.html"
     end
-    for path in package.path:gmatch "([^;]+)" do
-      if path:sub (-5) == "?.lua" then
-        path = path:sub (1, #path - 5) .. context.request.path
-        local file = io.open (path, "r")
-        if file then
-          context.response.status  = 200
-          context.response.message = "OK"
-          context.response.body = file:read "*all"
-          file:close ()
-          return
+    if context.request.path:sub (-9) == "cosy.conf" then
+      context.response.status  = 403
+      context.response.message = "Forbidden"
+      context.response.body    = "Nice try ;-)\n"
+    else
+      for path in package.path:gmatch "([^;]+)" do
+        if path:sub (-5) == "?.lua" then
+          path = path:sub (1, #path - 5) .. context.request.path
+          local file = io.open (path, "r")
+          if file then
+            context.response.status  = 200
+            context.response.message = "OK"
+            context.response.body    = file:read "*all"
+            file:close ()
+            return
+          end
         end
       end
     end

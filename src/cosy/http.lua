@@ -1,7 +1,7 @@
+local hotswap  = require "hotswap"
 local Url      = require "socket.url"
 local C3       = require "c3"
                  require "cosy.string"
-local Platform = require "cosy.platform"
 
 local Headers = {}
 
@@ -9,19 +9,29 @@ Headers.sorted = {}
 
 Headers.loaded = setmetatable ({}, {
   __index = function (_, key)
-    local ok, loaded = pcall (require, "cosy.http." .. key)
-    if not ok then
+    local handler, new = hotswap ("cosy.http." .. key, true)
+    if not handler then
+      if Headers.loaded [key] then
+        for i = 1, #Headers.sorted do
+          if Headers.sorted [i] == key then
+            table.remove (Headers.sorted, i)
+            break
+          end
+        end
+      end
       Headers.loaded [key] = false
-    else
-      Headers.loaded [key] = loaded
-      Headers.sorted [#Headers.sorted+1] = key
+    elseif new then
+      if not Headers.loaded [key] then
+        Headers.sorted [#Headers.sorted+1] = key
+      end
+      Headers.loaded [key] = handler
       Headers.loaded ["_"] = {
         depends = Headers.sorted,
       }
       Headers.sorted = Headers.sort "_"
       Headers.sorted [#Headers.sorted] = nil
     end
-    return loaded
+    return handler
   end,
 })
 
