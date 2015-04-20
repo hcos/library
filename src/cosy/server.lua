@@ -1,4 +1,5 @@
-local hotswap   = require "hotswap"
+local loader  = require "cosy.loader"
+local hotswap = loader.hotswap
 
 local Server = {}
 
@@ -42,15 +43,15 @@ function Server.get (http)
 end
 
 function Server.request (message)
-  local platform = hotswap "cosy.platform"
-  local i18n     = platform.i18n
+  local loader = hotswap "cosy.loader"
+  local i18n     = loader.i18n
   local function translate (x)
     i18n (x)
     return x
   end
-  local decoded, request = pcall (platform.value.decode, message)
+  local decoded, request = pcall (loader.value.decode, message)
   if not decoded or type (request) ~= "table" then
-    return platform.value.expression (translate {
+    return loader.value.expression (translate {
       success = false,
       error   = {
         _      = "rpc:format",
@@ -61,10 +62,10 @@ function Server.request (message)
   local identifier = request.identifier
   local operation  = request.operation
   local parameters = request.parameters
-  local Methods    = hotswap "cosy.methods"
+  local Methods    = loader.methods
   local method     = Methods [operation]
   if not method then
-    return platform.value.expression (translate {
+    return loader.value.expression (translate {
       identifier = identifier,
       success    = false,
       error      = {
@@ -76,13 +77,13 @@ function Server.request (message)
   local called, result = pcall (method, parameters or {})
   if not called then
     print (result, debug.traceback())
-    return platform.value.expression (translate {
+    return loader.value.expression (translate {
       identifier = identifier,
       success    = false,
       error      = result,
     })
   end
-  return platform.value.expression (translate {
+  return loader.value.expression (translate {
     identifier = identifier,
     success    = true,
     response   = result,
@@ -105,9 +106,8 @@ end
 
 do
   local socket        = hotswap "socket"
-  local platform      = hotswap "cosy.platform"
-  local scheduler     = platform.scheduler
-  local configuration = platform.configuration
+  local scheduler     = loader.scheduler
+  local configuration = loader.configuration
   local host = configuration.server.host._
   local port = configuration.server.port._
   local skt  = socket.bind (host, port)
@@ -127,7 +127,7 @@ do
       until not continue
     end)
   end)
-  platform.logger.debug {
+  loader.logger.debug {
     _    = "server:listening",
     host = host,
     port = port,

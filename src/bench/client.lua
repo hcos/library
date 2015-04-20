@@ -1,6 +1,6 @@
-local Platform      = require "cosy.platform"
-local Library       = require "cosy.interface.library"
-local Configuration = Platform.configuration
+local loader        = require "cosy.loader"
+local Library       = loader.library
+local Configuration = loader.configuration
 
 do
   os.execute "redis-cli flushall"
@@ -8,7 +8,7 @@ end
 
 local ok, err = pcall (function ()
   local function show (x)
-    print (Platform.value.expression (x))
+    print (loader.value.expression (x))
   end
   local lib   = Library.connect "http://127.0.0.1:8080/"
   local info  = lib.information ()
@@ -39,7 +39,7 @@ local ok, err = pcall (function ()
 end)
 if not ok then
   if type (err) == table then
-    print ("error", Platform.i18n (err))
+    print ("error", loader.i18n (err))
   else
     print (err)
   end

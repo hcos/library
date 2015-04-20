@@ -1,5 +1,4 @@
 local Data = require "cosy.data"
-local dump = require "cosy.dump"
 local _    = require "cosy.util.string"
 
 local Protocol = {}

@@ -1,11 +1,9 @@
-local hotswap = require "hotswap"
-
-local Platform      = hotswap "cosy.platform"
+local loader        = require "cosy.loader"
+local hotswap       = loader.hotswap
 local Coevas        = hotswap "copas.ev"
 Coevas:make_default ()
 local Url           = hotswap "socket.url"
 local Websocket     = hotswap "websocket"
-local Configuration = Platform.configuration
 
 local Library = {}
 local Client  = {}
@@ -16,7 +14,7 @@ function Client.react (client)
     if not message then
       return
     end
-    message = Platform.value.decode (message)
+    message = loader.value.decode (message)
     local identifier = message.identifier
     if identifier then
       client._results [identifier] = message
@@ -41,12 +39,12 @@ function Client.__index (client, operation)
       local identifier = #client._waiting+1
       client._waiting [identifier] = co
       client._results [identifier] = nil
-      client._ws:send (Platform.value.expression {
+      client._ws:send (loader.value.expression {
         identifier = identifier,
         operation  = operation,
         parameters = parameters or {},
       })
-      Coevas.sleep (Configuration.client.timeout._)
+      Coevas.sleep (loader.configuration.client.timeout._)
       result = client._results [identifier]
       client._waiting [identifier] = nil
       client._results [identifier] = nil
@@ -72,7 +70,7 @@ function Library.client (url)
     _react   = nil,
   }, Client)
   client._ws = Websocket.client.copas {
-    timeout = Configuration.client.timeout._,
+    timeout = loader.configuration.client.timeout._,
   }
   Coevas.addthread (function ()
     client._ws:connect (url, "cosy")
@@ -92,11 +90,10 @@ function Library.connect (url)
     port = port,
   })
   if username and password then
-    password = Platform.digest (password)
-    password = Platform.encryption.encode ("%{username}:%{password}" % {
+    password = loader.digest ("%{username}:%{password}" % {
       username = username,
       password = password,
-    }, password)
+    })
     client.authenticate {
       username = username,
       password = password,

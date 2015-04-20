@@ -43,7 +43,9 @@ if not _G.js then
     local ev      = require "ev"
     local hotswap = require "hotswap" .new ()
     hotswap.register = function (filename, f)
+      print ("register", filename)
       ev.Stat.new (function ()
+        print (filename, "configuration updated?")
         f ()
         scheduler:wakeup (co)
       end, filename):start (scheduler._loop)

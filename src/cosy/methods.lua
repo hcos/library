@@ -33,12 +33,11 @@ local Parameters = {}
 -- ------------
 --
 -- This module depends on the following modules:
-local hotswap = require "hotswap"
+local loader        = require "cosy.loader"
 
-local Repository    = hotswap "cosy.repository"
-local Platform      = hotswap "cosy.platform"
-local Store         = hotswap "cosy.store"
-local Configuration = Platform.configuration
+local Repository    = loader.repository
+local Store         = loader.store
+local Configuration = loader.configuration
 local Internal      = Repository.of (Configuration) .internal
 
 Internal.redis.key = {
@@ -70,13 +69,13 @@ local Type = setmetatable ({
 
 -- In order to run the methods, we first have to load some dependencies:
 --
--- * the `Platform` (here in test mode);
+-- * the `loader` (here in test mode);
 -- * the `Methods` (localized);
 -- * the `Configuration`, with some predefined values, and a reduced expiration
 --   delay to reduce the time taken by the tests.
 --
 --    > Configuration = require "cosy.configuration"
---    > Platform      = require "cosy.platform"
+--    > loader      = require "cosy.loader"
 --    > Methods       = require "cosy.methods"
 --    > Configuration.data.password.time        = 0.001 -- second
 --    > Configuration.token.secret              = "secret"
@@ -123,13 +122,13 @@ function Methods.tos (request)
   if request.token then
     locale = request.token.locale or locale
   end
-  local tos = Platform.i18n {
+  local tos = loader.i18n {
     _      = "tos",
     locale = locale,
   }
   return {
     tos        = tos,
-    tos_digest = Platform.digest (tos),
+    tos_digest = loader.digest (tos),
   }
 end
 
@@ -172,7 +171,7 @@ function Methods.create_user (request, store)
     status      = Status.active,
     username    = request.username,
     email       = request.email,
-    password    = Platform.password.hash (request.password),
+    password    = loader.password.hash (request.password),
     locale      = request.locale,
     tos_digest  = request.tos_digest,
     access      = {
@@ -195,13 +194,13 @@ function Methods.authenticate (request, store)
   if not user
   or user.type   ~= Type.user
   or user.status ~= Status.active
-  or not Platform.password.verify (request.password, user.password) then
+  or not loader.password.verify (request.password, user.password) then
     error {
       _ = "authenticate:failure",
     }
   end
-  if Platform.password.is_too_cheap (user.password) then
-    user.password = Platform.password.hash (request.password)
+  if loader.password.is_too_cheap (user.password) then
+    user.password = loader.password.hash (request.password)
   end
   return Token.authentication (user)
 end
@@ -234,7 +233,7 @@ function Methods.reset_user (_, request)
     p.data.status = Status.inactive
     return p.data
   end)
-  Platform.email.send {
+  loader.email.send {
     locale  = data.locale,
     from    = {
       _     = "email:new_account:from",
@@ -260,7 +259,7 @@ function Methods.reset_user (_, request)
       },
     },
   }
-  Platform.email.send {
+  loader.email.send {
     locale  = data.locale,
     from    = {
       _     = "email:reset_account:from",
@@ -592,7 +591,7 @@ do
     local request    = t.request
     local key        = t.key
     local value      = request [key]
-    local ok, result = Platform.token.decode (value)
+    local ok, result = loader.token.decode (value)
     if not ok then
       return nil, {
         _ = "check:token:valid",
@@ -651,8 +650,8 @@ end
 -- Token
 --------
 
-function Token.validation (data, store)
-  local now    = Platform.time ()
+function Token.validation (data)
+  local now    = loader.time ()
   local result = {
     contents = {
       type     = "validation",
@@ -665,13 +664,13 @@ function Token.validation (data, store)
     iss      = Configuration.server.name._,
     aud      = nil,
     sub      = "cosy:validation",
-    jti      = Platform.digest (tostring (now + Platform.random ())),
+    jti      = loader.digest (tostring (now + loader.random ())),
   }
-  return Platform.token.encode (result)
+  return loader.token.encode (result)
 end
 
-function Token.authentication (data, store)
-  local now    = Platform.time ()
+function Token.authentication (data)
+  local now    = loader.time ()
   local result = {
     contents = {
       type     = "authentication",
@@ -684,9 +683,9 @@ function Token.authentication (data, store)
     iss      = Configuration.server.name._,
     aud      = nil,
     sub      = "cosy:authentication",
-    jti      = Platform.digest (tostring (now + Platform.random ())),
+    jti      = loader.digest (tostring (now + loader.random ())),
   }
-  return Platform.token.encode (result)
+  return loader.token.encode (result)
 end
 
 Internal.redis.retry = 2

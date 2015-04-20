@@ -1,4 +1,5 @@
-local hotswap = require "hotswap"
+local loader  = require "cosy.loader"
+local hotswap = loader.hotswap
 
 if _G.js then
   error "Not available"
@@ -8,8 +9,8 @@ local Password = {}
 
 local function compute_rounds ()
   local bcrypt        = hotswap "bcrypt"
-  local time          = hotswap "cosy.platform.time"
-  local configuration = hotswap "cosy.platform.configuration"
+  local time          = loader.time
+  local configuration = loader.configuration
   for _ = 1, 5 do
     local rounds = 5
     while true do
@@ -41,8 +42,8 @@ function Password.is_too_cheap (digest)
 end
 
 do
-  local logger        = hotswap "cosy.platform.logger"
-  local configuration = hotswap "cosy.platform.configuration"
+  local logger        = loader.logger
+  local configuration = loader.configuration
   compute_rounds ()
   logger.debug {
     _     = "platform:bcrypt-rounds",

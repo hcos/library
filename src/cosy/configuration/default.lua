@@ -2,6 +2,7 @@ return {
   redis = {
     host      = "127.0.0.1",
     port      = 6379,
+    retry     = 5,
     database  = 0,
     pool_size = 5,
   },

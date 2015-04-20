@@ -115,7 +115,6 @@ end
 
 function Repository.export (proxy)
   proxy = Proxy.dereference (proxy)
-  assert (# proxy [KEYS] == 0)
   local loader      = require "cosy.loader"
   local resource    = proxy [RESOURCE]
   local mt          = Proxy.__metatable
@@ -138,7 +137,7 @@ function Repository.export (proxy)
 end
 
 function Repository.of (proxy)
-  return proxy [REPOSITORY]
+  return proxy [RESOURCE] [REPOSITORY]
 end
 
 --    > = Repository.export (resource)

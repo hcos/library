@@ -1,10 +1,9 @@
-local hotswap = require "hotswap"
+local loader = require "cosy.loader"
 
 if _G.js then
   local js = _G.js
   return js.global.random
 else
-  local time = hotswap "cosy.platform.time"
-  math.randomseed (time ())
+  math.randomseed (loader.time ())
   return math.random
 end

@@ -1,4 +1,5 @@
-local hotswap = require "hotswap"
+local loader  = require "cosy.loader"
+local hotswap = loader.hotswap
 
 if _G.js then
   error "Not available"
@@ -8,9 +9,9 @@ local assigned = {}
 
 return function ()
   local redis         = hotswap "redis"
-  local configuration = hotswap "cosy.platform.configuration"
-  local scheduler     = hotswap "cosy.platform.scheduler"
-  local socket        = hotswap "cosy.platform.socket"
+  local configuration = loader.configuration
+  local scheduler     = loader.scheduler
+  local socket        = loader.socket
   local co            = coroutine.running ()
   local found         = assigned [co]
   if found then
