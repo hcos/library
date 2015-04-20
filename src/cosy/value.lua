@@ -1,6 +1,7 @@
-local hotswap = require "hotswap"
+local loader  = require "cosy.loader"
+local hotswap = loader.hotswap
 
-local Value = {}
+local Value   = {}
 
 function Value.encode (t, options)
   local serpent = hotswap "serpent"

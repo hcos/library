@@ -1,4 +1,4 @@
-local hotswap = require "hotswap"
+local loader  = require "cosy.loader"
 
 if _G.js then
   local js = _G.js
@@ -10,7 +10,7 @@ if _G.js then
   end
 else
   return function (s)
-    local Crypto = hotswap "crypto"
+    local Crypto = loader.hotswap "crypto"
     return Crypto.hex (Crypto.digest ("SHA256", s))
   end
 end

@@ -71,10 +71,12 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
   ["platform:no-token-secret"] =
     "token secret is not defined in configuration",
 
-  ["platform:no-smtp"] =
+  ["smtp:not-available"] =
     "no SMTP server discovered, sending of emails will not work",
-  ["platform:smtp"] =
+  ["smtp:available"] =
     "SMTP on %{host}:%{port} uses %{method} (encrypted with %{protocol})",
+  ["smtp:discover"] =
+    "discovering SMTP on %{host}:%{port} using %{method} (encrypted with %{protocol})",
 
   ["configuration:using"] =
     "using configuration in directory %{path}",

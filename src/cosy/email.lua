@@ -1,13 +1,12 @@
-local hotswap = require "hotswap"
-local ssl     = require "ssl"
+local loader = require "cosy.loader"
+local ssl    = require "ssl"
+local smtp   = loader.hotswap "socket.smtp"
 
 if _G.js then
   error "Not available"
 end
 
 local Email = {}
-             hotswap "cosy.string"
-local smtp = hotswap "socket.smtp"
 
 -- First case: detection, using blocking sockets
 -- Second case: email sending, using non-blocking sockets
@@ -15,7 +14,7 @@ local smtp = hotswap "socket.smtp"
 local make_socket = {}
 
 function make_socket.sync ()
-  local socket = hotswap "socket"
+  local socket = loader.hotswap "socket"
   local result = socket.tcp ()
   result:settimeout (1)
   result:setoption ("keepalive", true)
@@ -25,7 +24,7 @@ function make_socket.sync ()
 end
 
 function make_socket.async ()
-  local socket = hotswap "cosy.platform.socket"
+  local socket = loader.hotswap "cosy.platform.socket"
   local result = socket ()
   result:settimeout (0)
   result:setoption ("keepalive", true)
@@ -135,13 +134,13 @@ function Tcp.STARTTLS (protocol, make)
 end
 
 function Email.discover ()
-  local logger        = hotswap "cosy.platform.logger"
-  local configuration = hotswap "cosy.platform.configuration"
-  local domain    = configuration.server.root._
-  local host      = configuration.smtp.host._
-  local username  = configuration.smtp.username._
-  local password  = configuration.smtp.password._
-  local methods   = { configuration.smtp.method._ }
+  local logger        = loader.logger
+  local configuration = loader.configuration
+  local domain        = configuration.server.root._
+  local host          = configuration.smtp.host._
+  local username      = configuration.smtp.username._
+  local password      = configuration.smtp.password._
+  local methods       = { configuration.smtp.method._ }
   if #methods == 0 then
     methods = {
       "STARTTLS",
@@ -171,12 +170,13 @@ function Email.discover ()
     local protos = (method == "PLAIN") and { "nothing" } or protocols
     for _, protocol in ipairs (protos) do
       for _, port in ipairs (ports) do
-        logger.debug ("Discovering SMTP on %{host}:%{port} using %{method} (encrypted with %{protocol})" % {
+        logger.debug {
+          _        = "smtp:discover",
           host     = host,
           port     = port,
           method   = method,
           protocol = protocol,
-        })
+        }
         local ok, s = pcall (smtp.open, host, port, Tcp [method] (protocol, make_socket.sync))
         if ok then
           local ok = pcall (s.auth, s, username, password, s:greet (domain))
@@ -195,17 +195,18 @@ function Email.discover ()
 end
 
 function Email.send (message)
-  local i18n          = hotswap "cosy.platform.i18n"
-  local configuration = hotswap "cosy.platform.configuration"
+  local i18n          = loader.i18n
+  local configuration = loader.configuration
   local locale        = message.locale or configuration.locale.default._
   message.from   .locale = locale
   message.to     .locale = locale
   message.subject.locale = locale
   message.body   .locale = locale
-  message.from    = i18n.translate (message.from    [1], message.from   )
-  message.to      = i18n.translate (message.to      [1], message.to     )
-  message.subject = i18n.translate (message.subject [1], message.subject)
-  message.body    = i18n.translate (message.body    [1], message.body   )
+  -- FIXME: fix calls to i18n
+  message.from    = i18n (message.from    [1], message.from   )
+  message.to      = i18n (message.to      [1], message.to     )
+  message.subject = i18n (message.subject [1], message.subject)
+  message.body    = i18n (message.body    [1], message.body   )
   return smtp.send {
     from     = message.from:match (email_pattern),
     rcpt     = message.to  :match (email_pattern),
@@ -227,15 +228,15 @@ function Email.send (message)
 end
 
 do
-  local logger        = hotswap "cosy.platform.logger"
-  local configuration = hotswap "cosy.platform.configuration"
+  local logger        = loader.logger
+  local configuration = loader.configuration
   if not Email.discover () then
     logger.warning {
-      _ = "platform:no-smtp",
+      _ = "smtp:not-available",
     }
   else
-    logger.debug {
-      _        = "platform:smtp",
+    logger.info {
+      _        = "smtp:available",
       host     = configuration.smtp.host._,
       port     = configuration.smtp.port._,
       method   = configuration.smtp.method._,

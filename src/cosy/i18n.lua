@@ -1,14 +1,15 @@
-local hotswap = require "hotswap"
+local loader  = require "cosy.loader"
+local hotswap = loader.hotswap
 
 return function (x)
   if type (x) ~= "table" then
     return x
   end
   local i18n    = hotswap "i18n"
-  local logger  = hotswap "cosy.platform.logger"
+  local logger  = loader.logger
   local locale  = x.locale
   if not locale then
-    local configuration = hotswap "cosy.platform.configuration"
+    local configuration = loader.configuration
     locale = configuration.locale._
   end
   local translation, new = hotswap ("cosy.i18n." .. locale, true)
@@ -46,5 +47,5 @@ return function (x)
     end
     return x
   end
-  return translate (x).message
+  return tostring (translate (x).message)
 end

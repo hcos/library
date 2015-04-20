@@ -34,9 +34,9 @@ end
 
 local CACHES     = make_tag "CACHES"
 local CREATED    = make_tag "CREATED"
+local DATA       = make_tag "DATA"
 local OPTIONS    = make_tag "OPTIONS"
 local PROXIES    = make_tag "PROXIES"
-
 local FOLLOW     = make_tag "FOLLOW"
 local KEYS       = make_tag "KEYS"
 local NAME       = make_tag "NAME"
@@ -83,16 +83,14 @@ end
 --    > end
 
 function Repository.__index (repository, key)
-  local found    = repository [RESOURCES] [key]
+  local found = repository [RESOURCES] [key]
   if found then
     repository [CREATED] [found] = nil
-    return found
+    return Proxy.new (found)
   end
-  local import   = repository [OPTIONS].import
-  local data     = import (repository, key)
-  local resource = Resource.import (repository, key, data)
-  repository [RESOURCES] [key] = resource
-  return resource
+  local import = repository [OPTIONS].import
+  local data   = import (repository, key)
+  return Resource.import (repository, key, data)
 end
 
 --    > resource = repository.myresource
@@ -104,9 +102,7 @@ function Repository.__newindex (repository, key, data)
   end
   local create = repository [OPTIONS].create
   create (repository, key)
-  local resource = Resource.import (repository, key, data)
-  repository [RESOURCES] [key] = resource
-  repository [CREATED] [resource] = true
+  Resource.import (repository, key, data)
 end
 
 function Repository.placeholder (repository)
@@ -120,11 +116,11 @@ end
 function Repository.export (proxy)
   proxy = Proxy.dereference (proxy)
   assert (# proxy [KEYS] == 0)
-  local Platform    = require "cosy.platform"
+  local loader      = require "cosy.loader"
   local resource    = proxy [RESOURCE]
   local mt          = Proxy.__metatable
   Proxy.__metatable = nil
-  local result     = Platform.value.encode (resource, {
+  local result     = loader.value.encode (resource [DATA], {
     name      = resource [NAME],
     sortkeys  = true,
     compact   = false,
@@ -142,7 +138,7 @@ function Repository.export (proxy)
 end
 
 function Repository.of (proxy)
-  return proxy [RESOURCE] [REPOSITORY]
+  return proxy [REPOSITORY]
 end
 
 --    > = Repository.export (resource)
@@ -192,16 +188,19 @@ function Resource.import_data (repository, data)
 end
 
 function Resource.import (repository, name, data)
-  if type (data) ~= "table" then
-    data = {
-      [Repository.value] = data,
-    }
-  end
   assert (getmetatable (data) == nil)
-  local resource = Resource.import_data (repository, data)
-  resource [NAME      ] = name
-  resource [REPOSITORY] = repository
-  setmetatable (resource, Resource)
+  local resource = repository [RESOURCES] [name]
+  if not resource then
+    resource = {
+      [NAME      ] = name,
+      [REPOSITORY] = repository,
+      [DATA      ] = false,
+    }
+    setmetatable (resource, Resource)
+  end
+  repository [RESOURCES] [name    ] = resource
+  repository [CREATED  ] [resource] = true
+  resource   [DATA     ] = Resource.import_data (repository, data)
   return Proxy.new (resource)
 end
 
@@ -220,11 +219,11 @@ function Proxy.new (resource)
     return found
   end
   local proxy = setmetatable ({
-    [RESOURCE] = resource,
-    [PARENT  ] = proxies,
-    [KEYS    ] = {},
-    [FOLLOW  ] = false,
-    [PROXIES ] = setmetatable ({}, IgnoreValues),
+    [RESOURCE  ] = resource,
+    [PARENT    ] = proxies,
+    [KEYS      ] = {},
+    [FOLLOW    ] = false,
+    [PROXIES   ] = setmetatable ({}, IgnoreValues),
   }, Proxy)
   proxies [resource] = proxy
   return proxy
@@ -278,8 +277,8 @@ function Proxy.__newindex (proxy, key, value)
       key = Repository.value
     end
   end
-  local keys   = proxy [KEYS]
-  local parent = resource
+  local keys   = proxy    [KEYS]
+  local parent = resource [DATA]
   for i = 1, #keys do
     local child = parent [keys [i]]
     if type (child) ~= "table"
@@ -312,7 +311,7 @@ function Proxy.__pairs (proxy)
 end
 
 function Proxy.__ipairs (proxy)
-  local coroutine  = require "coroutine.make" ()
+  local coroutine = require "coroutine.make" ()
   return coroutine.wrap (function ()
     local i = 1
     while true do
@@ -339,7 +338,7 @@ function Proxy.__tostring (proxy)
   local resource = proxy    [RESOURCE]
   local keys     = proxy    [KEYS    ]
   local name     = resource [NAME    ]
-  local t    = { tostring (name) }
+  local t    = { "/" .. tostring (name) .. "/" }
   for i = 1, #keys do
     t [i+1] = tostring (keys [i])
   end
@@ -361,14 +360,14 @@ function Proxy.apply (f, is_iterator)
       -- search in resources
       local resources  = Proxy.depends (Proxy.new (resource))
       for i = #resources, 1, -1 do
-        local current = resources [i] [RESOURCE]
-        for i = 1, #keys do
+        local current = resources [i] [RESOURCE] [DATA]
+        for j = 1, #keys do
           if type (current) ~= "table"
           or getmetatable (current) == Proxy.__metatable then
             current = nil
             break
           end
-          current = current [keys [i]]
+          current = current [keys [j]]
         end
         if current ~= nil then
           f {
@@ -486,7 +485,7 @@ end
 
 Proxy.depends = require "c3" .new {
   superclass = function (proxy)
-    local resource = proxy [RESOURCE]
+    local resource = proxy [RESOURCE] [DATA]
     return resource [Repository.depends]
   end,
 }
@@ -511,11 +510,39 @@ Proxy.refines = require "c3" .new {
   end,
 }
 
+--[[
+local repository = Repository.new ()
+Repository.options (repository).create = function () end
+Repository.options (repository).import = function () end
+
+repository.a = {}
+repository.b = {}
+repository.c = {
+  [Repository.depends] = {
+    repository.a, repository.b
+  }
+}
+print ("a", Repository.export (repository.a))
+print ("b", Repository.export (repository.b))
+print ("c", Repository.export (repository.c))
+
+repository.a = {
+  x = 1,
+}
+repository.b = {
+  y = 2,
+}
+print ("a", Repository.export (repository.a))
+print ("b", Repository.export (repository.b))
+print ("c", Repository.export (repository.c))
+
+print ("c.x", repository.c.x._)
+print ("c.y", repository.c.y._)
+--]]
 --[==[
 -- Examples
 -- --------
 do
-  local Platform   = require "cosy.platform"
   local repository = Repository.new ()
   local _          = Repository.placeholder (repository)
   Repository.options (repository).create = function () end
