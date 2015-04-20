@@ -52,7 +52,6 @@ build = {
     ["cosy.random"                ] = "src/cosy/random.lua",
     ["cosy.redis"                 ] = "src/cosy/redis.lua",
     ["cosy.repository"            ] = "src/cosy/repository.lua",
-    ["cosy.scheduler"             ] = "src/cosy/scheduler.lua",
     ["cosy.server"                ] = "src/cosy/server.lua",
     ["cosy.socket"                ] = "src/cosy/socket.lua",
     ["cosy.store"                 ] = "src/cosy/store.lua",
