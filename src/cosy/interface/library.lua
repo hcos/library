@@ -1,10 +1,11 @@
-                      require "cosy.string"
-local Platform      = require "cosy.platform"
-local Configuration = require "cosy.configuration"
-local Coevas        = require "copas.ev"
+local hotswap = require "hotswap"
+
+local Platform      = hotswap "cosy.platform"
+local Coevas        = hotswap "copas.ev"
 Coevas:make_default ()
-local Url           = require "socket.url"
-local Websocket     = require "websocket"
+local Url           = hotswap "socket.url"
+local Websocket     = hotswap "websocket"
+local Configuration = Platform.configuration
 
 local Library = {}
 local Client  = {}

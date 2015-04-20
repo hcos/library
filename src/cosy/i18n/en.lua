@@ -52,8 +52,12 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
     "%{component} is available",
   ["platform:missing-dependency"] =
     "%{component} is not available, because %{reason}",
+  
   ["platform:available-locale"] =
     "i18n locale '%{loaded}' has been loaded",
+  ["platform:missing-locale"] =
+    "i18n locale '%{loaded}' has not been loaded",
+  
   ["platform:available-compression"] =
     "compression '%{compression}' has been loaded",
   ["platform:bcrypt-rounds"] = {
@@ -70,7 +74,7 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
   ["platform:no-smtp"] =
     "no SMTP server discovered, sending of emails will not work",
   ["platform:smtp"] =
-    "SMTP on ${host}:${port} uses ${method} (encrypted with ${protocol})",
+    "SMTP on %{host}:%{port} uses %{method} (encrypted with %{protocol})",
 
   ["configuration:using"] =
     "using configuration in directory %{path}",

@@ -1,6 +1,6 @@
-local Configuration = require "cosy.configuration"
 local Platform      = require "cosy.platform"
 local Library       = require "cosy.interface.library"
+local Configuration = Platform.configuration
 
 do
   os.execute "redis-cli flushall"
@@ -30,7 +30,7 @@ local ok, err = pcall (function ()
   show (token)
   
   local start = require "socket".gettime ()
-  local n     = 50
+  local n     = 1000
   for _ = 1, n do
     assert (lib.information ().name == Configuration.server.name._)
   end

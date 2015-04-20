@@ -1,14 +1,28 @@
--- Select the platform using the environment.
+local Platform = {}
+local platform = {}
 
-local version = tonumber (_VERSION:match "Lua%s*(%d%.%d)")
-
-if version < 5.1
-or (version == 5.1 and type (_G.jit) ~= "table") then
-  error "Cosy requires Luajit >= 2 or Lua >= 5.2 to run."
+if not _G.js then
+  local ev           = require "ev"
+  platform.scheduler = require "copas.ev"
+  platform.scheduler:make_default ()
+  package.preload [hotswap] = function ()
+    local hotswap      = require "hotswap" .new ()
+    hotswap.register   = function (filename, f)
+      local stat = ev.Stat.new (function (loop, stat, events)
+        stat:stop (loop)
+        f ()
+      end, path):start (platform.scheduler._loop)
+    end
+    return hotswap
+  end
 end
 
-if _G.js then
-  return require "cosy.platform.js"
-else
-  return require "cosy.platform.standalone"
+do
+  local hotswap = require "hotswap"
+  hotswap "cosy.string"
+  Platform.__index = function (_, key)
+    return hotswap ("cosy.platform." .. tostring (key))
+  end
 end
+
+return setmetatable (platform, Platform)

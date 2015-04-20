@@ -1,12 +1,13 @@
+local hotswap = require "hotswap"
+local ssl     = require "ssl"
+
+if _G.js then
+  error "Not available"
+end
+
 local Email = {}
-
-local Platform      = require "cosy.platform"
-local Configuration = require "cosy.configuration"
-                      require "cosy.string"
-
-local socket        = require "socket"
-local smtp          = require "socket.smtp"
-local ssl           = require "ssl"
+             hotswap "cosy.string"
+local smtp = hotswap "socket.smtp"
 
 -- First case: detection, using blocking sockets
 -- Second case: email sending, using non-blocking sockets
@@ -14,6 +15,7 @@ local ssl           = require "ssl"
 local make_socket = {}
 
 function make_socket.sync ()
+  local socket = hotswap "socket"
   local result = socket.tcp ()
   result:settimeout (1)
   result:setoption ("keepalive", true)
@@ -23,14 +25,14 @@ function make_socket.sync ()
 end
 
 function make_socket.async ()
-  local result = Platform.scheduler:wrap (socket.tcp ())
+  local socket = hotswap "cosy.platform.socket"
+  local result = socket ()
   result:settimeout (0)
   result:setoption ("keepalive", true)
   result:setoption ("reuseaddr", true)
   result:setoption ("tcp-nodelay", true)
   return result
 end
-
 
 -- http://lua-users.org/wiki/StringRecipes
 local email_pattern = "<[A-Za-z0-9%.%%%+%-]+@[A-Za-z0-9%.%%%+%-]+%.%w%w%w?%w?>"
@@ -105,11 +107,10 @@ local STARTTLS_mt = {
 function STARTTLS_mt:connect (host, port)
   self.socket = self.make ()
   if not self.socket:connect (host, port) then
-    print "connect failed"
     return false
   end
   self.socket:receive "*l"
-  self.socket:send ("EHLO " .. Configuration.server.root._ .. "\r\n")
+  self.socket:send ("EHLO cosy\r\n")
   repeat
     local line = self.socket:receive "*l"
   until line == nil
@@ -120,7 +121,7 @@ function STARTTLS_mt:connect (host, port)
     protocol = tls_alias [self.protocol],
   })
   local result = self:dohandshake ()
-  self.socket:send ("EHLO " .. Configuration.server.root._ .. "\r\n")
+  self.socket:send ("EHLO cosy\r\n")
   return result
 end
 function Tcp.STARTTLS (protocol, make)
@@ -134,11 +135,13 @@ function Tcp.STARTTLS (protocol, make)
 end
 
 function Email.discover ()
-  local domain    = Configuration.server.root._
-  local host      = Configuration.smtp.host._
-  local username  = Configuration.smtp.username._
-  local password  = Configuration.smtp.password._
-  local methods   = { Configuration.smtp.method._ }
+  local logger        = hotswap "cosy.platform.logger"
+  local configuration = hotswap "cosy.platform.configuration"
+  local domain    = configuration.server.root._
+  local host      = configuration.smtp.host._
+  local username  = configuration.smtp.username._
+  local password  = configuration.smtp.password._
+  local methods   = { configuration.smtp.method._ }
   if #methods == 0 then
     methods = {
       "STARTTLS",
@@ -146,7 +149,7 @@ function Email.discover ()
       "PLAINTEXT",
     }
   end
-  local protocols = { Configuration.smtp.protocol._ }
+  local protocols = { configuration.smtp.protocol._ }
   if #protocols == 0 then
     protocols = {
       "TLS v1.2",
@@ -156,7 +159,7 @@ function Email.discover ()
       "SSL v2",
     }
   end
-  local ports     = { Configuration.smtp.port._ }
+  local ports     = { configuration.smtp.port._ }
   if #ports == 0 then
     ports = {
       25,
@@ -168,7 +171,7 @@ function Email.discover ()
     local protos = (method == "PLAIN") and { "nothing" } or protocols
     for _, protocol in ipairs (protos) do
       for _, port in ipairs (ports) do
-        Platform.logger.debug ("Discovering SMTP on ${host}:${port} using ${method} (encrypted with ${protocol})" % {
+        logger.debug ("Discovering SMTP on %{host}:%{port} using %{method} (encrypted with %{protocol})" % {
           host     = host,
           port     = port,
           method   = method,
@@ -178,9 +181,9 @@ function Email.discover ()
         if ok then
           local ok = pcall (s.auth, s, username, password, s:greet (domain))
           if ok then
-            Configuration.smtp.port     = port
-            Configuration.smtp.method   = method
-            Configuration.smtp.protocol = protocol
+            configuration.smtp.port     = port
+            configuration.smtp.method   = method
+            configuration.smtp.protocol = protocol
             return true
           else
             s:close ()
@@ -192,18 +195,17 @@ function Email.discover ()
 end
 
 function Email.send (message)
-  local locale     = message.locale or Configuration.locale.default._
+  local i18n          = hotswap "cosy.platform.i18n"
+  local configuration = hotswap "cosy.platform.configuration"
+  local locale        = message.locale or configuration.locale.default._
   message.from   .locale = locale
   message.to     .locale = locale
   message.subject.locale = locale
   message.body   .locale = locale
-  message.from    = Platform.i18n.translate (message.from    [1], message.from   )
-  message.to      = Platform.i18n.translate (message.to      [1], message.to     )
-  message.subject = Platform.i18n.translate (message.subject [1], message.subject)
-  message.body    = Platform.i18n.translate (message.body    [1], message.body   )
-  local make = Platform.scheduler.IN_THREAD
-           and make_socket.async
-            or make_socket.sync
+  message.from    = i18n.translate (message.from    [1], message.from   )
+  message.to      = i18n.translate (message.to      [1], message.to     )
+  message.subject = i18n.translate (message.subject [1], message.subject)
+  message.body    = i18n.translate (message.body    [1], message.body   )
   return smtp.send {
     from     = message.from:match (email_pattern),
     rcpt     = message.to  :match (email_pattern),
@@ -215,12 +217,31 @@ function Email.send (message)
       },
       body = message.body
     },
-    user     = Configuration.smtp.username._,
-    password = Configuration.smtp.password._,
-    server   = Configuration.smtp.host._,
-    port     = Configuration.smtp.port._,
-    create   = Tcp [Configuration.smtp.method._] (Configuration.smtp.protocol._, make),
+    user     = configuration.smtp.username._,
+    password = configuration.smtp.password._,
+    server   = configuration.smtp.host._,
+    port     = configuration.smtp.port._,
+    create   = Tcp [configuration.smtp.method._]
+               (configuration.smtp.protocol._, make_socket.async),
   }
+end
+
+do
+  local logger        = hotswap "cosy.platform.logger"
+  local configuration = hotswap "cosy.platform.configuration"
+  if not Email.discover () then
+    logger.warning {
+      _ = "platform:no-smtp",
+    }
+  else
+    logger.debug {
+      _        = "platform:smtp",
+      host     = configuration.smtp.host._,
+      port     = configuration.smtp.port._,
+      method   = configuration.smtp.method._,
+      protocol = configuration.smtp.protocol._,
+    }
+  end
 end
 
 return Email

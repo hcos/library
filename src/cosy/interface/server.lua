@@ -1,10 +1,4 @@
-                      require "compat53"
-local Configuration = require "cosy.configuration"
-local Platform      = require "cosy.platform"
-local Socket        = require "socket"
-local Copas         = require "copas.ev"
-local hotswap       = require "hotswap"
-Copas:make_default ()
+local hotswap   = require "hotswap"
 
 local Server = {}
 
@@ -47,26 +41,16 @@ function Server.get (http)
   end
 end
 
-local function translate (x)
-  x.locale = x.locale or Configuration.locale._
-  for _, v in pairs (x) do
-    if type (v) == "table" and not getmetatable (v) then
-      local vl  = v.locale
-      v.locale  = x.locale
-      v.message = translate (v)
-      v.locale  = vl
-    end
-  end
-  if x._ then
-    x.message = Platform.i18n.translate (x._, x)
-  end
-  return x
-end
-
 function Server.request (message)
-  local decoded, request = pcall (Platform.value.decode, message)
+  local platform = hotswap "cosy.platform"
+  local i18n     = platform.i18n
+  local function translate (x)
+    i18n (x)
+    return x
+  end
+  local decoded, request = pcall (platform.value.decode, message)
   if not decoded or type (request) ~= "table" then
-    return Platform.value.expression (translate {
+    return platform.value.expression (translate {
       success = false,
       error   = {
         _      = "rpc:format",
@@ -80,7 +64,7 @@ function Server.request (message)
   local Methods    = hotswap "cosy.methods"
   local method     = Methods [operation]
   if not method then
-    return Platform.value.expression (translate {
+    return platform.value.expression (translate {
       identifier = identifier,
       success    = false,
       error      = {
@@ -91,13 +75,14 @@ function Server.request (message)
   end
   local called, result = pcall (method, parameters or {})
   if not called then
-    return Platform.value.expression (translate {
+    print (result, debug.traceback())
+    return platform.value.expression (translate {
       identifier = identifier,
       success    = false,
       error      = result,
     })
   end
-  return Platform.value.expression (translate {
+  return platform.value.expression (translate {
     identifier = identifier,
     success    = true,
     response   = result,
@@ -118,19 +103,15 @@ function Server.wsloop (http)
   end
 end
 
-Platform:register ("email", function ()
-  Platform.email = {}
-  Platform.email.last_sent = {}
-  Platform.email.send = function (t)
-    Platform.email.last_sent [t.to.email] = t
-  end
-end)
-
 do
-  local host = Configuration.server.host._
-  local port = Configuration.server.port._
-  local skt  = Socket.bind (host, port)
-  Copas.addserver (skt, function (socket)
+  local socket        = hotswap "socket"
+  local platform      = hotswap "cosy.platform"
+  local scheduler     = platform.scheduler
+  local configuration = platform.configuration
+  local host = configuration.server.host._
+  local port = configuration.server.port._
+  local skt  = socket.bind (host, port)
+  scheduler.addserver (skt, function (socket)
     local Http = hotswap "httpserver"
     local http = Http.new {
       socket    = socket,
@@ -142,18 +123,18 @@ do
       repeat
         http ()
         Server.get (http)
-        http ()
-      until true
+        local continue = http ()
+      until not continue
     end)
   end)
-  Platform.logger.debug {
+  platform.logger.debug {
     _    = "server:listening",
     host = host,
     port = port,
   }
 --  local profiler = require "ProFi"
 --  profiler:start ()
-  Copas.loop ()
+  scheduler.loop ()
 --  profiler:stop ()
 --  profiler:writeReport "profiler.txt"
 end

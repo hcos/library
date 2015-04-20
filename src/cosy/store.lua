@@ -1,6 +1,4 @@
-local Platform      = require "cosy.platform"
-local Configuration = require "cosy.configuration"
-                      require "cosy.string"
+local hotswap  = require "hotswap"
 
 local Store      = {}
 local Collection = {}
@@ -27,20 +25,21 @@ function Store.__newindex ()
 end
 
 function Store.commit (store)
-  local client = Platform.redis ()
+  local platform = hotswap "cosy.platform"
+  local client = platform.redis ()
   client:multi ()
   for _, collection in pairs (store) do
     local pattern = collection [PATTERN]
     for key, document in pairs (collection [DATA]) do
       if document [DIRTY] then
         local name  = pattern % {
-          key = Platform.value.expression (key),
+          key = platform.value.expression (key),
         }
         local value = document [DATA]
         if value == nil then
           client:del (name)
         else
-          client:set (name, Platform.value.encode (value))
+          client:set (name, platform.value.encode (value))
           if type (value) == "table" and value.expire_at then
             client:expireat (name, math.ceil (value.expire_at))
           else
@@ -56,7 +55,8 @@ function Store.commit (store)
 end
 
 function Collection.new (key)
-  local pattern = Configuration.redis.key [key]._
+  local platform = hotswap "cosy.platform"
+  local pattern = platform.configuration.redis.key [key]._
   assert (pattern)
   return setmetatable ({
     [PATTERN] = pattern,
@@ -65,15 +65,16 @@ function Collection.new (key)
 end
 
 function Collection.__index (collection, key)
+  local platform = hotswap "cosy.platform"
   if not collection [DATA] [key] then
     local name   = collection [PATTERN] % {
-      key = Platform.value.expression (key),
+      key = platform.value.expression (key),
     }
-    local client = Platform.redis ()
+    local client = platform.redis ()
     client:watch (name)
     local value  = client:get (name)
     if value ~= nil then
-      value = Platform.value.decode (value)
+      value = platform.value.decode (value)
     end
     collection [DATA] [key] = {
       [DIRTY] = false,
@@ -91,10 +92,11 @@ function Collection.__newindex (collection, key, value)
 end
 
 function Collection.__pairs (collection)
-  local coroutine = require "coroutine.make" ()
+  local platform  = hotswap "cosy.platform"
+  local coroutine = hotswap "coroutine.make" ()
   return coroutine.wrap (function ()
     local name   = collection [PATTERN] % { key = "*" }
-    local client = Platform.redis ()
+    local client = platform.redis ()
     local cursor = 0
     repeat
       local t = client:scan (cursor, {
@@ -105,7 +107,7 @@ function Collection.__pairs (collection)
       local data = t [2]
       for i = 1, #data do
         local name  = data [i]
-        local key   = Platform.value.decode ((collection [PATTERN] / name).key)
+        local key   = platform.value.decode ((collection [PATTERN] / name).key)
         local value = collection [key]
         coroutine.yield (key, value)
       end
@@ -123,7 +125,7 @@ function Collection.__len (collection)
 end
 
 function Collection.__ipairs (collection)
-  local coroutine = require "coroutine.make" ()
+  local coroutine = hotswap "coroutine.make" ()
   return coroutine.wrap (function ()
     local i = 0
     repeat

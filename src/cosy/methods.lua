@@ -33,11 +33,12 @@ local Parameters = {}
 -- ------------
 --
 -- This module depends on the following modules:
-require "cosy.string"
-local Configuration = require "cosy.configuration"
-local Platform      = require "cosy.platform"
-local Repository    = require "cosy.repository"
-local Store         = require "cosy.store"
+local hotswap = require "hotswap"
+
+local Repository    = hotswap "cosy.repository"
+local Platform      = hotswap "cosy.platform"
+local Store         = hotswap "cosy.store"
+local Configuration = Platform.configuration
 local Internal      = Repository.of (Configuration) .internal
 
 Internal.redis.key = {
@@ -122,9 +123,10 @@ function Methods.tos (request)
   if request.token then
     locale = request.token.locale or locale
   end
-  local tos = Platform.i18n.translate ("tos", {
+  local tos = Platform.i18n {
+    _      = "tos",
     locale = locale,
-  })
+  }
   return {
     tos        = tos,
     tos_digest = Platform.digest (tos),

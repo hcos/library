@@ -113,7 +113,7 @@ function Repository.placeholder (repository)
   return repository [RESOURCES] [false]
 end
 
-function Repository.flatten (resource)
+function Repository.flatten ()
   error "Not implemented yet"
 end
 
