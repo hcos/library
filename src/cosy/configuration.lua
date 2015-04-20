@@ -43,9 +43,7 @@ if not _G.js then
     local ev      = require "ev"
     local hotswap = require "hotswap" .new ()
     hotswap.register = function (filename, f)
-      print ("register", filename)
       ev.Stat.new (function ()
-        print (filename, "configuration updated?")
         f ()
         scheduler:wakeup (co)
       end, filename):start (scheduler._loop)
@@ -53,14 +51,7 @@ if not _G.js then
     while true do
       for key, filename in pairs (files) do
         local ok, err  = pcall (function ()
-          local handle  = io.open (filename, "r")
-          if not handle then
-            error "file does not exist"
-          end
-          local content    = handle:read "*all"
-          content          = Value.decode (content)
-          repository [key] = content
-          io.close (handle)
+          repository [key] = loader.value.decode (hotswap (filename))
         end)
         if ok then
           Logger.debug {
