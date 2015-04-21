@@ -32,40 +32,52 @@ local files = {
 do -- fill the `default` path:
   local hotswap      = require "hotswap" .new ()
   repository.default = hotswap "cosy.configuration.default"
-  files.default      = hotswap.sources ["cosy.configuration.default"]
+  files     .default = hotswap.sources ["cosy.configuration.default"]
 end
 
 if not _G.js then
   local scheduler = loader.scheduler
   scheduler.addthread (function ()
+    local changed = {}
+    for _, filename in pairs (files) do
+      changed [filename] = true
+    end
     scheduler.blocking (false)
     local co      = coroutine.running ()
     local ev      = require "ev"
     local hotswap = require "hotswap" .new ()
     hotswap.register = function (filename, f)
-      ev.Stat.new (function ()
-        f ()
-        scheduler:wakeup (co)
+      ev.Stat.new (function (loop, stat)
+        if f () then
+          changed [filename] = true
+          scheduler.wakeup (co)
+        end
       end, filename):start (scheduler._loop)
     end
     while true do
       for key, filename in pairs (files) do
-        local ok, err  = pcall (function ()
-          repository [key] = loader.value.decode (hotswap (filename))
-        end)
-        if ok then
-          Logger.debug {
-            _      = "configuration:using",
-            path   = filename,
-            locale = repository.whole.locale._,
-          }
-        else
-          Logger.warning {
-            _      = "configuration:skipping",
-            path   = filename,
-            reason = err,
-            locale = repository.whole.locale._,
-          }
+        if changed [filename] then
+          changed [filename] = false
+          local ok, err  = pcall (function ()
+            local result, new = hotswap (filename)
+            if new then
+              repository [key] = loader.value.decode (result)
+            end
+          end)
+          if ok then
+            Logger.debug {
+              _      = "configuration:using",
+              path   = filename,
+              locale = repository.whole.locale._,
+            }
+          else
+            Logger.warning {
+              _      = "configuration:skipping",
+              path   = filename,
+              reason = err,
+              locale = repository.whole.locale._,
+            }
+          end
         end
       end
       scheduler.sleep (-math.huge)
