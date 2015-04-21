@@ -16,7 +16,7 @@ local make_socket = {}
 function make_socket.sync ()
   local socket = loader.hotswap "socket"
   local result = socket.tcp ()
-  result:settimeout (1)
+  result:settimeout (loader.configuration.smtp.timeout._)
   result:setoption ("keepalive", true)
   result:setoption ("reuseaddr", true)
   result:setoption ("tcp-nodelay", true)
@@ -24,9 +24,8 @@ function make_socket.sync ()
 end
 
 function make_socket.async ()
-  local socket = loader.hotswap "cosy.platform.socket"
-  local result = socket ()
-  result:settimeout (0)
+  local result = loader.socket ()
+  result:settimeout (loader.configuration.smtp.timeout._)
   result:setoption ("keepalive", true)
   result:setoption ("reuseaddr", true)
   result:setoption ("tcp-nodelay", true)
@@ -53,21 +52,6 @@ local function forward__index (self, key)
          end
 end
 
-local function dohandshake (self)
-  while true do
-    local ok, err = self.socket:dohandshake ()
-    if ok then
-      return true
-    elseif err == "wantread"
-        or err == "wantwrite"
-        or err == "timeout" then
-    -- loop
-    else
-      error (err)
-    end
-  end
-end
-
 function Tcp.PLAINTEXT ()
   return function (_, make)
     return make ()
@@ -87,7 +71,7 @@ function TLS_mt:connect (host, port)
     mode     = "client",
     protocol = tls_alias [self.protocol],
   })
-  return self:dohandshake ()
+  return self.socket:dohandshake ()
 end
 function Tcp.TLS (protocol, make)
   return function ()
@@ -106,9 +90,9 @@ local STARTTLS_mt = {
 function STARTTLS_mt:connect (host, port)
   self.socket = self.make ()
   if not self.socket:connect (host, port) then
-    return false
+    print "connection failed"
+    return nil, "connection failed"
   end
-  self.socket:receive "*l"
   self.socket:send ("EHLO cosy\r\n")
   repeat
     local line = self.socket:receive "*l"
@@ -119,7 +103,7 @@ function STARTTLS_mt:connect (host, port)
     mode     = "client",
     protocol = tls_alias [self.protocol],
   })
-  local result = self:dohandshake ()
+  local result = self.socket:dohandshake ()
   self.socket:send ("EHLO cosy\r\n")
   return result
 end
@@ -202,11 +186,10 @@ function Email.send (message)
   message.to     .locale = locale
   message.subject.locale = locale
   message.body   .locale = locale
-  -- FIXME: fix calls to i18n
-  message.from    = i18n (message.from    [1], message.from   )
-  message.to      = i18n (message.to      [1], message.to     )
-  message.subject = i18n (message.subject [1], message.subject)
-  message.body    = i18n (message.body    [1], message.body   )
+  message.from    = i18n (message.from   )
+  message.to      = i18n (message.to     )
+  message.subject = i18n (message.subject)
+  message.body    = i18n (message.body   )
   return smtp.send {
     from     = message.from:match (email_pattern),
     rcpt     = message.to  :match (email_pattern),
