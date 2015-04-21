@@ -11,6 +11,6 @@ if _G.js then
 else
   return function (s)
     local Crypto = loader.hotswap "crypto"
-    return Crypto.hex (Crypto.digest ("SHA256", s))
+    return Crypto.digest ("SHA256", s)
   end
 end
