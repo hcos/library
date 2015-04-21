@@ -1,4 +1,4 @@
-package = "CosyVerif"
+package = "cosyverif"
 version = "master-1"
 
 source = {
@@ -18,7 +18,6 @@ dependencies = {
   "bcrypt ~> 1",
   "bit32 ~> 5",
   "c3 ~> 0",
-  "compat53 ~> 0",
   "copas-ev ~> 0",
   "coronest ~> 0",
   "hotswap ~> 0",
