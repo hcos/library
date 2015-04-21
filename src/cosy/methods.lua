@@ -208,7 +208,7 @@ function Methods.reset_user (request, store)
     return true
   else
     error {
-      _ = "reset_user:retry",
+      _ = "reset-user:retry",
     }
   end
 end
@@ -525,7 +525,7 @@ do
     local ok, result = loader.token.decode (value)
     if not ok then
       return nil, {
-        _ = "check:token:valid",
+        _ = "check:token:invalid",
       }
     end
     request [key] = result
@@ -543,7 +543,7 @@ do
     local value   = request [t.key]
     return  value.type == "administration"
         or  nil, {
-              _ = "check:token:valid",
+              _ = "check:token:invalid",
             }
   end
 
@@ -558,7 +558,7 @@ do
     local value   = request [t.key]
     return  value.type == "validation"
         or  nil, {
-              _ = "check:token:valid",
+              _ = "check:token:invalid",
             }
   end
 
@@ -573,7 +573,7 @@ do
     local value   = request [t.key]
     return  value.type == "authentication"
         or  nil, {
-              _ = "check:token:valid",
+              _ = "check:token:invalid",
             }
   end
 end

@@ -8,7 +8,7 @@ end
 local configuration = loader.configuration
 if configuration.token.secret._ == nil then
   error {
-    _ = "platform:no-token-secret",
+    _ = "token:no-secret",
   }
 end
 

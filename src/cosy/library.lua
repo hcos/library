@@ -53,7 +53,7 @@ function Client.__index (client, operation)
     Coevas.loop ()
     if result == nil then
       error {
-        _ = "timeout",
+        _ = "client:timeout",
       }
     elseif result.success then
       return result.response

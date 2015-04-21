@@ -18,13 +18,13 @@ return function (x)
       [locale] = translation,
     }
     logger.info {
-      _      = "platform:available-locale",
+      _      = "locale:available",
       loaded = locale,
       locale = locale,
     }
   elseif not translation then
     logger.info {
-      _      = "platform:missing-locale",
+      _      = "locale:missing",
       loaded = locale,
       locale = locale,
     }

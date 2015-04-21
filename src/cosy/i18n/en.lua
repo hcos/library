@@ -37,32 +37,18 @@ Cas 3b: A l'intention des utilisateurs quand la contribution est intégrée au l
 
 Be aware the Cosyverif software contains several modules provided "as is", we do not warrant that the modules do not infringe the intellectual property rigths of a third party.
 ]],
-  ["tos:reject"] =
-    "license %{digest} is rejected by user %{username}",
-  ["tos:outdated"] =
-    "license %{digest} is not up to date, or in wrong locale",
-  ["tos:accept"] =
-    "license %{digest} is accepted by user %{username}",
-  ["tos:accept?"] =
-    "accepting the license is required",
-    
-  ["ok"] =
-    "success",
 
-  ["platform:available-locale"] =
+  ["locale:available"] =
     "i18n locale '%{loaded}' has been loaded",
-  ["platform:missing-locale"] =
+  ["locale:missing"] =
     "i18n locale '%{loaded}' has not been loaded",
 
-  ["platform:bcrypt-rounds"] = {
+  ["bcrypt:rounds"] = {
     one   = "using one round in bcrypt for at least %{time} milliseconds of computation",
     other = "using %{count} rounds in bcrypt for at least %{time} milliseconds of computation",
   },
-  
-  ["compression:missing-format"] =
-    "format %{format} is not available for decompression",
-  
-  ["platform:no-token-secret"] =
+
+  ["token:no-secret"] =
     "token secret is not defined in configuration",
 
   ["smtp:not-available"] =
@@ -103,6 +89,8 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
     "a terms of service digest must be a MD5 digest, and thus a sequence of alphanumeric characters",
   ["check:tos_digest:incorrect"] =
     "terms of service digest is does not correspond to the terms of service",
+  ["check:token:invalid"] =
+    "token is invalid",
 
   ["create-user:email-exists"] =
     "email address %{email} is already bound to an account",
@@ -111,16 +99,6 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
 
   ["authenticate:failure"] =
     "authentication failed",
-
-  ["method:success"] =
-    "success",
-  ["method:failure"] =
-    "failure",
-
-  ["validate-user:failure"] =
-    "validation failed",
-  ["validate-user:success"] =
-    "validation successfull, authentication token is %{token}",
 
   ["reset-user:retry"] =
     "reset failed, please try again later",
@@ -144,8 +122,13 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
   ["redis:unavailable"] =
     "redis server is unavailable",
 
+  ["rpc:invalid"] =
+    "rpc message is invalid",
   ["rpc:no-operation"] =
     "unknown operation '%{reason}'",
+
+  ["client:timeout"] =
+    "connection timed out",
 
   ["reputation:not-enough"] =
     "this actions requires %{required} reputation, but only %{owned} is owned",

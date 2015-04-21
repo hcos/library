@@ -54,7 +54,7 @@ function Server.request (message)
     return loader.value.expression (translate {
       success = false,
       error   = {
-        _      = "rpc:format",
+        _      = "rpc:invalid",
         reason = message,
       },
     })

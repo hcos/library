@@ -46,7 +46,7 @@ do
   local configuration = loader.configuration
   compute_rounds ()
   logger.debug {
-    _     = "platform:bcrypt-rounds",
+    _     = "bcrypt:rounds",
     count = Password.rounds,
     time  = configuration.data.password.time._ * 1000,
   }
