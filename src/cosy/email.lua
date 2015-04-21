@@ -59,8 +59,7 @@ function Tcp.PLAINTEXT ()
 end
 
 local TLS_mt = {
-  __index     = forward__index,
-  dohandshake = dohandshake,
+  __index = forward__index,
 }
 function TLS_mt:connect (host, port)
   self.socket = self.make ()
@@ -84,8 +83,7 @@ function Tcp.TLS (protocol, make)
 end
 
 local STARTTLS_mt = {
-  __index     = forward__index,
-  dohandshake = dohandshake,
+  __index = forward__index,
 }
 function STARTTLS_mt:connect (host, port)
   self.socket = self.make ()
