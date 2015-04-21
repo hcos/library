@@ -66,6 +66,8 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
   ["check:error"] =
     "some parameters are invalid or missing",
 
+  ["check:no-check"] =
+    "request argument %{key} has not been checked",
   ["check:missing"] =
     "parameter %{key} is missing",
   ["check:is-string"] =
@@ -130,6 +132,10 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
   ["client:timeout"] =
     "connection timed out",
 
-  ["reputation:not-enough"] =
-    "this actions requires %{required} reputation, but only %{owned} is owned",
+  ["suspend:not-user"] =
+    "account %{username} is not a user",
+  ["suspend:self"] =
+    "are you mad?",
+  ["suspend:not-enough"] =
+    "suspending a user requires %{required} reputation, but only %{owned} is owned",
 }
