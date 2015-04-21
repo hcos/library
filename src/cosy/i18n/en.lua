@@ -1,6 +1,7 @@
 return {
   ["server:listening"] =
     "server is listening on %{host}:%{port}",
+
   ["tos"] =
 [[
 Cas n°1: Utilisation du logiciel Cosyverif par téléchargement
@@ -48,18 +49,11 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
   ["ok"] =
     "success",
 
-  ["platform:available-dependency"] =
-    "%{component} is available",
-  ["platform:missing-dependency"] =
-    "%{component} is not available, because %{reason}",
-  
   ["platform:available-locale"] =
     "i18n locale '%{loaded}' has been loaded",
   ["platform:missing-locale"] =
     "i18n locale '%{loaded}' has not been loaded",
-  
-  ["platform:available-compression"] =
-    "compression '%{compression}' has been loaded",
+
   ["platform:bcrypt-rounds"] = {
     one   = "using one round in bcrypt for at least %{time} milliseconds of computation",
     other = "using %{count} rounds in bcrypt for at least %{time} milliseconds of computation",
@@ -127,20 +121,13 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
     "validation failed",
   ["validate-user:success"] =
     "validation successfull, authentication token is %{token}",
-  
-  ["email:new_account:from"] =
-    '"%{name}" <%{address}>',
-  ["email:new_account:from"] =
-    '"%{name}" <%{address}>',
-  ["email:new_account:subject"] =
-    "[%{servername}] Welcome, %{username}!",
-  ["email:new_account:body"] =
-    "%{username}, your validation token is <%{validation}>.",
 
+  ["reset-user:retry"] =
+    "reset failed, please try again later",
   ["email:reset_account:from"] =
-    '"%{name}" <%{address}>',
-  ["email:reset_account:from"] =
-    '"%{name}" <%{address}>',
+    '"%{name}" <%{email}>',
+  ["email:reset_account:to"] =
+    '"%{name}" <%{email}>',
   ["email:reset_account:subject"] =
     "[%{servername}] Welcome, %{username}!",
   ["email:reset_account:body"] =
