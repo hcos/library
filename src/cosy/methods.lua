@@ -62,34 +62,8 @@ local Type = setmetatable ({
 
 -- Methods
 -- -------
---
--- Methods use the standard [JSON Web Tokens](http://jwt.io/) to authenticate users.
--- Each method takes two parameters: the decoded token contents,
--- and the request parameters.
-
--- In order to run the methods, we first have to load some dependencies:
---
--- * the `loader` (here in test mode);
--- * the `Methods` (localized);
--- * the `Configuration`, with some predefined values, and a reduced expiration
---   delay to reduce the time taken by the tests.
---
---    > Configuration = require "cosy.configuration"
---    > loader      = require "cosy.loader"
---    > Methods       = require "cosy.methods"
---    > Configuration.data.password.time        = 0.001 -- second
---    > Configuration.token.secret              = "secret"
---    > Configuration.token.algorithm           = "HS256"
---    > Configuration.server.name               = "CosyTest"
---    > Configuration.server.email              = "test@cosy.org"
---    > Configuration.expiration.account        = 2 -- second
---    > Configuration.expiration.validation     = 2 -- second
---    > Configuration.expiration.authentication = 2 -- second
 
 -- ### Information
---
--- The `information` method returns some useful or useless information about
--- the running Cosy server.
 
 function Methods.information ()
   return {
@@ -98,15 +72,6 @@ function Methods.information ()
 end
 
 -- ### Terms of Service
---
--- In order to create an account or authenticate, users of CosyVerif must
--- accept the "Terms of Service". Because of internationalization, we **must**
--- provide to users the "Terms of Service" in their language
--- (or a fallback one), and they **must** accept it by providing its digest.
---
--- The `tos` method returns the "Terms of Service" in a selected locale
--- (the user's one, or a locale provided in the request), and its computed
--- digest, that can be used later for acceptation.
 
 function Methods.tos (request)
   Parameters.check (request, {
@@ -133,14 +98,6 @@ function Methods.tos (request)
 end
 
 -- ### User Creation
-
--- User creation requires several parameters in its `request`:
---
--- * a `username`, that is unique on the server;
--- * a `password`, that is used to authenticate the user;
--- * an `email` address, where the validation token is sent;
--- a `tos_digest`, corresponding to the terms of service accepted by the user;
--- a `locale`, that is used to localize all the messages sent back to the user.
 
 function Methods.create_user (request, store)
   request.required = {
@@ -205,62 +162,25 @@ function Methods.authenticate (request, store)
   return Token.authentication (user)
 end
 
+-- ### Reset password
 
-
-
-function Methods.reset_user (_, request)
+function Methods.reset_user (request, store)
   request.required = {
     email = Parameters.email,
   }
   Parameters.check (request)
-  local username = Redis.transaction ({
-    email = Configuration.redis.key.email._ % { email = request.email },
-  }, function (p)
-    if not p.email
-    or not p.email.username then
-      error {}
-    end
-    return p.email.username
-  end)
-  local data = Redis.transaction ({
-    data  = Configuration.redis.key.user._ % { username = username },
-  }, function (p)
-    if not p.data
-    or p.data.status == Status.suspended
-    then
-      error {}
-    end
-    p.data.status = Status.inactive
-    return p.data
-  end)
-  loader.email.send {
-    locale  = data.locale,
-    from    = {
-      _     = "email:new_account:from",
-      name  = Configuration.server.name._,
-      email = Configuration.server.email._,
-    },
-    to      = {
-      _     = "email:new_account:to",
-      name  = data.name,
-      email = data.email,
-    },
-    subject = {
-      _          = "email:new_account:subject",
-      servername = Configuration.server.name._,
-      username   = data.username,
-    },
-    body    = {
-      _          = "email:new_account:body",
-      username   = data.username,
-      validation = validation_token,
-      tos        = {
-        _ = "tos",
-      },
-    },
-  }
-  loader.email.send {
-    locale  = data.locale,
+  local email = store.emails [request.email]
+  if not email then
+    return true
+  end
+  local user = store.users [email.username]
+  if not user
+  or user.type   ~= Type.user then
+    return true
+  end
+  local token     = Token.validation (user)
+  local sent, err = loader.email.send {
+    locale  = user.locale,
     from    = {
       _     = "email:reset_account:from",
       name  = Configuration.server.name._,
@@ -268,24 +188,35 @@ function Methods.reset_user (_, request)
     },
     to      = {
       _     = "email:reset_account:to",
-      name  = data.name,
-      email = data.email,
+      name  = user.username,
+      email = user.email,
     },
     subject = {
       _          = "email:reset_account:subject",
       servername = Configuration.server.name._,
-      username   = data.username,
+      username   = user.username,
     },
     body    = {
       _          = "email:reset_account:body",
-      username   = data.username,
-      validation = Token.validation.new (data),
-      tos        = {
-        _ = "tos",
-      },
+      username   = user.username,
+      validation = token,
     },
   }
+  if sent then
+    user.status     = Status.suspended
+    user.validation = token
+    return true
+  else
+    error {
+      _ = "reset_user:retry",
+    }
+  end
 end
+
+
+
+
+
 
 
 function Methods.activate_user (request)
