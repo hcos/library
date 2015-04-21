@@ -76,8 +76,8 @@ function Server.request (message)
   end
   local result, err = method (parameters or {})
   if not result then
-    print ("error:", loader.value.expression (err))
-    print (debug.traceback())
+    loader.logger.warning ("error: " .. loader.value.expression (err))
+    loader.logger.warning (debug.traceback())
     return loader.value.expression (translate {
       identifier = identifier,
       success    = false,
