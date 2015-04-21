@@ -74,14 +74,14 @@ function Server.request (message)
       },
     })
   end
-  local called, result = pcall (method, parameters or {})
-  if not called then
-    print ("error:", loader.value.expression (result))
+  local result, err = method (parameters or {})
+  if not result then
+    print ("error:", loader.value.expression (err))
     print (debug.traceback())
     return loader.value.expression (translate {
       identifier = identifier,
       success    = false,
-      error      = result,
+      error      = err,
     })
   end
   return loader.value.expression (translate {
