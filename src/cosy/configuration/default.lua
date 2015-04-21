@@ -13,6 +13,9 @@ return {
     rounds  = 6,
     timeout = 5,
   },
+  smtp = {
+    timeout = 2,
+  },
   client = {
     timeout = 5,
   },
