@@ -23,8 +23,6 @@
 local Methods  = {}
 -- The `Token` table contains utility functions for JSON Web Tokens.
 local Token    = {}
--- The `Redis` table contains the `Redis.transaction` wqrapper.
-local Redis  = {}
 
 -- Dependencies
 -- ------------
