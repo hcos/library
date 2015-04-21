@@ -1,6 +1,5 @@
 local loader     = require "cosy.loader"
 
-local Value      = loader.value
 local Logger     = loader.logger
 local Repository = loader.repository
 local repository = Repository.new ()
@@ -47,7 +46,7 @@ if not _G.js then
     local ev      = require "ev"
     local hotswap = require "hotswap" .new ()
     hotswap.register = function (filename, f)
-      ev.Stat.new (function (loop, stat)
+      ev.Stat.new (function ()
         if f () then
           changed [filename] = true
           scheduler.wakeup (co)
