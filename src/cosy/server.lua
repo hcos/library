@@ -114,6 +114,7 @@ do
   scheduler.addserver (skt, function (socket)
     local Http = hotswap "httpserver"
     local http = Http.new {
+      hotswap   = hotswap,
       socket    = socket,
       websocket = {
         protocols = { "cosy" },
