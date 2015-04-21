@@ -431,10 +431,12 @@ Proxy.iterate = Proxy.apply (function (t)
   local current   = t.current
   local coroutine = t.coroutine
   local yielded   = t.data
-  for k in pairs (current) do
-    if not yielded [k] then
-      yielded [k] = true
-      coroutine.yield (k, proxy [k])
+  if type (current) == "table" then
+    for k in pairs (current) do
+      if not yielded [k] then
+        yielded [k] = true
+        coroutine.yield (k, proxy [k])
+      end
     end
   end
 end, true)
