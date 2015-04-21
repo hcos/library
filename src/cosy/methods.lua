@@ -179,6 +179,7 @@ function Methods.create_user (request, store)
     password    = loader.password.hash (request.password),
     locale      = request.locale,
     tos_digest  = request.tos_digest,
+    reputation  = Configuration.reputation.at_creation._,
     access      = {
       public = true,
     },
@@ -272,19 +273,14 @@ function Methods.suspend_user (request, store)
       token    = Parameters.token.authentication,
     },
   })
-  local target = store [request.username]
+  local target = store.users [request.username]
   if target.type ~= Type.user then
     error {
       _        = "suspend:not-user",
       username = request.username,
     }
   end
-  local user = store [request.token.username]
-  if user == target then
-    error {
-      _ = "suspend:self",
-    }
-  end
+  local user       = store.users [request.token.username]
   local reputation = Configuration.reputation.suspend._
   if user.reputation < reputation then
     error {
@@ -298,37 +294,18 @@ function Methods.suspend_user (request, store)
   return true
 end
 
-
-
-
-
 -- ### User Deletion
 
-function Methods.delete_user (token, _)
-  if not Token.is_authentication (token) then
-    error {
-      _ = "token:not-authentication",
-    }
-  end
-  local user = Redis.transaction ({
-    user = Configuration.redis.key.user._ % { username = token.username },
-  }, function (p)
-    p.user.status = Status.suspended
-    return p.user
-  end)
-  for _ in pairs (user.contents) do
-    -- TODO
-  end
-  Redis.transaction ({
-    email = Configuration.redis.key.email._ % { email = user.email },
-  }, function (p)
-    p.email = nil
-  end)
-  Redis.transaction ({
-    user = Configuration.redis.key.user._ % { username = token.username },
-  }, function (p)
-    p.user = nil
-  end)
+function Methods.delete_user (request, store)
+  check (request, {
+    required = {
+      token = Parameters.token.authentication,
+    },
+  })
+  local user = store.users [request.token.username]
+  store.emails [user.email   ] = nil
+  store.users  [user.username] = nil
+  return true
 end
 
 -- Checks
@@ -487,13 +464,13 @@ do
     local request    = t.request
     local key        = t.key
     local value      = request [key]
-    local ok, result = loader.token.decode (value)
+    local ok, result = pcall (loader.token.decode, value)
     if not ok then
       return nil, {
         _ = "check:token:invalid",
       }
     end
-    request [key] = result
+    request [key] = result.contents
     return  true
   end
 
@@ -522,6 +499,17 @@ do
     local request = t.request
     local value   = request [t.key]
     return  value.type == "authentication"
+        or  nil, {
+              _ = "check:token:invalid",
+            }
+  end
+  checks [#checks+1] = function (t)
+    local store    = Store.new ()
+    local username = t.request [t.key].username
+    local user     = store.users [username]
+    return  user
+       and  user.type   == Type.user
+       and  user.status == Status.active
         or  nil, {
               _ = "check:token:invalid",
             }
