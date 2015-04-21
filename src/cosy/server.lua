@@ -44,7 +44,7 @@ end
 
 function Server.request (message)
   local loader = hotswap "cosy.loader"
-  local i18n     = loader.i18n
+  local i18n   = loader.i18n
   local function translate (x)
     i18n (x)
     return x
@@ -76,7 +76,8 @@ function Server.request (message)
   end
   local called, result = pcall (method, parameters or {})
   if not called then
-    print (result, debug.traceback())
+    print ("error:", loader.value.expression (result))
+    print (debug.traceback())
     return loader.value.expression (translate {
       identifier = identifier,
       success    = false,

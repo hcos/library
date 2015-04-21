@@ -28,6 +28,10 @@ local ok, err = pcall (function ()
     password = "password",
   }
   show (token)
+  lib.reset_user {
+    email = "alban.linard@gmail.com",
+  }
+  
   
   local start = require "socket".gettime ()
   local n     = 1000
