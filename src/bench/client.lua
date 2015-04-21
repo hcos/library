@@ -19,7 +19,7 @@ local ok, err = pcall (function ()
     username   = "alinard",
     password   = "password",
     email      = "alban.linard@gmail.com",
-    tos_digest = tos.tos_digest,
+    tos_digest = tos.tos_digest:upper (),
     locale     = "en",
   }
   show (token)
@@ -28,10 +28,15 @@ local ok, err = pcall (function ()
     password = "password",
   }
   show (token)
+--[==[
+  lib.suspend_user {
+    token    = token,
+    username = "alinard",
+  }
   lib.reset_user {
     email = "alban.linard@gmail.com",
   }
-  
+  --]==]
   
   local start = require "socket".gettime ()
   local n     = 1000
@@ -42,8 +47,9 @@ local ok, err = pcall (function ()
   print (math.floor (n / (finish - start)), "requests/second")
 end)
 if not ok then
-  if type (err) == table then
-    print ("error", loader.i18n (err))
+  if type (err) == "table" then
+    local message = loader.i18n (err)
+    print ("error:", message, loader.value.expression (err))
   else
     print (err)
   end
