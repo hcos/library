@@ -25,9 +25,6 @@ local Methods  = {}
 local Token    = {}
 -- The `Redis` table contains the `Redis.transaction` wqrapper.
 local Redis  = {}
--- The `Parameters` table contains several types of parameters, and defines
--- for each one several checking functions.
-local Parameters = {}
 
 -- Dependencies
 -- ------------
@@ -39,6 +36,7 @@ local Repository    = loader.repository
 local Store         = loader.store
 local Configuration = loader.configuration
 local Internal      = Repository.of (Configuration) .internal
+local Parameters    = Configuration.data
 
 Internal.redis.key = {
   users  = "user:%{key}",
@@ -60,6 +58,55 @@ local Type = setmetatable ({
   __index = assert,
 })
 
+-- Check
+-- -------
+
+local function check (request, parameters)
+  request    = request    or {}
+  parameters = parameters or {}
+  local reasons = {}
+  local checked = {}
+  for _, field in ipairs { "required", "optional" } do
+    for key, parameter in pairs (parameters [field] or {}) do
+      local value = request [key]
+      if field == "required" and value == nil then
+        reasons [#reasons+1] = {
+          _   = "check:missing",
+          key = key,
+        }
+      elseif value ~= nil then
+        for i = 1, #parameter.check do
+          local ok, reason = parameter.check [i]._ {
+            parameter = parameter,
+            request   = request,
+            key       = key,
+          }
+          checked [key] = true
+          if not ok then
+            reason.key           = key
+            reasons [#reasons+1] = reason
+            break
+          end
+        end
+      end
+    end
+  end
+  for key in pairs (request) do
+    if not checked [key] then
+      loader.logger.warning {
+        _   = "check:no-check",
+        key = key,
+      }
+    end
+  end
+  if #reasons ~= 0 then
+    error {
+      _          = "check:error",
+      reasons    = reasons,
+    }
+  end
+end
+
 -- Methods
 -- -------
 
@@ -74,7 +121,7 @@ end
 -- ### Terms of Service
 
 function Methods.tos (request)
-  Parameters.check (request, {
+  check (request, {
     optional = {
       token  = Parameters.token,
       locale = Parameters.locale,
@@ -100,14 +147,15 @@ end
 -- ### User Creation
 
 function Methods.create_user (request, store)
-  request.required = {
-    username   = Parameters.username,
-    password   = Parameters.password,
-    email      = Parameters.email,
-    tos_digest = Parameters.tos_digest,
-    locale     = Parameters.locale,
-  }
-  Parameters.check (request)
+  check (request, {
+    required = {
+      username   = Parameters.username,
+      password   = Parameters.password,
+      email      = Parameters.email,
+      tos_digest = Parameters.tos_digest,
+      locale     = Parameters.locale,
+    },
+  })
   if store.emails [request.email] then
     error {
       _     = "create-user:email-exists",
@@ -142,11 +190,12 @@ end
 -- ### Authentication
 
 function Methods.authenticate (request, store)
-  request.required = {
-    username = Parameters.username,
-    password = Parameters.password,
-  }
-  Parameters.check (request)
+  check (request, {
+    required = {
+      username = Parameters.username,
+      password = Parameters.password,
+    },
+  })
   local user = store.users [request.username]
   if not user
   or user.type   ~= Type.user
@@ -165,10 +214,11 @@ end
 -- ### Reset password
 
 function Methods.reset_user (request, store)
-  request.required = {
-    email = Parameters.email,
-  }
-  Parameters.check (request)
+  check (request, {
+    required = {
+      email = Parameters.email,
+    },
+  })
   local email = store.emails [request.email]
   if not email then
     return true
@@ -178,8 +228,8 @@ function Methods.reset_user (request, store)
   or user.type   ~= Type.user then
     return true
   end
-  local token     = Token.validation (user)
-  local sent, err = loader.email.send {
+  local token = Token.validation (user)
+  local sent  = loader.email.send {
     locale  = user.locale,
     from    = {
       _     = "email:reset_account:from",
@@ -213,98 +263,44 @@ function Methods.reset_user (request, store)
   end
 end
 
+-- ### Suspend User
 
-
-
-
-
-
-function Methods.activate_user (request)
-  if not Token.is_validation (token) then
+function Methods.suspend_user (request, store)
+  check (request, {
+    required = {
+      username = Parameters.username,
+      token    = Parameters.token.authentication,
+    },
+  })
+  local target = store [request.username]
+  if target.type ~= Type.user then
     error {
-      _ = "token:not-validation",
+      _        = "suspend:not-user",
+      username = request.username,
     }
   end
-  token = Redis.transaction ({
-    email = Configuration.redis.key.email._ % { email    = token.email    },
-    data  = Configuration.redis.key.user._  % { username = token.username },
-  }, function (p)
-    if not p.data
-    or not p.email
-    or p.data.type   ~= Type.user
-    or p.data.status ~= Status.inactive
-    then
-      error {}
-    end
-    p.data.status     = Status.active
-    p.data.expire_at  = nil
-    p.email.expire_at = nil
-    return Token.authentication.new (p.data)
-  end)
-  return {
-    token = token,
-  }
+  local user = store [request.token.username]
+  if user == target then
+    error {
+      _ = "suspend:self",
+    }
+  end
+  local reputation = Configuration.reputation.suspend._
+  if user.reputation < reputation then
+    error {
+      _        = "suspend:not-enough",
+      owned    = user.reputation,
+      required = reputation
+    }
+  end
+  user.reputation = user.reputation - reputation
+  target.status   = Status.suspended
+  return true
 end
 
 
---    > = Methods.authenticate (nil, {
---    >   username = "toto",
---    >   password = "titi",
---    > })
---    error: {...}
-
---    > = Methods.authenticate (nil, {
---    >   username = "username",
---    >   password = "password",
---    > })
---    {token=_.auth,...}
 
 
-function Methods.suspend_user (token, request)
-  if  not Token.is_authentication (token)
-  and not Token.is_administration (token)
-  then
-    error {
-      _ = "token:not-authentication",
-    }
-  end
-  request.required = {
-    username = Parameters.username,
-  }
-  Parameters.check (request)
-  if Token.is_administration (token) then
-    Redis.transaction ({
-      target = Configuration.redis.key.user._ % { username = request.username },
-    }, function (p)
-      p.target.status   = Status.suspended
-    end)
-  elseif Token.is_authentication (token) then
-    Redis.transaction ({
-      user   = Configuration.redis.key.user._ % { username = token  .username },
-      target = Configuration.redis.key.user._ % { username = request.username },
-    }, function (p)
-      local required_reputation = Configuration.reputation.suspend._
-      if p.user.reputation < required_reputation then
-        error {
-          _ = "reputation:not-enough",
-          owned    = p.user.reputation,
-          required = required_reputation
-        }
-      end
-      p.user.reputation = p.user.reputation - required_reputation
-      p.target.status   = Status.suspended
-    end)
-  end
-  
-  if  not token.username == request.username
-  and not Token.is_administration (token)
-  then
-    error {
-      _ = "forbidden",
-    }
-  end
-
-end
 
 -- ### User Deletion
 
@@ -335,44 +331,8 @@ function Methods.delete_user (token, _)
   end)
 end
 
--- Parameters
--- ----------
-
-function Parameters.check (request, parameters)
-  parameters = parameters or {}
-  local reasons  = {}
-  for field in ipairs { "required", "optional" } do
-    for key, parameter in pairs (parameters [field] or {}) do
-      local value = request [key]
-      if field == "required" and value == nil then
-        reasons [#reasons+1] = {
-          _   = "check:missing",
-          key = key,
-        }
-      elseif value ~= nil then
-        for _, f in ipairs (parameter) do
-          local ok, reason = f {
-            parameter = parameter,
-            request   = request,
-            key       = key,
-          }
-          if not ok then
-            reasons [#reasons+1] = reason
-            break
-          end
-        end
-      end
-    end
-  end
-  if #reasons ~= 0 then
-    error {
-      _          = "check:error",
-      reasons    = reasons,
-      request    = request,
-      parameters = parameters,
-    }
-  end
-end
+-- Checks
+-- ------
 
 do
   local checks
@@ -421,6 +381,7 @@ do
     local key     = t.key
     local value   = request [key]
     request [key] = value:trim ()
+    return true
   end
   checks [3] = Internal.data.string.check [2]._
   checks [4] = Internal.data.string.check [3]._
@@ -488,10 +449,14 @@ do
     [Repository.refines] = {
       Configuration.data.trimmed,
     },
-    min_size = 32,
-    max_size = 32,
+    min_size = 64,
+    max_size = 64,
   }
   checks = Internal.data.tos_digest.check
+  checks [#checks+1] = function (t)
+    t.request [t.key] = t.request [t.key]:lower ()
+    return  true
+  end
   checks [#checks+1] = function (t)
     local value   = t.request [t.key]
     local pattern = "^%x+$"
@@ -530,21 +495,6 @@ do
     end
     request [key] = result
     return  true
-  end
-
-  Internal.data.token.administration = {
-    [Repository.refines] = {
-      Configuration.data.token,
-    },
-  }
-  checks = Internal.data.token.administration.check
-  checks [#checks+1] = function (t)
-    local request = t.request
-    local value   = request [t.key]
-    return  value.type == "administration"
-        or  nil, {
-              _ = "check:token:invalid",
-            }
   end
 
   Internal.data.token.validation = {
@@ -631,12 +581,12 @@ for k, f in pairs (Methods) do
         return result
       end, request)
       if ok then
-        return result
+        return result or true
       elseif result ~= Store.Error then
-        error (result)
+        return nil, result
       end
     end
-    error {
+    return nil, {
       _ = "redis:unavailable",
     }
   end
