@@ -38,7 +38,7 @@ return function (x)
       if type (v) == "table" and not getmetatable (v) then
         local vl  = v.locale
         v.locale  = x.locale
-        v.message = translate (v)
+        translate (v)
         v.locale  = vl
       end
     end
