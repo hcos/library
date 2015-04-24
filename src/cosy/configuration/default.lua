@@ -13,6 +13,9 @@ return {
     rounds  = 6,
     timeout = 5,
   },
+  www = {
+    root = (os.getenv "PWD") .. "/www",
+  },
   smtp = {
     timeout = 2,
   },

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>CosiVerif Beta Client</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    
+    <body>
+        <!--script src="js/lua.js"></script-->
+        <script type="text/javascript" lang="Javascript" src="js/lua.vm.js"></script>
+        <script>
+Lua.executeScript = function(src) {
+console.log ("executing " + src);
+  var xhr = new XMLHttpRequest();
+  xhr.open("GET", src, false);
+  xhr.send(null);
+  if (xhr.readyState == 4 && (xhr.status == 200 || xhr.status == 0)) {
+    console.log("Downloaded Lua script: " + src);
+    L.execute(xhr.responseText);
+    console.log("Executed Lua script: " + src);
+  } else {
+    console.log("Unable to fetch Lua script: " + src);
+  }
+};
+Lua.executeScript("cosy/platform.lua");
+        </script>
+    </body> 
+</html>
+
+`

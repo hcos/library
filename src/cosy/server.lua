@@ -4,42 +4,49 @@ local hotswap = loader.hotswap
 local Server = {}
 
 function Server.get (http)
-  if http.request.method ~= "GET" then
-    http.response.status  = 405
-    http.response.message = "Method Not Allowed"
+  if  http.request.method == "POST"
+  and http.request.headers.user_agent:match "GitHub-Hookshot/"
+  and http.request.headers.x_github_event == "push"
+  and loader.configuration.debug.update then
+    os.execute "git pull --quiet --force"
   elseif http.request.headers ["upgrade"] == "websocket" then
     http () -- send response
     http.socket:send "\r\n"
     return Server.wsloop (http)
-  elseif http.request.method == "GET" then
-    if http.request.path:sub (-1) == "/" then
-      http.request.path = http.request.path .. "index.html"
-    end
-    if http.request.path:sub (-9) == "cosy.conf" then
-      http.response.status  = 403
-      http.response.message = "Forbidden"
-      http.response.body    = "Nice try ;-)\n"
-    else
-      for path in package.path:gmatch "([^;]+)" do
-        if path:sub (-5) == "?.lua" then
-          path = path:sub (1, #path - 5) .. http.request.path
-          local file = io.open (path, "r")
-          if file then
-            http.response.status  = 200
-            http.response.message = "OK"
-            http.response.body    = file:read "*all"
-            file:close ()
-            return
-          end
-        end
-      end
-    end
-    http.response.status  = 404
-    http.response.message = "Not Found"
-  else
-    http.response.status  = 500
-    http.response.message = "Internal Server Error"
+  elseif http.request.method ~= "GET" then
+    http.response.status  = 405
+    http.response.message = "Method Not Allowed"
   end
+  assert (http.request.method == "GET")
+  if  http.request.method == "GET"
+  and http.request.path == "/" then
+      http.request.path = http.request.path .. "index.html"
+  end
+  local lua_module = http.request.path:match "lua:(.*)"
+  if lua_module then
+    local path = package.searchpath (http.request.path)
+    if path then
+      local file = io.open (path, "r")
+      http.response.status  = 200
+      http.response.message = "OK"
+      http.response.body    = file:read "*all"
+      file:close ()
+      return
+    end
+  end
+  local file = io.open ("%{root}/%{path}" % {
+    root = loader.configuration.www.root._,
+    path = http.request.path
+  })
+  if file then
+    http.response.status  = 200
+    http.response.message = "OK"
+    http.response.body    = file:read "*all"
+    file:close ()
+    return
+  end
+  http.response.status  = 404
+  http.response.message = "Not Found"
 end
 
 function Server.request (message)
