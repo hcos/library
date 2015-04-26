@@ -43,6 +43,18 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
   ["locale:missing"] =
     "i18n locale '%{loaded}' has not been loaded",
 
+  ["directory:not-directory"] =
+    "a %{mode} already exists at %{directory}",
+  ["directory:created"] =
+    "directory %{directory} has been successfully created",
+  ["directory:not-created"] =
+    "directory %{directory} has not been created because %{reason}",
+
+  ["dependency:success"] =
+    "dependency %{source} has been downloaded and installed as %{target}",
+  ["dependency:failure"] =
+    "dependency %{source} is unavailable and cannot be installed as %{target}",
+
   ["bcrypt:rounds"] = {
     one   = "using one round in bcrypt for at least %{time} milliseconds of computation",
     other = "using %{count} rounds in bcrypt for at least %{time} milliseconds of computation",
