@@ -11,7 +11,6 @@ function Server.get (http)
     os.execute "git pull --quiet --force"
   elseif http.request.headers ["upgrade"] == "websocket" then
     http () -- send response
-    http.socket:send "\r\n"
     return Server.wsloop (http)
   elseif http.request.method ~= "GET" then
     http.response.status  = 405
@@ -22,9 +21,10 @@ function Server.get (http)
   and http.request.path == "/" then
       http.request.path = http.request.path .. "index.html"
   end
-  local lua_module = http.request.path:match "lua:(.*)"
+  local lua_module = http.request.path:match "/lua:(.*)"
   if lua_module then
-    local path = package.searchpath (http.request.path)
+    lua_module = lua_module:gsub ("/", ".")
+    local path = package.searchpath (lua_module, package.path)
     if path then
       local file = io.open (path, "r")
       http.response.status  = 200
@@ -112,13 +112,80 @@ function Server.wsloop (http)
   end
 end
 
+function Server.www_dependencies ()
+  local scheduler = loader.scheduler
+  scheduler.blocking (false)
+  local directories = {
+    loader.configuration.www.root._,
+    loader.configuration.www.root._ .. "/css",
+    loader.configuration.www.root._ .. "/font",
+    loader.configuration.www.root._ .. "/html",
+    loader.configuration.www.root._ .. "/js",
+  }
+  local continue = true
+  local lfs = loader.hotswap "lfs"
+  for i = 1, #directories do
+    local directory  = directories [i]
+    local attributes = lfs.attributes (directory)
+    if attributes and attributes.mode ~= "directory" then
+      loader.logger.error {
+        _         = "directory:not-directory",
+        directory = directory,
+        mode      = attributes.mode,
+      }
+      return
+    end
+    if not attributes then
+      local ok, err = lfs.mkdir (directory)
+      if ok then
+        loader.logger.info {
+          _         = "directory:created",
+          directory = directory,
+        }
+      else
+        loader.logger.error {
+          _         = "directory:not-created",
+          directory = directory,
+          reason    = err,
+        }
+        continue = false
+      end
+    end
+  end
+  while continue do
+    local request = (loader.hotswap "copas.http").request
+    for target, source in pairs (loader.configuration.dependencies) do
+      source = source._
+      local content, status = request (source)
+      if math.floor (status / 100) == 2 then
+        local file = io.open (loader.configuration.www.root._ .. "/" .. target, "w")
+        file:write (content)
+        file:close ()
+        loader.logger.info {
+          _      = "dependency:success",
+          source = source,
+          target = target,
+        }
+      else
+        loader.logger.warning {
+          _      = "dependency:failure",
+          source = source,
+          target = target,
+        }
+      end
+    end
+    scheduler.sleep (3600)
+  end
+end
+
 do
   local socket        = hotswap "socket"
   local scheduler     = loader.scheduler
   local configuration = loader.configuration
-  local host = configuration.server.host._
-  local port = configuration.server.port._
-  local skt  = socket.bind (host, port)
+  local host          = configuration.server.host._
+  local port          = configuration.server.port._
+  local skt           = socket.bind (host, port)
+--  scheduler.addthread (Server.www_dependencies)
   scheduler.addserver (skt, function (socket)
     local Http = hotswap "httpserver"
     local http = Http.new {
@@ -136,7 +203,7 @@ do
       until not continue
     end)
   end)
-  loader.logger.debug {
+  loader.logger.info {
     _    = "server:listening",
     host = host,
     port = port,

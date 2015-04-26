@@ -1,7 +1,7 @@
 local loader        = require "cosy.loader"
 local hotswap       = loader.hotswap
 local Coevas        = hotswap "copas.ev"
-Coevas:make_default ()
+Coevas.make_default ()
 local Url           = hotswap "socket.url"
 local Websocket     = hotswap "websocket"
 
