@@ -52,5 +52,8 @@ return {
   reputation = {
     at_creation = 10,
     suspend     = 50,
-  }
+  },
+  dependencies = {
+    ["js/lua.vm.js"] = "https://raw.githubusercontent.com/kripken/lua.vm.js/master/dist/lua.vm.js",
+  },
 }
