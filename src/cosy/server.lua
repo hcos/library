@@ -18,7 +18,7 @@ function Server.get (http)
   end
   assert (http.request.method == "GET")
   if  http.request.method == "GET"
-  and http.request.path == "/" then
+  and http.request.path:sub (-1) == "/" then
       http.request.path = http.request.path .. "index.html"
   end
   local lua_module = http.request.path:match "/lua:(.*)"
