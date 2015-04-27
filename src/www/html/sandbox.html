@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>CosyVerif Sandbox</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    
+    <body>
+        <!--script src="js/lua.js"></script-->
+        <script type="text/javascript" lang="JavaScript" src="/js/lua.vm.js"></script>
+        <script type="text/lua" lang="Lua" id="luascript">
+local loadhttp = function (url)
+  local co = coroutine.running ()
+  local request = js.new (js.global.XMLHttpRequest)
+  request:open ("GET", url, true)
+  request.onreadystatechange = function (event)
+    if request.readyState == 4 then
+      if request.status == 200 then
+        coroutine.resume (co, request.responseText)
+      else
+        coroutine.resume (co, nil, event.target.status)
+      end
+    end
+  end
+  request:send (nil)
+  local result, err = coroutine.yield ()
+  if result then
+    return result
+  else
+    error (err)
+  end
+end
+
+-- Test
+local function main ()
+  local result = loadhttp ("http://127.0.0.1:8080/html/")
+  js.global.console:log (result)
+end
+local co = coroutine.create (main)
+js.global.console:log ("coroutine.status: " .. coroutine.status (co))
+local ok, err = coroutine.resume (co)
+js.global.console:log ("coroutine.resume: " .. tostring (ok) .. ", " .. tostring (err))
+        </script>
+        <script type="text/javascript" lang="JavaScript">
+        /*
+          console.log ("Loading luascript");
+          console.log ("Execute luascript");
+          L.execute   (document.getElementById ("luascript").text);
+          console.log ("Execution done");
+        */
+        </script>
+    </body> 
+</html>
+
+`
