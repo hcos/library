@@ -43,6 +43,7 @@ build = {
     ["cosy.email"                 ] = "src/cosy/email.lua",
     ["cosy.i18n"                  ] = "src/cosy/i18n.lua",
     ["cosy.i18n.en"               ] = "src/cosy/i18n/en.lua",
+    ["cosy.js"                    ] = "src/cosy/js.lua",
     ["cosy.library"               ] = "src/cosy/library.lua",
     ["cosy.loader"                ] = "src/cosy/loader.lua",
     ["cosy.logger"                ] = "src/cosy/logger.lua",
