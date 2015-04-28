@@ -10,37 +10,14 @@
         <!--script src="js/lua.js"></script-->
         <script type="text/javascript" lang="JavaScript" src="/js/lua.vm.js"></script>
         <script type="text/lua" lang="Lua" id="luascript">
-local loadhttp = function (url)
-  local co = coroutine.running ()
-  local request = js.new (js.global.XMLHttpRequest)
-  request:open ("GET", url, true)
-  request.onreadystatechange = function (event)
-    if request.readyState == 4 then
-      if request.status == 200 then
-        coroutine.resume (co, request.responseText)
-      else
-        coroutine.resume (co, nil, event.target.status)
-      end
-    end
-  end
-  request:send (nil)
-  local result, err = coroutine.yield ()
-  if result then
-    return result
-  else
-    error (err)
-  end
-end
-
--- Test
 local function main ()
-  local result = loadhttp ("http://127.0.0.1:8080/html/")
-  js.global.console:log (result)
+  local loader = require "http://127.0.0.1:8080/lua/cosy.loader"
+  js.global.console:log (loader)
+  local lib = loader.hotswap "cosy.js"
+  js.global.console:log (lib)
 end
 local co = coroutine.create (main)
-js.global.console:log ("coroutine.status: " .. coroutine.status (co))
-local ok, err = coroutine.resume (co)
-js.global.console:log ("coroutine.resume: " .. tostring (ok) .. ", " .. tostring (err))
+coroutine.resume (co)
         </script>
         <script type="text/javascript" lang="JavaScript">
         /*
@@ -52,5 +29,3 @@ js.global.console:log ("coroutine.resume: " .. tostring (ok) .. ", " .. tostring
         </script>
     </body> 
 </html>
-
-`

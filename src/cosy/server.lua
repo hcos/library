@@ -1,5 +1,6 @@
 local loader  = require "cosy.loader"
 local hotswap = loader.hotswap
+hotswap "cosy.string"
 
 local Server = {}
 
@@ -21,7 +22,7 @@ function Server.get (http)
   and http.request.path:sub (-1) == "/" then
       http.request.path = http.request.path .. "index.html"
   end
-  local lua_module = http.request.path:match "/lua:(.*)"
+  local lua_module = http.request.path:match "/lua/(.*)"
   if lua_module then
     lua_module = lua_module:gsub ("/", ".")
     local path = package.searchpath (lua_module, package.path)
