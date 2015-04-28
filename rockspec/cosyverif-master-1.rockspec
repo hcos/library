@@ -29,7 +29,7 @@ dependencies = {
   "luajwt >= 1",
   "lualogging >= 1",
   "luasec >= 0",
-  "luasocket >= 3",
+  "luasocket >= 2",
   "redis-lua >= 2",
   "serpent >= 0",
 }
