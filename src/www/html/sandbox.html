@@ -10,22 +10,20 @@
         <!--script src="js/lua.js"></script-->
         <script type="text/javascript" lang="JavaScript" src="/js/lua.vm.js"></script>
         <script type="text/lua" lang="Lua" id="luascript">
+local location = js.global.location
+coroutine      = require (location.origin .. "/lua/coroutine.make") ()
 local function main ()
-  local loader = require "http://127.0.0.1:8080/lua/cosy.loader"
-  js.global.console:log (loader)
-  local lib = loader.hotswap "cosy.js"
-  js.global.console:log (lib)
+  return xpcall (function ()
+    local loader   = require (location.origin .. "/lua/cosy.loader")
+    local lib      = loader.hotswap "cosy.js"
+    js.global.console:log (lib)
+  end, function (err)
+    js.global.console:log ("error: " .. tostring (err))
+    js.global.console:log (debug.traceback ())
+  end)
 end
 local co = coroutine.create (main)
 coroutine.resume (co)
-        </script>
-        <script type="text/javascript" lang="JavaScript">
-        /*
-          console.log ("Loading luascript");
-          console.log ("Execute luascript");
-          L.execute   (document.getElementById ("luascript").text);
-          console.log ("Execution done");
-        */
         </script>
     </body> 
 </html>
