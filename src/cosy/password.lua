@@ -7,6 +7,11 @@ end
 
 local Password = {}
 
+loader.logger.warning {
+  _       = "fixme",
+  message = "bcrypt is not used for password digest",
+}
+
 --[[
 local function compute_rounds ()
   local bcrypt        = hotswap "bcrypt"
