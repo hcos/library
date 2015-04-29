@@ -38,6 +38,9 @@ Cas 3b: A l'intention des utilisateurs quand la contribution est intégrée au l
 Be aware the Cosyverif software contains several modules provided "as is", we do not warrant that the modules do not infringe the intellectual property rigths of a third party.
 ]],
 
+  ["fixme"] =
+    "FIXME: %{message}",
+
   ["locale:available"] =
     "i18n locale '%{loaded}' has been loaded",
   ["locale:missing"] =
