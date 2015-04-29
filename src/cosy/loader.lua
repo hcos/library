@@ -67,6 +67,15 @@ else
   end
 end
 
+-- FIXME: remove as soon as lua-webosockets has done a new release:
+package.preload ["bit32"] = function ()
+  local result = require "bit"
+  _G.bit32 = result
+  result.lrotate = result.rol
+  result.rrotate = result.ror
+  return result
+end
+
 do
   Loader.__index = function (_, key)
     return loader.hotswap ("cosy." .. tostring (key))
