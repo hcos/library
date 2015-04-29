@@ -58,7 +58,7 @@ if _G.js then
 else
   local ev         = require "ev"
   loader.scheduler = require "copas.ev"
-  loader.scheduler:make_default ()
+  loader.scheduler.make_default ()
   loader.hotswap   = require "hotswap" .new ()
   loader.hotswap.register = function (filename, f)
     ev.Stat.new (function ()
