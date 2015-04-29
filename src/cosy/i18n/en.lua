@@ -50,6 +50,9 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
   ["directory:not-created"] =
     "directory %{directory} has not been created because %{reason}",
 
+  ["github:push"] =
+    "received notification of a push in GitHub repository",
+
   ["dependency:success"] =
     "dependency %{source} has been downloaded and installed as %{target}",
   ["dependency:failure"] =
