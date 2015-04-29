@@ -15,7 +15,7 @@ description = {
 
 dependencies = {
   "ansicolors >= 1",
-  "bcrypt >= 1",
+--  "bcrypt >= 1",
   "bit32 >= 5",
   "c3 >= 0",
   "copas-ev >= 0",
