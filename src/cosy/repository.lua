@@ -140,6 +140,14 @@ function Repository.of (proxy)
   return proxy [RESOURCE] [REPOSITORY]
 end
 
+function Repository.iterate (proxy)
+  return Proxy.__pairs (proxy)
+end
+
+function Repository.size (proxy)
+  return Proxy.__len (proxy)
+end
+
 --    > = Repository.export (resource)
 --    > = Repository.export (repository.myotherresource)
 
@@ -305,45 +313,6 @@ function Proxy.__call (proxy, n)
   return proxy
 end
 
-function Proxy.__pairs (proxy)
-  return Proxy.iterate (proxy)
-end
-
-function Proxy.__ipairs (proxy)
-  local coroutine = require "coroutine.make" ()
-  return coroutine.wrap (function ()
-    local i = 1
-    while true do
-      local p = proxy [i]
-      if Proxy.exists (p) then
-        coroutine.yield (i, p)
-      else
-        return nil
-      end
-      i = i+1
-    end
-  end)
-end
-
-function Proxy.__len (proxy)
-  local n = 1
-  while Proxy.exists (proxy [n]) do
-    n = n+1
-  end
-  return n-1
-end
-
-function Proxy.__tostring (proxy)
-  local resource = proxy    [RESOURCE]
-  local keys     = proxy    [KEYS    ]
-  local name     = resource [NAME    ]
-  local t    = { "/" .. tostring (name) .. "/" }
-  for i = 1, #keys do
-    t [i+1] = tostring (keys [i])
-  end
-  return table.concat (t, ".")
-end
-
 function Proxy.apply (f, is_iterator)
   return function (proxy)
     local coroutine = require "coroutine.make" ()
@@ -410,6 +379,58 @@ function Proxy.apply (f, is_iterator)
   end
 end
 
+Proxy.__pairs = Proxy.apply (function (t)
+  local proxy     = t.proxy
+  local current   = t.current
+  local coroutine = t.coroutine
+  local yielded   = t.data
+  if type (current) == "table" then
+    for k in pairs (current) do
+      if not yielded [k] then
+        yielded [k] = true
+        coroutine.yield (k, proxy [k])
+      end
+    end
+  end
+end, true)
+
+function Proxy.__ipairs (proxy)
+  local coroutine = require "coroutine.make" ()
+  return coroutine.wrap (function ()
+    local i = 1
+    while true do
+      local p = proxy [i]
+      if Proxy.exists (p) then
+        coroutine.yield (i, p)
+      else
+        return nil
+      end
+      i = i+1
+    end
+  end)
+end
+
+function Proxy.__len (proxy)
+  local n = 1
+  while Proxy.exists (proxy [n]) do
+    n = n+1
+  end
+  return n-1
+end
+
+Proxy.size = Proxy.__len
+
+function Proxy.__tostring (proxy)
+  local resource = proxy    [RESOURCE]
+  local keys     = proxy    [KEYS    ]
+  local name     = resource [NAME    ]
+  local t    = { "/" .. tostring (name) .. "/" }
+  for i = 1, #keys do
+    t [i+1] = tostring (keys [i])
+  end
+  return table.concat (t, ".")
+end
+
 Proxy.value = Proxy.apply (function (t)
   local coroutine = t.coroutine
   local current   = t.current
@@ -425,21 +446,6 @@ Proxy.exists = Proxy.apply (function (t)
   local coroutine = t.coroutine
   coroutine.yield (true)
 end, false)
-
-Proxy.iterate = Proxy.apply (function (t)
-  local proxy     = t.proxy
-  local current   = t.current
-  local coroutine = t.coroutine
-  local yielded   = t.data
-  if type (current) == "table" then
-    for k in pairs (current) do
-      if not yielded [k] then
-        yielded [k] = true
-        coroutine.yield (k, proxy [k])
-      end
-    end
-  end
-end, true)
 
 function Proxy.deplaceholderize (proxy, res)
   local resource   = proxy    [RESOURCE  ]
