@@ -7,6 +7,7 @@ end
 
 local Password = {}
 
+--[[
 local function compute_rounds ()
   local bcrypt        = hotswap "bcrypt"
   local time          = loader.time
@@ -26,21 +27,26 @@ local function compute_rounds ()
   end
   return Password.rounds
 end
+--]]
 
 function Password.hash (password)
-  local bcrypt = hotswap "bcrypt"
-  return bcrypt.digest (password, Password.rounds)
+--  local bcrypt = hotswap "bcrypt"
+--  return bcrypt.digest (password, Password.rounds)
+  return loader.digest (password)
 end
 
 function Password.verify (password, digest)
-  local bcrypt = hotswap "bcrypt"
-  return bcrypt.verify (password, digest)
+--  local bcrypt = hotswap "bcrypt"
+--  return bcrypt.verify (password, digest)
+  return loader.digest (password) == digest
 end
 
 function Password.is_too_cheap (digest)
-  return tonumber (digest:match "%$%w+%$(%d+)%$") < Password.rounds
+  return false
+--  return tonumber (digest:match "%$%w+%$(%d+)%$") < Password.rounds
 end
 
+--[[
 do
   local logger        = loader.logger
   local configuration = loader.configuration
@@ -51,5 +57,6 @@ do
     time  = configuration.data.password.time._ * 1000,
   }
 end
+--]]
 
 return Password
