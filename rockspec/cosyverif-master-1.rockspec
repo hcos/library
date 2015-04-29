@@ -27,6 +27,7 @@ dependencies = {
   "lua-websockets >= v2",
   "luacrypto >= 0",
   "luajwt >= 1",
+  "luafilesystem >= 1",
   "lualogging >= 1",
   "luasec >= 0",
   "luasocket >= 2",
