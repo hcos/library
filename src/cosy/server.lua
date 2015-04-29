@@ -9,7 +9,11 @@ function Server.get (http)
   and http.request.headers.user_agent:match "GitHub-Hookshot/"
   and http.request.headers.x_github_event == "push"
   and loader.configuration.debug.update then
+    loader.logger.info {
+      _ = "github:push",
+    }
     os.execute "git pull --quiet --force"
+    return
   elseif http.request.headers ["upgrade"] == "websocket" then
     http () -- send response
     return Server.wsloop (http)
@@ -186,7 +190,7 @@ do
   local host          = configuration.server.host._
   local port          = configuration.server.port._
   local skt           = socket.bind (host, port)
---  scheduler.addthread (Server.www_dependencies)
+  scheduler.addthread (Server.www_dependencies)
   scheduler.addserver (skt, function (socket)
     local Http = hotswap "httpserver"
     local http = Http.new {
