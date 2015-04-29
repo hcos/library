@@ -424,8 +424,8 @@ do
     [Repository.refines] = {
       Configuration.data.trimmed,
     },
-    min_size = 64,
-    max_size = 64,
+    min_size = 128,
+    max_size = 128,
   }
   checks = Internal.data.tos_digest.check
   checks [#checks+1] = function (t)
