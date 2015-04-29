@@ -7,14 +7,14 @@ do
 end
 
 local ok, err = pcall (function ()
-  local function show (x)
-    print (loader.value.expression (x))
+  local function show (name, x)
+    print (name, loader.value.expression (x))
   end
   local lib   = Library.connect "http://127.0.0.1:8080/"
   local info  = lib.information ()
-  show (info)
+  show ("information", info)
   local tos   = lib.tos ()
-  show (tos)
+  show ("terms of service", tos)
   local token = lib.create_user {
     username   = "alinard",
     password   = "password",
@@ -22,13 +22,27 @@ local ok, err = pcall (function ()
     tos_digest = tos.tos_digest:upper (),
     locale     = "en",
   }
-  show (token)
+  show ("create user", token)
   local token = lib.authenticate {
     username = "alinard",
     password = "password",
   }
-  show (token)
---[==[
+  show ("authenticate", token)
+--  local result = lib.suspend_user {
+--    token    = token,
+--    username = "alinard",
+--  }
+--  show ("suspend user", result)
+  local result = lib.delete_user {
+    token = token,
+  }
+  show ("delete user", result)
+--  local token = lib.authenticate {
+--    username = "alinard",
+--    password = "password",
+--  }
+--  show ("authenticate", token)
+  --[==[
   lib.suspend_user {
     token    = token,
     username = "alinard",

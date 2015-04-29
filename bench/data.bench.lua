@@ -1,8 +1,8 @@
-local profiler = false
-local quantity = 1000000
-local assert   = require "luassert"
-local Data     = require "cosy.data"
-local Platform = require "cosy.platform"
+local profiler   = false
+local quantity   = 1000000
+local assert     = require "luassert"
+local Repository = require "cosy.resource"
+local Platform   = require "cosy.platform"
 
 local function test_write ()
   local repository = Data.new {}
