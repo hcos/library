@@ -88,8 +88,6 @@ function Server.request (message)
   end
   local result, err = method (parameters or {})
   if not result then
-    loader.logger.warning ("error: " .. loader.value.expression (err))
-    loader.logger.warning (debug.traceback())
     return loader.value.expression (translate {
       identifier = identifier,
       success    = false,
@@ -157,7 +155,7 @@ function Server.www_dependencies ()
       end
     end
   end
-  while continue do
+--  while continue do
     local request = (loader.hotswap "copas.http").request
     for target, source in pairs (loader.configuration.dependencies) do
       source = source._
@@ -179,8 +177,8 @@ function Server.www_dependencies ()
         }
       end
     end
-    scheduler.sleep (3600)
-  end
+--    scheduler.sleep (3600)
+--  end
 end
 
 do

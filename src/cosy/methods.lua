@@ -560,16 +560,20 @@ Internal.redis.retry = 2
 for k, f in pairs (Methods) do
   Methods [k] = function (request)
     for _ = 1, Configuration.redis.retry._ do
-      local ok, result = pcall (function (request)
+      local err
+      local ok, result = xpcall (function ()
         local store  = Store.new ()
         local result = f (request, store)
         Store.commit (store)
         return result
-      end, request)
+      end, function (e)
+        err = e
+        loader.logger.debug ("Error: " .. loader.value.encode (e) .. " => " .. debug.traceback ())
+      end)
       if ok then
         return result or true
-      elseif result ~= Store.Error then
-        return nil, result
+      elseif err ~= Store.Error then
+        return nil, err
       end
     end
     return nil, {
