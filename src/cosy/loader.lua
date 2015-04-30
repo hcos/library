@@ -74,7 +74,7 @@ Loader.__call  = function (_, key)
   return loader.hotswap (key)
 end
 
-package.preload.bit = function ()
+package.preload.bit32 = function ()
   loader.logger.warning {
     _       = "fixme",
     message = "global bit32 is created for lua-websockets",
