@@ -155,7 +155,7 @@ function Server.www_dependencies ()
       end
     end
   end
---  while continue do
+  if continue then
     local request = (loader.hotswap "copas.http").request
     for target, source in pairs (loader.configuration.dependencies) do
       source = source._
@@ -177,8 +177,7 @@ function Server.www_dependencies ()
         }
       end
     end
---    scheduler.sleep (3600)
---  end
+  end
 end
 
 do

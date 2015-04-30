@@ -67,19 +67,22 @@ else
   end
 end
 
--- FIXME: remove as soon as lua-webosockets has done a new release:
-package.preload ["bit32"] = function ()
-  local result = require "bit"
-  _G.bit32 = result
-  result.lrotate = result.rol
-  result.rrotate = result.ror
-  return result
+Loader.__index = function (_, key)
+  return loader.hotswap ("cosy." .. tostring (key))
+end
+Loader.__call  = function (_, key)
+  return loader.hotswap (key)
 end
 
-do
-  Loader.__index = function (_, key)
-    return loader.hotswap ("cosy." .. tostring (key))
-  end
+package.preload.bit = function ()
+  loader.logger.warning {
+    _       = "fixme",
+    message = "global bit32 is created for lua-websockets",
+  }
+  _G.bit32         = require "bit"
+  _G.bit32.lrotate = _G.bit32.rol
+  _G.bit32.rrotate = _G.bit32.ror
+  return _G.bit32
 end
 
 return setmetatable (loader, Loader)

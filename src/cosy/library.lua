@@ -1,11 +1,11 @@
 local loader        = require "cosy.loader"
-local hotswap       = loader.hotswap
-hotswap "cosy.string"
-
-local Coevas        = hotswap "copas.ev"
+local _             = loader.string
+_G.coroutine        = loader "coroutine.make" ()
+local Coevas        = loader "copas.ev"
 Coevas.make_default ()
-local Url           = hotswap "socket.url"
-local Websocket     = hotswap "websocket"
+local Url           = loader "socket.url"
+local Websocket     = loader "websocket"
+
 
 local Library = {}
 local Client  = {}
