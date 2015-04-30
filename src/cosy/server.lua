@@ -6,13 +6,15 @@ local Server = {}
 
 function Server.get (http)
   if  http.request.method == "POST"
-  and http.request.headers.user_agent:match "GitHub-Hookshot/"
+  and http.request.headers.user_agent:match "GitHub%-Hookshot/"
   and http.request.headers.x_github_event == "push"
-  and loader.configuration.debug.update then
+  and loader.configuration.debug.update._ then
     loader.logger.info {
       _ = "github:push",
     }
     os.execute "git pull --quiet --force"
+    http.response.status  = 200
+    http.response.message = "OK"
     return
   elseif http.request.headers ["upgrade"] == "websocket" then
     http () -- send response
