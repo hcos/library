@@ -1,5 +1,4 @@
 local loader  = require "cosy.loader"
-local hotswap = loader.hotswap
 
 if _G.js then
   error "Not available"
@@ -46,7 +45,7 @@ function Password.verify (password, digest)
   return loader.digest (password) == digest
 end
 
-function Password.is_too_cheap (digest)
+function Password.is_too_cheap ()
   return false
 --  return tonumber (digest:match "%$%w+%$(%d+)%$") < Password.rounds
 end
