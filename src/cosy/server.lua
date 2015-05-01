@@ -157,28 +157,32 @@ function Server.www_dependencies ()
       end
     end
   end
-  if continue then
+  while continue do
     local request = (loader.hotswap "copas.http").request
-    for target, source in pairs (loader.configuration.dependencies) do
-      source = source._
-      local content, status = request (source)
-      if math.floor (status / 100) == 2 then
-        local file = io.open (loader.configuration.www.root._ .. "/" .. target, "w")
-        file:write (content)
-        file:close ()
-        loader.logger.info {
-          _      = "dependency:success",
-          source = source,
-          target = target,
-        }
-      else
-        loader.logger.warning {
-          _      = "dependency:failure",
-          source = source,
-          target = target,
-        }
+    for target in pairs (loader.configuration.dependencies) do
+      local source  = loader.configuration.dependencies [target]
+      local url     = tostring (source._)
+      if url:match "^http" then
+        local content, status = request (url)
+        if math.floor (status / 100) == 2 then
+          local file = io.open (loader.configuration.www.root._ .. "/" .. target, "w")
+          file:write (content)
+          file:close ()
+          loader.logger.info {
+            _      = "dependency:success",
+            source = source,
+            target = target,
+          }
+        else
+          loader.logger.warning {
+            _      = "dependency:failure",
+            source = source,
+            target = target,
+          }
+        end
       end
     end
+    scheduler.sleep (loader.configuration.dependencies.expiration._)
   end
 end
 

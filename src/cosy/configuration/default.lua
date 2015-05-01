@@ -54,8 +54,8 @@ return {
     suspend     = 50,
   },
   dependencies = {
+    expiration = 24 * 3600, -- 1 day
     ["js/lua.vm.js"] = "https://raw.githubusercontent.com/kripken/lua.vm.js/master/dist/lua.vm.js",
     ["js/sjcl.js"  ] = "http://bitwiseshiftleft.github.io/sjcl/sjcl.js",
-    
   },
 }
