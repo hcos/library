@@ -198,14 +198,19 @@ function Methods.authenticate (request, store)
   local user = store.users [request.username]
   if not user
   or user.type   ~= Type.user
-  or user.status ~= Status.active
-  or not loader.password.verify (request.password, user.password) then
+  or user.status ~= Status.active then
     error {
       _ = "authenticate:failure",
     }
   end
-  if loader.password.is_too_cheap (user.password) then
-    user.password = loader.password.hash (request.password)
+  local verified = loader.password.verify (request.password, user.password)
+  if not verified then
+    error {
+      _ = "authenticate:failure",
+    }
+  end
+  if type (verified) == "string" then
+    user.password = verified
   end
   return Token.authentication (user)
 end

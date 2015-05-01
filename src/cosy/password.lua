@@ -6,14 +6,8 @@ end
 
 local Password = {}
 
-loader.logger.warning {
-  _       = "fixme",
-  message = "bcrypt is not used for password digest",
-}
-
---[[
 local function compute_rounds ()
-  local bcrypt        = hotswap "bcrypt"
+  local bcrypt        = loader.hotswap "bcrypt"
   local time          = loader.time
   local configuration = loader.configuration
   for _ = 1, 5 do
@@ -31,26 +25,23 @@ local function compute_rounds ()
   end
   return Password.rounds
 end
---]]
 
 function Password.hash (password)
---  local bcrypt = hotswap "bcrypt"
---  return bcrypt.digest (password, Password.rounds)
-  return loader.digest (password)
+  local bcrypt = loader.hotswap "bcrypt"
+  return bcrypt.digest (password, Password.rounds)
 end
 
 function Password.verify (password, digest)
---  local bcrypt = hotswap "bcrypt"
---  return bcrypt.verify (password, digest)
-  return loader.digest (password) == digest
+  local bcrypt = loader.hotswap "bcrypt"
+  if not bcrypt.verify (password, digest) then
+    return false
+  end
+  if tonumber (digest:match "%$%w+%$(%d+)%$") < Password.rounds then
+    return Password.hash (password)
+  end
+  return true
 end
 
-function Password.is_too_cheap ()
-  return false
---  return tonumber (digest:match "%$%w+%$(%d+)%$") < Password.rounds
-end
-
---[[
 do
   local logger        = loader.logger
   local configuration = loader.configuration
@@ -61,6 +52,5 @@ do
     time  = configuration.data.password.time._ * 1000,
   }
 end
---]]
 
 return Password
