@@ -12,7 +12,20 @@ function Server.get (http)
     loader.logger.info {
       _ = "github:push",
     }
-    os.execute "git pull --quiet --force"
+    local temporary = os.tmpname ()
+    local file      = io.open (temporary, "w")
+    file:write [[
+#! /usr/bin/env bash
+git pull --quiet --force
+luarocks install --force --only-deps cosyverif
+for rock in $(luarocks list --outdated --porcelain | cut -f 1)
+do
+  luarocks install --force ${rock}
+done
+rm --force $0
+]]
+    file:close ()
+    os.execute ("bash " .. temporary .. " &")
     http.response.status  = 200
     http.response.message = "OK"
     return
@@ -22,6 +35,7 @@ function Server.get (http)
   elseif http.request.method ~= "GET" then
     http.response.status  = 405
     http.response.message = "Method Not Allowed"
+    return
   end
   assert (http.request.method == "GET")
   if  http.request.method == "GET"
@@ -57,8 +71,7 @@ function Server.get (http)
 end
 
 function Server.request (message)
-  local loader = hotswap "cosy.loader"
-  local i18n   = loader.i18n
+  local i18n = loader.i18n
   local function translate (x)
     i18n (x)
     return x
@@ -187,12 +200,11 @@ function Server.www_dependencies ()
 end
 
 do
-  local socket        = hotswap "socket"
   local scheduler     = loader.scheduler
   local configuration = loader.configuration
   local host          = configuration.server.host._
   local port          = configuration.server.port._
-  local skt           = socket.bind (host, port)
+  local skt           = (hotswap "socket").bind (host, port)
   scheduler.addthread (Server.www_dependencies)
   scheduler.addserver (skt, function (socket)
     local Http = hotswap "httpserver"
