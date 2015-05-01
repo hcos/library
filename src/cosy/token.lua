@@ -5,8 +5,7 @@ if _G.js then
   error "Not available"
 end
 
-local configuration = loader.configuration
-if configuration.token.secret._ == nil then
+if loader.configuration.token.secret._ == nil then
   error {
     _ = "token:no-secret",
   }

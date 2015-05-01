@@ -103,10 +103,9 @@ function Collection.__pairs (collection)
       cursor = t [1]
       local data = t [2]
       for i = 1, #data do
-        local name  = data [i]
-        local key   = loader.value.decode ((collection [PATTERN] / name).key)
+        local key   = (collection [PATTERN] / data [i]).key
         local value = collection [key]
-        coroutine.yield (key, value)
+        coroutine.yield (loader.value.decode (key), value)
       end
     until cursor == "0"
   end)

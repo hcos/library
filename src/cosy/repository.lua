@@ -214,8 +214,8 @@ end
 -- Proxy
 -- -----
 
-table.pack   = table.pack   or function (...) return { ... } end
-table.unpack = table.unpack or unpack
+local pack   = table.pack   or function (...) return { ... } end
+local unpack = table.unpack or unpack
 
 function Proxy.new (resource)
   assert (getmetatable (resource) == Resource.__metatable)
@@ -242,7 +242,7 @@ function Proxy.__serialize (proxy)
   return {
     [Repository.proxy   ] = true,
     [Repository.resource] = resource [NAME],
-    table.unpack (keys),
+    unpack (keys),
   }
 end
 
@@ -256,7 +256,7 @@ function Proxy.__index (proxy, key)
     return found
   end
   local keys  = proxy [KEYS]
-  local nkeys = table.pack (table.unpack (keys))
+  local nkeys = pack (unpack (keys))
   nkeys [#nkeys+1] = key
   local result = setmetatable ({
     [RESOURCE] = proxy [RESOURCE],
@@ -314,7 +314,7 @@ function Proxy.__call (proxy, n)
 end
 
 function Proxy.apply (f, is_iterator)
-  return function (proxy)
+  return function (p)
     local coroutine = require "coroutine.make" ()
     local function perform (proxy, data, seen)
       local resource = proxy [RESOURCE]
@@ -369,7 +369,7 @@ function Proxy.apply (f, is_iterator)
       end
     end
     local result = coroutine.wrap (function ()
-      perform (proxy, {}, {})
+      perform (p, {}, {})
     end)
     if is_iterator then
       return result

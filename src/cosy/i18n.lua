@@ -30,20 +30,20 @@ return function (x)
     }
   end
 
-  local function translate (x)
-    if type (x) ~= "table" then
-      return x
+  local function translate (t)
+    if type (t) ~= "table" then
+      return t
     end
-    for _, v in pairs (x) do
+    for _, v in pairs (t) do
       if type (v) == "table" and not getmetatable (v) then
         local vl  = v.locale
-        v.locale  = x.locale
+        v.locale  = t.locale
         translate (v)
         v.locale  = vl
       end
     end
-    if x._ then
-      x.message = i18n.translate (x._, x)
+    if t._ then
+      t.message = i18n.translate (t._, t)
     end
     return x
   end

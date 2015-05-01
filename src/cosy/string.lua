@@ -1,4 +1,5 @@
 local metatable = getmetatable ""
+local string    = string
 
 --    > require "cosy.string"
 
@@ -29,8 +30,8 @@ end
 --    "%%{_1}-%%{_2}-%%{_3}"
 
 -- http://stackoverflow.com/questions/9790688/escaping-strings-for-gsub
-function string.escape (string)
-  return string
+function string.escape (s)
+  return s
         :gsub('%%', '%%%%')
         :gsub('%^', '%%%^')
         :gsub('%$', '%%%$')
@@ -45,7 +46,7 @@ function string.escape (string)
         :gsub('%?', '%%%?')
 end
 
-metatable.__div = function (pattern, string)
+metatable.__div = function (pattern, s)
   local names = {}
   pattern = pattern:escape ()
   pattern = pattern:gsub ("(.?)%%%%{(.-)}", function (previous, key)
@@ -61,7 +62,7 @@ metatable.__div = function (pattern, string)
   if pattern:sub (-1,1) ~= "$" then
     pattern = pattern .. "$"
   end
-  local results = { string:match (pattern) }
+  local results = { s:match (pattern) }
   if #results == 0 then
     return nil
   end

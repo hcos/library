@@ -161,7 +161,7 @@ function Email.discover ()
         }
         local ok, s = pcall (smtp.open, host, port, Tcp [method] (protocol, make_socket.sync))
         if ok then
-          local ok = pcall (s.auth, s, username, password, s:greet (domain))
+          ok = pcall (s.auth, s, username, password, s:greet (domain))
           if ok then
             configuration.smtp.port     = port
             configuration.smtp.method   = method
