@@ -1,6 +1,4 @@
 local loader  = require "cosy.loader"
-local hotswap = loader.hotswap
-hotswap "cosy.string"
 
 local Server = {}
 
@@ -204,7 +202,7 @@ do
   local configuration = loader.configuration
   local host          = configuration.server.host._
   local port          = configuration.server.port._
-  local skt           = (hotswap "socket").bind (host, port)
+  local skt           = (loader.hotswap "socket").bind (host, port)
   scheduler.addthread (Server.www_dependencies)
   scheduler.addserver (skt, function (socket)
     local Http = hotswap "httpserver"
