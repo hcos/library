@@ -79,7 +79,7 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
   ["configuration:using"] =
     "using configuration in directory %{path}",
   ["configuration:skipping"] =
-    "skipping configuration in directory %{path}, because %{reason}",
+    "skipping configuration in directory %{path}, because file is missing or not readable",
 
   ["check:error"] =
     "some parameters are invalid or missing",
