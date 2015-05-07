@@ -31,10 +31,8 @@ local Token    = {}
 local loader        = require "cosy.loader"
 
 local Repository    = loader.repository
-local Store         = loader.store
 local Configuration = loader.configuration
 local Internal      = Repository.of (Configuration) .internal
-local Parameters    = Configuration.data
 
 Internal.redis.key = {
   users  = "user:%{key}",
@@ -42,7 +40,7 @@ Internal.redis.key = {
   tokens = "token:%{key}",
 }
 
-local Status = setmetatable ({
+Methods.Status = setmetatable ({
   inactive  = "inactive",
   active    = "active",
   suspended = "suspended",
@@ -50,60 +48,11 @@ local Status = setmetatable ({
   __index = assert,
 })
 
-local Type = setmetatable ({
+Methods.Type = setmetatable ({
   user = "user",
 }, {
   __index = assert,
 })
-
--- Check
--- -------
-
-local function check (request, parameters)
-  request    = request    or {}
-  parameters = parameters or {}
-  local reasons = {}
-  local checked = {}
-  for _, field in ipairs { "required", "optional" } do
-    for key, parameter in pairs (parameters [field] or {}) do
-      local value = request [key]
-      if field == "required" and value == nil then
-        reasons [#reasons+1] = {
-          _   = "check:missing",
-          key = key,
-        }
-      elseif value ~= nil then
-        for i = 1, #parameter.check do
-          local ok, reason = parameter.check [i]._ {
-            parameter = parameter,
-            request   = request,
-            key       = key,
-          }
-          checked [key] = true
-          if not ok then
-            reason.key           = key
-            reasons [#reasons+1] = reason
-            break
-          end
-        end
-      end
-    end
-  end
-  for key in pairs (request) do
-    if not checked [key] then
-      loader.logger.warning {
-        _   = "check:no-check",
-        key = key,
-      }
-    end
-  end
-  if #reasons ~= 0 then
-    error {
-      _          = "check:error",
-      reasons    = reasons,
-    }
-  end
-end
 
 -- Methods
 -- -------
@@ -119,10 +68,10 @@ end
 -- ### Terms of Service
 
 function Methods.tos (request)
-  check (request, {
+  loader.parameters.check (request, {
     optional = {
-      token  = Parameters.token,
-      locale = Parameters.locale,
+      token  = loader.parameters.token,
+      locale = loader.parameters.locale,
     },
   })
   local locale = Configuration.locale.default._
@@ -145,13 +94,13 @@ end
 -- ### User Creation
 
 function Methods.create_user (request, store)
-  check (request, {
+  loader.parameters.check (request, {
     required = {
-      username   = Parameters.username,
-      password   = Parameters.password,
-      email      = Parameters.email,
-      tos_digest = Parameters.tos_digest,
-      locale     = Parameters.locale,
+      username   = loader.parameters.username,
+      password   = loader.parameters.password,
+      email      = loader.parameters.email,
+      tos_digest = loader.parameters.tos_digest,
+      locale     = loader.parameters.locale,
     },
   })
   if store.emails [request.email] then
@@ -170,8 +119,8 @@ function Methods.create_user (request, store)
     username  = request.username,
   }
   store.users [request.username] = {
-    type        = Type.user,
-    status      = Status.active,
+    type        = Methods.Type.user,
+    status      = Methods.Status.active,
     username    = request.username,
     email       = request.email,
     password    = loader.password.hash (request.password),
@@ -189,16 +138,16 @@ end
 -- ### Authentication
 
 function Methods.authenticate (request, store)
-  check (request, {
+  loader.parameters.check (request, {
     required = {
-      username = Parameters.username,
-      password = Parameters.password,
+      username = loader.parameters.username,
+      password = loader.parameters.password,
     },
   })
   local user = store.users [request.username]
   if not user
-  or user.type   ~= Type.user
-  or user.status ~= Status.active then
+  or user.type   ~= Methods.Type.user
+  or user.status ~= Methods.Status.active then
     error {
       _ = "authenticate:failure",
     }
@@ -218,9 +167,9 @@ end
 -- ### Reset password
 
 function Methods.reset_user (request, store)
-  check (request, {
+  loader.parameters.check (request, {
     required = {
-      email = Parameters.email,
+      email = loader.parameters.email,
     },
   })
   local email = store.emails [request.email]
@@ -229,7 +178,7 @@ function Methods.reset_user (request, store)
   end
   local user = store.users [email.username]
   if not user
-  or user.type   ~= Type.user then
+  or user.type   ~= Methods.Type.user then
     return true
   end
   local token = Token.validation (user)
@@ -257,7 +206,7 @@ function Methods.reset_user (request, store)
     },
   }
   if sent then
-    user.status     = Status.suspended
+    user.status     = Methods.Status.suspended
     user.validation = token
     return true
   else
@@ -270,14 +219,14 @@ end
 -- ### Suspend User
 
 function Methods.suspend_user (request, store)
-  check (request, {
+  loader.parameters.check (request, {
     required = {
-      username = Parameters.username,
-      token    = Parameters.token.authentication,
+      username = loader.parameters.username,
+      token    = loader.parameters.token.authentication,
     },
   })
   local target = store.users [request.username]
-  if target.type ~= Type.user then
+  if target.type ~= Methods.Type.user then
     error {
       _        = "suspend:not-user",
       username = request.username,
@@ -293,230 +242,22 @@ function Methods.suspend_user (request, store)
     }
   end
   user.reputation = user.reputation - reputation
-  target.status   = Status.suspended
+  target.status   = Methods.Status.suspended
   return true
 end
 
 -- ### User Deletion
 
 function Methods.delete_user (request, store)
-  check (request, {
+  loader.parameters.check (request, {
     required = {
-      token = Parameters.token.authentication,
+      token = loader.parameters.token.authentication,
     },
   })
   local user = store.users [request.token.username]
   store.emails [user.email   ] = nil
   store.users  [user.username] = nil
   return true
-end
-
--- Checks
--- ------
-
-do
-  local checks
-
-  Internal.data.string = {
-    min_size = 0,
-    max_size = math.huge,
-  }
-  
-  checks = Internal.data.string.check
-  checks [1] = function (t)
-    local value = t.request [t.key]
-    return  type (value) == "string"
-        or  nil, {
-              _   = "check:is-string",
-            }
-  end
-  checks [2] = function (t)
-    local value = t.request [t.key]
-    local size  = t.parameter.min_size._
-    return  #value >= size
-        or  nil, {
-              _     = "check:min-size",
-              count = size,
-            }
-  end
-  checks [3] = function (t)
-    local value = t.request [t.key]
-    local size  = t.parameter.max_size._
-    return  #value <= size
-        or  nil, {
-              _     = "check:max-size",
-              count = size,
-            }
-  end
-  
-
-  Internal.data.trimmed = {
-    [Repository.refines] = {
-      Configuration.data.string,
-    }
-  }
-  checks = Internal.data.trimmed.check
-  checks [2] = function (t)
-    local request = t.request
-    local key     = t.key
-    local value   = request [key]
-    request [key] = value:trim ()
-    return true
-  end
-  checks [3] = Internal.data.string.check [2]._
-  checks [4] = Internal.data.string.check [3]._
-
-  Internal.data.username = {
-    [Repository.refines] = {
-      Configuration.data.trimmed,
-    }
-  }
-  checks = Internal.data.username.check
-  checks [#checks+1] = function (t)
-    local value = t.request [t.key]
-    return  value:find "^%w[%w%-_]+$"
-        or  nil, {
-              _        = "check:username:alphanumeric",
-              username = value,
-            }
-  end
-
-  Internal.data.password = {
-    [Repository.refines] = {
-      Configuration.data.trimmed,
-    }
-  }
-
-  Internal.data.email = {
-    [Repository.refines] = {
-      Configuration.data.trimmed,
-    }
-  }
-  checks = Internal.data.email.check
-  checks [#checks+1] = function (t)
-    local value   = t.request [t.key]
-    local pattern = "^.*@[%w%.%%%+%-]+%.%w%w%w?%w?$"
-    return  value:find (pattern)
-        or  nil, {
-              _     = "check:email:pattern",
-              email = value,
-            }
-  end
-
-  Internal.data.name = {
-    [Repository.refines] = {
-      Configuration.data.trimmed,
-    }
-  }
-
-  Internal.data.locale = {
-    [Repository.refines] = {
-      Configuration.data.trimmed,
-    }
-  }
-  checks = Internal.data.locale.check
-  checks [#checks+1] = function (t)
-    local value = t.request [t.key]
-    return  value:find "^%a%a$"
-        or  value:find "^%a%a_%a%a$"
-        or  nil, {
-              _      = "check:locale:pattern",
-              locale = value,
-            }
-  end
-
-  Internal.data.tos_digest = {
-    [Repository.refines] = {
-      Configuration.data.trimmed,
-    },
-    min_size = 128,
-    max_size = 128,
-  }
-  checks = Internal.data.tos_digest.check
-  checks [#checks+1] = function (t)
-    t.request [t.key] = t.request [t.key]:lower ()
-    return  true
-  end
-  checks [#checks+1] = function (t)
-    local value   = t.request [t.key]
-    local pattern = "^%x+$"
-    return  value:find (pattern)
-        or  nil, {
-              _          = "check:tos_digest:pattern",
-              tos_digest = value,
-            }
-  end
-  checks [#checks+1] = function (t)
-    local request = t.request
-    local value   = request [t.key]
-    local tos = Methods.tos { locale = request.locale }
-    return  tos.tos_digest == value
-        or  nil, {
-              _          = "check:tos_digest:incorrect",
-              tos_digest = value,
-            }
-  end
-
-  Internal.data.token = {
-    [Repository.refines] = {
-      Configuration.data.trimmed,
-    },
-  }
-  checks = Internal.data.token.check
-  checks [#checks+1] = function (t)
-    local request    = t.request
-    local key        = t.key
-    local value      = request [key]
-    local ok, result = pcall (loader.token.decode, value)
-    if not ok then
-      return nil, {
-        _ = "check:token:invalid",
-      }
-    end
-    request [key] = result.contents
-    return  true
-  end
-
-  Internal.data.token.validation = {
-    [Repository.refines] = {
-      Configuration.data.token,
-    },
-  }
-  checks = Internal.data.token.validation.check
-  checks [#checks+1] = function (t)
-    local request = t.request
-    local value   = request [t.key]
-    return  value.type == "validation"
-        or  nil, {
-              _ = "check:token:invalid",
-            }
-  end
-
-  Internal.data.token.authentication = {
-    [Repository.refines] = {
-      Configuration.data.token,
-    },
-  }
-  checks = Internal.data.token.authentication.check
-  checks [#checks+1] = function (t)
-    local request = t.request
-    local value   = request [t.key]
-    return  value.type == "authentication"
-        or  nil, {
-              _ = "check:token:invalid",
-            }
-  end
-  checks [#checks+1] = function (t)
-    local store    = Store.new ()
-    local username = t.request [t.key].username
-    local user     = store.users [username]
-    return  user
-       and  user.type   == Type.user
-       and  user.status == Status.active
-        or  nil, {
-              _ = "check:token:invalid",
-            }
-  end
 end
 
 -- Token
@@ -567,9 +308,9 @@ for k, f in pairs (Methods) do
     for _ = 1, Configuration.redis.retry._ do
       local err
       local ok, result = xpcall (function ()
-        local store  = Store.new ()
+        local store  = loader.store.new ()
         local result = f (request, store)
-        Store.commit (store)
+        loader.store.commit (store)
         return result
       end, function (e)
         err = e
@@ -577,7 +318,7 @@ for k, f in pairs (Methods) do
       end)
       if ok then
         return result or true
-      elseif err ~= Store.Error then
+      elseif err ~= loader.store.Error then
         return nil, err
       end
     end
