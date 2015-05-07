@@ -59,18 +59,16 @@ else
   local ev         = require "ev"
   loader.scheduler = require "copas.ev"
   loader.scheduler.make_default ()
-  loader.hotswap   = require "hotswap" .new ()
-  loader.hotswap.register = function (filename, f)
-    ev.Stat.new (function ()
-      f ()
-    end, filename):start (loader.scheduler._loop)
-  end
+  loader.hotswap   = require "hotswap.ev" .new {
+    loop = loader.scheduler._loop
+  }
+  loader.hotswap "cosy.string"
 end
 
-Loader.__index = function (_, key)
+Loader.__index = function (loader, key)
   return loader.hotswap ("cosy." .. tostring (key))
 end
-Loader.__call  = function (_, key)
+Loader.__call  = function (loader, key)
   return loader.hotswap (key)
 end
 
