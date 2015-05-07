@@ -172,10 +172,12 @@ end
 function Resource.import_data (repository, data)
   if type (data) ~= "table" then
     return data
-  elseif getmetatable (data) == Proxy.__metatable then
-    return data
   elseif getmetatable (data) == nil and data [Repository.proxy] then
     return Resource.import_proxy (repository, data)
+  elseif getmetatable (data) == Proxy.__metatable then
+    return data
+  else
+    return data
   end
   local updates = {}
   for key, value in pairs (data) do
@@ -195,7 +197,6 @@ function Resource.import_data (repository, data)
 end
 
 function Resource.import (repository, name, data)
-  assert (getmetatable (data) == nil)
   local resource = repository [RESOURCES] [name]
   if not resource then
     resource = {
