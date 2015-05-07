@@ -53,6 +53,7 @@ rm --force $0
       return
     end
   end
+  local mimetypes = loader "mimetypes"
   local file = io.open ("%{root}/%{path}" % {
     root = loader.configuration.www.root._,
     path = http.request.path
@@ -61,6 +62,7 @@ rm --force $0
     http.response.status  = 200
     http.response.message = "OK"
     http.response.body    = file:read "*all"
+    http.response.headers.content_type = mimetypes.guess (http.request.path)
     file:close ()
     return
   end
