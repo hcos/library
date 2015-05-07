@@ -207,7 +207,7 @@ do
   local skt           = (loader.hotswap "socket").bind (host, port)
   scheduler.addthread (Server.www_dependencies)
   scheduler.addserver (skt, function (socket)
-    local Http = hotswap "httpserver"
+    local Http = loader.hotswap "httpserver"
     local http = Http.new {
       hotswap   = hotswap,
       socket    = socket,
