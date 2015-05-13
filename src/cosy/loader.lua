@@ -5,7 +5,15 @@ or (version == 5.1 and type (_G.jit) ~= "table") then
 end
 
 local Loader = {}
-local loader = {}
+
+Loader.__index = function (loader, key)
+  return loader.hotswap ("cosy." .. tostring (key))
+end
+Loader.__call  = function (loader, key)
+  return loader.hotswap (key)
+end
+
+local loader = setmetatable ({}, Loader)
 
 if _G.js then
   _G.loadhttp = function (url)
@@ -56,20 +64,12 @@ if _G.js then
   end
   loader.hotswap   = require
 else
-  local ev         = require "ev"
   loader.scheduler = require "copas.ev"
   loader.scheduler.make_default ()
   loader.hotswap   = require "hotswap.ev" .new {
     loop = loader.scheduler._loop
   }
   loader.hotswap "cosy.string"
-end
-
-Loader.__index = function (loader, key)
-  return loader.hotswap ("cosy." .. tostring (key))
-end
-Loader.__call  = function (loader, key)
-  return loader.hotswap (key)
 end
 
 package.preload.bit32 = function ()
@@ -83,4 +83,4 @@ package.preload.bit32 = function ()
   return _G.bit32
 end
 
-return setmetatable (loader, Loader)
+return loader
