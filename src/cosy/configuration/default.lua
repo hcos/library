@@ -6,11 +6,14 @@ return {
     database  = 0,
     pool_size = 5,
   },
-  server = {
-    host    = "127.0.0.1",
+  http = {
+    host    = "*",
     port    = 8080,
     salt    = "cosyverif",
     timeout = 5,
+  },
+  websocket = {
+    host = "127.0.0.1",
   },
   www = {
     root = (os.getenv "PWD") .. "/www",
@@ -47,6 +50,7 @@ return {
     account        = 24 * 3600, -- 1 day
     validation     =  1 * 3600, -- 1 hour
     authentication =  1 * 3600, -- 1 hour
+    administration =  99 * 365 * 24 * 3600, -- 99 years
   },
   reputation = {
     at_creation = 10,
@@ -57,4 +61,5 @@ return {
     ["js/lua.vm.js"] = "https://raw.githubusercontent.com/kripken/lua.vm.js/master/dist/lua.vm.js",
     ["js/sjcl.js"  ] = "http://bitwiseshiftleft.github.io/sjcl/sjcl.js",
   },
+  statistics = "http://stats.cosyverif.org",
 }
