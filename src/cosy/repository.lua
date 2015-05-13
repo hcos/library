@@ -176,8 +176,6 @@ function Resource.import_data (repository, data)
     return Resource.import_proxy (repository, data)
   elseif getmetatable (data) == Proxy.__metatable then
     return data
-  else
-    return data
   end
   local updates = {}
   for key, value in pairs (data) do
