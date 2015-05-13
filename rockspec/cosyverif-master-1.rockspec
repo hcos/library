@@ -23,6 +23,7 @@ dependencies = {
   "hotswap >= 0",
   "i18n >= 0",
   "lua >= 5.1",
+  "lua_cliargs >= 2.5",
   "lua-cjson >= 2",
   "lua-websockets >= v2",
   "luacrypto >= 0",
