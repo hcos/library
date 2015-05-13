@@ -1,6 +1,6 @@
 local loader     = require "cosy.loader"
 
-package.searchers [#package.searchers+1] = function (name)
+local function searcher (name)
   local result, err = io.open (name, "r")
   if not result then
     return nil, err
@@ -46,7 +46,9 @@ end
 
 if not _G.js then
   for key, filename in pairs (files) do
-    local result, err = loader.hotswap (filename, true)
+    package.searchers [#package.searchers+1] = searcher
+    local result = loader.hotswap (filename, true)
+    package.searchers [#package.searchers  ] = nil
     if result then
       Logger.debug {
         _      = "configuration:using",
