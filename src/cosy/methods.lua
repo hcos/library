@@ -21,18 +21,10 @@
 
 -- The `Methods` table contains all available methods.
 local Methods  = {}
--- The `Token` table contains utility functions for JSON Web Tokens.
-local Token    = {}
 
--- Dependencies
--- ------------
---
--- This module depends on the following modules:
 local loader        = require "cosy.loader"
 
-local Repository    = loader.repository
-local Configuration = loader.configuration
-local Internal      = Repository.of (Configuration) .internal
+local Internal      = loader.repository.of (loader.configuration) .internal
 
 Internal.redis.key = {
   users  = "user:%{key}",
@@ -54,14 +46,37 @@ Methods.Type = setmetatable ({
   __index = assert,
 })
 
--- Methods
--- -------
+function Methods.stop (request)
+  loader.parameters.check (request, {
+    required = {
+      token  = loader.parameters.token.administration,
+    },
+  })
+  loader.server.stop ()
+end
+
+function Methods.update (request)
+  loader.parameters.check (request, {
+    required = {
+      token  = loader.parameters.token.administration,
+    },
+  })
+  loader.server.update ()
+end
+
+function Methods.statistics ()
+--  local time     = (loader.hotswap "socket").gettime ()
+--  local json     = loader.hotswap "cjson"
+  local request  = (loader.hotswap "copas.http").request
+  local position = request "http://www.telize.com/geoip"
+  print (position)
+end
 
 -- ### Information
 
 function Methods.information ()
   return {
-    name = Configuration.server.name._,
+    name = loader.configuration.server.name._,
   }
 end
 
@@ -74,7 +89,7 @@ function Methods.tos (request)
       locale = loader.parameters.locale,
     },
   })
-  local locale = Configuration.locale.default._
+  local locale = loader.configuration.locale.default._
   if request.locale then
     locale = request.locale or locale
   end
@@ -126,13 +141,13 @@ function Methods.create_user (request, store)
     password    = loader.password.hash (request.password),
     locale      = request.locale,
     tos_digest  = request.tos_digest,
-    reputation  = Configuration.reputation.at_creation._,
+    reputation  = loader.configuration.reputation.at_creation._,
     access      = {
       public = true,
     },
     contents    = {},
   }
-  return Token.authentication (store.users [request.username])
+  return loader.token.authentication (store.users [request.username])
 end
 
 -- ### Authentication
@@ -161,7 +176,7 @@ function Methods.authenticate (request, store)
   if type (verified) == "string" then
     user.password = verified
   end
-  return Token.authentication (user)
+  return loader.token.authentication (user)
 end
 
 -- ### Reset password
@@ -181,13 +196,13 @@ function Methods.reset_user (request, store)
   or user.type   ~= Methods.Type.user then
     return true
   end
-  local token = Token.validation (user)
+  local token = loader.token.validation (user)
   local sent  = loader.email.send {
     locale  = user.locale,
     from    = {
       _     = "email:reset_account:from",
-      name  = Configuration.server.name._,
-      email = Configuration.server.email._,
+      name  = loader.configuration.server.name._,
+      email = loader.configuration.server.email._,
     },
     to      = {
       _     = "email:reset_account:to",
@@ -196,7 +211,7 @@ function Methods.reset_user (request, store)
     },
     subject = {
       _          = "email:reset_account:subject",
-      servername = Configuration.server.name._,
+      servername = loader.configuration.server.name._,
       username   = user.username,
     },
     body    = {
@@ -233,7 +248,7 @@ function Methods.suspend_user (request, store)
     }
   end
   local user       = store.users [request.token.username]
-  local reputation = Configuration.reputation.suspend._
+  local reputation = loader.configuration.reputation.suspend._
   if user.reputation < reputation then
     error {
       _        = "suspend:not-enough",
@@ -260,52 +275,11 @@ function Methods.delete_user (request, store)
   return true
 end
 
--- Token
---------
-
-function Token.validation (data)
-  local now    = loader.time ()
-  local result = {
-    contents = {
-      type     = "validation",
-      username = data.username,
-      email    = data.email,
-    },
-    iat      = now,
-    nbf      = now - 1,
-    exp      = now + Configuration.expiration.validation._,
-    iss      = Configuration.server.name._,
-    aud      = nil,
-    sub      = "cosy:validation",
-    jti      = loader.digest (tostring (now + loader.random ())),
-  }
-  return loader.token.encode (result)
-end
-
-function Token.authentication (data)
-  local now    = loader.time ()
-  local result = {
-    contents = {
-      type     = "authentication",
-      username = data.username,
-      locale   = data.locale,
-    },
-    iat      = now,
-    nbf      = now - 1,
-    exp      = now + Configuration.expiration.authentication._,
-    iss      = Configuration.server.name._,
-    aud      = nil,
-    sub      = "cosy:authentication",
-    jti      = loader.digest (tostring (now + loader.random ())),
-  }
-  return loader.token.encode (result)
-end
-
 Internal.redis.retry = 2
 
 for k, f in pairs (Methods) do
   Methods [k] = function (request)
-    for _ = 1, Configuration.redis.retry._ do
+    for _ = 1, loader.configuration.redis.retry._ do
       local err
       local ok, result = xpcall (function ()
         local store  = loader.store.new ()
