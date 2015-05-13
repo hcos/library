@@ -41,6 +41,18 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
   ["fixme"] =
     "FIXME: %{message}",
 
+  ["help:verbose"] =
+    "allow verbose output",
+
+  ["administration"] =
+    "administration token is %{token}",
+
+  ["websocket:listening"] =
+    "listening for websocket connections on ws://%{host}:%{port}",
+
+  ["nginx:directory"] =
+    "nginx runs in %{directory}",
+
   ["locale:available"] =
     "i18n locale '%{loaded}' has been loaded",
   ["locale:missing"] =
