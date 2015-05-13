@@ -87,7 +87,7 @@ function Library.connect (url)
   local port     = parsed.port
   local username = parsed.user
   local password = parsed.password
-  local client   = Library.client ("ws://%{host}:%{port}/" % {
+  local client   = Library.client ("ws://%{host}:%{port}/ws" % {
     host = host,
     port = port,
   })
