@@ -1,5 +1,4 @@
 local loader  = require "cosy.loader"
-local hotswap = loader.hotswap
 
 local Logger = {}
 
@@ -22,27 +21,21 @@ if _G.js then
     logger:log ("ERROR: " .. i18n (t))
   end
 else
-  local logging   = hotswap "logging"
-  logging.console = hotswap "logging.console"
+  local logging   = loader "logging"
+  logging.console = loader "logging.console"
   local logger    = logging.console "%message\n"
+  local colors    = loader "ansicolors"
+  local i18n      = loader.i18n
   function Logger.debug (t)
-    local colors = hotswap "ansicolors"
-    local i18n   = loader.i18n
     logger:debug (colors ("%{dim cyan}" .. i18n (t)))
   end
   function Logger.info (t)
-    local colors = hotswap "ansicolors"
-    local i18n   = loader.i18n
     logger:info (colors ("%{green}" .. i18n (t)))
   end
   function Logger.warning (t)
-    local colors = hotswap "ansicolors"
-    local i18n   = loader.i18n
     logger:warn (colors ("%{yellow}" .. i18n (t)))
   end
   function Logger.error (t)
-    local colors = hotswap "ansicolors"
-    local i18n   = loader.i18n
     logger:error (colors ("%{white redbg}" .. i18n (t)))
   end
 end

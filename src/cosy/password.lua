@@ -7,7 +7,7 @@ end
 local Password = {}
 
 local function compute_rounds ()
-  local bcrypt        = loader.hotswap "bcrypt"
+  local bcrypt        = loader "bcrypt"
   local time          = loader.time
   local configuration = loader.configuration
   for _ = 1, 5 do
@@ -27,12 +27,12 @@ local function compute_rounds ()
 end
 
 function Password.hash (password)
-  local bcrypt = loader.hotswap "bcrypt"
+  local bcrypt = loader "bcrypt"
   return bcrypt.digest (password, Password.rounds)
 end
 
 function Password.verify (password, digest)
-  local bcrypt = loader.hotswap "bcrypt"
+  local bcrypt = loader "bcrypt"
   if not bcrypt.verify (password, digest) then
     return false
   end

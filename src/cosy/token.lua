@@ -1,5 +1,4 @@
 local loader  = require "cosy.loader"
-local hotswap = loader.hotswap
 
 if _G.js then
   error "Not available"
@@ -14,7 +13,7 @@ end
 local Token = {}
 
 function Token.encode (token)
-  local jwt           = hotswap "luajwt"
+  local jwt           = loader "luajwt"
   local secret        = loader.configuration.token.secret._
   local algorithm     = loader.configuration.token.algorithm._
   local result, err   = jwt.encode (token, secret, algorithm)
@@ -25,7 +24,7 @@ function Token.encode (token)
 end
 
 function Token.decode (s)
-  local jwt           = hotswap "luajwt"
+  local jwt           = loader "luajwt"
   local key           = loader.configuration.token.secret._
   local algorithm     = loader.configuration.token.algorithm._
   local result, err   = jwt.decode (s, key, algorithm)

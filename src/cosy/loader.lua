@@ -7,10 +7,10 @@ end
 local Loader = {}
 
 Loader.__index = function (loader, key)
-  return loader.hotswap ("cosy." .. tostring (key))
+  return loader.hotswap:require ("cosy." .. tostring (key))
 end
 Loader.__call  = function (loader, key)
-  return loader.hotswap (key)
+  return loader.hotswap:require (key)
 end
 
 local loader = setmetatable ({}, Loader)
@@ -69,7 +69,7 @@ else
   loader.hotswap   = require "hotswap.ev" .new {
     loop = loader.scheduler._loop
   }
-  loader.hotswap "cosy.string"
+  loader.hotswap:require "cosy.string"
 end
 
 package.preload.bit32 = function ()

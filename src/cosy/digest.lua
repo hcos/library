@@ -9,7 +9,7 @@ if _G.js then
   end
 else
   return function (s)
-    local Crypto = loader.hotswap "crypto"
+    local Crypto = loader "crypto"
     return Crypto.digest ("SHA512", s)
   end
 end

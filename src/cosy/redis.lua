@@ -7,7 +7,7 @@ end
 local assigned = {}
 
 return function ()
-  local redis         = loader.hotswap "redis"
+  local redis         = loader "redis"
   local configuration = loader.configuration
   local scheduler     = loader.scheduler
   local co            = coroutine.running ()
@@ -29,7 +29,7 @@ return function ()
       end
     end
     if count < configuration.redis.pool_size._ then
-      local coroutine = loader.hotswap "coroutine.make" ()
+      local coroutine = loader "coroutine.make" ()
       local host      = configuration.redis.host._
       local port      = configuration.redis.port._
       local database  = configuration.redis.database._

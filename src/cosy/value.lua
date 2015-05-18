@@ -1,10 +1,9 @@
 local loader  = require "cosy.loader"
-local hotswap = loader.hotswap
 
 local Value   = {}
 
 function Value.encode (t, options)
-  local serpent = hotswap "serpent"
+  local serpent = loader "serpent"
   return serpent.dump (t, options or {
     sortkeys = false,
     compact  = true,
@@ -14,7 +13,7 @@ function Value.encode (t, options)
 end
 
 function Value.expression (t, options)
-  local serpent = hotswap "serpent"
+  local serpent = loader "serpent"
   return serpent.line (t, options or {
     sortkeys = true,
     compact  = true,
@@ -25,7 +24,7 @@ function Value.expression (t, options)
 end
 
 function Value.decode (s)
-  local serpent = hotswap "serpent"
+  local serpent = loader "serpent"
   local ok, result = serpent.load (s, {
     safe = false,
   })

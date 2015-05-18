@@ -67,7 +67,7 @@ end
 function Methods.statistics ()
 --  local time     = (loader.hotswap "socket").gettime ()
 --  local json     = loader.hotswap "cjson"
-  local request  = (loader.hotswap "copas.http").request
+  local request  = (loader "copas.http").request
   local position = request "http://www.telize.com/geoip"
   print (position)
 end

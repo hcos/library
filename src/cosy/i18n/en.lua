@@ -52,6 +52,8 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
 
   ["nginx:directory"] =
     "nginx runs in %{directory}",
+  ["nginx:no-resolver"] =
+    "unable to define resolver for nginx",
 
   ["locale:available"] =
     "i18n locale '%{loaded}' has been loaded",

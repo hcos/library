@@ -4,7 +4,7 @@ return function (x)
   if type (x) ~= "table" then
     return x
   end
-  local i18n    = loader.hotswap "i18n"
+  local i18n    = loader "i18n"
   local logger  = loader.logger
   local locale  = x.locale
   if not locale then
@@ -13,7 +13,7 @@ return function (x)
   end
   local package     = "cosy.i18n." .. locale
   local loaded      = loader.hotswap.loaded [package]
-  local translation = loader.hotswap (package, true)
+  local translation = loader.hotswap:try_require (package)
   if translation and not loaded then
     i18n.load {
       [locale] = translation,

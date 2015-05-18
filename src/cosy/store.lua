@@ -1,5 +1,4 @@
 local loader  = require "cosy.loader"
-local hotswap = loader.hotswap
 
 local Store      = {}
 local Collection = {}
@@ -90,7 +89,7 @@ function Collection.__newindex (collection, key, value)
 end
 
 function Collection.__pairs (collection)
-  local coroutine = hotswap "coroutine.make" ()
+  local coroutine = loader "coroutine.make" ()
   return coroutine.wrap (function ()
     local name   = collection [PATTERN] % { key = "*" }
     local client = loader.redis ()
@@ -121,7 +120,7 @@ function Collection.__len (collection)
 end
 
 function Collection.__ipairs (collection)
-  local coroutine = hotswap "coroutine.make" ()
+  local coroutine = loader "coroutine.make" ()
   return coroutine.wrap (function ()
     local i = 0
     repeat
@@ -165,7 +164,7 @@ function Document.__newindex (document, key, value)
 end
 
 function Document.__pairs (document)
-  local coroutine = hotswap "coroutine.make" ()
+  local coroutine = loader "coroutine.make" ()
   return coroutine.wrap (function ()
     for k in pairs (document [DATA]) do
       coroutine.yield (k, document [k])
@@ -174,7 +173,7 @@ function Document.__pairs (document)
 end
 
 function Document.__ipairs (document)
-  local coroutine = hotswap "coroutine.make" ()
+  local coroutine = loader "coroutine.make" ()
   return coroutine.wrap (function ()
     for i = 1, #document do
       coroutine.yield (i, document [i])

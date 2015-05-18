@@ -113,10 +113,11 @@ function Nginx.start ()
   ]] % { directory = Nginx.directory })
   local resolver
   do
-    local file, err = io.open "/etc/resolv.conf"
+    local file = io.open "/etc/resolv.conf"
     if not file then
-      ngx.log (ngx.ERR, "failed to read /etc/resolv.conf: ", err)
-      return
+      loader.logger.error {
+        _ = "nginx:no-resolver",
+      }
     end
     local result = {}
     for line in file:lines () do

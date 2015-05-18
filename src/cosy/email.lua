@@ -1,6 +1,6 @@
 local loader = require "cosy.loader"
 local ssl    = require "ssl"
-local smtp   = loader.hotswap "socket.smtp"
+local smtp   = loader "socket.smtp"
 
 if _G.js then
   error "Not available"
@@ -14,7 +14,7 @@ local Email = {}
 local make_socket = {}
 
 function make_socket.sync ()
-  local socket = loader.hotswap "socket"
+  local socket = loader "socket"
   local result = socket.tcp ()
   result:settimeout (loader.configuration.smtp.timeout._)
   result:setoption ("keepalive", true)
