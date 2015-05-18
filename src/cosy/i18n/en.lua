@@ -88,6 +88,8 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
   ["smtp:discover"] =
     "discovering SMTP on %{host}:%{port} using %{method} (encrypted with %{protocol})",
 
+  ["configuration:updated"] =
+    "configuration has been updated",
   ["configuration:using"] =
     "using configuration in directory %{path}",
   ["configuration:skipping"] =

@@ -17,8 +17,8 @@ http {
   keepalive_timeout     65;
   types_hash_max_size   2048;
 
+  proxy_temp_path       proxy;
   proxy_cache_path      cache   keys_zone=foreign:10m;
-  lua_package_path      '%{path}';
 
   include /etc/nginx/mime.types;
 
@@ -32,23 +32,43 @@ http {
     access_log    access.log;
 
     location / {
-      try_files $uri $uri/ /index.html =404;
+      try_files $uri $uri/ /index.html @foreigns;
     }
 
-%{foreigns}
+    location @foreigns {
+      proxy_cache foreign;
+      expires     modified  1d;
+      resolver    138.231.81.6;
+      set $target "";
+      access_by_lua '
+        local redis   = require "nginx.redis" :new ()
+        local ok, err = redis:connect ("%{redis_host}", %{redis_port})
+        if not ok then
+          ngx.log (ngx.ERR, "failed to connect to redis: ", err)
+          return ngx.exit (500)
+        end
+        redis:select (%{redis_database})
+        local target = redis:get ("foreigns:" .. ngx.var.uri)
+        if not target or target == ngx.null then
+          return ngx.exit (404)
+        end
+        ngx.var.target = target
+      ';
+      proxy_pass $target;
+    }
 
     location /lua {
       default_type  application/lua;
       content_by_lua '
         local name = ngx.var.uri:match "/lua/(.*)"
-        local filename = package.searchpath (name, package.path)
+        local filename = package.searchpath (name, "%{path}")
         if filename then
           local file = io.open (filename, "r")
           ngx.say (file:read "*all")
           file:close ()
         else
           ngx.log (ngx.ERR, "failed to locate lua module: " .. name)
-          ngx.status = 404
+          return ngx.exit (404)
         end
       ';
     }
@@ -82,14 +102,6 @@ http {
 }
 ]]
 
-local foreign_template = [[
-    location = /%{target} {
-      proxy_cache foreign;
-      proxy_pass  %{source};
-      expires     1d;
-    }
-]]
-
 function Nginx.start ()
   Nginx.directory = os.tmpname ()
   loader.logger.debug {
@@ -97,34 +109,28 @@ function Nginx.start ()
     directory = Nginx.directory,
   }
   os.execute ([[
-    rm -f %{diretory} && mkdir -p %{diretory}
-  ]] % { diretory = Nginx.directory })
-  local foreigns = {}
-  for target in pairs (loader.configuration.dependencies) do
-    local source = loader.configuration.dependencies [target]
-    local url    = tostring (source._)
-    if url:match "^http" then
-      foreigns [#foreigns+1] = foreign_template % {
-        target = target,
-        source = url,
-      }
-    end
-  end
+    rm -f %{directory} && mkdir -p %{directory}
+  ]] % { directory = Nginx.directory })
   local configuration = configuration_template % {
-    host      = loader.configuration.http.host._,
-    port      = loader.configuration.http.port._,
-    name      = loader.configuration.server.name._,
-    foreigns  = table.concat (foreigns, "\n"),
-    path      = package.path:gsub ("'", ""),
-    wshost    = loader.configuration.websocket.host._,
-    wsport    = loader.configuration.websocket.port._,
+    host           = loader.configuration.http.host._,
+    port           = loader.configuration.http.port._,
+    name           = loader.configuration.server.name._,
+    redis_host     = loader.configuration.redis.host._,
+    redis_port     = loader.configuration.redis.port._,
+    redis_database = loader.configuration.redis.database._,
+    path           = package.path:gsub ("'", ""),
+    wshost         = loader.configuration.websocket.host._,
+    wsport         = loader.configuration.websocket.port._,
   }
   local file = io.open (Nginx.directory .. "/nginx.conf", "w")
   file:write (configuration)
   file:close ()
   os.execute ([[
-    /usr/sbin/nginx -p %{directory} -c %{directory}/nginx.conf
-  ]] % { directory = Nginx.directory })
+    %{nginx} -p %{directory} -c %{directory}/nginx.conf
+  ]] % {
+    nginx     = loader.configuration.http.nginx._,
+    directory = Nginx.directory,
+  })
 end
 
 function Nginx.stop ()

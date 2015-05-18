@@ -1,18 +1,5 @@
-local loader     = require "cosy.loader"
+local loader = require "cosy.loader"
 
-local function searcher (name)
-  local result, err = io.open (name, "r")
-  if not result then
-    return nil, err
-  end
-  result, err = loadfile (name)
-  if not result then
-    return nil, err
-  end
-  return result, name
-end
-
-local Logger     = loader.logger
 local Repository = loader.repository
 local repository = Repository.new ()
 
@@ -40,26 +27,74 @@ local files = {
   pwd     = os.getenv "PWD" .. "/cosy.conf",
 }
 
-do -- fill the `default` path:
-  repository.default = require "cosy.configuration.default"
-end
-
 if not _G.js then
-  for key, filename in pairs (files) do
-    package.searchers [#package.searchers+1] = searcher
-    local result = loader.hotswap (filename, true)
-    package.searchers [#package.searchers  ] = nil
+  local updater = loader.scheduler.addthread (function ()
+    while true do
+      local redis = loader.redis ()
+      -- http://stackoverflow.com/questions/4006324
+      local script = { [[
+        local keys = redis.call ("keys", ARGV[1])
+        for i=1, #keys, 5000 do
+          redis.call ("del", unpack (keys, i, math.min (i+4999, #keys)))
+        end
+      ]] }
+      for name in pairs (loader.configuration.dependencies) do
+        local source = loader.configuration.dependencies [name]
+        local url    = tostring (source._)
+        if url:match "^http" then
+          script [#script+1] = ([[
+            redis.call ("set", "foreigns:%{name}", "%{source}")
+          ]]) % {
+            name   = name,
+            source = url,
+          }
+        end
+      end
+      script [#script+1] = [[
+        return true
+      ]]
+      script = table.concat (script)
+      redis:eval (script, 0, "foreigns:*")
+      os.execute ([[
+        find %{root}/cache -type f -delete
+      ]] % {
+        root = loader.nginx.directory,
+      })
+      loader.logger.debug {
+        _ = "configuration:updated",
+      }
+      loader.scheduler.sleep (-1)
+    end
+  end)
+  
+  package.searchers [#package.searchers+1] = function (name)
+    local result, err = io.open (name, "r")
+    if not result then
+      return nil, err
+    end
+    result, err = loadfile (name)
+    if not result then
+      return nil, err
+    end
+    return result, name
+  end
+
+  for key, name in pairs (files) do
+    local result = loader.hotswap:try_require (name)
     if result then
-      Logger.debug {
+      loader.hotswap.on_change [name] = function ()
+        loader.scheduler.wakeup (updater)
+      end
+      loader.logger.debug {
         _      = "configuration:using",
-        path   = filename,
+        path   = name,
         locale = repository.whole.locale._,
       }
       repository [key] = result
     else
-      Logger.warning {
+      loader.logger.warning {
         _      = "configuration:skipping",
-        path   = filename,
+        path   = name,
         locale = repository.whole.locale._,
       }
     end

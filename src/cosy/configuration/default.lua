@@ -7,6 +7,7 @@ return {
     pool_size = 5,
   },
   http = {
+    nginx   = "nginx",
     host    = "*",
     port    = 8080,
     salt    = "cosyverif",
@@ -58,8 +59,8 @@ return {
   },
   dependencies = {
     expiration = 24 * 3600, -- 1 day
-    ["js/lua.vm.js"] = "https://raw.githubusercontent.com/kripken/lua.vm.js/master/dist/lua.vm.js",
-    ["js/sjcl.js"  ] = "http://bitwiseshiftleft.github.io/sjcl/sjcl.js",
+    ["/js/lua.vm.js"] = "https://raw.githubusercontent.com/kripken/lua.vm.js/master/dist/lua.vm.js",
+    ["/js/sjcl.js"  ] = "http://bitwiseshiftleft.github.io/sjcl/sjcl.js",
   },
   statistics = "http://stats.cosyverif.org",
 }
