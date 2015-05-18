@@ -30,7 +30,7 @@ http {
     index         index.html;
     default_type  application/octet-stream;
     access_log    access.log;
-
+    
     location / {
       try_files $uri $uri/ /index.html @foreigns;
     }
@@ -38,7 +38,7 @@ http {
     location @foreigns {
       proxy_cache foreign;
       expires     modified  1d;
-      resolver    138.231.81.6;
+      resolver    %{resolver};
       set $target "";
       access_by_lua '
         local redis   = require "nginx.redis" :new ()
@@ -111,6 +111,23 @@ function Nginx.start ()
   os.execute ([[
     rm -f %{directory} && mkdir -p %{directory}
   ]] % { directory = Nginx.directory })
+  local resolver
+  do
+    local file, err = io.open "/etc/resolv.conf"
+    if not file then
+      ngx.log (ngx.ERR, "failed to read /etc/resolv.conf: ", err)
+      return
+    end
+    local result = {}
+    for line in file:lines () do
+      local address = line:match "nameserver%s+(%S+)"
+      if address then
+        result [#result+1] = address
+      end
+    end
+    file:close ()
+    resolver = table.concat (result, " ")
+  end
   local configuration = configuration_template % {
     host           = loader.configuration.http.host._,
     port           = loader.configuration.http.port._,
@@ -121,6 +138,7 @@ function Nginx.start ()
     path           = package.path:gsub ("'", ""),
     wshost         = loader.configuration.websocket.host._,
     wsport         = loader.configuration.websocket.port._,
+    resolver       = resolver,
   }
   local file = io.open (Nginx.directory .. "/nginx.conf", "w")
   file:write (configuration)
