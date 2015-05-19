@@ -59,7 +59,7 @@ return {
   },
   dependencies = {
     expiration = 24 * 3600, -- 1 day
-    ["/js/lua.vm.js"] = "https://raw.githubusercontent.com/kripken/lua.vm.js/master/dist/lua.vm.js",
+    ["/js/lua.vm.js"] = "https://kripken.github.io/lua.vm.js/lua.vm.js",
     ["/js/sjcl.js"  ] = "http://bitwiseshiftleft.github.io/sjcl/sjcl.js",
   },
   statistics = "http://stats.cosyverif.org",
