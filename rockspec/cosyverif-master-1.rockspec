@@ -25,6 +25,7 @@ dependencies = {
   "lua >= 5.1",
   "lua_cliargs >= 2.5",
   "lua-cjson >= 2",
+  "lua-ev >= v1.4",
   "lua-websockets >= v2",
   "luacrypto >= 0",
   "luajwt >= 1",
