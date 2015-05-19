@@ -33,9 +33,10 @@ if not _G.js then
       local redis = loader.redis ()
       -- http://stackoverflow.com/questions/4006324
       local script = { [[
+        local n    = 1000
         local keys = redis.call ("keys", ARGV[1])
-        for i=1, #keys, 5000 do
-          redis.call ("del", unpack (keys, i, math.min (i+4999, #keys)))
+        for i=1, #keys, n do
+          redis.call ("del", unpack (keys, i, math.min (i+n-1, #keys)))
         end
       ]] }
       for name in pairs (loader.configuration.dependencies) do
