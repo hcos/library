@@ -19,6 +19,7 @@ http {
 
   proxy_temp_path       proxy;
   proxy_cache_path      cache   keys_zone=foreign:10m;
+  lua_package_path      "%{path}";
 
   include /etc/nginx/mime.types;
 
@@ -136,7 +137,7 @@ function Nginx.start ()
     redis_host     = loader.configuration.redis.host._,
     redis_port     = loader.configuration.redis.port._,
     redis_database = loader.configuration.redis.database._,
-    path           = package.path:gsub ("'", ""),
+    path           = package.path,
     wshost         = loader.configuration.websocket.host._,
     wsport         = loader.configuration.websocket.port._,
     resolver       = resolver,
