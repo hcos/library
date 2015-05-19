@@ -29,6 +29,7 @@ http {
     server_name   "%{name}";
     charset       utf-8;
     index         index.html;
+    include       /etc/nginx/mime.types;
     default_type  application/octet-stream;
     access_log    access.log;
     root          "%{www}";
