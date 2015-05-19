@@ -68,7 +68,7 @@ function Library.connect (url)
   if path:sub (1) == "/" then
     path = path:sub (2)
   end
-  local client = Library.client ("%{protocol}://%{hostname}:%{port}/%{path}" % {
+  local client = Library.client ("ws://%{hostname}:%{port}/ws" % {
     protocol = protocol,
     hostname = hostname,
     port     = port,
