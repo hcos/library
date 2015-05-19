@@ -62,7 +62,19 @@ if _G.js then
     package.loaded [mod_name] = result
     return result
   end
-  loader.hotswap   = require
+  loader.hotswap = {
+    require = function (_, name)
+      return require (name)
+    end,
+    try_require = function (_, name)
+      local ok, result = pcall (require, name)
+      if ok then
+        return result
+      else
+        return nil, result
+      end
+    end,
+  }
 else
   loader.scheduler = require "copas.ev"
   loader.scheduler.make_default ()
