@@ -39,9 +39,9 @@ http {
     }
 
     location @foreigns {
-      proxy_cache foreign;
-      expires     modified  1d;
-      resolver    %{resolver};
+      proxy_cache  foreign;
+      expires      modified  1d;
+      resolver     %{resolver};
       set $target "";
       access_by_lua '
         local redis   = require "nginx.redis" :new ()
