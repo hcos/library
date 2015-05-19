@@ -16,7 +16,11 @@ local function main ()
   return xpcall (function ()
     local loader   = require (location.origin .. "/lua/cosy.loader")
     local lib      = loader.hotswap "cosy.js"
-    js.global.console:log (lib)
+    
+    local client   = lib.connect "ws://127.0.0.1:8080/"
+  local info  = client.tos ()
+    js.global.console:log (loader.value.expression (info))
+    
   end, function (err)
     js.global.console:log ("error: " .. tostring (err))
     js.global.console:log (debug.traceback ())
