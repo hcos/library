@@ -10,7 +10,7 @@ worker_processes 1;
 events {
   worker_connections 1024;
 }
- 
+
 http {
   tcp_nopush            on;
   tcp_nodelay           on;
@@ -22,6 +22,11 @@ http {
   lua_package_path      "%{path}";
 
   include /etc/nginx/mime.types;
+
+  gzip              on;
+  gzip_min_length   1000;
+  gzip_types        *;
+  gzip_proxied      no-store no-cache private expired auth;
 
   server {
     listen        localhost:%{port};
