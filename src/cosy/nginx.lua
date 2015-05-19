@@ -26,11 +26,12 @@ http {
   server {
     listen        localhost:%{port};
     listen        %{host}:%{port};
-    server_name   %{name};
+    server_name   "%{name}";
     charset       utf-8;
     index         index.html;
     default_type  application/octet-stream;
     access_log    access.log;
+    root          "%{www}";
     
     location / {
       try_files $uri $uri/ /index.html @foreigns;
@@ -138,6 +139,7 @@ function Nginx.start ()
     redis_port     = loader.configuration.redis.port._,
     redis_database = loader.configuration.redis.database._,
     path           = package.path,
+    www            = loader.configuration.http.www._,
     wshost         = loader.configuration.websocket.host._,
     wsport         = loader.configuration.websocket.port._,
     resolver       = resolver,

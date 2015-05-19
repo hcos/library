@@ -29,4 +29,14 @@ if args.clean then
   package.loaded.redis = nil
 end
 
+do
+  local internal    = loader.repository.of (loader.configuration) .internal
+  local main        = package.searchpath ("cosy", package.path)
+  if main:sub (1, 1) == "." then
+    local lfs = loader "lfs"
+    main = lfs.currentdir () .. "/" .. main
+  end
+  internal.http.www = main:sub (1, #main-4) .. "/../www/"
+end
+
 loader.server.start ()
