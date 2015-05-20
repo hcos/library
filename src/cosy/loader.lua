@@ -6,14 +6,6 @@ end
 
 local Loader = {}
 
-function Loader.__index (_, key)
-  return require ("cosy." .. key)
-end
-
-function Loader.__call (_, key)
-  return require (key)
-end
-
 local loader = setmetatable ({}, Loader)
 
 if _G.js then
@@ -78,8 +70,9 @@ else
 end
 
 do
-  package.preload.bit32 = function ()
-    loader.logger.warning {
+  package.preload ["bit32"] = function ()
+    local Logger = require "cosy.logger"
+    Logger.warning {
       _       = "fixme",
       message = "global bit32 is created for lua-websockets",
     }
@@ -92,6 +85,8 @@ do
   _G.require = function (name)
     return loader.hotswap.require (name)
   end
+
+  _G.coroutine = require "coroutine.make" ()
 
   require "cosy.string"
 end

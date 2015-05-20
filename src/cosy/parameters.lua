@@ -1,9 +1,13 @@
-local loader        = require "cosy.loader"
+local Configuration = require "cosy.configuration"
+local Logger        = require "cosy.logger"
+local Repository    = require "cosy.repository"
+local Store         = require "cosy.store"
+local Token         = require "cosy.token"
 
-local Internal      = loader.repository.of (loader.configuration) .internal
+local Internal      = Repository.of (Configuration) .internal
 local Parameters    = setmetatable ({}, {
   __index = function (_, key)
-    return loader.configuration.data [key]
+    return Configuration.data [key]
   end,
 })
 
@@ -21,7 +25,7 @@ function Parameters.check (request, parameters)
           key = key,
         }
       elseif value ~= nil then
-        for i = 1, loader.repository.size (parameter.check) do
+        for i = 1, Repository.size (parameter.check) do
           local ok, reason = parameter.check [i]._ {
             parameter = parameter,
             request   = request,
@@ -39,7 +43,7 @@ function Parameters.check (request, parameters)
   end
   for key in pairs (request) do
     if not checked [key] then
-      loader.logger.warning {
+      Logger.warning {
         _   = "check:no-check",
         key = key,
       }
@@ -92,8 +96,8 @@ end
 -- --------------
 do
   Internal.data.trimmed = {
-    [loader.repository.refines] = {
-      loader.configuration.data.string,
+    [Repository.refines] = {
+      Configuration.data.string,
     }
   }
   local checks = Internal.data.trimmed.check
@@ -112,12 +116,12 @@ end
 -- --------
 do
   Internal.data.username = {
-    [loader.repository.refines] = {
-      loader.configuration.data.trimmed,
+    [Repository.refines] = {
+      Configuration.data.trimmed,
     }
   }
   local checks = Internal.data.username.check
-  checks [loader.repository.size (checks)+1] = function (t)
+  checks [Repository.size (checks)+1] = function (t)
     local value = t.request [t.key]
     return  value:find "^%w[%w%-_]+$"
         or  nil, {
@@ -131,8 +135,8 @@ end
 -- --------
 do
   Internal.data.password = {
-    [loader.repository.refines] = {
-      loader.configuration.data.trimmed,
+    [Repository.refines] = {
+      Configuration.data.trimmed,
     }
   }
 end
@@ -141,12 +145,12 @@ end
 -- -----
 do
   Internal.data.email = {
-    [loader.repository.refines] = {
-      loader.configuration.data.trimmed,
+    [Repository.refines] = {
+      Configuration.data.trimmed,
     }
   }
   local checks = Internal.data.email.check
-  checks [loader.repository.size (checks)+1] = function (t)
+  checks [Repository.size (checks)+1] = function (t)
     local value   = t.request [t.key]
     local pattern = "^.*@[%w%.%%%+%-]+%.%w%w%w?%w?$"
     return  value:find (pattern)
@@ -161,8 +165,8 @@ end
 -- ----
 do
   Internal.data.name = {
-    [loader.repository.refines] = {
-      loader.configuration.data.trimmed,
+    [Repository.refines] = {
+      Configuration.data.trimmed,
     }
   }
 end
@@ -171,12 +175,12 @@ end
 -- ------
 do
   Internal.data.locale = {
-    [loader.repository.refines] = {
-      loader.configuration.data.trimmed,
+    [Repository.refines] = {
+      Configuration.data.trimmed,
     }
   }
   local checks = Internal.data.locale.check
-  checks [loader.repository.size (checks)+1] = function (t)
+  checks [Repository.size (checks)+1] = function (t)
     local value = t.request [t.key]
     return  value:find "^%a%a$"
         or  value:find "^%a%a_%a%a$"
@@ -191,18 +195,18 @@ end
 -- ------------------------
 do
   Internal.data.tos_digest = {
-    [loader.repository.refines] = {
-      loader.configuration.data.trimmed,
+    [Repository.refines] = {
+      Configuration.data.trimmed,
     },
     min_size = 128,
     max_size = 128,
   }
   local checks = Internal.data.tos_digest.check
-  checks [loader.repository.size (checks)+1] = function (t)
+  checks [Repository.size (checks)+1] = function (t)
     t.request [t.key] = t.request [t.key]:lower ()
     return  true
   end
-  checks [loader.repository.size (checks)+1] = function (t)
+  checks [Repository.size (checks)+1] = function (t)
     local value   = t.request [t.key]
     local pattern = "^%x+$"
     return  value:find (pattern)
@@ -211,10 +215,11 @@ do
               tos_digest = value,
             }
   end
-  checks [loader.repository.size (checks)+1] = function (t)
+  checks [Repository.size (checks)+1] = function (t)
     local request = t.request
     local value   = request [t.key]
-    local tos = loader.methods.tos { locale = request.locale }
+    local Methods = require "cosy.methods"
+    local tos = Methods.tos { locale = request.locale }
     return  tos.tos_digest == value
         or  nil, {
               _          = "check:tos_digest:incorrect",
@@ -227,16 +232,16 @@ end
 -- -----
 do
   Internal.data.token = {
-    [loader.repository.refines] = {
-      loader.configuration.data.trimmed,
+    [Repository.refines] = {
+      Configuration.data.trimmed,
     },
   }
   local checks = Internal.data.token.check
-  checks [loader.repository.size (checks)+1] = function (t)
+  checks [Repository.size (checks)+1] = function (t)
     local request    = t.request
     local key        = t.key
     local value      = request [key]
-    local ok, result = pcall (loader.token.decode, value)
+    local ok, result = pcall (Token.decode, value)
     if not ok then
       return nil, {
         _ = "check:token:invalid",
@@ -251,12 +256,12 @@ end
 -- --------------------
 do
   Internal.data.token.administration = {
-    [loader.repository.refines] = {
-      loader.configuration.data.token,
+    [Repository.refines] = {
+      Configuration.data.token,
     },
   }
   local checks = Internal.data.token.administration.check
-  checks [loader.repository.size (checks)+1] = function (t)
+  checks [Repository.size (checks)+1] = function (t)
     local request = t.request
     local value   = request [t.key]
     return  value.type == "administration"
@@ -264,10 +269,11 @@ do
               _ = "check:token:invalid",
             }
   end
-  checks [loader.repository.size (checks)+1] = function (t)
+  checks [Repository.size (checks)+1] = function (t)
     local request = t.request
     local value   = request [t.key]
-    return  value.passphrase == loader.server.passphrase
+    local Server  = require "cosy.server"
+    return  value.passphrase == Server.passphrase
         or  nil, {
               _ = "check:token:invalid",
             }
@@ -278,12 +284,12 @@ end
 -- ----------------
 do
   Internal.data.token.validation = {
-    [loader.repository.refines] = {
-      loader.configuration.data.token,
+    [Repository.refines] = {
+      Configuration.data.token,
     },
   }
   local checks = Internal.data.token.validation.check
-  checks [loader.repository.size (checks)+1] = function (t)
+  checks [Repository.size (checks)+1] = function (t)
     local request = t.request
     local value   = request [t.key]
     return  value.type == "validation"
@@ -297,12 +303,12 @@ end
 -- --------------------
 do
   Internal.data.token.authentication = {
-    [loader.repository.refines] = {
-      loader.configuration.data.token,
+    [Repository.refines] = {
+      Configuration.data.token,
     },
   }
   local checks = Internal.data.token.authentication.check
-  checks [loader.repository.size (checks)+1] = function (t)
+  checks [Repository.size (checks)+1] = function (t)
     local request = t.request
     local value   = request [t.key]
     return  value.type == "authentication"
@@ -310,13 +316,14 @@ do
               _ = "check:token:invalid",
             }
   end
-  checks [loader.repository.size (checks)+1] = function (t)
-    local store    = loader.store.new ()
+  checks [Repository.size (checks)+1] = function (t)
+    local store    = Store.new ()
     local username = t.request [t.key].username
     local user     = store.users [username]
+    local Methods  = require "cosy.methods"
     return  user
-       and  user.type   == loader.methods.Type.user
-       and  user.status == loader.methods.Status.active
+       and  user.type   == Methods.Type.user
+       and  user.status == Methods.Status.active
         or  nil, {
               _ = "check:token:invalid",
             }

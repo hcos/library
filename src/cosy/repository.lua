@@ -1,3 +1,5 @@
+local Value = require "cosy.value"
+
 local Repository         = {}
 Repository.__metatable   = "cosy.repository"
 Repository.value         = "cosy:value"
@@ -115,11 +117,10 @@ end
 
 function Repository.export (proxy)
   proxy = Proxy.dereference (proxy)
-  local loader      = require "cosy.loader"
   local resource    = proxy [RESOURCE]
   local mt          = Proxy.__metatable
   Proxy.__metatable = nil
-  local result     = loader.value.encode (resource [DATA], {
+  local result      = Value.encode (resource [DATA], {
     name      = resource [NAME],
     sortkeys  = true,
     compact   = false,

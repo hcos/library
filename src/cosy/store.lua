@@ -1,4 +1,8 @@
-local loader  = require "cosy.loader"
+local Configuration = require "cosy.configuration"
+local Redis         = require "cosy.redis"
+local Value         = require "cosy.value"
+
+local Coromake      = require "coroutine.make"
 
 local Store      = {}
 local Collection = {}
@@ -25,20 +29,20 @@ function Store.__newindex ()
 end
 
 function Store.commit (store)
-  local client = loader.redis ()
+  local client = Redis ()
   client:multi ()
   for _, collection in pairs (store) do
     local pattern = collection [PATTERN]
     for key, document in pairs (collection [DATA]) do
       if document [DIRTY] then
         local name  = pattern % {
-          key = loader.value.expression (key),
+          key = Value.expression (key),
         }
         local value = document [DATA]
         if value == nil then
           client:del (name)
         else
-          client:set (name, loader.value.encode (value))
+          client:set (name, Value.encode (value))
           if type (value) == "table" and value.expire_at then
             client:expireat (name, math.ceil (value.expire_at))
           else
@@ -54,7 +58,7 @@ function Store.commit (store)
 end
 
 function Collection.new (key)
-  local pattern = loader.configuration.redis.key [key]._
+  local pattern = Configuration.redis.key [key]._
   assert (pattern, key)
   return setmetatable ({
     [PATTERN] = pattern,
@@ -65,13 +69,13 @@ end
 function Collection.__index (collection, key)
   if not collection [DATA] [key] then
     local name   = collection [PATTERN] % {
-      key = loader.value.expression (key),
+      key = Value.expression (key),
     }
-    local client = loader.redis ()
+    local client = Redis ()
     client:watch (name)
     local value  = client:get (name)
     if value ~= nil then
-      value = loader.value.decode (value)
+      value = Value.decode (value)
     end
     collection [DATA] [key] = {
       [DIRTY] = false,
@@ -89,10 +93,10 @@ function Collection.__newindex (collection, key, value)
 end
 
 function Collection.__pairs (collection)
-  local coroutine = loader "coroutine.make" ()
+  local coroutine = require "coroutine.make" ()
   return coroutine.wrap (function ()
     local name   = collection [PATTERN] % { key = "*" }
-    local client = loader.redis ()
+    local client = Redis ()
     local cursor = 0
     repeat
       local t = client:scan (cursor, {
@@ -104,7 +108,7 @@ function Collection.__pairs (collection)
       for i = 1, #data do
         local key   = (collection [PATTERN] / data [i]).key
         local value = collection [key]
-        coroutine.yield (loader.value.decode (key), value)
+        coroutine.yield (Value.decode (key), value)
       end
     until cursor == "0"
   end)
@@ -120,7 +124,7 @@ function Collection.__len (collection)
 end
 
 function Collection.__ipairs (collection)
-  local coroutine = loader "coroutine.make" ()
+  local coroutine = Coromake ()
   return coroutine.wrap (function ()
     local i = 0
     repeat
@@ -164,7 +168,7 @@ function Document.__newindex (document, key, value)
 end
 
 function Document.__pairs (document)
-  local coroutine = loader "coroutine.make" ()
+  local coroutine = Coromake ()
   return coroutine.wrap (function ()
     for k in pairs (document [DATA]) do
       coroutine.yield (k, document [k])
@@ -173,7 +177,7 @@ function Document.__pairs (document)
 end
 
 function Document.__ipairs (document)
-  local coroutine = loader "coroutine.make" ()
+  local coroutine = Coromake ()
   return coroutine.wrap (function ()
     for i = 1, #document do
       coroutine.yield (i, document [i])

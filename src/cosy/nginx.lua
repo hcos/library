@@ -1,4 +1,5 @@
-local loader = require "cosy.loader"
+local Configuration = require "cosy.configuration"
+local Logger        = require "cosy.logger"
 
 local Nginx = {}
 
@@ -115,7 +116,7 @@ function Nginx.configure ()
   do
     local file = io.open "/etc/resolv.conf"
     if not file then
-      loader.logger.error {
+      Logger.error {
         _ = "nginx:no-resolver",
       }
     end
@@ -130,16 +131,16 @@ function Nginx.configure ()
     resolver = table.concat (result, " ")
   end
   local configuration = configuration_template % {
-    host           = loader.configuration.http.host._,
-    port           = loader.configuration.http.port._,
-    name           = loader.configuration.server.name._,
-    redis_host     = loader.configuration.redis.host._,
-    redis_port     = loader.configuration.redis.port._,
-    redis_database = loader.configuration.redis.database._,
+    host           = Configuration.http.host._,
+    port           = Configuration.http.port._,
+    name           = Configuration.server.name._,
+    redis_host     = Configuration.redis.host._,
+    redis_port     = Configuration.redis.port._,
+    redis_database = Configuration.redis.database._,
     path           = package.path,
-    www            = loader.configuration.http.www._,
-    wshost         = loader.configuration.websocket.host._,
-    wsport         = loader.configuration.websocket.port._,
+    www            = Configuration.http.www._,
+    wshost         = Configuration.websocket.host._,
+    wsport         = Configuration.websocket.port._,
     resolver       = resolver,
   }
   local file = io.open (Nginx.directory .. "/nginx.conf", "w")
@@ -149,7 +150,7 @@ end
 
 function Nginx.start ()
   Nginx.directory = os.tmpname ()
-  loader.logger.debug {
+  Logger.debug {
     _         = "nginx:directory",
     directory = Nginx.directory,
   }
@@ -160,7 +161,7 @@ function Nginx.start ()
   os.execute ([[
     %{nginx} -p %{directory} -c %{directory}/nginx.conf
   ]] % {
-    nginx     = loader.configuration.http.nginx._,
+    nginx     = Configuration.http.nginx._,
     directory = Nginx.directory,
   })
 end

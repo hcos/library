@@ -22,9 +22,19 @@
 -- The `Methods` table contains all available methods.
 local Methods  = {}
 
-local loader        = require "cosy.loader"
+local Configuration = require "cosy.configuration"
+local Digest        = require "cosy.digest"
+local Email         = require "cosy.email"
+local I18n          = require "cosy.i18n"
+local Logger        = require "cosy.logger"
+local Parameters    = require "cosy.parameters"
+local Password      = require "cosy.password"
+local Repository    = require "cosy.repository"
+local Store         = require "cosy.store"
+local Token         = require "cosy.token"
+local Value         = require "cosy.value"
 
-local Internal      = loader.repository.of (loader.configuration) .internal
+local Internal      = Repository.of (Configuration) .internal
 
 Internal.redis.key = {
   users  = "user:%{key}",
@@ -47,27 +57,27 @@ Methods.Type = setmetatable ({
 })
 
 function Methods.stop (request)
-  loader.parameters.check (request, {
+  local Server = require "cosy.server"
+  Parameters.check (request, {
     required = {
-      token  = loader.parameters.token.administration,
+      token  = Parameters.token.administration,
     },
   })
-  loader.server.stop ()
+  Server.stop ()
 end
 
 function Methods.update (request)
-  loader.parameters.check (request, {
+  local Server = require "cosy.server"
+  Parameters.check (request, {
     required = {
-      token  = loader.parameters.token.administration,
+      token  = Parameters.token.administration,
     },
   })
-  loader.server.update ()
+  Server.update ()
 end
 
 function Methods.statistics ()
---  local time     = (loader.hotswap "socket").gettime ()
---  local json     = loader.hotswap "cjson"
-  local request  = (loader "copas.http").request
+  local request  = (require "copas.http").request
   local position = request "http://www.telize.com/geoip"
   print (position)
 end
@@ -76,46 +86,46 @@ end
 
 function Methods.information ()
   return {
-    name = loader.configuration.server.name._,
+    name = Configuration.server.name._,
   }
 end
 
 -- ### Terms of Service
 
 function Methods.tos (request)
-  loader.parameters.check (request, {
+  Parameters.check (request, {
     optional = {
-      token  = loader.parameters.token,
-      locale = loader.parameters.locale,
+      token  = Parameters.token,
+      locale = Parameters.locale,
     },
   })
-  local locale = loader.configuration.locale.default._
+  local locale = Configuration.locale.default._
   if request.locale then
     locale = request.locale or locale
   end
   if request.token then
     locale = request.token.locale or locale
   end
-  local tos = loader.i18n {
+  local tos = I18n {
     _      = "tos",
     locale = locale,
   }
   return {
     tos        = tos,
-    tos_digest = loader.digest (tos),
+    tos_digest = Digest (tos),
   }
 end
 
 -- ### User Creation
 
 function Methods.create_user (request, store)
-  loader.parameters.check (request, {
+  Parameters.check (request, {
     required = {
-      username   = loader.parameters.username,
-      password   = loader.parameters.password,
-      email      = loader.parameters.email,
-      tos_digest = loader.parameters.tos_digest,
-      locale     = loader.parameters.locale,
+      username   = Parameters.username,
+      password   = Parameters.password,
+      email      = Parameters.email,
+      tos_digest = Parameters.tos_digest,
+      locale     = Parameters.locale,
     },
   })
   if store.emails [request.email] then
@@ -138,25 +148,25 @@ function Methods.create_user (request, store)
     status      = Methods.Status.active,
     username    = request.username,
     email       = request.email,
-    password    = loader.password.hash (request.password),
+    password    = Password.hash (request.password),
     locale      = request.locale,
     tos_digest  = request.tos_digest,
-    reputation  = loader.configuration.reputation.at_creation._,
+    reputation  = Configuration.reputation.at_creation._,
     access      = {
       public = true,
     },
     contents    = {},
   }
-  return loader.token.authentication (store.users [request.username])
+  return Token.authentication (store.users [request.username])
 end
 
 -- ### Authentication
 
 function Methods.authenticate (request, store)
-  loader.parameters.check (request, {
+  Parameters.check (request, {
     required = {
-      username = loader.parameters.username,
-      password = loader.parameters.password,
+      username = Parameters.username,
+      password = Parameters.password,
     },
   })
   local user = store.users [request.username]
@@ -167,7 +177,7 @@ function Methods.authenticate (request, store)
       _ = "authenticate:failure",
     }
   end
-  local verified = loader.password.verify (request.password, user.password)
+  local verified = Password.verify (request.password, user.password)
   if not verified then
     error {
       _ = "authenticate:failure",
@@ -176,15 +186,15 @@ function Methods.authenticate (request, store)
   if type (verified) == "string" then
     user.password = verified
   end
-  return loader.token.authentication (user)
+  return Token.authentication (user)
 end
 
 -- ### Reset password
 
 function Methods.reset_user (request, store)
-  loader.parameters.check (request, {
+  Parameters.check (request, {
     required = {
-      email = loader.parameters.email,
+      email = Parameters.email,
     },
   })
   local email = store.emails [request.email]
@@ -196,13 +206,13 @@ function Methods.reset_user (request, store)
   or user.type   ~= Methods.Type.user then
     return true
   end
-  local token = loader.token.validation (user)
-  local sent  = loader.email.send {
+  local token = Token.validation (user)
+  local sent  = Email.send {
     locale  = user.locale,
     from    = {
       _     = "email:reset_account:from",
-      name  = loader.configuration.server.name._,
-      email = loader.configuration.server.email._,
+      name  = Configuration.server.name._,
+      email = Configuration.server.email._,
     },
     to      = {
       _     = "email:reset_account:to",
@@ -211,7 +221,7 @@ function Methods.reset_user (request, store)
     },
     subject = {
       _          = "email:reset_account:subject",
-      servername = loader.configuration.server.name._,
+      servername = Configuration.server.name._,
       username   = user.username,
     },
     body    = {
@@ -234,10 +244,10 @@ end
 -- ### Suspend User
 
 function Methods.suspend_user (request, store)
-  loader.parameters.check (request, {
+  Parameters.check (request, {
     required = {
-      username = loader.parameters.username,
-      token    = loader.parameters.token.authentication,
+      username = Parameters.username,
+      token    = Parameters.token.authentication,
     },
   })
   local target = store.users [request.username]
@@ -248,7 +258,7 @@ function Methods.suspend_user (request, store)
     }
   end
   local user       = store.users [request.token.username]
-  local reputation = loader.configuration.reputation.suspend._
+  local reputation = Configuration.reputation.suspend._
   if user.reputation < reputation then
     error {
       _        = "suspend:not-enough",
@@ -264,9 +274,9 @@ end
 -- ### User Deletion
 
 function Methods.delete_user (request, store)
-  loader.parameters.check (request, {
+  Parameters.check (request, {
     required = {
-      token = loader.parameters.token.authentication,
+      token = Parameters.token.authentication,
     },
   })
   local user = store.users [request.token.username]
@@ -279,20 +289,20 @@ Internal.redis.retry = 2
 
 for k, f in pairs (Methods) do
   Methods [k] = function (request)
-    for _ = 1, loader.configuration.redis.retry._ do
+    for _ = 1, Configuration.redis.retry._ do
       local err
       local ok, result = xpcall (function ()
-        local store  = loader.store.new ()
+        local store  = Store.new ()
         local result = f (request, store)
-        loader.store.commit (store)
+        Store.commit (store)
         return result
       end, function (e)
         err = e
-        loader.logger.debug ("Error: " .. loader.value.encode (e) .. " => " .. debug.traceback ())
+        Logger.debug ("Error: " .. Value.encode (e) .. " => " .. debug.traceback ())
       end)
       if ok then
         return result or true
-      elseif err ~= loader.store.Error then
+      elseif err ~= Store.Error then
         return nil, err
       end
     end

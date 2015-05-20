@@ -1,10 +1,9 @@
-local loader  = require "cosy.loader"
+local Serpent = require "serpent"
 
 local Value   = {}
 
 function Value.encode (t, options)
-  local serpent = loader "serpent"
-  return serpent.dump (t, options or {
+  return Serpent.dump (t, options or {
     sortkeys = false,
     compact  = true,
     fatal    = true,
@@ -13,8 +12,7 @@ function Value.encode (t, options)
 end
 
 function Value.expression (t, options)
-  local serpent = loader "serpent"
-  return serpent.line (t, options or {
+  return Serpent.line (t, options or {
     sortkeys = true,
     compact  = true,
     fatal    = true,
@@ -24,8 +22,7 @@ function Value.expression (t, options)
 end
 
 function Value.decode (s)
-  local serpent = loader "serpent"
-  local ok, result = serpent.load (s, {
+  local ok, result = Serpent.load (s, {
     safe = false,
   })
   if not ok then

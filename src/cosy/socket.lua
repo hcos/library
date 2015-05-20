@@ -1,13 +1,10 @@
-local loader  = require "cosy.loader"
-
 if _G.js then
   error "Not available"
 end
 
+local Scheduler = require "cosy.scheduler"
+local Socket    = require "socket"
+
 return function ()
-  local socket    = loader "socket"
-  local scheduler = loader.scheduler
-  local skt       = socket.tcp ()
-  local result    = scheduler.wrap (skt)
-  return result
+  return Scheduler.wrap (Socket.tcp ())
 end

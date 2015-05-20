@@ -1,6 +1,10 @@
-local loader = require "cosy.loader"
-local ssl    = require "ssl"
-local smtp   = loader "socket.smtp"
+local Configuration = require "cosy.configuration"
+local CSocket       = require "cosy.socket"
+local I18n          = require "cosy.i18n"
+local Logger        = require "cosy.logger"
+local Socket        = require "socket"
+local Smtp          = require "socket.smtp"
+local Ssl           = require "ssl"
 
 if _G.js then
   error "Not available"
@@ -14,9 +18,8 @@ local Email = {}
 local make_socket = {}
 
 function make_socket.sync ()
-  local socket = loader "socket"
-  local result = socket.tcp ()
-  result:settimeout (loader.configuration.smtp.timeout._)
+  local result = Socket.tcp ()
+  result:settimeout (Configuration.smtp.timeout._)
   result:setoption ("keepalive", true)
   result:setoption ("reuseaddr", true)
   result:setoption ("tcp-nodelay", true)
@@ -24,8 +27,8 @@ function make_socket.sync ()
 end
 
 function make_socket.async ()
-  local result = loader.socket ()
-  result:settimeout (loader.configuration.smtp.timeout._)
+  local result = CSocket ()
+  result:settimeout (Configuration.smtp.timeout._)
   result:setoption ("keepalive", true)
   result:setoption ("reuseaddr", true)
   result:setoption ("tcp-nodelay", true)
@@ -66,7 +69,7 @@ function TLS_mt:connect (host, port)
   if not self.socket:connect (host, port) then
     return false
   end
-  self.socket = ssl.wrap (self.socket, {
+  self.socket = Ssl.wrap (self.socket, {
     mode     = "client",
     protocol = tls_alias [self.protocol],
   })
@@ -97,7 +100,7 @@ function STARTTLS_mt:connect (host, port)
   until line == nil
   self.socket:send "STARTTLS\r\n"
   self.socket:receive "*l"
-  self.socket = ssl.wrap (self.socket, {
+  self.socket = Ssl.wrap (self.socket, {
     mode     = "client",
     protocol = tls_alias [self.protocol],
   })
@@ -116,13 +119,11 @@ function Tcp.STARTTLS (protocol, make)
 end
 
 function Email.discover ()
-  local logger        = loader.logger
-  local configuration = loader.configuration
-  local domain        = configuration.server.root._
-  local host          = configuration.smtp.host._
-  local username      = configuration.smtp.username._
-  local password      = configuration.smtp.password._
-  local methods       = { configuration.smtp.method._ }
+  local domain        = Configuration.server.root._
+  local host          = Configuration.smtp.host._
+  local username      = Configuration.smtp.username._
+  local password      = Configuration.smtp.password._
+  local methods       = { Configuration.smtp.method._ }
   if #methods == 0 then
     methods = {
       "STARTTLS",
@@ -130,7 +131,7 @@ function Email.discover ()
       "PLAINTEXT",
     }
   end
-  local protocols = { configuration.smtp.protocol._ }
+  local protocols = { Configuration.smtp.protocol._ }
   if #protocols == 0 then
     protocols = {
       "TLS v1.2",
@@ -140,7 +141,7 @@ function Email.discover ()
       "SSL v2",
     }
   end
-  local ports     = { configuration.smtp.port._ }
+  local ports     = { Configuration.smtp.port._ }
   if #ports == 0 then
     ports = {
       25,
@@ -152,20 +153,20 @@ function Email.discover ()
     local protos = (method == "PLAIN") and { "nothing" } or protocols
     for _, protocol in ipairs (protos) do
       for _, port in ipairs (ports) do
-        logger.debug {
+        Logger.debug {
           _        = "smtp:discover",
           host     = host,
           port     = port,
           method   = method,
           protocol = protocol,
         }
-        local ok, s = pcall (smtp.open, host, port, Tcp [method] (protocol, make_socket.sync))
+        local ok, s = pcall (Smtp.open, host, port, Tcp [method] (protocol, make_socket.sync))
         if ok then
           ok = pcall (s.auth, s, username, password, s:greet (domain))
           if ok then
-            configuration.smtp.port     = port
-            configuration.smtp.method   = method
-            configuration.smtp.protocol = protocol
+            Configuration.smtp.port     = port
+            Configuration.smtp.method   = method
+            Configuration.smtp.protocol = protocol
             return true
           else
             s:close ()
@@ -177,21 +178,19 @@ function Email.discover ()
 end
 
 function Email.send (message)
-  local i18n          = loader.i18n
-  local configuration = loader.configuration
-  local locale        = message.locale or configuration.locale.default._
+  local locale        = message.locale or Configuration.locale.default._
   message.from   .locale = locale
   message.to     .locale = locale
   message.subject.locale = locale
   message.body   .locale = locale
-  message.from    = i18n (message.from   )
-  message.to      = i18n (message.to     )
-  message.subject = i18n (message.subject)
-  message.body    = i18n (message.body   )
-  return smtp.send {
+  message.from    = I18n (message.from   )
+  message.to      = I18n (message.to     )
+  message.subject = I18n (message.subject)
+  message.body    = I18n (message.body   )
+  return Smtp.send {
     from     = message.from:match (email_pattern),
     rcpt     = message.to  :match (email_pattern),
-    source   = smtp.message {
+    source   = Smtp.message {
       headers = {
         from    = message.from,
         to      = message.to,
@@ -199,29 +198,27 @@ function Email.send (message)
       },
       body = message.body
     },
-    user     = configuration.smtp.username._,
-    password = configuration.smtp.password._,
-    server   = configuration.smtp.host._,
-    port     = configuration.smtp.port._,
-    create   = Tcp [configuration.smtp.method._]
-               (configuration.smtp.protocol._, make_socket.async),
+    user     = Configuration.smtp.username._,
+    password = Configuration.smtp.password._,
+    server   = Configuration.smtp.host._,
+    port     = Configuration.smtp.port._,
+    create   = Tcp [Configuration.smtp.method._]
+               (Configuration.smtp.protocol._, make_socket.async),
   }
 end
 
 do
-  local logger        = loader.logger
-  local configuration = loader.configuration
   if not Email.discover () then
-    logger.warning {
+    Logger.warning {
       _ = "smtp:not-available",
     }
   else
-    logger.info {
+    Logger.info {
       _        = "smtp:available",
-      host     = configuration.smtp.host._,
-      port     = configuration.smtp.port._,
-      method   = configuration.smtp.method._,
-      protocol = configuration.smtp.protocol._,
+      host     = Configuration.smtp.host._,
+      port     = Configuration.smtp.port._,
+      method   = Configuration.smtp.method._,
+      protocol = Configuration.smtp.protocol._,
     }
   end
 end

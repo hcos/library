@@ -37,7 +37,7 @@ do
   local internal    = repository.of (configuration) .internal
   local main        = package.searchpath ("cosy", package.path)
   if main:sub (1, 1) == "." then
-    local lfs = loader "lfs"
+    local lfs = require "lfs"
     main = lfs.currentdir () .. "/" .. main
   end
   internal.http.www = main:sub (1, #main-4) .. "/../www/"

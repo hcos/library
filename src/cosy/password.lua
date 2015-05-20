@@ -1,22 +1,22 @@
-local loader  = require "cosy.loader"
-
 if _G.js then
   error "Not available"
 end
 
+local Configuration = require "cosy.configuration"
+local Logger        = require "cosy.logger"
+local Time          = require "cosy.time"
+local Bcrypt        = require "bcrypt"
+
 local Password = {}
 
 local function compute_rounds ()
-  local bcrypt        = loader "bcrypt"
-  local time          = loader.time
-  local configuration = loader.configuration
   for _ = 1, 5 do
     local rounds = 5
     while true do
-      local start = time ()
-      bcrypt.digest ("some random string", rounds)
-      local delta = time () - start
-      if delta > configuration.data.password.time._ then
+      local start = Time ()
+      Bcrypt.digest ("some random string", rounds)
+      local delta = Time () - start
+      if delta > Configuration.data.password.time._ then
         Password.rounds = math.max (Password.rounds or 0, rounds)
         break
       end
@@ -27,13 +27,11 @@ local function compute_rounds ()
 end
 
 function Password.hash (password)
-  local bcrypt = loader "bcrypt"
-  return bcrypt.digest (password, Password.rounds)
+  return Bcrypt.digest (password, Password.rounds)
 end
 
 function Password.verify (password, digest)
-  local bcrypt = loader "bcrypt"
-  if not bcrypt.verify (password, digest) then
+  if not Bcrypt.verify (password, digest) then
     return false
   end
   if tonumber (digest:match "%$%w+%$(%d+)%$") < Password.rounds then
@@ -43,13 +41,11 @@ function Password.verify (password, digest)
 end
 
 do
-  local logger        = loader.logger
-  local configuration = loader.configuration
   compute_rounds ()
-  logger.debug {
+  Logger.debug {
     _     = "bcrypt:rounds",
     count = Password.rounds,
-    time  = configuration.data.password.time._ * 1000,
+    time  = Configuration.data.password.time._ * 1000,
   }
 end
 
