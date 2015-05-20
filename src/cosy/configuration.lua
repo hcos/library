@@ -64,6 +64,7 @@ if not _G.js then
       loader.logger.debug {
         _ = "configuration:updated",
       }
+      loader.nginx.update ()
       loader.scheduler.sleep (-1)
     end
   end)
