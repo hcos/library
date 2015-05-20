@@ -110,15 +110,7 @@ http {
 }
 ]]
 
-function Nginx.start ()
-  Nginx.directory = os.tmpname ()
-  loader.logger.debug {
-    _         = "nginx:directory",
-    directory = Nginx.directory,
-  }
-  os.execute ([[
-    rm -f %{directory} && mkdir -p %{directory}
-  ]] % { directory = Nginx.directory })
+function Nginx.configure ()
   local resolver
   do
     local file = io.open "/etc/resolv.conf"
@@ -153,6 +145,18 @@ function Nginx.start ()
   local file = io.open (Nginx.directory .. "/nginx.conf", "w")
   file:write (configuration)
   file:close ()
+end
+
+function Nginx.start ()
+  Nginx.directory = os.tmpname ()
+  loader.logger.debug {
+    _         = "nginx:directory",
+    directory = Nginx.directory,
+  }
+  os.execute ([[
+    rm -f %{directory} && mkdir -p %{directory}
+  ]] % { directory = Nginx.directory })
+  Nginx.configure ()
   os.execute ([[
     %{nginx} -p %{directory} -c %{directory}/nginx.conf
   ]] % {
@@ -169,6 +173,7 @@ function Nginx.stop ()
 end
 
 function Nginx.update ()
+  Nginx.configure ()
   os.execute ([[
     kill -HUP $(cat %{directory}/cosy.pid)
   ]] % { directory = Nginx.directory })
