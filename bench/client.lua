@@ -16,10 +16,9 @@ local ok, err = pcall (function ()
   end
   local lib   = Library.connect "http://127.0.0.1:8080/"
 --  local lib   = Library.connect "http://cosy.linard.fr/"
---  local info  = lib.information ()
+  local info  = lib.information ()
 --  show ("information", info)
 --  print (lib.statistics ())
---[==[
   local tos   = lib.tos ()
   show ("terms of service", tos)
   local token = lib.create_user {
@@ -44,7 +43,6 @@ local ok, err = pcall (function ()
 --    token = token,
 --  }
 --  show ("delete user", result)
---]==]
 --  local token = lib.authenticate {
 --    username = "alinard",
 --    password = "password",
