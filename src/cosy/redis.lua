@@ -1,17 +1,17 @@
-local loader  = require "cosy.loader"
-
 if _G.js then
   error "Not available"
 end
 
+local Configuration = require "cosy.configuration"
+local Scheduler     = require "cosy.scheduler"
+local Socket        = require "cosy.socket"
+local Redis         = require "redis"
+
 local assigned = {}
 
 return function ()
-  local redis         = loader "redis"
-  local configuration = loader.configuration
-  local scheduler     = loader.scheduler
-  local co            = coroutine.running ()
-  local found         = assigned [co]
+  local co    = coroutine.running ()
+  local found = assigned [co]
   if found then
     return found
   end
@@ -28,14 +28,14 @@ return function ()
         count = count+1
       end
     end
-    if count < configuration.redis.pool_size._ then
-      local coroutine = loader "coroutine.make" ()
-      local host      = configuration.redis.host._
-      local port      = configuration.redis.port._
-      local database  = configuration.redis.database._
-      local socket    = loader.socket ()
+    if count < Configuration.redis.pool_size._ then
+      local coroutine = require "coroutine.make" ()
+      local host      = Configuration.redis.host._
+      local port      = Configuration.redis.port._
+      local database  = Configuration.redis.database._
+      local socket    = Socket ()
       socket:connect (host, port)
-      local client = redis.connect {
+      local client = Redis.connect {
         socket    = socket,
         coroutine = coroutine,
       }
@@ -43,7 +43,7 @@ return function ()
       assigned [co] = client
       return client
     else
-      scheduler.sleep (0.01)
+      Scheduler.sleep (0.01)
     end
   until false
 end

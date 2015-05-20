@@ -1,10 +1,15 @@
-local loader  = require "cosy.loader"
-
 if _G.js then
   error "Not available"
 end
 
-if loader.configuration.token.secret._ == nil then
+local Configuration = require "cosy.configuration"
+local Digest        = require "cosy.digest"
+local Random        = require "cosy.random"
+local Time          = require "cosy.time"
+
+local Jwt           = require "luajwt"
+
+if Configuration.token.secret._ == nil then
   error {
     _ = "token:no-secret",
   }
@@ -13,10 +18,9 @@ end
 local Token = {}
 
 function Token.encode (token)
-  local jwt           = loader "luajwt"
-  local secret        = loader.configuration.token.secret._
-  local algorithm     = loader.configuration.token.algorithm._
-  local result, err   = jwt.encode (token, secret, algorithm)
+  local secret        = Configuration.token.secret._
+  local algorithm     = Configuration.token.algorithm._
+  local result, err   = Jwt.encode (token, secret, algorithm)
   if not result then
     error (err)
   end
@@ -24,10 +28,9 @@ function Token.encode (token)
 end
 
 function Token.decode (s)
-  local jwt           = loader "luajwt"
-  local key           = loader.configuration.token.secret._
-  local algorithm     = loader.configuration.token.algorithm._
-  local result, err   = jwt.decode (s, key, algorithm)
+  local key           = Configuration.token.secret._
+  local algorithm     = Configuration.token.algorithm._
+  local result, err   = Jwt.decode (s, key, algorithm)
   if not result then
     error (err)
   end
@@ -35,25 +38,26 @@ function Token.decode (s)
 end
 
 function Token.administration ()
-  local now    = loader.time ()
+  local Server = require "cosy.server"
+  local now    = Time ()
   local result = {
     contents = {
       type       = "administration",
-      passphrase = loader.server.passphrase,
+      passphrase = Server.passphrase,
     },
     iat      = now,
     nbf      = now - 1,
-    exp      = now + loader.configuration.expiration.administration._,
-    iss      = loader.configuration.server.name._,
+    exp      = now + Configuration.expiration.administration._,
+    iss      = Configuration.server.name._,
     aud      = nil,
     sub      = "cosy:administration",
-    jti      = loader.digest (tostring (now + loader.random ())),
+    jti      = Digest (tostring (now + Random ())),
   }
-  return loader.token.encode (result)
+  return Token.encode (result)
 end
 
 function Token.validation (data)
-  local now    = loader.time ()
+  local now    = Time ()
   local result = {
     contents = {
       type     = "validation",
@@ -62,17 +66,17 @@ function Token.validation (data)
     },
     iat      = now,
     nbf      = now - 1,
-    exp      = now + loader.configuration.expiration.validation._,
-    iss      = loader.configuration.server.name._,
+    exp      = now + Configuration.expiration.validation._,
+    iss      = Configuration.server.name._,
     aud      = nil,
     sub      = "cosy:validation",
-    jti      = loader.digest (tostring (now + loader.random ())),
+    jti      = Digest (tostring (now + Random ())),
   }
-  return loader.token.encode (result)
+  return Token.encode (result)
 end
 
 function Token.authentication (data)
-  local now    = loader.time ()
+  local now    = Time ()
   local result = {
     contents = {
       type     = "authentication",
@@ -81,13 +85,13 @@ function Token.authentication (data)
     },
     iat      = now,
     nbf      = now - 1,
-    exp      = now + loader.configuration.expiration.authentication._,
-    iss      = loader.configuration.server.name._,
+    exp      = now + Configuration.expiration.authentication._,
+    iss      = Configuration.server.name._,
     aud      = nil,
     sub      = "cosy:authentication",
-    jti      = loader.digest (tostring (now + loader.random ())),
+    jti      = Digest (tostring (now + Random ())),
   }
-  return loader.token.encode (result)
+  return Token.encode (result)
 end
 
 return Token

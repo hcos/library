@@ -1,6 +1,8 @@
-local loader = require "cosy.loader"
+local Loader        = require "cosy.loader"
+local Logger        = require "cosy.logger"
+local Repository    = require "cosy.repository"
+local Scheduler     = require "cosy.scheduler"
 
-local Repository = loader.repository
 local repository = Repository.new ()
 
 Repository.options (repository).create = function () return {} end
@@ -28,9 +30,15 @@ local files = {
 }
 
 if not _G.js then
-  local updater = loader.scheduler.addthread (function ()
+  local updater = Scheduler.addthread (function ()
+    local Configuration = require "cosy.configuration"
+    local Nginx         = require "cosy.nginx"
+    local Redis         = require "cosy.redis"
+    if not Nginx.directory then
+      return
+    end
     while true do
-      local redis = loader.redis ()
+      local redis = Redis ()
       -- http://stackoverflow.com/questions/4006324
       local script = { [[
         local n    = 1000
@@ -39,12 +47,12 @@ if not _G.js then
           redis.call ("del", unpack (keys, i, math.min (i+n-1, #keys)))
         end
       ]] }
-      for name in pairs (loader.configuration.dependencies) do
-        local source = loader.configuration.dependencies [name]
+      for name in pairs (Configuration.dependencies) do
+        local source = Configuration.dependencies [name]
         local url    = tostring (source._)
         if url:match "^http" then
           script [#script+1] = ([[
-            redis.call ("set", "foreigns:%{name}", "%{source}")
+            redis.call ("set", "foreign:%{name}", "%{source}")
           ]]) % {
             name   = name,
             source = url,
@@ -59,15 +67,16 @@ if not _G.js then
       os.execute ([[
         find %{root}/cache -type f -delete
       ]] % {
-        root = loader.nginx.directory,
+        root = Nginx.directory,
       })
-      loader.logger.debug {
+      Logger.debug {
         _ = "configuration:updated",
       }
-      loader.scheduler.sleep (-1)
+      Nginx.update ()
+      Scheduler.sleep (-1)
     end
   end)
-  
+
   package.searchers [#package.searchers+1] = function (name)
     local result, err = io.open (name, "r")
     if not result then
@@ -81,22 +90,22 @@ if not _G.js then
   end
 
   for key, name in pairs (files) do
-    local result = loader.hotswap:try_require (name)
+    local result = Loader.hotswap.try_require (name)
     if result then
-      loader.hotswap.on_change [name] = function ()
-        loader.scheduler.wakeup (updater)
+      Loader.hotswap.on_change [name] = function ()
+        Scheduler.wakeup (updater)
       end
-      loader.logger.debug {
+      Logger.debug {
         _      = "configuration:using",
         path   = name,
-        locale = repository.whole.locale._,
+        locale = repository.whole.locale._ or "en",
       }
       repository [key] = result
     else
-      loader.logger.warning {
+      Logger.warning {
         _      = "configuration:skipping",
         path   = name,
-        locale = repository.whole.locale._,
+        locale = repository.whole.locale._ or "en",
       }
     end
   end

@@ -2,8 +2,8 @@
 
 package.path = package.path:gsub ("'", "")
   .. ";/usr/share/lua/5.1/?.lua;/usr/share/lua/5.1/?/init.lua;"
-local loader = require "cosy.loader"
 local cli    = require "cliargs"
+local loader = require "cosy.loader"
 
 cli:set_name (arg [0])
 
@@ -18,11 +18,15 @@ if not args then
   os.exit (1)
 end
 
+local configuration = require "cosy.configuration"
+local repository    = require "cosy.repository"
+local server        = require "cosy.server"
+
 if args.clean then
-  local redis     = loader "redis"
-  local host      = loader.configuration.redis.host._
-  local port      = loader.configuration.redis.port._
-  local database  = loader.configuration.redis.database._
+  local redis     = require "redis"
+  local host      = configuration.redis.host._
+  local port      = configuration.redis.port._
+  local database  = configuration.redis.database._
   local client = redis.connect (host, port)
   client:select (database)
   client:flushdb ()
@@ -30,13 +34,13 @@ if args.clean then
 end
 
 do
-  local internal    = loader.repository.of (loader.configuration) .internal
+  local internal    = repository.of (configuration) .internal
   local main        = package.searchpath ("cosy", package.path)
   if main:sub (1, 1) == "." then
-    local lfs = loader "lfs"
+    local lfs = require "lfs"
     main = lfs.currentdir () .. "/" .. main
   end
   internal.http.www = main:sub (1, #main-4) .. "/../www/"
 end
 
-loader.server.start ()
+server.start ()

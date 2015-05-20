@@ -1,5 +1,3 @@
-local loader  = require "cosy.loader"
-
 if _G.js then
   local js = _G.js
   local sjcl = js.global.require "sjcl.js"
@@ -9,7 +7,7 @@ if _G.js then
   end
 else
   return function (s)
-    local Crypto = loader "crypto"
+    local Crypto = require "crypto"
     return Crypto.digest ("SHA512", s)
   end
 end

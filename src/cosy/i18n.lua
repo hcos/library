@@ -1,30 +1,29 @@
-local loader  = require "cosy.loader"
+local i18n = require "i18n"
 
 return function (x)
   if type (x) ~= "table" then
     return x
   end
-  local i18n    = loader "i18n"
-  local logger  = loader.logger
   local locale  = x.locale
   if not locale then
-    local configuration = loader.configuration
-    locale = configuration.locale._
+    locale = "en"
   end
+  local Loader      = require "cosy.loader"
+  local Logger      = require "cosy.logger"
   local package     = "cosy.i18n." .. locale
-  local loaded      = loader.hotswap.loaded [package]
-  local translation = loader.hotswap:try_require (package)
+  local loaded      = Loader.hotswap.loaded [package]
+  local translation = Loader.hotswap.try_require (package)
   if translation and not loaded then
     i18n.load {
       [locale] = translation,
     }
-    logger.info {
+    Logger.info {
       _      = "locale:available",
       loaded = locale,
       locale = locale,
     }
   elseif not translation then
-    logger.info {
+    Logger.info {
       _      = "locale:missing",
       loaded = locale,
       locale = locale,
