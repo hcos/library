@@ -31,7 +31,7 @@ function Client.loop (client)
 end
 
 function Client.__index (client, operation)
-  return function (parameters)
+  return function (parameters, try_only)
     local result  = nil
     local coreact = Scheduler.addthread (Client.react, client)
     Scheduler.addthread (function ()
@@ -43,6 +43,7 @@ function Client.__index (client, operation)
         identifier = identifier,
         operation  = operation,
         parameters = parameters or {},
+        try_only   = try_only,
       })
       Scheduler.sleep (Configuration.client.timeout._)
       result = client._results [identifier]

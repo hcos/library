@@ -34,7 +34,10 @@ function Parameters.check (request, parameters)
           checked [key] = true
           if not ok then
             reason.key           = key
-            reasons [#reasons+1] = reason
+            reasons [#reasons+1] = {
+              parameter = key,
+              reasons   = reason
+            }
             break
           end
         end
@@ -51,8 +54,8 @@ function Parameters.check (request, parameters)
   end
   if #reasons ~= 0 then
     error {
-      _          = "check:error",
-      reasons    = reasons,
+      _       = "check:error",
+      reasons = reasons,
     }
   end
 end

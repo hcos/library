@@ -118,7 +118,7 @@ end
 
 -- ### User Creation
 
-function Methods.create_user (request, store)
+function Methods.create_user (request, store, try_only)
   Parameters.check (request, {
     required = {
       username   = Parameters.username,
@@ -139,6 +139,9 @@ function Methods.create_user (request, store)
       _        = "create-user:username-exists",
       username = request.username,
     }
+  end
+  if try_only then
+    return true
   end
   store.emails [request.email] = {
     username  = request.username,
@@ -191,7 +194,7 @@ end
 
 -- ### Reset password
 
-function Methods.reset_user (request, store)
+function Methods.reset_user (request, store, try_only)
   Parameters.check (request, {
     required = {
       email = Parameters.email,
@@ -207,6 +210,9 @@ function Methods.reset_user (request, store)
     return true
   end
   local token = Token.validation (user)
+  if try_only then
+    return true
+  end
   local sent  = Email.send {
     locale  = user.locale,
     from    = {
@@ -288,13 +294,15 @@ end
 Internal.redis.retry = 2
 
 for k, f in pairs (Methods) do
-  Methods [k] = function (request)
+  Methods [k] = function (request, try_only)
     for _ = 1, Configuration.redis.retry._ do
       local err
       local ok, result = xpcall (function ()
         local store  = Store.new ()
-        local result = f (request, store)
-        Store.commit (store)
+        local result = f (request, store, try_only)
+        if not try_only then
+          Store.commit (store)
+        end
         return result
       end, function (e)
         err = e
