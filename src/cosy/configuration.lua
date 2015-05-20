@@ -44,7 +44,7 @@ if not _G.js then
         local url    = tostring (source._)
         if url:match "^http" then
           script [#script+1] = ([[
-            redis.call ("set", "foreigns:%{name}", "%{source}")
+            redis.call ("set", "foreign:%{name}", "%{source}")
           ]]) % {
             name   = name,
             source = url,
