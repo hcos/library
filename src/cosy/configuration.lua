@@ -34,6 +34,9 @@ if not _G.js then
     local Configuration = require "cosy.configuration"
     local Nginx         = require "cosy.nginx"
     local Redis         = require "cosy.redis"
+    if not Nginx.directory then
+      return
+    end
     while true do
       local redis = Redis ()
       -- http://stackoverflow.com/questions/4006324
