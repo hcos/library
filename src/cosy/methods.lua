@@ -294,29 +294,31 @@ end
 Internal.redis.retry = 2
 
 for k, f in pairs (Methods) do
-  Methods [k] = function (request, try_only)
-    for _ = 1, Configuration.redis.retry._ do
-      local err
-      local ok, result = xpcall (function ()
-        local store  = Store.new ()
-        local result = f (request, store, try_only)
-        if not try_only then
-          Store.commit (store)
+  if type (f) == "function" then
+    Methods [k] = function (request, try_only)
+      for _ = 1, Configuration.redis.retry._ do
+        local err
+        local ok, result = xpcall (function ()
+          local store  = Store.new ()
+          local result = f (request, store, try_only)
+          if not try_only then
+            Store.commit (store)
+          end
+          return result
+        end, function (e)
+          err = e
+          Logger.debug ("Error: " .. Value.encode (e) .. " => " .. debug.traceback ())
+        end)
+        if ok then
+          return result or true
+        elseif err ~= Store.Error then
+          return nil, err
         end
-        return result
-      end, function (e)
-        err = e
-        Logger.debug ("Error: " .. Value.encode (e) .. " => " .. debug.traceback ())
-      end)
-      if ok then
-        return result or true
-      elseif err ~= Store.Error then
-        return nil, err
       end
+      return nil, {
+        _ = "redis:unavailable",
+      }
     end
-    return nil, {
-      _ = "redis:unavailable",
-    }
   end
 end
 
