@@ -67,7 +67,7 @@ if not _G.js then
       loader.scheduler.sleep (-1)
     end
   end)
-  
+
   package.searchers [#package.searchers+1] = function (name)
     local result, err = io.open (name, "r")
     if not result then
@@ -81,7 +81,7 @@ if not _G.js then
   end
 
   for key, name in pairs (files) do
-    local result = loader.hotswap:try_require (name)
+    local result = loader.hotswap.try_require (name)
     if result then
       loader.hotswap.on_change [name] = function ()
         loader.scheduler.wakeup (updater)

@@ -13,7 +13,7 @@ return function (x)
   end
   local package     = "cosy.i18n." .. locale
   local loaded      = loader.hotswap.loaded [package]
-  local translation = loader.hotswap:try_require (package)
+  local translation = loader.hotswap.try_require (package)
   if translation and not loaded then
     i18n.load {
       [locale] = translation,
