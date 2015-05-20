@@ -33,6 +33,7 @@ function Server.request (message)
   local identifier = request.identifier
   local operation  = request.operation
   local parameters = request.parameters
+  local try_only   = request.try_only
   local method     = Methods [operation]
   if not method then
     return Value.expression (translate {
@@ -44,7 +45,7 @@ function Server.request (message)
       },
     })
   end
-  local result, err = method (parameters or {})
+  local result, err = method (parameters or {}, try_only)
   if not result then
     return Value.expression (translate {
       identifier = identifier,
