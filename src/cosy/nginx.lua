@@ -24,7 +24,7 @@ http {
   include /etc/nginx/mime.types;
 
   gzip              on;
-  gzip_min_length   1000;
+  gzip_min_length   0;
   gzip_types        *;
   gzip_proxied      no-store no-cache private expired auth;
 
