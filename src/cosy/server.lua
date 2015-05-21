@@ -11,7 +11,6 @@ local Token         = require "cosy.token"
 local Value         = require "cosy.value"
 
 local Websocket     = require "websocket"
-local Copas         = require "copas"
 
 local Server = {}
 
@@ -70,8 +69,8 @@ function Server.start ()
   }
   -- Run websocket server:
   local internal  = Repository.of (Configuration) .internal
-  local addserver = Copas.addserver
-  Copas.addserver = function (s, f)
+  local addserver = Scheduler.addserver
+  Scheduler.addserver = function (s, f)
     local ok, port = s:getsockname ()
     if ok then
       internal.websocket.port = port
@@ -95,7 +94,7 @@ function Server.start ()
       end
     }
   }
-  Copas.addserver = addserver
+  Scheduler.addserver = addserver
   Logger.debug {
     _    = "websocket:listening",
     host = Configuration.websocket.host._,
