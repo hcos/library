@@ -41,12 +41,16 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
   ["fixme"] =
     "FIXME: %{message}",
 
+  ["cli:command:help"] =
+    "command to run",
   ["help:verbose"] =
     "allow verbose output",
 
   ["administration"] =
     "administration token is %{token}",
 
+  ["daemon:listening"] =
+    "listening for daemon connections on ws://%{host}:%{port}",
   ["websocket:listening"] =
     "listening for websocket connections on ws://%{host}:%{port}",
 
