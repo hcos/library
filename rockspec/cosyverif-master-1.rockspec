@@ -43,6 +43,7 @@ build = {
     ["cosy"                       ] = "src/cosy.lua",
     ["cosy.configuration"         ] = "src/cosy/configuration.lua",
     ["cosy.configuration.default" ] = "src/cosy/configuration/default.lua",
+    ["cosy.daemon"                ] = "src/cosy/daemon.lua",
     ["cosy.digest"                ] = "src/cosy/digest.lua",
     ["cosy.email"                 ] = "src/cosy/email.lua",
     ["cosy.i18n"                  ] = "src/cosy/i18n.lua",
@@ -65,5 +66,10 @@ build = {
     ["cosy.time"                  ] = "src/cosy/time.lua",
     ["cosy.token"                 ] = "src/cosy/token.lua",
     ["cosy.value"                 ] = "src/cosy/value.lua",
+  },
+  install = {
+    bin = {
+      ["cosy"] = "src/cosy.lua",
+    },
   },
 }
