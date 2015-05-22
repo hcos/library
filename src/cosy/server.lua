@@ -101,7 +101,6 @@ function Server.start ()
     local ok, err = pcall (function ()
       while true do
         local message = connection:receive "*l"
-        print ("server message", message)
         if     message == Server.Messages.stop then
           Server.stop ()
           return
