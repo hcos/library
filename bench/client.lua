@@ -1,18 +1,24 @@
-local loader        = require "cosy.loader"
-local Library       = loader.library
-local Configuration = loader.configuration
+local Loader        = require "cosy.loader"
+local Configuration = require "cosy.configuration"
+local I18n          = require "cosy.i18n"
+local Library       = require "cosy.library"
+local Value         = require "cosy.value"
 
 do
   os.execute "redis-cli flushall"
 end
 
+local token = arg [1]
+
 local ok, err = pcall (function ()
   local function show (name, x)
-    print (name, loader.value.expression (x))
+    print (name, Value.expression (x))
   end
   local lib   = Library.connect "http://127.0.0.1:8080/"
+--  local lib   = Library.connect "http://cosy.linard.fr/"
   local info  = lib.information ()
-  show ("information", info)
+--  show ("information", info)
+--  print (lib.statistics ())
   local tos   = lib.tos ()
   show ("terms of service", tos)
   local token = lib.create_user {
@@ -33,10 +39,10 @@ local ok, err = pcall (function ()
 --    username = "alinard",
 --  }
 --  show ("suspend user", result)
-  local result = lib.delete_user {
-    token = token,
-  }
-  show ("delete user", result)
+--  local result = lib.delete_user {
+--    token = token,
+--  }
+--  show ("delete user", result)
 --  local token = lib.authenticate {
 --    username = "alinard",
 --    password = "password",
@@ -51,19 +57,23 @@ local ok, err = pcall (function ()
     email = "alban.linard@gmail.com",
   }
   --]==]
-  
+  --[==[
   local start = require "socket".gettime ()
   local n     = 1000
   for _ = 1, n do
-    assert (lib.information ().name == Configuration.server.name._)
+    assert (lib.information ().name)
   end
   local finish = require "socket".gettime ()
   print (math.floor (n / (finish - start)), "requests/second")
+  --]==]
+  lib.stop {
+    token = token,
+  }
 end)
 if not ok then
   if type (err) == "table" then
-    local message = loader.i18n (err)
-    print ("error:", message, loader.value.expression (err))
+    local message = I18n (err)
+    print ("error:", message, Value.expression (err))
   else
     print (err)
   end

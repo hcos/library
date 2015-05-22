@@ -6,93 +6,89 @@ end
 
 local Loader = {}
 
-Loader.__index = function (loader, key)
-  return loader.hotswap:require ("cosy." .. tostring (key))
-end
-Loader.__call  = function (loader, key)
-  return loader.hotswap:require (key)
-end
-
 local loader = setmetatable ({}, Loader)
 
 if _G.js then
-  _G.loadhttp = function (url)
-    local co = coroutine.running ()
+  package.loaded ["cosy.loader"] = loader
+  loader.loadhttp = function (url)
+    local co, sync = coroutine.running ()
+    if not sync then
+      local level = 1
+      repeat
+        local info = debug.getinfo (level, "Sn")
+        if info and info.what == "C" then
+          sync = true
+          break
+        end
+        level = level + 1
+      until not info
+    end
     local request = _G.js.new (_G.js.global.XMLHttpRequest)
-    request:open ("GET", url, true)
+    request:open ("GET", url, not sync)
+    local result, err
     request.onreadystatechange = function (event)
       if request.readyState == 4 then
         if request.status == 200 then
-          coroutine.resume (co, request.responseText)
+          result = request.responseText
         else
-          coroutine.resume (co, nil, event.target.status)
+          err    = event.target.status
+        end
+        if not sync then
+          coroutine.resume (co)
         end
       end
     end
-    request:send (nil)
-    local result, err = coroutine.yield ()
+    if sync then
+      _G.js.global.console:log ("XMLHttpRequest is used in synchronous mode for: " .. url)
+      request:send (nil)
+    else
+      request:send (nil)
+      coroutine.yield ()
+    end
     if result then
       return result
     else
       error (err)
     end
   end
-  _G.require = function (mod_name)
-    local loaded = package.loaded [mod_name]
-    if loaded then
-      return loaded
-    end
-    local preloaded = package.preload [mod_name]
-    if preloaded then
-      local result = preloaded (mod_name)
-      package.loaded [mod_name] = result
-      return result
-    end
-    local url = "/lua/" .. mod_name
+  table.insert (package.searchers, 2, function (name)
+    local url = "/lua/" .. name
     local result, err
-    result, err = _G.loadhttp (url)
+    result, err = loader.loadhttp (url)
     if not result then
       error (err)
     end
-    result, err = load (result, url)
-    if not result then
-      error (err)
-    end
-    result = result (mod_name)
-    package.loaded [mod_name] = result
-    return result
-  end
-  loader.hotswap = {
-    require = function (_, name)
-      return require (name)
-    end,
-    try_require = function (_, name)
-      local ok, result = pcall (require, name)
-      if ok then
-        return result
-      else
-        return nil, result
-      end
-    end,
-  }
+    return load (result, url)
+  end)
+  loader.hotswap   = require "hotswap" .new {}
 else
   loader.scheduler = require "copas.ev"
   loader.scheduler.make_default ()
   loader.hotswap   = require "hotswap.ev" .new {
-    loop = loader.scheduler._loop
+    loop = loader.scheduler._loop,
   }
-  loader.hotswap:require "cosy.string"
 end
 
-package.preload.bit32 = function ()
-  loader.logger.warning {
-    _       = "fixme",
-    message = "global bit32 is created for lua-websockets",
-  }
-  _G.bit32         = require "bit"
-  _G.bit32.lrotate = _G.bit32.rol
-  _G.bit32.rrotate = _G.bit32.ror
-  return _G.bit32
+do
+  package.preload ["bit32"] = function ()
+    local Logger = require "cosy.logger"
+    Logger.warning {
+      _       = "fixme",
+      message = "global bit32 is created for lua-websockets",
+    }
+    _G.bit32         = require "bit"
+    _G.bit32.lrotate = _G.bit32.rol
+    _G.bit32.rrotate = _G.bit32.ror
+    return _G.bit32
+  end
+
+  _G.require = function (name)
+    return loader.hotswap.require (name)
+  end
+
+  _G.coroutine = require "coroutine.make" ()
+
+  require "cosy.string"
 end
 
 return loader

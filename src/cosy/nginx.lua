@@ -1,4 +1,5 @@
-local loader = require "cosy.loader"
+local Configuration = require "cosy.configuration"
+local Logger        = require "cosy.logger"
 
 local Nginx = {}
 
@@ -10,7 +11,7 @@ worker_processes 1;
 events {
   worker_connections 1024;
 }
- 
+
 http {
   tcp_nopush            on;
   tcp_nodelay           on;
@@ -22,6 +23,11 @@ http {
   lua_package_path      "%{path}";
 
   include /etc/nginx/mime.types;
+
+  gzip              on;
+  gzip_min_length   0;
+  gzip_types        *;
+  gzip_proxied      no-store no-cache private expired auth;
 
   server {
     listen        localhost:%{port};
@@ -51,7 +57,7 @@ http {
           return ngx.exit (500)
         end
         redis:select (%{redis_database})
-        local target = redis:get ("foreigns:" .. ngx.var.uri)
+        local target = redis:get ("foreign:" .. ngx.var.uri)
         if not target or target == ngx.null then
           return ngx.exit (404)
         end
@@ -105,20 +111,12 @@ http {
 }
 ]]
 
-function Nginx.start ()
-  Nginx.directory = os.tmpname ()
-  loader.logger.debug {
-    _         = "nginx:directory",
-    directory = Nginx.directory,
-  }
-  os.execute ([[
-    rm -f %{directory} && mkdir -p %{directory}
-  ]] % { directory = Nginx.directory })
+function Nginx.configure ()
   local resolver
   do
     local file = io.open "/etc/resolv.conf"
     if not file then
-      loader.logger.error {
+      Logger.error {
         _ = "nginx:no-resolver",
       }
     end
@@ -133,25 +131,37 @@ function Nginx.start ()
     resolver = table.concat (result, " ")
   end
   local configuration = configuration_template % {
-    host           = loader.configuration.http.host._,
-    port           = loader.configuration.http.port._,
-    name           = loader.configuration.server.name._,
-    redis_host     = loader.configuration.redis.host._,
-    redis_port     = loader.configuration.redis.port._,
-    redis_database = loader.configuration.redis.database._,
+    host           = Configuration.http.host._,
+    port           = Configuration.http.port._,
+    name           = Configuration.server.name._,
+    redis_host     = Configuration.redis.host._,
+    redis_port     = Configuration.redis.port._,
+    redis_database = Configuration.redis.database._,
     path           = package.path,
-    www            = loader.configuration.http.www._,
-    wshost         = loader.configuration.websocket.host._,
-    wsport         = loader.configuration.websocket.port._,
+    www            = Configuration.http.www._,
+    wshost         = Configuration.websocket.host._,
+    wsport         = Configuration.websocket.port._,
     resolver       = resolver,
   }
   local file = io.open (Nginx.directory .. "/nginx.conf", "w")
   file:write (configuration)
   file:close ()
+end
+
+function Nginx.start ()
+  Nginx.directory = os.tmpname ()
+  Logger.debug {
+    _         = "nginx:directory",
+    directory = Nginx.directory,
+  }
+  os.execute ([[
+    rm -f %{directory} && mkdir -p %{directory}
+  ]] % { directory = Nginx.directory })
+  Nginx.configure ()
   os.execute ([[
     %{nginx} -p %{directory} -c %{directory}/nginx.conf
   ]] % {
-    nginx     = loader.configuration.http.nginx._,
+    nginx     = Configuration.http.nginx._,
     directory = Nginx.directory,
   })
 end
@@ -164,6 +174,7 @@ function Nginx.stop ()
 end
 
 function Nginx.update ()
+  Nginx.configure ()
   os.execute ([[
     kill -HUP $(cat %{directory}/cosy.pid)
   ]] % { directory = Nginx.directory })
