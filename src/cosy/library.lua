@@ -1,20 +1,44 @@
 local Configuration = require "cosy.configuration"
+local Digest        = require "cosy.digest"
 local Value         = require "cosy.value"
 
 local Library = {}
 local Client  = {}
 
+local function patch (client)
+  function client.authenticate (parameters, try_only)
+    parameters.password = Digest ("%{username}:%{password}" % {
+      username = parameters.username,
+      password = parameters.password,
+    })
+    client.username = parameters.username
+    client.password = parameters.password
+    return Client.__index (client, "authenticate") (parameters, try_only)
+  end
+  function client.create_user (parameters, try_only)
+    parameters.password = Digest ("%{username}:%{password}" % {
+      username = parameters.username,
+      password = parameters.password,
+    })
+    client.username = parameters.username
+    client.password = parameters.password
+    return Client.__index (client, "create_user") (parameters, try_only)
+  end
+  return client
+end
+
 if _G.js then
+
   function Client.__index (client, operation)
-    return function (parameters, try_only)
-      local identifier = #client._waiting+1
+    local result = function (parameters, try_only)
+      local identifier = #client._waiting + 1
       client._ws:send (Value.expression {
         identifier = identifier,
         operation  = operation,
         parameters = parameters or {},
-        try_only = try_only,
+        try_only   = try_only,
       })
-      client._waiting[identifier] = coroutine.running ()
+      client._waiting [identifier] = coroutine.running ()
       local result = coroutine.yield ()
       if result == nil then
         error {
@@ -26,28 +50,28 @@ if _G.js then
         error (result.error)
       end
     end
+    return result
   end
 
   function Library.client (url)
-    local co = coroutine.running ()
     local client = setmetatable ({
       _results = {},
       _waiting = {},
     }, Client)
-    client._ws = _G.js.new (_G.js.global.WebSocket, url, "cosy")
-    client._ws.onopen    = function (ws)
-      coroutine.resume (co, true)
+    client._ws   = _G.js.new (_G.js.global.WebSocket, url, "cosy")
+    client._ws.onopen    = function ()
+      coroutine.resume (coroutine.running (), true)
     end
-    client._ws.onclose   = function (ws,event)
-      coroutine.resume (co, nil, event.reason)
+    client._ws.onclose   = function (_, event)
+      coroutine.resume (coroutine.running (), nil, event.reason)
     end
-    client._ws.onmessage = function (ws,event)
+    client._ws.onmessage = function (_, event)
       local message    = Value.decode (event.data)
       local identifier = message.identifier
       if identifier then
-      local co = client._waiting[identifier]
-      assert(co)
-      client._waiting[identifier] = nil
+        local co = client._waiting [identifier]
+        assert (co)
+        client._waiting[identifier] = nil
         coroutine.resume (co, message)
       else
         client.on_update ()
@@ -57,28 +81,20 @@ if _G.js then
     if not ok then
       error (err)
     end
-    return client
+    return patch (client)
   end
 
   function Library.connect (url)
     local parser   = _G.js.global.document:createElement "a";
     parser.href    = url;
-    local protocol = parser.protocol
     local hostname = parser.hostname
     local port     = parser.port
-    local username = parser.username
-    local password = parser.password
-    local path     = parser.pathname
-    if protocol:sub (-1) == ":" then
-      protocol = protocol:sub (1, #protocol-1)
-    end
-    if path:sub (1) == "/" then
-      path = path:sub (2)
-    end
-    local client = Library.client ("ws://%{hostname}:%{port}/ws" % {
+    local client   = Library.client ("ws://%{hostname}:%{port}/ws" % {
       hostname = hostname,
       port     = port,
     })
+    client.username = parser.username
+    client.password = parser.password
     return client
   end
 
@@ -111,7 +127,7 @@ else
   end
 
   function Client.__index (client, operation)
-    return function (parameters, try_only)
+    local result = function (parameters, try_only)
       local result  = nil
       local coreact = Scheduler.addthread (Client.react, client)
       Scheduler.addthread (function ()
@@ -142,6 +158,7 @@ else
         error (result.error)
       end
     end
+    return result
   end
 
   function Library.client (url)
@@ -157,21 +174,22 @@ else
       client._ws:connect (url, "cosy")
     end)
     Scheduler.loop ()
-    return client
+    return patch (client)
   end
 
   function Library.connect (url)
     local parsed   = Url.parse (url)
     local host     = parsed.host
     local port     = parsed.port
-    local username = parsed.user
-    local password = parsed.password
     local client   = Library.client ("ws://%{host}:%{port}/ws" % {
       host = host,
       port = port,
     })
+    client.username = parsed.user
+    client.password = parsed.password
     return client
   end
+
 end
 
 return Library
