@@ -1,46 +1,62 @@
-#! /usr/bin/env lua
+#! /usr/bin/env luajit
 
-package.path = package.path:gsub ("'", "")
-  .. ";/usr/share/lua/5.1/?.lua;/usr/share/lua/5.1/?/init.lua;"
-local cli    = require "cliargs"
-local loader = require "cosy.loader"
+local Loader        = require "cosy.loader"
+      Loader.nolog  = true
+local Configuration = require "cosy.configuration"
+local Lfs           = require "lfs"
+local Socket        = require "socket"
+      Socket.unix   = require "socket.unix"
+local Cli           = require "cliargs"
+local I18n          = require "cosy.i18n"
+local Colors        = require "ansicolors"
+local Commands      = require "cosy.commands"
 
-cli:set_name (arg [0])
+local directory  = Configuration.config.directory._
+Lfs.mkdir (directory)
 
-cli:add_option (
-  "-c, --clean",
-  "clean redis database"
-)
-
-local args = cli:parse_args ()
-if not args then
-  cli:print_help ()
+local command = Commands [arg [1] or false]
+if not command then
+  local name_size = 0
+  local names     = {}
+  local list      = {}
+  for name, c in pairs (Commands) do
+    name_size = math.max (name_size, #name)
+    names [#names+1] = name
+    list [name] = I18n (c)
+  end
+  print (Colors ("%{white redbg}" .. I18n {
+    _   = "cli:missing-command",
+    cli = arg [0],
+  }))
+  print (I18n {
+    _   = "cli:available-commands",
+  })
+  table.sort (names)
+  for i = 1, #names do
+    local line = "  %{green}" .. names [i]
+    for j = #line, name_size+12 do
+      line = line .. " "
+    end
+    line = line .. "%{yellow}" .. list [names [i]]
+    print (Colors (line))
+  end
   os.exit (1)
 end
 
-local configuration = require "cosy.configuration"
-local repository    = require "cosy.repository"
-local server        = require "cosy.server"
-
-if args.clean then
-  local redis     = require "redis"
-  local host      = configuration.redis.host._
-  local port      = configuration.redis.port._
-  local database  = configuration.redis.database._
-  local client = redis.connect (host, port)
-  client:select (database)
-  client:flushdb ()
-  package.loaded.redis = nil
+local socketfile = Configuration.config.daemon.socket_file._
+if Lfs.attributes (socketfile, "mode") ~= "socket" then
+  local oldarg = _G.arg
+  _G.arg = {
+    [0] = "daemon:start",
+  }
+  os.execute ([[
+    luajit -e 'require "cosy.daemon" .start ()' &
+  ]] % { --  > %{log} 2>&1
+    log = Configuration.config.daemon.log_file._,
+  })
+  _G.arg = oldarg
 end
 
-do
-  local internal    = repository.of (configuration) .internal
-  local main        = package.searchpath ("cosy", package.path)
-  if main:sub (1, 1) == "." then
-    local lfs = require "lfs"
-    main = lfs.currentdir () .. "/" .. main
-  end
-  internal.http.www = main:sub (1, #main-4) .. "/../www/"
-end
-
-server.start ()
+Cli:set_name (_G.arg [0] .. " " .. _G.arg [1])
+table.remove (_G.arg, 1)
+command.run (Cli)

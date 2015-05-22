@@ -33,6 +33,7 @@ dependencies = {
   "lualogging >= 1",
   "luasec >= 0",
   "luasocket >= 2",
+  "luasocket-unix >= 2",
   "redis-lua >= 2",
   "serpent >= 0",
 }
@@ -41,8 +42,10 @@ build = {
   type    = "builtin",
   modules = {
     ["cosy"                       ] = "src/cosy.lua",
+    ["cosy.commands"              ] = "src/cosy/commands.lua",
     ["cosy.configuration"         ] = "src/cosy/configuration.lua",
     ["cosy.configuration.default" ] = "src/cosy/configuration/default.lua",
+    ["cosy.daemon"                ] = "src/cosy/daemon.lua",
     ["cosy.digest"                ] = "src/cosy/digest.lua",
     ["cosy.email"                 ] = "src/cosy/email.lua",
     ["cosy.i18n"                  ] = "src/cosy/i18n.lua",
@@ -65,5 +68,10 @@ build = {
     ["cosy.time"                  ] = "src/cosy/time.lua",
     ["cosy.token"                 ] = "src/cosy/token.lua",
     ["cosy.value"                 ] = "src/cosy/value.lua",
+  },
+  install = {
+    bin = {
+      ["cosy"] = "src/cosy.lua",
+    },
   },
 }

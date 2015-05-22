@@ -56,26 +56,6 @@ Methods.Type = setmetatable ({
   __index = assert,
 })
 
-function Methods.stop (request)
-  local Server = require "cosy.server"
-  Parameters.check (request, {
-    required = {
-      token  = Parameters.token.administration,
-    },
-  })
-  Server.stop ()
-end
-
-function Methods.update (request)
-  local Server = require "cosy.server"
-  Parameters.check (request, {
-    required = {
-      token  = Parameters.token.administration,
-    },
-  })
-  Server.update ()
-end
-
 function Methods.statistics ()
   local request  = (require "copas.http").request
   local position = request "http://www.telize.com/geoip"

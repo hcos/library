@@ -37,13 +37,12 @@ function Token.decode (s)
   return result
 end
 
-function Token.administration ()
-  local Server = require "cosy.server"
+function Token.administration (server)
   local now    = Time ()
   local result = {
     contents = {
       type       = "administration",
-      passphrase = Server.passphrase,
+      passphrase = server.passphrase,
     },
     iat      = now,
     nbf      = now - 1,

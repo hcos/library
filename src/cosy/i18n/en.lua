@@ -41,12 +41,28 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
   ["fixme"] =
     "FIXME: %{message}",
 
-  ["help:verbose"] =
+  ["cli:missing-command"] =
+    "missing command: %{cli} <command> [parameters...]",
+  ["cli:available-commands"] =
+    "available commands are:",
+  ["cli:verbose"] =
     "allow verbose output",
+  ["cli:daemon:update"] =
+    "update daemon",
+  ["cli:daemon:stop"] =
+    "stop daemon",
+  ["cli:server:start"] =
+    "start server",
+  ["cli:server:update"] =
+    "update server",
+  ["cli:server:stop"] =
+    "stop server",
 
   ["administration"] =
     "administration token is %{token}",
 
+  ["daemon:listening"] =
+    "listening for daemon connections on ws://%{host}:%{port}",
   ["websocket:listening"] =
     "listening for websocket connections on ws://%{host}:%{port}",
 
