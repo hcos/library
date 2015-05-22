@@ -63,4 +63,13 @@ return {
     ["/js/sjcl.js"  ] = "http://bitwiseshiftleft.github.io/sjcl/sjcl.js",
   },
   statistics = "http://stats.cosyverif.org",
+  config = {
+    directory  = os.getenv "HOME" .. "/.cosy",
+    daemon = {
+      socket_file = os.getenv "HOME" .. "/.cosy/daemon.socket",
+    },
+    cli = {
+      data_file   = os.getenv "HOME" .. "/.cosy/cli.data",
+    },
+  },
 }

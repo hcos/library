@@ -1,5 +1,6 @@
 #! /usr/bin/env luajit
 
+local Configuration = require "cosy.configuration"
 local Library       = require "cosy.library"
 local Value         = require "cosy.value"
 local Scheduler     = require "cosy.scheduler"
@@ -8,18 +9,12 @@ local Socket        = require "socket"
 local Lfs           = require "lfs"
 local Mime          = require "mime"
 
-local directory  = os.getenv "HOME" .. "/.cosy"
-local socketfile = directory .. "/socket"
-
-if Lfs.attributes (directory, "mode") ~= "directory" then
-  os.remove (directory)
-  assert (Lfs.mkdir (directory))
-end
+local socketfile = Configuration.config.daemon.socket_file._
 os.remove (socketfile)
 
 local socket = Socket.unix ()
 socket:bind (socketfile)
-os.execute ([[ chmod 0700 %{socketfile} ]] % {
+os.execute ([[ chmod 0600 %{socketfile} ]] % {
   socketfile = socketfile,
 })
 
@@ -36,6 +31,10 @@ Scheduler.addserver (socket, function (skt)
       end
       message = Mime.unb64   (message)
       message = Value.decode (message)
+      if message == "stop" then
+        os.remove (socketfile)
+        os.exit   (0)
+      end
       local server     = message.server
       local operation  = message.operation
       local parameters = message.parameters
@@ -47,7 +46,7 @@ Scheduler.addserver (socket, function (skt)
       local result  = library [operation] (parameters, try_only)
       result = Value.expression (result)
       result = Mime.b64         (result)
-      connection:send (result)
+      connection:send (result .. "\n")
     end
   end)
   if not ok then
@@ -57,4 +56,5 @@ Scheduler.addserver (socket, function (skt)
   end
 end)
 
-Scheduler.loop ()
+pcall (Scheduler.loop)
+os.remove (socketfile)
