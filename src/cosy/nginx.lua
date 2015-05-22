@@ -5,7 +5,7 @@ local Nginx = {}
 
 local configuration_template = [[
 error_log   error.log;
-pid         cosy.pid;
+pid         %{pid_file};
 
 worker_processes 1;
 events {
@@ -138,6 +138,7 @@ function Nginx.configure ()
     redis_port     = Configuration.redis.port._,
     redis_database = Configuration.redis.database._,
     path           = package.path,
+    pid_file       = Configuration.config.nginx.pid_file._,
     www            = Configuration.http.www._,
     wshost         = Configuration.websocket.host._,
     wsport         = Configuration.websocket.port._,
@@ -168,7 +169,10 @@ end
 
 function Nginx.stop ()
   os.execute ([[
-    kill -QUIT $(cat %{directory}/cosy.pid) && rm -rf %{directory}
+    kill -QUIT $(cat %{pid_file}) && rm -rf %{directory}
+  ]] % { pid_file = Configuration.config.nginx.pid_file._ })
+  os.execute ([[
+    rm -rf %{directory}
   ]] % { directory = Nginx.directory })
   Nginx.directory = nil
 end
@@ -176,8 +180,8 @@ end
 function Nginx.update ()
   Nginx.configure ()
   os.execute ([[
-    kill -HUP $(cat %{directory}/cosy.pid)
-  ]] % { directory = Nginx.directory })
+    kill -HUP $(cat %{pid_file})
+  ]] % { pid_file = Configuration.config.nginx.pid_file._ })
 end
 
 return Nginx

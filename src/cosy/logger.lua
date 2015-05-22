@@ -1,3 +1,4 @@
+local Loader = require "cosy.loader"
 local I18n   = require "cosy.i18n"
 local Logger = {}
 
@@ -19,6 +20,11 @@ if _G.js then
     local i18n = I18n
     logger:log ("ERROR: " .. i18n (t))
   end
+elseif Loader.nolog then
+  function Logger.debug   () end
+  function Logger.info    () end
+  function Logger.warning () end
+  function Logger.error   () end
 else
   local logging   = require "logging"
   logging.console = require "logging.console"

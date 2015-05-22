@@ -33,6 +33,7 @@ dependencies = {
   "lualogging >= 1",
   "luasec >= 0",
   "luasocket >= 2",
+  "luasocket-unix >= 2",
   "redis-lua >= 2",
   "serpent >= 0",
 }
@@ -41,6 +42,7 @@ build = {
   type    = "builtin",
   modules = {
     ["cosy"                       ] = "src/cosy.lua",
+    ["cosy.commands"              ] = "src/cosy/commands.lua",
     ["cosy.configuration"         ] = "src/cosy/configuration.lua",
     ["cosy.configuration.default" ] = "src/cosy/configuration/default.lua",
     ["cosy.daemon"                ] = "src/cosy/daemon.lua",
