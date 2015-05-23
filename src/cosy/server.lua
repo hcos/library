@@ -76,10 +76,6 @@ function Server.start ()
   os.remove (tokenfile)
   Server.passphrase = Digest (Random ())
   Server.token      = Token.administration (Server)
-  Logger.info {
-    _     = "administration",
-    token = Server.token,
-  }
   local file = io.open (tokenfile, "w")
   file:write (Value.expression (Server.token))
   file:close ()

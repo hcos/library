@@ -58,9 +58,6 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
   ["cli:server:stop"] =
     "stop server",
 
-  ["administration"] =
-    "administration token is %{token}",
-
   ["daemon:listening"] =
     "listening for daemon connections on ws://%{host}:%{port}",
   ["websocket:listening"] =
