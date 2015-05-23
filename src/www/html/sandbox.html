@@ -10,23 +10,25 @@
         <!--script src="js/lua.js"></script-->
         <script type="text/javascript" lang="JavaScript" src="/js/lua.vm.js"></script>
         <script type="text/lua" lang="Lua" id="luascript">
+-- First, require `loader` from outside of the coroutines:
 local location = js.global.location
-coroutine      = require (location.origin .. "/lua/coroutine.make") ()
-local function main ()
-  return xpcall (function ()
-    local loader   = require (location.origin .. "/lua/cosy.loader")
-    local lib      = loader.hotswap "cosy.js"
-    
-    local client   = lib.connect "ws://127.0.0.1:8080/"
-  local info  = client.tos ()
-    js.global.console:log (loader.value.expression (info))
-    
-  end, function (err)
-    js.global.console:log ("error: " .. tostring (err))
-    js.global.console:log (debug.traceback ())
-  end)
-end
-local co = coroutine.create (main)
+local loader   = require (location.origin .. "/lua/cosy.loader")
+-- When loader is loaded, it updates `coroutine` and `require`.
+-- We can now create a coroutine and run the library within:
+local co = coroutine.create (function ()
+-- Using xpcall or pcall disables aysnchronous loading and may break
+-- the coroutine yields.
+--  return xpcall (function ()
+    local library = require "cosy.library"
+    local value   = require "cosy.value"
+    local client  = library.connect "http://127.0.0.1:8080/"
+    local info    = client.tos ()
+    js.global.console:log (value.expression (info))
+--  end, function (err)
+--    js.global.console:log ("error: " .. tostring (err))
+--    js.global.console:log (debug.traceback ())
+--  end)
+end)
 coroutine.resume (co)
         </script>
     </body> 
