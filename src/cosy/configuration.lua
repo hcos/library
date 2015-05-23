@@ -63,7 +63,7 @@ if not _G.js then
         return true
       ]]
       script = table.concat (script)
-      redis:eval (script, 0, "foreigns:*")
+      redis:eval (script, 1, "foreign:*")
       os.execute ([[
         find %{root}/cache -type f -delete
       ]] % {
@@ -73,7 +73,7 @@ if not _G.js then
         _ = "configuration:updated",
       }
       Nginx.update ()
-      Scheduler.sleep (-1)
+      Scheduler.sleep (-math.huge)
     end
   end)
 
