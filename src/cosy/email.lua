@@ -91,7 +91,6 @@ local STARTTLS_mt = {
 function STARTTLS_mt:connect (host, port)
   self.socket = self.make ()
   if not self.socket:connect (host, port) then
-    print "connection failed"
     return nil, "connection failed"
   end
   self.socket:send ("EHLO cosy\r\n")
