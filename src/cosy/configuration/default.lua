@@ -16,6 +16,9 @@ return {
   websocket = {
     host = "127.0.0.1",
   },
+  library = {
+    retry = 5,
+  },
   www = {
     root = (os.getenv "PWD") .. "/www",
   },
