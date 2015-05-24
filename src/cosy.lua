@@ -45,16 +45,11 @@ end
 
 local socketfile = Configuration.config.daemon.socket_file._
 if Lfs.attributes (socketfile, "mode") ~= "socket" then
-  local oldarg = _G.arg
-  _G.arg = {
-    [0] = "daemon:start",
-  }
   os.execute ([[
-    luajit -e 'require "cosy.daemon" .start ()' &
+    luajit -e 'require "cosy.daemon" .start ()' & sleep 2
   ]] % { --  > %{log} 2>&1
     log = Configuration.config.daemon.log_file._,
   })
-  _G.arg = oldarg
 end
 
 Cli:set_name (_G.arg [0] .. " " .. _G.arg [1])
