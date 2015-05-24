@@ -85,4 +85,8 @@ return {
       data_file   = os.getenv "HOME" .. "/.cosy/cli.data",
     },
   },
+  cli = {
+    default_locale = (os.getenv "LANG" or "en"):match "[^%.]+",
+    default_server = "http://cosyverif.org/",
+  },
 }
