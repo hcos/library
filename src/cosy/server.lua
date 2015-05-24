@@ -98,10 +98,14 @@ function Server.start ()
       while true do
         local message = connection:receive "*l"
         if     message == Server.Messages.stop then
-          Server.stop ()
+          os.remove (tokenfile )
+          os.remove (socketfile)
+          Server.ws:close ()
+          Nginx.stop ()
+          os.exit (0)
           return
         elseif message == Server.Messages.update then
-          Server.update ()
+          Nginx.update ()
           return
         elseif not message then
           connection:close ()
@@ -149,15 +153,17 @@ function Server.start ()
 end
 
 function Server.stop ()
-  os.remove (tokenfile )
-  os.remove (socketfile)
-  Server.ws:close ()
-  Nginx.stop ()
-  os.exit (0)
+  local socket = Socket.unix ()
+  socket:connect (Configuration.config.server.socket_file._)
+  socket:send (Server.Messages.stop .. "\n")
+  socket:close ()
 end
 
 function Server.update ()
-  Nginx.update ()
+  local socket = Socket.unix ()
+  socket:connect (Configuration.config.server.socket_file._)
+  socket:send (Server.Messages.update .. "\n")
+  socket:close ()
 end
 
 return Server
