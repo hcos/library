@@ -28,10 +28,20 @@ local function patch (client)
   return client
 end
 
+local function threadof (f, ...)
+  if Scheduler._running then
+    f (...)
+  else
+    Scheduler.addthread (f, ...)
+    Scheduler.loop ()
+  end
+end
+
 function Client.__index (client, operation)
+  assert (client._status == "opened")
   return function (parameters, try_only)
     local result
-    local f = function ()
+    local function f ()
       local co         = coroutine.running ()
       local identifier = #client._waiting + 1
       client._waiting [identifier] = co
@@ -47,8 +57,7 @@ function Client.__index (client, operation)
       client._waiting [identifier] = nil
       client._results [identifier] = nil
     end
-    Scheduler.addthread (f)
-    Scheduler.loop ()
+    threadof (f)
     if result == nil then
       return nil, {
         _ = "client:timeout",
@@ -70,6 +79,7 @@ function Library.client (t)
   client.port     = t.port     or 80
   client.username = t.username or false
   client.password = t.password or false
+  client._retry   = 0
   local url = "ws://%{host}:%{port}/ws" % {
     host = client.host,
     port = client.port,
@@ -83,10 +93,22 @@ function Library.client (t)
       loop    = Scheduler._loop,
     }
   end
+  client._connect       = function ()
+    client._status = "closed"
+    client._ws:connect (url, "cosy")
+    client._co = coroutine.running ()
+    Scheduler.sleep (-math.huge)
+  end
   client._ws.onopen     = function ()
+    client._status = "opened"
     Scheduler.wakeup (client._co)
   end
   client._ws.onclose    = function ()
+    client._status = "closed"
+    client._retry  = client._retry + 1
+    if client._retry < Configuration.library.retry._ then
+      threadof (client._connect)
+    end
   end
   client._ws.onmessage  = function (_, event)
     local message 
@@ -102,26 +124,30 @@ function Library.client (t)
       Scheduler.wakeup (client._waiting [identifier])
     end
   end
-  client._ws.onerror    = function ()
+  client._ws.onerror    = function (_, err)
+    client._status = "closed"
+    client._err    = err
+    Scheduler.wakeup (client._co)
   end
   if not _G.js then
-    client._ws:on_open (client._ws.onopen)
-    client._ws:on_close (client._ws.onclose)
+    client._ws:on_open    (client._ws.onopen   )
+    client._ws:on_close   (client._ws.onclose  )
     client._ws:on_message (client._ws.onmessage)
-    client._ws:on_error (client._ws.onerror)
+    client._ws:on_error   (client._ws.onerror  )
   end
   if _G.js then
     client._co = coroutine.running ()
     Scheduler.sleep (-math.huge)
   else
-    Scheduler.addthread (function ()
-      client._ws:connect (url, "cosy")
-      client._co = coroutine.running ()
-      Scheduler.sleep (-math.huge)
-    end)
-    Scheduler.loop ()
+    threadof (client._connect)
   end
-  return patch (client)
+  if      client._status == "opened" then
+    return patch (client)
+  elseif client._status == "closed" then
+    return nil, client._err
+  else
+    assert (false)
+  end
 end
 
 if _G.js then
