@@ -61,6 +61,7 @@ return {
     expiration = 24 * 3600, -- 1 day
     ["/js/lua.vm.js"] = "https://kripken.github.io/lua.vm.js/lua.vm.js",
     ["/js/sjcl.js"  ] = "http://bitwiseshiftleft.github.io/sjcl/sjcl.js",
+    ["/js/jquery.js"] = "http://code.jquery.com/jquery-2.1.4.min.js",
   },
   statistics = "http://stats.cosyverif.org",
   config = {
