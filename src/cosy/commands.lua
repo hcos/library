@@ -1,5 +1,4 @@
 local Configuration = require "cosy.configuration"
-
 local Commands = {}
 
 Commands ["daemon:update"] = {
@@ -11,10 +10,7 @@ Commands ["daemon:update"] = {
       os.exit (1)
     end
     local Daemon = require "cosy.daemon"
-    local socket = require "socket.unix" ()
-    socket:connect (Configuration.config.daemon.socket_file._)
-    socket:send (Daemon.Messages.update .. "\n")
-    socket:close ()
+    Daemon.update ()
   end,
 }
 Commands ["daemon:stop"] = {
@@ -25,13 +21,8 @@ Commands ["daemon:stop"] = {
       cli:print_help ()
       os.exit (1)
     end
-    local Daemon      = require "cosy.daemon"
-    local Socket      = require "socket"
-          Socket.unix = require "socket.unix"
-    local socket      = Socket.unix ()
-    socket:connect (Configuration.config.daemon.socket_file._)
-    socket:send (Daemon.Messages.stop .. "\n")
-    socket:close ()
+    local Daemon = require "cosy.daemon"
+    Daemon.stop ()
   end,
 }
 
@@ -72,13 +63,8 @@ Commands ["server:update"] = {
       cli:print_help ()
       os.exit (1)
     end
-    local Server      = require "cosy.server"
-    local Socket      = require "socket"
-          Socket.unix = require "socket.unix"
-    local socket      = Socket.unix ()
-    socket:connect (Configuration.config.server.socket_file._)
-    socket:send (Server.Messages.update .. "\n")
-    socket:close ()
+    local Server = require "cosy.server"
+    Server.update ()
   end,
 }
 Commands ["server:stop"] = {
@@ -89,13 +75,59 @@ Commands ["server:stop"] = {
       cli:print_help ()
       os.exit (1)
     end
-    local Server      = require "cosy.server"
-    local Socket      = require "socket"
-          Socket.unix = require "socket.unix"
-    local socket      = Socket.unix ()
-    socket:connect (Configuration.config.server.socket_file._)
-    socket:send (Server.Messages.stop .. "\n")
-    socket:close ()
+    local Server = require "cosy.server"
+    Server.stop ()
+  end,
+}
+
+local Value  = require "cosy.value"
+
+local function addoptions (cli)
+  cli:add_option (
+    "-s, --server=SERVER",
+    "",
+    Configuration.cli.default_server._
+  )
+  cli:add_option (
+    "-l, --locale=LOCALE",
+    "",
+    Configuration.cli.default_locale._
+  )
+end
+
+Commands ["show:information"] = {
+  _   = "cli:information",
+  run = function (cli)
+    addoptions (cli)
+    local args = cli:parse_args ()
+    if not args then
+      cli:print_help ()
+      os.exit (1)
+    end
+    local Daemon = require "cosy.daemon"
+    local answer = Daemon {
+      server    = args.server,
+      operation = "information",
+    }
+    print (Value.expression (answer))
+  end,
+}
+
+Commands ["show:tos"] = {
+  _   = "cli:tos",
+  run = function (cli)
+    addoptions (cli)
+    local args = cli:parse_args ()
+    if not args then
+      cli:print_help ()
+      os.exit (1)
+    end
+    local Daemon = require "cosy.daemon"
+    local answer = Daemon {
+      server    = args.server,
+      operation = "tos",
+    }
+    print (Value.expression (answer))
   end,
 }
 

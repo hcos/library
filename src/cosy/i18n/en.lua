@@ -57,6 +57,8 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
     "update server",
   ["cli:server:stop"] =
     "stop server",
+  ["cli:tos"] =
+    "show the Terms of Service",
 
   ["daemon:listening"] =
     "listening for daemon connections on ws://%{host}:%{port}",
