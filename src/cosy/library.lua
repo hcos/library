@@ -106,7 +106,8 @@ function Library.client (t)
   client._ws.onclose    = function ()
     client._status = "closed"
     client._retry  = client._retry + 1
-    if client._retry < Configuration.library.retry._ then
+    if  Configuration.library.retry._
+    and client._retry < Configuration.library.retry._ then
       threadof (client._connect)
     end
   end
