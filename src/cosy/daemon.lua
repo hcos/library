@@ -20,17 +20,17 @@ function Daemon.start ()
   local socket = Socket.unix ()
   socket:bind   (socketfile)
   socket:listen (32)
-  os.execute ([[ chmod 0700 %{file} ]] % { file = socketfile })
+  os.execute ([[ chmod 0600 %{file} ]] % { file = socketfile })
   local libraries = {}
   Scheduler.addserver (socket, function (connection)
     local ok, err = pcall (function ()
       while true do
         local message = connection:receive "*l"
         if     message == Daemon.Messages.stop then
-          Daemon.stop ()
+          os.remove (socketfile)
+          os.exit   (0)
           return
         elseif message == Daemon.Messages.update then
-          Daemon.update ()
           return
         elseif not message then
           connection:close ()
@@ -46,7 +46,10 @@ function Daemon.start ()
           libraries [server] = Library.connect (server)
         end
         local library = libraries [server]
-        local result  = library [operation] (parameters, try_only)
+        local result
+        if library and library._status == "opened" then
+          result = library [operation] (parameters, try_only)
+        end
         result = Value.expression (result)
         result = Mime.b64         (result)
         connection:send (result .. "\n")
@@ -62,11 +65,40 @@ function Daemon.start ()
 end
 
 function Daemon.stop ()
-  os.remove (socketfile)
-  os.exit   (0)
+  local socket = Socket.unix ()
+  socket:connect (Configuration.config.daemon.socket_file._)
+  socket:send (Daemon.Messages.stop .. "\n")
+  socket:close ()
 end
 
 function Daemon.update ()
+  local socket = Socket.unix ()
+  socket:connect (Configuration.config.daemon.socket_file._)
+  socket:send (Daemon.Messages.update .. "\n")
+  socket:close ()
 end
 
-return Daemon
+local Metatable = {}
+
+function Metatable.__call (_, t)
+  local socket  = Socket.unix ()
+  socket:connect (Configuration.config.daemon.socket_file._)
+  local message = Value.expression {
+    server      = t.server,
+    operation   = t.operation,
+    parameters  = t.parameters,
+    try_only    = t.try_only,
+  }
+  message       = Mime.b64 (message)
+  socket:send (message .. "\n")
+  local answer  = socket:receive "*l"
+  if not answer then
+    return nil
+  end
+  answer        = Mime.unb64 (answer)
+  answer        = Value.decode (answer)
+  socket:close ()
+  return answer
+end
+
+return setmetatable (Daemon, Metatable)
