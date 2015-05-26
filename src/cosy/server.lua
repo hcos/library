@@ -13,11 +13,10 @@ local Scheduler     = require "cosy.scheduler"
 local Token         = require "cosy.token"
 local Value         = require "cosy.value"
 local Websocket     = require "websocket"
+local Ffi           = require "ffi"
 local Lfs           = require "lfs"
 local Socket        = require "socket"
       Socket.unix   = require "socket.unix"
-
-local datafile = Configuration.server.data_file._
 
 local Server = {}
 
@@ -67,7 +66,6 @@ function Server.request (message)
 end
 
 function Server.start ()
-  os.remove (datafile)
   Server.passphrase = Digest (Random ())
   Server.token      = Token.administration (Server)
   -- Set www path:
@@ -107,16 +105,29 @@ function Server.start ()
     host = Configuration.server.interface._,
     port = Configuration.server.port._,
   }
-  local file = io.open (datafile, "w")
-  file:write (Value.expression {
-    token     = Server.token,
-    interface = Configuration.server.interface._,
-    port      = Configuration.server.port._,
-  })
-  file:close ()
-  os.execute ([[ chmod 0600 %{file} ]] % { file = datafile })
-  Nginx.stop  ()
-  Nginx.start ()
+  do
+    local datafile = Configuration.server.data_file._
+    local file     = io.open (datafile, "w")
+    file:write (Value.expression {
+      token     = Server.token,
+      interface = Configuration.server.interface._,
+      port      = Configuration.server.port._,
+    })
+    file:close ()
+    os.execute ([[ chmod 0600 %{file} ]] % { file = datafile })
+  end
+  do
+    Nginx.stop  ()
+    Nginx.start ()
+  end
+  do
+    Ffi.cdef [[ unsigned int getpid (); ]]
+    local pidfile = Configuration.server.pid_file._
+    local file    = io.open (pidfile, "w")
+    file:write (Ffi.C.getpid ())
+    file:close ()
+    os.execute ([[ chmod 0600 %{file} ]] % { file = pidfile })
+  end
   Scheduler.loop ()
 end
 
@@ -124,7 +135,8 @@ function Server.stop ()
   Server.ws:close ()
   Scheduler.addthread (function ()
     Nginx.stop ()
-    os.remove (datafile)
+    os.remove (Configuration.server.data_file._)
+    os.remove (Configuration.server.pid_file ._)
     os.exit   (0)
   end)
   return true
