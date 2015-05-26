@@ -26,7 +26,7 @@ return function (x)
     Logger.info {
       _      = "locale:missing",
       loaded = locale,
-      locale = locale,
+      locale = "en",
     }
   end
 

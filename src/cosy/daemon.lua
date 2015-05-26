@@ -1,104 +1,105 @@
 local Configuration = require "cosy.configuration"
+local I18n          = require "cosy.i18n"
 local Library       = require "cosy.library"
+local Logger        = require "cosy.logger"
+local Repository    = require "cosy.repository"
 local Value         = require "cosy.value"
 local Scheduler     = require "cosy.scheduler"
-local Socket        = require "socket"
-      Socket.unix   = require "socket.unix"
-local Mime          = require "mime"
+local Websocket     = require "websocket"
 
-local Daemon = {
-  Messages = {
-    stop   = "Daemon, stop!",
-    update = "Daemon, update!",
-  },
-}
+local daemonfile = Configuration.daemon.data_file._
 
-local socketfile = Configuration.config.daemon.socket_file._
+local Daemon = {}
+
+Daemon.libraries = {}
+
+function Daemon.request (message)
+  if message == "daemon-stop" then
+    return Daemon.stop ()
+  end
+  local server = message.server
+  local lib    = Daemon.libraries [server]
+  if not lib then
+    lib = Library.connect (server)
+    if not lib then
+      return {
+        success = false,
+        error   = I18n {
+          _      = "server:unreachable",
+          locale = (message.parameters or {}).locale,
+        },
+      }
+    end
+    Daemon.libraries [server] = lib
+  end
+  local method = lib [message.operation]
+  local result, err = method (message.parameters, message.try_only)
+  if result then
+    result = {
+      success  = true,
+      response = result,
+    }
+  else
+    result = {
+      success = false,
+      error   = err,
+    }
+  end
+  return result
+end
 
 function Daemon.start ()
-  os.remove (socketfile)
-  local socket = Socket.unix ()
-  socket:bind   (socketfile)
-  socket:listen (32)
-  os.execute ([[ chmod 0600 %{file} ]] % { file = socketfile })
-  local libraries = {}
-  Scheduler.addserver (socket, function (connection)
-    local ok, err = pcall (function ()
-      while true do
-        local message = connection:receive "*l"
-        if     message == Daemon.Messages.stop then
-          os.remove (socketfile)
-          os.exit   (0)
-          return
-        elseif message == Daemon.Messages.update then
-          return
-        elseif not message then
-          connection:close ()
-          return
-        end
-        message = Mime.unb64   (message)
-        message = Value.decode (message)
-        local server     = message.server
-        local operation  = message.operation
-        local parameters = message.parameters
-        local try_only   = message.try_only
-        if not libraries [server] then
-          libraries [server] = Library.connect (server)
-        end
-        local library = libraries [server]
-        local result
-        if library and library._status == "opened" then
-          result = library [operation] (parameters, try_only)
-        end
-        result = Value.expression (result)
-        result = Mime.b64         (result)
-        connection:send (result .. "\n")
-      end
-    end)
-    if not ok then
-      err = Value.expression (err)
-      err = Mime.b64         (err)
-      connection:send (err)
+  local addserver = Scheduler.addserver
+  local internal  = Repository.of (Configuration) .internal
+  Scheduler.addserver = function (s, f)
+    local ok, port = s:getsockname ()
+    if ok then
+      internal.daemon.port = port
     end
-  end)
+    addserver (s, f)
+  end
+  Daemon.ws = Websocket.server.copas.listen {
+    interface = Configuration.daemon.interface._,
+    port      = Configuration.daemon.port._,
+    protocols = {
+      cosy = function (ws)
+        while true do
+          local message = ws:receive ()
+          if not message then
+            ws:close ()
+            return
+          end
+          message           = Value.decode (message)
+          local result, err = Daemon.request (message)
+          result            = Value.expression (result)
+          ws:send (result)
+        end
+      end
+    }
+  }
+  Scheduler.addserver = addserver
+  Logger.debug {
+    _    = "daemon:listening",
+    host = Configuration.daemon.interface._,
+    port = Configuration.daemon.port._,
+  }
+  local file = io.open (daemonfile, "w")
+  file:write (Value.expression {
+    interface = Configuration.daemon.interface._,
+    port      = Configuration.daemon.port._,
+  })
+  file:close ()
+  os.execute ([[ chmod 0600 %{file} ]] % { file = daemonfile })
   Scheduler.loop ()
 end
 
 function Daemon.stop ()
-  local socket = Socket.unix ()
-  socket:connect (Configuration.config.daemon.socket_file._)
-  socket:send (Daemon.Messages.stop .. "\n")
-  socket:close ()
+  Daemon.ws:close ()
+  Scheduler.addthread (function ()
+    os.remove (daemonfile)
+    os.exit   (0)
+  end)
+  return true
 end
 
-function Daemon.update ()
-  local socket = Socket.unix ()
-  socket:connect (Configuration.config.daemon.socket_file._)
-  socket:send (Daemon.Messages.update .. "\n")
-  socket:close ()
-end
-
-local Metatable = {}
-
-function Metatable.__call (_, t)
-  local socket  = Socket.unix ()
-  socket:connect (Configuration.config.daemon.socket_file._)
-  local message = Value.expression {
-    server      = t.server,
-    operation   = t.operation,
-    parameters  = t.parameters,
-    try_only    = t.try_only,
-  }
-  message       = Mime.b64 (message)
-  socket:send (message .. "\n")
-  local answer  = socket:receive "*l"
-  if not answer then
-    return nil
-  end
-  answer        = Mime.unb64 (answer)
-  answer        = Value.decode (answer)
-  socket:close ()
-  return answer
-end
-
-return setmetatable (Daemon, Metatable)
+return Daemon

@@ -17,15 +17,9 @@ local Lfs           = require "lfs"
 local Socket        = require "socket"
       Socket.unix   = require "socket.unix"
 
-local Server = {
-  Messages = {
-    stop   = "Server, stop!",
-    update = "Server, update!",
-  },
-}
+local datafile = Configuration.server.data_file._
 
-local tokenfile  = Configuration.config.server.token_file._
-local socketfile = Configuration.config.server.socket_file._
+local Server = {}
 
 function Server.request (message)
   local function translate (x)
@@ -73,62 +67,27 @@ function Server.request (message)
 end
 
 function Server.start ()
-  os.remove (tokenfile)
+  os.remove (datafile)
   Server.passphrase = Digest (Random ())
   Server.token      = Token.administration (Server)
-  local file = io.open (tokenfile, "w")
-  file:write (Value.expression (Server.token))
-  file:close ()
-  os.execute ([[ chmod 0600 %{file} ]] % { file = tokenfile })
-  
+  -- Set www path:
   local internal = Repository.of (Configuration) .internal
   local main     = package.searchpath ("cosy", package.path)
   if main:sub (1, 1) == "." then
     main = Lfs.currentdir () .. "/" .. main
   end
   internal.http.www = main:sub (1, #main-4) .. "/../www/"
-
-  os.remove (socketfile)
-  local socket = Socket.unix ()
-  socket:bind   (socketfile)
-  socket:listen (32)
-  os.execute ([[ chmod 0700 %{file} ]] % { file = socketfile })
-  Scheduler.addserver (socket, function (connection)
-    local ok, err = pcall (function ()
-      while true do
-        local message = connection:receive "*l"
-        if     message == Server.Messages.stop then
-          os.remove (tokenfile )
-          os.remove (socketfile)
-          Server.ws:close ()
-          Nginx.stop ()
-          os.exit (0)
-          return
-        elseif message == Server.Messages.update then
-          Nginx.update ()
-          return
-        elseif not message then
-          connection:close ()
-          return
-        end
-      end
-    end)
-    if not ok then
-      connection:send (err)
-    end
-  end)
-  
   local addserver = Scheduler.addserver
   Scheduler.addserver = function (s, f)
     local ok, port = s:getsockname ()
     if ok then
-      internal.websocket.port = port
+      internal.server.port = port
     end
     addserver (s, f)
   end
   Server.ws = Websocket.server.copas.listen {
-    interface = Configuration.websocket.interface._,
-    port      = 0,
+    interface = Configuration.server.interface._,
+    port      = Configuration.server.port._,
     protocols = {
       cosy = function (ws)
         while true do
@@ -144,26 +103,30 @@ function Server.start ()
   }
   Scheduler.addserver = addserver
   Logger.debug {
-    _    = "websocket:listening",
-    host = Configuration.websocket.host._,
-    port = Configuration.websocket.port._,
+    _    = "server:listening",
+    host = Configuration.server.interface._,
+    port = Configuration.server.port._,
   }
+  local file = io.open (datafile, "w")
+  file:write (Value.expression {
+    token     = Server.token,
+    interface = Configuration.server.interface._,
+    port      = Configuration.server.port._,
+  })
+  file:close ()
+  os.execute ([[ chmod 0600 %{file} ]] % { file = datafile })
   Nginx.start ()
   Scheduler.loop ()
 end
 
 function Server.stop ()
-  local socket = Socket.unix ()
-  socket:connect (Configuration.config.server.socket_file._)
-  socket:send (Server.Messages.stop .. "\n")
-  socket:close ()
-end
-
-function Server.update ()
-  local socket = Socket.unix ()
-  socket:connect (Configuration.config.server.socket_file._)
-  socket:send (Server.Messages.update .. "\n")
-  socket:close ()
+  Server.ws:close ()
+  Scheduler.addthread (function ()
+    Nginx.stop ()
+    os.remove (datafile)
+    os.exit   (0)
+  end)
+  return true
 end
 
 return Server

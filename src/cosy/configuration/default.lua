@@ -1,32 +1,39 @@
 return {
   redis = {
-    host      = "127.0.0.1",
+    interface = "127.0.0.1",
     port      = 6379,
     retry     = 5,
     database  = 0,
     pool_size = 5,
   },
   http = {
-    nginx   = "nginx",
-    host    = "*",
-    port    = 8080,
-    salt    = "cosyverif",
-    timeout = 5,
+    nginx     = "nginx",
+    interface = "*",
+    port      = 8080,
+    salt      = "cosyverif",
+    timeout   = 5,
   },
-  websocket = {
-    host = "127.0.0.1",
+  server = {
+    interface = "127.0.0.1",
+    port      = 0,
+    data_file = os.getenv "HOME" .. "/.cosy/server.data",
+    log_file  = os.getenv "HOME" .. "/.cosy/server.log",
+  },
+  daemon = {
+    interface = "127.0.0.1",
+    port      = 0,
+    data_file = os.getenv "HOME" .. "/.cosy/daemon.data",
+    log_file  = os.getenv "HOME" .. "/.cosy/daemon.log",
   },
   library = {
-    retry = 5,
+    retry   = 5,
+    timeout = 2,
   },
   www = {
     root = (os.getenv "PWD") .. "/www",
   },
   smtp = {
     timeout = 2,
-  },
-  client = {
-    timeout = 5,
   },
   data = {
     username = {
@@ -67,25 +74,8 @@ return {
     ["/js/jquery.js"] = "http://code.jquery.com/jquery-2.1.4.min.js",
   },
   statistics = "http://stats.cosyverif.org",
-  config = {
-    directory  = os.getenv "HOME" .. "/.cosy",
-    nginx = {
-      pid_file    = os.getenv "HOME" .. "/.cosy/nginx.pid",
-    },
-    server = {
-      socket_file = os.getenv "HOME" .. "/.cosy/server.socket",
-      token_file  = os.getenv "HOME" .. "/.cosy/server.token",
-      log_file    = os.getenv "HOME" .. "/.cosy/server.log",
-    },
-    daemon = {
-      socket_file = os.getenv "HOME" .. "/.cosy/daemon.socket",
-      log_file    = os.getenv "HOME" .. "/.cosy/daemon.log",
-    },
-    cli = {
-      data_file   = os.getenv "HOME" .. "/.cosy/cli.data",
-    },
-  },
   cli = {
+    directory      = os.getenv "HOME" .. "/.cosy",
     default_locale = (os.getenv "LANG" or "en"):match "[^%.]+",
     default_server = "http://cosyverif.org/",
   },
