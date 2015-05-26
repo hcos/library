@@ -8,26 +8,36 @@ return function (x)
   if not locale then
     locale = "en"
   end
-  local Loader      = require "cosy.loader"
-  local Logger      = require "cosy.logger"
-  local package     = "cosy.i18n." .. locale
-  local loaded      = Loader.hotswap.loaded [package]
-  local translation = Loader.hotswap.try_require (package)
-  if translation and not loaded then
-    i18n.load {
-      [locale] = translation,
-    }
-    Logger.info {
-      _      = "locale:available",
-      loaded = locale,
-      locale = locale,
-    }
-  elseif not translation then
+  while locale do
+    local Loader      = require "cosy.loader"
+    local Logger      = require "cosy.logger"
+    local package     = "cosy.i18n." .. locale
+    local loaded      = Loader.hotswap.loaded [package]
+    local translation = Loader.hotswap.try_require (package)
+    if translation and not loaded then
+      i18n.load {
+        [locale] = translation,
+      }
+      Logger.info {
+        _      = "locale:available",
+        loaded = locale,
+        locale = locale,
+      }
+      break
+    elseif translation then
+      break
+    end
     Logger.info {
       _      = "locale:missing",
       loaded = locale,
       locale = "en",
     }
+    local main, sub = locale:match "(%w+)_(%w+)"
+    if main and sub then
+      locale = main
+    else
+      locale = nil
+    end
   end
 
   local function translate (t)
