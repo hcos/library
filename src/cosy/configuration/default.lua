@@ -27,7 +27,6 @@ return {
     log_file  = os.getenv "HOME" .. "/.cosy/daemon.log",
   },
   library = {
-    retry   = 5,
     timeout = 2,
   },
   www = {
