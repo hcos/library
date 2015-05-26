@@ -12,6 +12,7 @@ return {
     port      = 8080,
     salt      = "cosyverif",
     timeout   = 5,
+    pid_file  = os.getenv "HOME" .. "/.cosy/nginx.pid",
   },
   server = {
     interface = "127.0.0.1",

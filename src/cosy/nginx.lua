@@ -5,7 +5,7 @@ local Nginx = {}
 
 local configuration_template = [[
 error_log   error.log;
-pid         nginx.pid;
+pid         %{pidfile};
 
 worker_processes 1;
 events {
@@ -134,6 +134,7 @@ function Nginx.configure ()
     host           = Configuration.http.interface._,
     port           = Configuration.http.port._,
     www            = Configuration.http.www._,
+    pidfile        = Configuration.http.pid_file._,
     name           = Configuration.server.name._,
     wshost         = Configuration.server.interface._,
     wsport         = Configuration.server.port._,
@@ -141,7 +142,6 @@ function Nginx.configure ()
     redis_port     = Configuration.redis.port._,
     redis_database = Configuration.redis.database._,
     path           = package.path,
-    pid_file       = Configuration.config.nginx.pid_file._,
     resolver       = resolver,
   }
   local file = io.open (Nginx.directory .. "/nginx.conf", "w")
@@ -169,8 +169,8 @@ end
 
 function Nginx.stop ()
   os.execute ([[
-    kill -QUIT $(cat %{directory}/nginx.pid) && rm -rf %{directory}
-  ]] % { directory = Nginx.directory })
+    kill -QUIT $(cat %{pidfile}) 2> /dev/null
+  ]] % { pidfile = Configuration.http.pid_file._ })
   os.execute ([[
     rm -rf %{directory}
   ]] % { directory = Nginx.directory })
@@ -180,8 +180,8 @@ end
 function Nginx.update ()
   Nginx.configure ()
   os.execute ([[
-    kill -HUP $(cat %{directory}/nginx.pid)
-  ]] % { directory = Nginx.directory })
+    kill -HUP $(cat %{pidfile})
+  ]] % { pidfile = Configuration.http.pid_file._ })
 end
 
 return Nginx
