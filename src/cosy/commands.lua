@@ -48,6 +48,16 @@ Commands ["server:start"] = {
       client:flushdb ()
       package.loaded ["redis"] = nil
     end
+    local serverdata = read (Configuration.server.data_file._)
+    if serverdata then
+      return {
+        success = false,
+        error   = I18n {
+          _      = "cli:server:already-running",
+          locale = locale,
+        },
+      }
+    end
     return os.execute ([[
       luajit -e 'require "cosy.server" .start ()' &
     ]] % { --  > %{log} 2>&1
