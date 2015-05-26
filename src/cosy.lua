@@ -32,9 +32,15 @@ or not ws:connect ("ws://%{interface}:%{port}/ws" % {
          interface = daemondata.interface,
          port      = daemondata.port,
        }, "cosy") then
-  os.execute ([[
-    luajit -e 'require "cosy.daemon" .start ()' & sleep 2
-  ]] % { --  > %{log} 2>&1
+  os.execute ([==[
+    if [ -f "%{pid}" ]
+    then
+      kill -9 $(cat %{pid})
+    fi
+    rm -f %{pid} %{log}
+    luajit -e 'require "cosy.daemon" .start ()' > %{log} 2>&1 & sleep 2
+  ]==] % {
+    pid = Configuration.daemon.pid_file._,
     log = Configuration.daemon.log_file._,
   })
   daemondata = read (Configuration.daemon.data_file._)

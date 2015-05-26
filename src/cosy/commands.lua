@@ -48,8 +48,7 @@ Commands ["server:start"] = {
       client:flushdb ()
       package.loaded ["redis"] = nil
     end
-    local serverdata = read (Configuration.server.data_file._)
-    if serverdata then
+    if io.open (Configuration.server.pid_file._, "r") then
       return {
         success = false,
         error   = I18n {
@@ -58,9 +57,15 @@ Commands ["server:start"] = {
         },
       }
     end
-    return os.execute ([[
-      luajit -e 'require "cosy.server" .start ()' &
-    ]] % { --  > %{log} 2>&1
+    return os.execute ([==[
+      if [ -f "%{pid}" ]
+      then
+        kill -9 $(cat %{pid})
+      fi
+      rm -f %{pid} %{log}
+      luajit -e 'require "cosy.server" .start ()' > %{log} 2>&1 & sleep 2
+    ]==] % {
+      pid = Configuration.server.pid_file._,
       log = Configuration.server.log_file._,
     })
   end,
@@ -83,7 +88,6 @@ Commands ["server:stop"] = {
         token = serverdata.token,
       },
     })
-    local result = ws:receive ()
     return Value.expression (result)
   end,
 }
