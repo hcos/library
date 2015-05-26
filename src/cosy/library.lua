@@ -52,7 +52,7 @@ function Client.__index (client, operation)
         parameters = parameters or {},
         try_only   = try_only,
       })
-      Scheduler.sleep (Configuration.client.timeout._)
+      Scheduler.sleep (Configuration.library.timeout._)
       result = client._results [identifier]
       client._waiting [identifier] = nil
       client._results [identifier] = nil
@@ -89,7 +89,7 @@ function Library.client (t)
   else
     local Websocket = require "websocket"
     client._ws = Websocket.client.ev {
-      timeout = Configuration.client.timeout._,
+      timeout = Configuration.library.timeout._,
       loop    = Scheduler._loop,
     }
   end
@@ -155,11 +155,9 @@ if _G.js then
   function Library.connect (url)
     local parser   = _G.js.global.document:createElement "a";
     parser.href    = url;
-    local hostname = parser.hostname
-    local port     = parser.port
     return Library.client {
-      host     = hostname,
-      port     = port,
+      host     = parser.hostname,
+      port     = parser.port,
       username = parser.username,
       password = parser.password,
     }
@@ -167,7 +165,7 @@ if _G.js then
 else
   local Url = require "socket.url"
   function Library.connect (url)
-    local parsed   = Url.parse (url)
+    local parsed = Url.parse (url)
     return Library.client {
       host     = parsed.host,
       port     = parsed.port,

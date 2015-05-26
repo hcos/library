@@ -14,8 +14,8 @@ repository.internal = {
 
 repository.whole = {
   [Repository.depends] = {
-    repository.internal,
     repository.default,
+    repository.internal,
     repository.etc,
     repository.home,
     repository.pwd,

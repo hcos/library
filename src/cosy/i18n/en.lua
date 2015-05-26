@@ -1,7 +1,4 @@
 return {
-  ["server:listening"] =
-    "server is listening on %{host}:%{port}",
-
   ["tos"] =
 [[
 Cas n°1: Utilisation du logiciel Cosyverif par téléchargement
@@ -60,9 +57,13 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
   ["cli:tos"] =
     "show the Terms of Service",
 
+  ["daemon:unreachable"] =
+    "daemon is unreachable",
+  ["server:unreachable"] =
+    "server is unreachable",
   ["daemon:listening"] =
     "listening for daemon connections on ws://%{host}:%{port}",
-  ["websocket:listening"] =
+  ["server:listening"] =
     "listening for websocket connections on ws://%{host}:%{port}",
 
   ["nginx:directory"] =

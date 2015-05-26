@@ -3,18 +3,56 @@
 local Loader        = require "cosy.loader"
       Loader.nolog  = true
 local Configuration = require "cosy.configuration"
+local Value         = require "cosy.value"
 local Lfs           = require "lfs"
-local Socket        = require "socket"
-      Socket.unix   = require "socket.unix"
 local Cli           = require "cliargs"
 local I18n          = require "cosy.i18n"
 local Colors        = require "ansicolors"
-local Commands      = require "cosy.commands"
+local Websocket     = require "websocket"
 
-local directory  = Configuration.config.directory._
+local directory  = Configuration.cli.directory._
 Lfs.mkdir (directory)
 
+local function read (filename)
+  local file = io.open (filename, "r")
+  if not file then
+    return nil
+  end
+  local data = file:read "*all"
+  file:close ()
+  return Value.decode (data)
+end
+local daemondata = read (Configuration.daemon.data_file._)
+
+local ws = Websocket.client.sync {
+  timeout = 1,
+}
+if not daemondata
+or not ws:connect ("ws://%{interface}:%{port}/ws" % {
+         interface = daemondata.interface,
+         port      = daemondata.port,
+       }, "cosy") then
+  os.execute ([[
+    luajit -e 'require "cosy.daemon" .start ()' & sleep 2
+  ]] % { --  > %{log} 2>&1
+    log = Configuration.daemon.log_file._,
+  })
+  daemondata = read (Configuration.daemon.data_file._)
+  if not ws:connect ("ws://%{interface}:%{port}/ws" % {
+           interface = daemondata.interface,
+           port      = daemondata.port,
+         }, "cosy") then
+    print (Colors ("%{white redbg}" .. I18n {
+      _      = "daemon:unreachable",
+      locale = Configuration.cli.default_locale._,
+    }))
+    os.exit (1)
+  end
+end
+
+local Commands = require "cosy.commands"
 local command = Commands [arg [1] or false]
+
 if not command then
   local name_size = 0
   local names     = {}
@@ -34,7 +72,7 @@ if not command then
   table.sort (names)
   for i = 1, #names do
     local line = "  %{green}" .. names [i]
-    for j = #line, name_size+12 do
+    for _ = #line, name_size+12 do
       line = line .. " "
     end
     line = line .. "%{yellow}" .. list [names [i]]
@@ -43,15 +81,22 @@ if not command then
   os.exit (1)
 end
 
-local socketfile = Configuration.config.daemon.socket_file._
-if Lfs.attributes (socketfile, "mode") ~= "socket" then
-  os.execute ([[
-    luajit -e 'require "cosy.daemon" .start ()' & sleep 2
-  ]] % { --  > %{log} 2>&1
-    log = Configuration.config.daemon.log_file._,
-  })
-end
-
 Cli:set_name (_G.arg [0] .. " " .. _G.arg [1])
 table.remove (_G.arg, 1)
-command.run (Cli)
+local result = command.run (Cli, ws)
+if type (result) == "boolean" then
+  if result then
+    print (Colors ("%{green}" .. "success"))
+  else
+    print (Colors ("%{white redbg}" .. "failure"))
+  end
+elseif type (result) == "table" then
+  if result.success then
+    print (Colors ("%{green}" .. "success"))
+    for k, v in pairs (result.response) do
+      print (k, "=>", v)
+    end
+  else
+    print (Colors ("%{white redbg}" .. result.error))
+  end
+end
