@@ -5,9 +5,8 @@ local Logger        = require "cosy.logger"
 local Repository    = require "cosy.repository"
 local Value         = require "cosy.value"
 local Scheduler     = require "cosy.scheduler"
+local Ffi           = require "ffi"
 local Websocket     = require "websocket"
-
-local daemonfile = Configuration.daemon.data_file._
 
 local Daemon = {}
 
@@ -83,20 +82,32 @@ function Daemon.start ()
     host = Configuration.daemon.interface._,
     port = Configuration.daemon.port._,
   }
-  local file = io.open (daemonfile, "w")
-  file:write (Value.expression {
-    interface = Configuration.daemon.interface._,
-    port      = Configuration.daemon.port._,
-  })
-  file:close ()
-  os.execute ([[ chmod 0600 %{file} ]] % { file = daemonfile })
+  do
+    local daemonfile = Configuration.daemon.data_file._
+    local file       = io.open (daemonfile, "w")
+    file:write (Value.expression {
+      interface = Configuration.daemon.interface._,
+      port      = Configuration.daemon.port._,
+    })
+    file:close ()
+    os.execute ([[ chmod 0600 %{file} ]] % { file = daemonfile })
+  end
+  do
+    Ffi.cdef [[ unsigned int getpid (); ]]
+    local pidfile = Configuration.daemon.pid_file._
+    local file    = io.open (pidfile, "w")
+    file:write (Ffi.C.getpid ())
+    file:close ()
+    os.execute ([[ chmod 0600 %{file} ]] % { file = pidfile })
+  end
   Scheduler.loop ()
 end
 
 function Daemon.stop ()
   Daemon.ws:close ()
   Scheduler.addthread (function ()
-    os.remove (daemonfile)
+    os.remove (Configuration.daemon.data_file._)
+    os.remove (Configuration.daemon.pid_file ._)
     os.exit   (0)
   end)
   return true
