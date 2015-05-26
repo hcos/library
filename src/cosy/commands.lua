@@ -1,5 +1,8 @@
 local Configuration = require "cosy.configuration"
+local I18n          = require "cosy.i18n"
 local Value         = require "cosy.value"
+
+local locale = Configuration.cli.default_locale._
 
 local Commands = {}
 
@@ -78,12 +81,18 @@ Commands ["server:stop"] = {
 local function addoptions (cli)
   cli:add_option (
     "-s, --server=SERVER",
-    "",
+    I18n {
+      _      = "cli:option:server",
+      locale = locale,
+    },
     Configuration.cli.default_server._
   )
   cli:add_option (
     "-l, --locale=LOCALE",
-    "",
+    I18n {
+      _      = "cli:option:locale",
+      locale = locale,
+    },
     Configuration.cli.default_locale._
   )
 end
