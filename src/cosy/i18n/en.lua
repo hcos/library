@@ -44,18 +44,32 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
     "available commands are:",
   ["cli:verbose"] =
     "allow verbose output",
-  ["cli:daemon:update"] =
-    "update daemon",
   ["cli:daemon:stop"] =
     "stop daemon",
   ["cli:server:start"] =
     "start server",
-  ["cli:server:update"] =
-    "update server",
+  ["cli:server:already-running"] =
+    "server is already running",
   ["cli:server:stop"] =
     "stop server",
   ["cli:tos"] =
     "show the Terms of Service",
+  ["cli:option:server"] =
+    "cosy server to connect to",
+  ["cli:option:locale"] =
+    "locale to use for messages",
+  ["cli:user:create"] =
+    "create a new user",
+  ["cli:argument:username"] =
+    "user name",
+  ["cli:argument:email"] =
+    "email address",
+  ["cli:argument:password"] = {
+    one   = "please type your password:",
+    other = "please type again your password:",
+  },
+  ["cli:argument:password:nomatch"] =
+    "passwords do not match",
 
   ["daemon:unreachable"] =
     "daemon is unreachable",

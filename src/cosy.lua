@@ -93,10 +93,14 @@ if type (result) == "boolean" then
 elseif type (result) == "table" then
   if result.success then
     print (Colors ("%{green}" .. "success"))
-    for k, v in pairs (result.response) do
-      print (k, "=>", v)
+    if type (result.response) == "table" then
+      for k, v in pairs (result.response) do
+        print (k, "=>", v)
+      end
+    else
+      print (result.response)
     end
   else
-    print (Colors ("%{white redbg}" .. result.error))
+    print (Colors ("%{white redbg}" .. I18n (result.error)))
   end
 end
