@@ -115,6 +115,7 @@ function Server.start ()
   })
   file:close ()
   os.execute ([[ chmod 0600 %{file} ]] % { file = datafile })
+  Nginx.stop  ()
   Nginx.start ()
   Scheduler.loop ()
 end
