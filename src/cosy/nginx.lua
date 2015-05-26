@@ -169,7 +169,9 @@ end
 
 function Nginx.stop ()
   os.execute ([[
-    kill -QUIT $(cat %{pidfile}) 2> /dev/null
+    [ -f %{pidfile} ] && {
+      kill -QUIT $(cat %{pidfile})
+    }
   ]] % { pidfile = Configuration.http.pid_file._ })
   os.execute ([[
     rm -rf %{directory}
@@ -180,7 +182,9 @@ end
 function Nginx.update ()
   Nginx.configure ()
   os.execute ([[
-    kill -HUP $(cat %{pidfile})
+    [ -f %{pidfile} ] && {
+      kill -HUP $(cat %{pidfile})
+    }
   ]] % { pidfile = Configuration.http.pid_file._ })
 end
 
