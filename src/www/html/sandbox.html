@@ -8,6 +8,7 @@
     
     <body>
         <!--script src="js/lua.js"></script-->
+        <script type="text/javascript" lang="JavaScript" src="/js/jquery.js"></script>
         <script type="text/javascript" lang="JavaScript" src="/js/lua.vm.js"></script>
         <script type="text/lua" lang="Lua" id="luascript">
 -- First, require `loader` from outside of the coroutines:
@@ -26,7 +27,7 @@ local co = coroutine.create (function ()
     print ("info", value.expression (info))
     local tos    = client.tos ()
     print ("tos", value.expression (tos))
-    local user, err = client.create_user {
+    local user, err = client.user.create {
       username = "toto",
       password = "pass",
       locale   = "en",
@@ -34,6 +35,11 @@ local co = coroutine.create (function ()
       tos_digest = tos.tos_digest,
     }
     print ("user", value.expression (user), value.expression (err))
+    local token, err = client.user.authenticate {
+      username = "toto",
+      password = "pass",
+    }
+    print ("auth", token, err)
 --  end, function (err)
 --    js.global.console:log ("error: " .. tostring (err))
 --    js.global.console:log (debug.traceback ())

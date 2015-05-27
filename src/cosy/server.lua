@@ -39,7 +39,12 @@ function Server.request (message)
   local operation  = request.operation
   local parameters = request.parameters
   local try_only   = request.try_only
-  local method     = Methods [operation]
+  local method     = Methods
+  for name in operation:gmatch "[^:]+" do
+    if method ~= nil then
+      method = method [name]
+    end
+  end
   if not method then
     return Value.expression (translate {
       identifier = identifier,
