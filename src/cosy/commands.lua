@@ -63,7 +63,8 @@ Commands ["server:start"] = {
         kill -9 $(cat %{pid})
       fi
       rm -f %{pid} %{log}
-      luajit -e 'require "cosy.server" .start ()' > %{log} 2>&1 & sleep 2
+      luajit -e '_G.logfile = "%{log}"; require "cosy.server" .start ()' &
+      sleep 2
     ]==] % {
       pid = Configuration.server.pid_file._,
       log = Configuration.server.log_file._,

@@ -38,7 +38,8 @@ or not ws:connect ("ws://%{interface}:%{port}/ws" % {
       kill -9 $(cat %{pid})
     fi
     rm -f %{pid} %{log}
-    luajit -e 'require "cosy.daemon" .start ()' > %{log} 2>&1 & sleep 2
+    luajit -e '_G.logfile = "%{log}"; require "cosy.daemon" .start ()' &
+    sleep 2
   ]==] % {
     pid = Configuration.daemon.pid_file._,
     log = Configuration.daemon.log_file._,

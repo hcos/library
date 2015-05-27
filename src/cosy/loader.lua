@@ -8,6 +8,10 @@ local Loader = {}
 
 local loader = setmetatable ({}, Loader)
 
+if _G.logfile then
+  loader.logfile = _G.logfile
+end
+
 if _G.js then
   package.loaded ["cosy.loader"] = loader
   loader.loadhttp = function (url)
