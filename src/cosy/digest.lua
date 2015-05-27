@@ -11,6 +11,6 @@ if _G.js then
 else
   return function (s)
     local Crypto = require "crypto"
-    return Crypto.digest ("SHA512", s)
+    return Crypto.digest ("SHA256", s)
   end
 end
