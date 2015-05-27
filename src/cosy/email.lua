@@ -201,8 +201,7 @@ function Email.send (message)
     password = Configuration.smtp.password._,
     server   = Configuration.smtp.host._,
     port     = Configuration.smtp.port._,
-    create   = Tcp [Configuration.smtp.method._]
-               (Configuration.smtp.protocol._, make_socket.async),
+    create   = Tcp [Configuration.smtp.method._] (Configuration.smtp.protocol._, make_socket.async),
   }
 end
 
