@@ -14,7 +14,10 @@ local function patch (client)
     })
     client.username = parameters.username
     client.password = parameters.password
-    return Client.__index (client, "authenticate") (parameters, try_only)
+    local token, err = Client.__index (client, "authenticate") (parameters, try_only)
+    if token then
+      client.token = token
+    end
   end
   function client.create_user (parameters, try_only)
     parameters.password = Digest ("%{username}:%{password}" % {
@@ -95,6 +98,15 @@ function Client.connect (client)
     Scheduler.sleep (-math.huge)
   else
     threadof (client._connect)
+  end
+  if client.username and client.password then
+    local token, err = client.authenticate {
+      username = client.username,
+      password = client.password,
+    }
+    if token then
+      client.token = token
+    end
   end
 end
 
