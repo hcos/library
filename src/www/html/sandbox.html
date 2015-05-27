@@ -22,8 +22,18 @@ local co = coroutine.create (function ()
     local library = require "cosy.library"
     local value   = require "cosy.value"
     local client  = library.connect "http://127.0.0.1:8080/"
-    local info    = client.tos ()
-    js.global.console:log (value.expression (info))
+    local info    = client.information ()
+    print ("info", value.expression (info))
+    local tos    = client.tos ()
+    print ("tos", value.expression (tos))
+    local user, err = client.create_user {
+      username = "toto",
+      password = "pass",
+      locale   = "en",
+      email    = "toto@lip6.fr",
+      tos_digest = tos.tos_digest,
+    }
+    print ("user", value.expression (user), value.expression (err))
 --  end, function (err)
 --    js.global.console:log ("error: " .. tostring (err))
 --    js.global.console:log (debug.traceback ())
