@@ -18,6 +18,7 @@ local function patch (client)
     if token then
       client.token = token
     end
+    return token, err
   end
   function client.create_user (parameters, try_only)
     parameters.password = Digest ("%{username}:%{password}" % {
