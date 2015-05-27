@@ -6,7 +6,7 @@ if _G.js then
     time = time or -math.huge
     local co = coroutine.running ()
     if time > 0 then
-      _G.js.global:setTimeout (function ()
+      _G.window:setTimeout (function ()
         coroutine.resume (co)
       end, time * 1000)
     end

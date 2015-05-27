@@ -23,7 +23,7 @@ if _G.js then
         level = level + 1
       until not info
     end
-    local request = _G.js.new (_G.js.global.XMLHttpRequest)
+    local request = _G.js.new (_G.window.XMLHttpRequest)
     request:open ("GET", url, not sync)
     local result, err
     request.onreadystatechange = function (event)
@@ -39,7 +39,7 @@ if _G.js then
       end
     end
     if sync then
-      _G.js.global.console:log ("XMLHttpRequest is used in synchronous mode for: " .. url)
+      _G.window.console:log ("XMLHttpRequest is used in synchronous mode for: " .. url)
       request:send (nil)
     else
       request:send (nil)

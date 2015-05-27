@@ -47,7 +47,7 @@ function Client.connect (client)
     port = client.port,
   }
   if _G.js then
-    client._ws = _G.js.new (_G.js.global.WebSocket, url, "cosy")
+    client._ws = _G.js.new (_G.window.WebSocket, url, "cosy")
   else
     local Websocket = require "websocket"
     client._ws = Websocket.client.ev {
@@ -172,7 +172,7 @@ end
 
 if _G.js then
   function Library.connect (url)
-    local parser   = _G.js.global.document:createElement "a";
+    local parser   = _G.window.document:createElement "a";
     parser.href    = url;
     return Library.client {
       host     = parser.hostname,

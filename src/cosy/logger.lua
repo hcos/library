@@ -3,7 +3,7 @@ local I18n   = require "cosy.i18n"
 local Logger = {}
 
 if _G.js then
-  local logger = _G.js.global.console
+  local logger = _G.window.console
   function Logger.debug (t)
     local i18n = I18n
     logger:log ("DEBUG: " .. i18n (t))
