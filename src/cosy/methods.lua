@@ -106,9 +106,12 @@ function Methods.tos (request)
   }
 end
 
+
+Methods.user = {}
+
 -- ### User Creation
 
-function Methods.create_user (request, store, try_only)
+function Methods.user.create (request, store, try_only)
   Parameters.check (request, {
     required = {
       username   = Parameters.username,
@@ -155,7 +158,7 @@ end
 
 -- ### Authentication
 
-function Methods.authenticate (request, store)
+function Methods.user.authenticate (request, store)
   Parameters.check (request, {
     required = {
       username = Parameters.username,
@@ -184,7 +187,7 @@ end
 
 -- ### Reset password
 
-function Methods.reset_user (request, store, try_only)
+function Methods.user.reset (request, store, try_only)
   Parameters.check (request, {
     required = {
       email = Parameters.email,
@@ -239,7 +242,7 @@ end
 
 -- ### Suspend User
 
-function Methods.suspend_user (request, store)
+function Methods.user.suspend (request, store)
   Parameters.check (request, {
     required = {
       username = Parameters.username,
@@ -269,7 +272,7 @@ end
 
 -- ### User Deletion
 
-function Methods.delete_user (request, store)
+function Methods.user.delete (request, store)
   Parameters.check (request, {
     required = {
       token = Parameters.token.authentication,
@@ -283,33 +286,38 @@ end
 
 Internal.redis.retry = 2
 
-for k, f in pairs (Methods) do
-  if type (f) == "function" then
-    Methods [k] = function (request, try_only)
-      for _ = 1, Configuration.redis.retry._ do
-        local err
-        local ok, result = xpcall (function ()
-          local store  = Store.new ()
-          local result = f (request, store, try_only)
-          if not try_only then
-            Store.commit (store)
+local function wrap (t)
+  for key, value in pairs (t) do
+    if type (value) == "table" then
+      wrap (value)
+    elseif type (value) == "function" then
+      t [key] = function (request, try_only)
+        for _ = 1, Configuration.redis.retry._ do
+          local err
+          local ok, result = xpcall (function ()
+            local store  = Store.new ()
+            local result = value (request, store, try_only)
+            if not try_only then
+              Store.commit (store)
+            end
+            return result
+          end, function (e)
+            err = e
+            Logger.debug ("Error: " .. Value.encode (e) .. " => " .. debug.traceback ())
+          end)
+          if ok then
+            return result or true
+          elseif err ~= Store.Error then
+            return nil, err
           end
-          return result
-        end, function (e)
-          err = e
-          Logger.debug ("Error: " .. Value.encode (e) .. " => " .. debug.traceback ())
-        end)
-        if ok then
-          return result or true
-        elseif err ~= Store.Error then
-          return nil, err
         end
+        return nil, {
+          _ = "redis:unavailable",
+        }
       end
-      return nil, {
-        _ = "redis:unavailable",
-      }
     end
   end
+  return t
 end
 
-return Methods
+return wrap (Methods)

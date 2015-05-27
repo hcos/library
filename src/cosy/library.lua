@@ -3,34 +3,9 @@ local Digest        = require "cosy.digest"
 local Value         = require "cosy.value"
 local Scheduler     = require "cosy.scheduler"
 
-local Library = {}
-local Client  = {}
-
-local function patch (client)
-  function client.authenticate (parameters, try_only)
-    parameters.password = Digest ("%{username}:%{password}" % {
-      username = parameters.username,
-      password = parameters.password,
-    })
-    client.username = parameters.username
-    client.password = parameters.password
-    local token, err = Client.__index (client, "authenticate") (parameters, try_only)
-    if token then
-      client.token = token
-    end
-    return token, err
-  end
-  function client.create_user (parameters, try_only)
-    parameters.password = Digest ("%{username}:%{password}" % {
-      username = parameters.username,
-      password = parameters.password,
-    })
-    client.username = parameters.username
-    client.password = parameters.password
-    return Client.__index (client, "create_user") (parameters, try_only)
-  end
-  return client
-end
+local Library   = {}
+local Client    = {}
+local Operation = {}
 
 local function threadof (f, ...)
   if Scheduler._running then
@@ -100,55 +75,71 @@ function Client.connect (client)
   else
     threadof (client._connect)
   end
-  if client.username and client.password then
-    local token = client.authenticate {
-      username = client.username,
-      password = client.password,
-    }
-    if token then
-      client.token = token
-    end
-  end
 end
 
-function Client.__index (client, operation)
-  return function (parameters, try_only)
-    if client._status ~= "opened" then
-      Client.connect (client)
-    end
-    if client._status ~= "opened" then
-      return nil, {
-        _ = "server:unreachable",
-      }
-    end
-    local result
-    local function f ()
-      local co         = coroutine.running ()
-      local identifier = #client._waiting + 1
-      client._waiting [identifier] = co
-      client._results [identifier] = nil
-      client._ws:send (Value.expression {
-        identifier = identifier,
-        operation  = operation,
-        parameters = parameters or {},
-        try_only   = try_only,
-      })
-      Scheduler.sleep (Configuration.library.timeout._)
-      result = client._results [identifier]
-      client._waiting [identifier] = nil
-      client._results [identifier] = nil
-    end
-    threadof (f)
-    if result == nil then
-      return nil, {
-        _ = "client:timeout",
-      }
-    elseif result.success then
-      return result.response or true
-    else
-      return nil, result.error
-    end
+function Client.__index (client, key)
+  return setmetatable ({
+    _client = client,
+    _keys   = { key },
+  }, Operation)
+end
+
+function Operation.__index (operation, key)
+  local unpack = table.unpack or unpack
+  return setmetatable ({
+    _client = operation._client,
+    _keys = { unpack (operation._keys), key },
+  }, Operation)
+end
+
+function Operation.__call (operation, parameters, try_only)
+  -- Automatic reconnect:
+  local client = operation._client
+  if client._status ~= "opened" then
+    Client.connect (client)
   end
+  if client._status ~= "opened" then
+    return nil, {
+      _ = "server:unreachable",
+    }
+  end
+  -- Special case:
+  if  type (parameters) == "table"
+  and parameters.username and parameters.password then
+    parameters.password = Digest ("%{username}:%{password}" % {
+      username = parameters.username,
+      password = parameters.password,
+    })
+    client.username = parameters.username
+    client.password = parameters.password
+  end
+  -- Call:
+  local result
+  local function f ()
+    local co         = coroutine.running ()
+    local identifier = #client._waiting + 1
+    client._waiting [identifier] = co
+    client._results [identifier] = nil
+    client._ws:send (Value.expression {
+      identifier = identifier,
+      operation  = table.concat (operation._keys, ":"),
+      parameters = parameters,
+      try_only   = try_only,
+    })
+    Scheduler.sleep (Configuration.library.timeout._)
+    result = client._results [identifier]
+    client._waiting [identifier] = nil
+    client._results [identifier] = nil
+  end
+  threadof (f)
+  if result == nil then
+    return nil, {
+      _ = "client:timeout",
+    }
+  elseif not result.success then
+    return nil, result.error
+  end
+  return result.response or true
 end
 
 function Library.client (t)
@@ -162,7 +153,7 @@ function Library.client (t)
   client.password = t.password or false
   Client.connect (client)
   if      client._status == "opened" then
-    return patch (client)
+    return client
   elseif client._status == "closed" then
     return nil, client._err
   else
