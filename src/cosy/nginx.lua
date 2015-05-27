@@ -68,18 +68,19 @@ http {
 
     location /lua {
       default_type  application/lua;
-      content_by_lua '
+      root          /;
+      set $target   "";
+      access_by_lua '
         local name = ngx.var.uri:match "/lua/(.*)"
         local filename = package.searchpath (name, "%{path}")
         if filename then
-          local file = io.open (filename, "r")
-          ngx.say (file:read "*all")
-          file:close ()
+          ngx.var.target = filename
         else
           ngx.log (ngx.ERR, "failed to locate lua module: " .. name)
           return ngx.exit (404)
         end
       ';
+      try_files     $target =404;
     }
 
     location /ws {
