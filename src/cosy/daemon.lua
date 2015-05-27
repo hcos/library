@@ -68,9 +68,9 @@ function Daemon.start ()
             ws:close ()
             return
           end
-          message           = Value.decode (message)
-          local result, err = Daemon.request (message)
-          result            = Value.expression (result)
+          message      = Value.decode (message)
+          local result = Daemon.request (message)
+          result       = Value.expression (result)
           ws:send (result)
         end
       end

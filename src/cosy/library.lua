@@ -101,7 +101,7 @@ function Client.connect (client)
     threadof (client._connect)
   end
   if client.username and client.password then
-    local token, err = client.authenticate {
+    local token = client.authenticate {
       username = client.username,
       password = client.password,
     }

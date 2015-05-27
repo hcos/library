@@ -132,14 +132,14 @@ function Server.start ()
 end
 
 function Server.stop ()
-  Server.ws:close ()
   Scheduler.addthread (function ()
+    Scheduler.sleep (1)
+    Server.ws:close ()
     Nginx.stop ()
     os.remove (Configuration.server.data_file._)
     os.remove (Configuration.server.pid_file ._)
     os.exit   (0)
   end)
-  return true
 end
 
 return Server

@@ -88,7 +88,8 @@ Commands ["server:stop"] = {
         token = serverdata.token,
       },
     })
-    return Value.expression (result)
+    local result = ws:receive ()
+    return Value.decode (result)
   end,
 }
 
