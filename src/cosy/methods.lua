@@ -164,6 +164,15 @@ function Methods.user.authenticate (request, store)
   return Token.authentication (user)
 end
 
+function Methods.user.is_authentified (request)
+  Parameters.check (request, {
+    required = {
+      token = Parameters.token.authentication,
+    },
+  })
+  return true
+end
+
 -- ### Reset password
 
 function Methods.user.reset (request, store, try_only)
