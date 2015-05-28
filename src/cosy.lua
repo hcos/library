@@ -10,6 +10,9 @@ local I18n          = require "cosy.i18n"
 local Colors        = require "ansicolors"
 local Websocket     = require "websocket"
 
+local i18n   = I18n.load (require "cosy-i18n")
+i18n._locale = Configuration.cli.default_locale._
+
 local directory  = Configuration.cli.directory._
 Lfs.mkdir (directory)
 
@@ -28,31 +31,28 @@ local ws = Websocket.client.sync {
   timeout = 1,
 }
 if not daemondata
-or not ws:connect ("ws://%{interface}:%{port}/ws" % {
+or not ws:connect ("ws://{{{interface}}}:{{{port}}}/ws" % {
          interface = daemondata.interface,
          port      = daemondata.port,
        }, "cosy") then
   os.execute ([==[
-    if [ -f "%{pid}" ]
+    if [ -f "{{{pid}}}" ]
     then
-      kill -9 $(cat %{pid})
+      kill -9 $(cat {{{pid}}}) 2> /dev/null
     fi
-    rm -f %{pid} %{log}
-    luajit -e '_G.logfile = "%{log}"; require "cosy.daemon" .start ()' &
+    rm -f {{{pid}}} {{{log}}}
+    luajit -e '_G.logfile = "{{{log}}}"; require "cosy.daemon" .start ()' &
     sleep 2
   ]==] % {
     pid = Configuration.daemon.pid_file._,
     log = Configuration.daemon.log_file._,
   })
   daemondata = read (Configuration.daemon.data_file._)
-  if not ws:connect ("ws://%{interface}:%{port}/ws" % {
+  if not ws:connect ("ws://{{{interface}}}:{{{port}}}/ws" % {
            interface = daemondata.interface,
            port      = daemondata.port,
          }, "cosy") then
-    print (Colors ("%{white redbg}" .. I18n {
-      _      = "daemon:unreachable",
-      locale = Configuration.cli.default_locale._,
-    }))
+    print (Colors ("%{white redbg}" .. i18n ["daemon:unreachable"] % {}))
     os.exit (1)
   end
 end
@@ -69,13 +69,10 @@ if not command then
     names [#names+1] = name
     list [name] = I18n (c)
   end
-  print (Colors ("%{white redbg}" .. I18n {
-    _   = "cli:missing-command",
-    cli = arg [0],
+  print (Colors ("%{white redbg}" .. i18n ["command:missing"] % {
+    cli    = arg [0],
   }))
-  print (I18n {
-    _   = "cli:available-commands",
-  })
+  print (i18n ["command:available"] % {})
   table.sort (names)
   for i = 1, #names do
     local line = "  %{green}" .. names [i]
@@ -107,7 +104,8 @@ elseif type (result) == "table" then
     else
       print (result.response)
     end
-  else
+  elseif result.error then
     print (Colors ("%{white redbg}" .. I18n (result.error)))
+    print (Value.expression (result))
   end
 end

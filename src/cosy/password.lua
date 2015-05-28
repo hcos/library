@@ -3,9 +3,13 @@ if _G.js then
 end
 
 local Configuration = require "cosy.configuration"
+local I18n          = require "cosy.i18n"
 local Logger        = require "cosy.logger"
 local Time          = require "cosy.time"
 local Bcrypt        = require "bcrypt"
+
+local i18n   = I18n.load (require "cosy.password-i18n")
+i18n._locale = Configuration.locale._
 
 local Password = {}
 
@@ -43,9 +47,9 @@ end
 do
   compute_rounds ()
   Logger.debug {
-    _     = "bcrypt:rounds",
-    count = Password.rounds,
-    time  = Configuration.data.password.time._ * 1000,
+    _      = i18n ["bcrypt:rounds"],
+    rounds = Password.rounds,
+    time   = Configuration.data.password.time._ * 1000,
   }
 end
 

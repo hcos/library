@@ -18,11 +18,13 @@ local Lfs           = require "lfs"
 local Socket        = require "socket"
       Socket.unix   = require "socket.unix"
 
+local i18n   = I18n.load (require "cosy.server-i18n")
+i18n._locale = Configuration.locale._
 local Server = {}
 
 function Server.request (message)
   local function translate (x)
-    I18n (x)
+    i18n (x)
     return x
   end
   local decoded, request = pcall (Value.decode, message)
@@ -30,8 +32,7 @@ function Server.request (message)
     return Value.expression (translate {
       success = false,
       error   = {
-        _      = "rpc:invalid",
-        reason = message,
+        _ = i18n ["message:invalid"],
       },
     })
   end
@@ -50,7 +51,7 @@ function Server.request (message)
       identifier = identifier,
       success    = false,
       error      = {
-        _      = "rpc:no-operation",
+        _      = i18n ["message:no-operation"],
         reason = operation,
       },
     })
@@ -106,7 +107,7 @@ function Server.start ()
   }
   Scheduler.addserver = addserver
   Logger.debug {
-    _    = "server:listening",
+    _    = i18n ["websocket:listen"],
     host = Configuration.server.interface._,
     port = Configuration.server.port._,
   }
@@ -119,7 +120,7 @@ function Server.start ()
       port      = Configuration.server.port._,
     })
     file:close ()
-    os.execute ([[ chmod 0600 %{file} ]] % { file = datafile })
+    os.execute ([[ chmod 0600 {{{file}}} ]] % { file = datafile })
   end
   do
     Nginx.stop  ()
@@ -131,7 +132,7 @@ function Server.start ()
     local file    = io.open (pidfile, "w")
     file:write (Ffi.C.getpid ())
     file:close ()
-    os.execute ([[ chmod 0600 %{file} ]] % { file = pidfile })
+    os.execute ([[ chmod 0600 {{{file}}} ]] % { file = pidfile })
   end
   Scheduler.loop ()
 end

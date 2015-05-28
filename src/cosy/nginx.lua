@@ -1,11 +1,15 @@
 local Configuration = require "cosy.configuration"
+local I18n          = require "cosy.i18n"
 local Logger        = require "cosy.logger"
+
+local i18n   = I18n.load (require "cosy.nginx-i18n")
+i18n._locale = Configuration.locale._
 
 local Nginx = {}
 
 local configuration_template = [[
 error_log   error.log;
-pid         %{pidfile};
+pid         {{{pidfile}}};
 
 worker_processes 1;
 events {
@@ -20,7 +24,7 @@ http {
 
   proxy_temp_path       proxy;
   proxy_cache_path      cache   keys_zone=foreign:10m;
-  lua_package_path      "%{path}";
+  lua_package_path      "{{{path}}}";
 
   include /etc/nginx/mime.types;
 
@@ -30,15 +34,15 @@ http {
   gzip_proxied      no-store no-cache private expired auth;
 
   server {
-    listen        localhost:%{port};
-    listen        %{host}:%{port};
-    server_name   "%{name}";
+    listen        localhost:{{{port}}};
+    listen        {{{host}}}:{{{port}}};
+    server_name   "{{{name}}}";
     charset       utf-8;
     index         index.html;
     include       /etc/nginx/mime.types;
     default_type  application/octet-stream;
     access_log    access.log;
-    root          "%{www}";
+    root          "{{{www}}}";
     
     location / {
       try_files $uri $uri/ /index.html @foreigns;
@@ -47,16 +51,16 @@ http {
     location @foreigns {
       proxy_cache  foreign;
       expires      modified  1d;
-      resolver     %{resolver};
+      resolver     {{{resolver}}};
       set $target "";
       access_by_lua '
         local redis   = require "nginx.redis" :new ()
-        local ok, err = redis:connect ("%{redis_host}", %{redis_port})
+        local ok, err = redis:connect ("{{{redis_host}}}", {{{redis_port}}})
         if not ok then
           ngx.log (ngx.ERR, "failed to connect to redis: ", err)
           return ngx.exit (500)
         end
-        redis:select (%{redis_database})
+        redis:select ({{{redis_database}}})
         local target = redis:get ("foreign:" .. ngx.var.uri)
         if not target or target == ngx.null then
           return ngx.exit (404)
@@ -72,7 +76,7 @@ http {
       set $target   "";
       access_by_lua '
         local name = ngx.var.uri:match "/lua/(.*)"
-        local filename = package.searchpath (name, "%{path}")
+        local filename = package.searchpath (name, "{{{path}}}")
         if filename then
           ngx.var.target = filename
         else
@@ -84,7 +88,7 @@ http {
     }
 
     location /ws {
-      proxy_pass          http://%{wshost}:%{wsport};
+      proxy_pass          http://{{{wshost}}}:{{{wsport}}};
       proxy_http_version  1.1;
       proxy_set_header    Upgrade $http_upgrade;
       proxy_set_header    Connection "upgrade";
@@ -118,7 +122,7 @@ function Nginx.configure ()
     local file = io.open "/etc/resolv.conf"
     if not file then
       Logger.error {
-        _ = "nginx:no-resolver",
+        _ = i18n ["nginx:no-resolver"],
       }
     end
     local result = {}
@@ -157,11 +161,11 @@ function Nginx.start ()
     directory = Nginx.directory,
   }
   os.execute ([[
-    rm -f %{directory} && mkdir -p %{directory}
+    rm -f {{{directory}}} && mkdir -p {{{directory}}}
   ]] % { directory = Nginx.directory })
   Nginx.configure ()
   os.execute ([[
-    %{nginx} -p %{directory} -c %{directory}/nginx.conf
+    {{{nginx}}} -p {{{directory}}} -c {{{directory}}}/nginx.conf
   ]] % {
     nginx     = Configuration.http.nginx._,
     directory = Nginx.directory,
@@ -170,12 +174,12 @@ end
 
 function Nginx.stop ()
   os.execute ([[
-    [ -f %{pidfile} ] && {
-      kill -QUIT $(cat %{pidfile})
+    [ -f {{{pidfile}}} ] && {
+      kill -QUIT $(cat {{{pidfile}}})
     }
   ]] % { pidfile = Configuration.http.pid_file._ })
   os.execute ([[
-    rm -rf %{directory}
+    rm -rf {{{directory}}}
   ]] % { directory = Nginx.directory })
   Nginx.directory = nil
 end
@@ -183,8 +187,8 @@ end
 function Nginx.update ()
   Nginx.configure ()
   os.execute ([[
-    [ -f %{pidfile} ] && {
-      kill -HUP $(cat %{pidfile})
+    [ -f {{{pidfile}}} ] && {
+      kill -HUP $(cat {{{pidfile}}})
     }
   ]] % { pidfile = Configuration.http.pid_file._ })
 end

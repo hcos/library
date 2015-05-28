@@ -2,7 +2,8 @@ local Configuration = require "cosy.configuration"
 local I18n          = require "cosy.i18n"
 local Value         = require "cosy.value"
 
-local locale = Configuration.cli.default_locale._
+local i18n   = I18n.load (require "cosy.commands-i18n")
+i18n._locale = Configuration.cli.default_locale._
 
 local Commands = {}
 
@@ -17,22 +18,28 @@ local function read (filename)
 end
 
 Commands ["daemon:stop"] = {
-  _   = "cli:daemon:stop",
+  _   = i18n ["daemon:stop"],
   run = function (cli, ws)
     local args = cli:parse_args ()
     if not args then
       os.exit (1)
     end
-    return ws:send (Value.expression "daemon-stop")
+    ws:send (Value.expression "daemon-stop")
+    local result = ws:receive ()
+    if not result.success then
+      os.remove (Configuration.daemon.data_file._)
+      os.remove (Configuration.daemon.pid_file ._)
+    end
+    return true
   end,
 }
 
 Commands ["server:start"] = {
-  _   = "cli:server:start",
+  _   = i18n ["server:start"],
   run = function (cli)
     cli:add_option (
       "-c, --clean",
-      "clean redis database"
+      i18n ["option:clean"] % {}
     )
     local args = cli:parse_args ()
     if not args then
@@ -51,19 +58,18 @@ Commands ["server:start"] = {
     if io.open (Configuration.server.pid_file._, "r") then
       return {
         success = false,
-        error   = I18n {
-          _      = "cli:server:already-running",
-          locale = locale,
+        error   = {
+          _ = i18n ["server:already-running"],
         },
       }
     end
     return os.execute ([==[
-      if [ -f "%{pid}" ]
+      if [ -f "{{{pid}}}" ]
       then
-        kill -9 $(cat %{pid})
+        kill -9 $(cat {{{pid}}})
       fi
-      rm -f %{pid} %{log}
-      luajit -e '_G.logfile = "%{log}"; require "cosy.server" .start ()' &
+      rm -f {{{pid}}} {{{log}}}
+      luajit -e '_G.logfile = "{{{log}}}"; require "cosy.server" .start ()' &
       sleep 2
     ]==] % {
       pid = Configuration.server.pid_file._,
@@ -72,49 +78,50 @@ Commands ["server:start"] = {
   end,
 }
 Commands ["server:stop"] = {
-  _   = "cli:server:stop",
+  _   = i18n ["server:stop"],
   run = function (cli, ws)
     local args = cli:parse_args ()
     if not args then
       os.exit (1)
     end
     local serverdata = read (Configuration.server.data_file._)
-    ws:send (Value.expression {
-      server     = "http://%{interface}:%{port}" % {
-        interface = serverdata.interface,
-        port      = serverdata.port,
-      },
-      operation  = "stop",
-      parameters = {
-        token = serverdata.token,
-      },
-    })
-    local result = ws:receive ()
-    return Value.decode (result)
+    local result
+    if serverdata then
+      ws:send (Value.expression {
+        server     = "http://{{{interface}}}:{{{port}}}" % {
+          interface = serverdata.interface,
+          port      = serverdata.port,
+        },
+        operation  = "stop",
+        parameters = {
+          token = serverdata.token,
+        },
+      })
+      result = ws:receive ()
+    end
+    if not result or not result.success then
+      os.remove (Configuration.server.data_file._)
+      os.remove (Configuration.server.pid_file ._)
+    end
+    return true
   end,
 }
 
 local function addoptions (cli)
   cli:add_option (
     "-s, --server=SERVER",
-    I18n {
-      _      = "cli:option:server",
-      locale = locale,
-    },
+    i18n ["option:server"] % {},
     Configuration.cli.default_server._
   )
   cli:add_option (
     "-l, --locale=LOCALE",
-    I18n {
-      _      = "cli:option:locale",
-      locale = locale,
-    },
+    i18n ["option:locale"] % {},
     Configuration.cli.default_locale._
   )
 end
 
 Commands ["show:information"] = {
-  _   = "cli:information",
+  _   = i18n ["show:information"],
   run = function (cli, ws)
     addoptions (cli)
     local args = cli:parse_args ()
@@ -134,7 +141,7 @@ Commands ["show:information"] = {
 }
 
 Commands ["show:tos"] = {
-  _   = "cli:tos",
+  _   = i18n ["show:tos"],
   run = function (cli, ws)
     addoptions (cli)
     local args = cli:parse_args ()
@@ -173,22 +180,16 @@ local function getpassword ()
 end
 
 Commands ["user:create"] = {
-  _   = "cli:user:create",
+  _   = i18n ["user:create"],
   run = function (cli, ws)
     addoptions (cli)
     cli:add_argument (
       "username",
-      I18n {
-        _      = "cli:argument:username",
-        locale = locale,
-      }
+      i18n ["argument:username"] % {}
     )
     cli:add_argument (
       "email",
-      I18n {
-        _      = "cli:argument:email",
-        locale = locale,
-      }
+      i18n ["argument:email"] % {}
     )
     local args = cli:parse_args ()
     if not args then
@@ -211,23 +212,16 @@ Commands ["user:create"] = {
     local passwords = {}
     repeat
       for i = 1, 2 do
-        io.write (I18n {
-          _      = "cli:argument:password",
-          locale = locale,
-          count  = i,
-        } .. " ")
+        io.write (i18n ["argument:password" .. tostring (i)] % {} .. " ")
         passwords [i] = getpassword ()
       end
       if passwords [1] ~= passwords [2] then
-        print (I18n {
-          _      = "cli:argument:password:nomatch",
-          locale = locale,
-        })
+        print (i18n ["argument:password:nomatch"] % {})
       end
     until passwords [1] == passwords [2]
     ws:send (Value.expression {
       server     = args.server,
-      operation  = "create_user",
+      operation  = "user:create",
       parameters = {
         username   = args.username,
         password   = passwords [1],
@@ -240,6 +234,5 @@ Commands ["user:create"] = {
     return Value.decode (result)
   end,
 }
-
 
 return Commands

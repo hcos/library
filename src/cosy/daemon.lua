@@ -8,13 +8,18 @@ local Scheduler     = require "cosy.scheduler"
 local Ffi           = require "ffi"
 local Websocket     = require "websocket"
 
+local i18n   = I18n.load (require "cosy.daemon-i18n")
+i18n._locale = Configuration.locale._
 local Daemon = {}
 
 Daemon.libraries = {}
 
 function Daemon.request (message)
   if message == "daemon-stop" then
-    return Daemon.stop ()
+    Daemon.stop ()
+    return {
+      success = true,
+    }
   end
   local server = message.server
   local lib    = Daemon.libraries [server]
@@ -23,9 +28,8 @@ function Daemon.request (message)
     if not lib then
       return {
         success = false,
-        error   = I18n {
-          _      = "server:unreachable",
-          locale = (message.parameters or {}).locale,
+        error   = {
+          _ = i18n ["server:unreachable"],
         },
       }
     end
@@ -78,7 +82,7 @@ function Daemon.start ()
   }
   Scheduler.addserver = addserver
   Logger.debug {
-    _    = "daemon:listening",
+    _    = i18n ["websocket:listen"],
     host = Configuration.daemon.interface._,
     port = Configuration.daemon.port._,
   }
@@ -90,7 +94,7 @@ function Daemon.start ()
       port      = Configuration.daemon.port._,
     })
     file:close ()
-    os.execute ([[ chmod 0600 %{file} ]] % { file = daemonfile })
+    os.execute ([[ chmod 0600 {{{file}}} ]] % { file = daemonfile })
   end
   do
     Ffi.cdef [[ unsigned int getpid (); ]]
@@ -98,19 +102,19 @@ function Daemon.start ()
     local file    = io.open (pidfile, "w")
     file:write (Ffi.C.getpid ())
     file:close ()
-    os.execute ([[ chmod 0600 %{file} ]] % { file = pidfile })
+    os.execute ([[ chmod 0600 {{{file}}} ]] % { file = pidfile })
   end
   Scheduler.loop ()
 end
 
 function Daemon.stop ()
-  Daemon.ws:close ()
   Scheduler.addthread (function ()
+    Scheduler.sleep (2)
+    Daemon.ws:close ()
     os.remove (Configuration.daemon.data_file._)
     os.remove (Configuration.daemon.pid_file ._)
     os.exit   (0)
   end)
-  return true
 end
 
 return Daemon
