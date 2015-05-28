@@ -6,6 +6,9 @@ local Socket        = require "socket"
 local Smtp          = require "socket.smtp"
 local Ssl           = require "ssl"
 
+local i18n   = I18n.load (require "cosy.email-i18n")
+i18n._locale = Configuration.locale._
+
 if _G.js then
   error "Not available"
 end
@@ -153,7 +156,7 @@ function Email.discover ()
     for _, protocol in ipairs (protos) do
       for _, port in ipairs (ports) do
         Logger.debug {
-          _        = "smtp:discover",
+          _        = i18n ["smtp:discover"],
           host     = host,
           port     = port,
           method   = method,
@@ -208,11 +211,11 @@ end
 do
   if not Email.discover () then
     Logger.warning {
-      _ = "smtp:not-available",
+      _ = i18n ["smtp:not-available"],
     }
   else
     Logger.info {
-      _        = "smtp:available",
+      _        = i18n ["smtp:available"],
       host     = Configuration.smtp.host._,
       port     = Configuration.smtp.port._,
       method   = Configuration.smtp.method._,

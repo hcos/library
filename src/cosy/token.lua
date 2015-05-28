@@ -4,14 +4,17 @@ end
 
 local Configuration = require "cosy.configuration"
 local Digest        = require "cosy.digest"
+local I18n          = require "cosy.i18n"
 local Random        = require "cosy.random"
 local Time          = require "cosy.time"
-
 local Jwt           = require "luajwt"
+
+local i18n   = I18n.load (require "cosy.token-i18n")
+i18n._locale = Configuration.locale._
 
 if Configuration.token.secret._ == nil then
   error {
-    _ = "token:no-secret",
+    _ = i18n ["token:no-secret"],
   }
 end
 

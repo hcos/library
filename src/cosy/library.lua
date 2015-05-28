@@ -1,7 +1,11 @@
 local Configuration = require "cosy.configuration"
 local Digest        = require "cosy.digest"
+local I18n          = require "cosy.i18n"
 local Value         = require "cosy.value"
 local Scheduler     = require "cosy.scheduler"
+
+local i18n   = I18n.load (require "cosy.library-i18n")
+i18n._locale = Configuration.locale._
 
 local Library   = {}
 local Client    = {}
@@ -17,7 +21,7 @@ local function threadof (f, ...)
 end
 
 function Client.connect (client)
-  local url = "ws://%{host}:%{port}/ws" % {
+  local url = "ws://{{{host}}}:{{{port}}}/ws" % {
     host = client.host,
     port = client.port,
   }
@@ -100,13 +104,13 @@ function Operation.__call (operation, parameters, try_only)
   end
   if client._status ~= "opened" then
     return nil, {
-      _ = "server:unreachable",
+      _ = i18n ["server:unreachable"],
     }
   end
   -- Special case:
   if  type (parameters) == "table"
   and parameters.username and parameters.password then
-    parameters.password = Digest ("%{username}:%{password}" % {
+    parameters.password = Digest ("{{{username}}}:{{{password}}}" % {
       username = parameters.username,
       password = parameters.password,
     })
@@ -134,7 +138,7 @@ function Operation.__call (operation, parameters, try_only)
   threadof (f)
   if result == nil then
     return nil, {
-      _ = "client:timeout",
+      _ = i18n ["server:timeout"],
     }
   elseif not result.success then
     return nil, result.error

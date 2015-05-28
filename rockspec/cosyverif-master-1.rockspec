@@ -33,6 +33,7 @@ dependencies = {
   "lualogging >= 1",
   "luasec >= 0",
   "luasocket >= 2",
+  "lustache >= 1",
   "redis-lua >= 2",
   "serpent >= 0",
 }

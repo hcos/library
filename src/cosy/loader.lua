@@ -75,11 +75,6 @@ end
 
 do
   package.preload ["bit32"] = function ()
-    local Logger = require "cosy.logger"
-    Logger.warning {
-      _       = "fixme",
-      message = "global bit32 is created for lua-websockets",
-    }
     _G.bit32         = require "bit"
     _G.bit32.lrotate = _G.bit32.rol
     _G.bit32.rrotate = _G.bit32.ror

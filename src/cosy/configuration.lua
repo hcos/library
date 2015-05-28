@@ -1,8 +1,10 @@
 local Loader        = require "cosy.loader"
+local I18n          = require "cosy.i18n"
 local Logger        = require "cosy.logger"
 local Repository    = require "cosy.repository"
 local Scheduler     = require "cosy.scheduler"
 
+local i18n       = I18n.load (require "cosy.configuration-i18n")
 local repository = Repository.new ()
 
 Repository.options (repository).create = function () return {} end
@@ -52,7 +54,7 @@ if not _G.js then
         local url    = tostring (source._)
         if url:match "^http" then
           script [#script+1] = ([[
-            redis.call ("set", "foreign:%{name}", "%{source}")
+            redis.call ("set", "foreign:{{{name}}}", "{{{source}}}")
           ]]) % {
             name   = name,
             source = url,
@@ -65,12 +67,12 @@ if not _G.js then
       script = table.concat (script)
       redis:eval (script, 1, "foreign:*")
       os.execute ([[
-        find %{root}/cache -type f -delete
+        find {{{root}}}/cache -type f -delete
       ]] % {
         root = Nginx.directory,
       })
       Logger.debug {
-        _ = "configuration:updated",
+        _ = i18n ["updated"],
       }
       Nginx.update ()
       Scheduler.sleep (-math.huge)
@@ -96,14 +98,14 @@ if not _G.js then
         Scheduler.wakeup (updater)
       end
       Logger.debug {
-        _      = "configuration:using",
+        _      = i18n ["use"],
         path   = name,
         locale = repository.whole.locale._ or "en",
       }
       repository [key] = result
     else
       Logger.warning {
-        _      = "configuration:skipping",
+        _      = i18n ["skip"],
         path   = name,
         locale = repository.whole.locale._ or "en",
       }

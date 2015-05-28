@@ -1,8 +1,12 @@
 local Configuration = require "cosy.configuration"
+local I18n          = require "cosy.i18n"
 local Logger        = require "cosy.logger"
 local Repository    = require "cosy.repository"
 local Store         = require "cosy.store"
 local Token         = require "cosy.token"
+
+local i18n   = I18n.load (require "cosy.parameters-i18n")
+i18n._locale = Configuration.locale._
 
 local Internal      = Repository.of (Configuration) .internal
 local Parameters    = setmetatable ({}, {
@@ -21,7 +25,7 @@ function Parameters.check (request, parameters)
       local value = request [key]
       if field == "required" and value == nil then
         reasons [#reasons+1] = {
-          _   = "check:missing",
+          _   = i18n ["check:not-found"],
           key = key,
         }
       elseif value ~= nil then
@@ -47,14 +51,14 @@ function Parameters.check (request, parameters)
   for key in pairs (request) do
     if not checked [key] then
       Logger.warning {
-        _   = "check:no-check",
+        _   = i18n ["check:no-check"],
         key = key,
       }
     end
   end
   if #reasons ~= 0 then
     error {
-      _       = "check:error",
+      _       = i18n ["check:error"],
       reasons = reasons,
     }
   end
@@ -72,7 +76,7 @@ do
     local value = t.request [t.key]
     return  type (value) == "string"
         or  nil, {
-              _   = "check:is-string",
+              _   = i18n ["check:is-string"],
             }
   end
   checks [2] = function (t)
@@ -80,7 +84,7 @@ do
     local size  = t.parameter.min_size._
     return  #value >= size
         or  nil, {
-              _     = "check:min-size",
+              _     = i18n ["check:min-size"],
               count = size,
             }
   end
@@ -89,7 +93,7 @@ do
     local size  = t.parameter.max_size._
     return  #value <= size
         or  nil, {
-              _     = "check:max-size",
+              _     = i18n ["check:max-size"],
               count = size,
             }
   end
@@ -128,7 +132,7 @@ do
     local value = t.request [t.key]
     return  value:find "^%w[%w%-_]+$"
         or  nil, {
-              _        = "check:username:alphanumeric",
+              _        = i18n ["check:alphanumeric"],
               username = value,
             }
   end
@@ -158,7 +162,7 @@ do
     local pattern = "^.*@[%w%.%%%+%-]+%.%w%w%w?%w?$"
     return  value:find (pattern)
         or  nil, {
-              _     = "check:email:pattern",
+              _     = i18n ["check:email:pattern"],
               email = value,
             }
   end
@@ -186,9 +190,10 @@ do
   checks [Repository.size (checks)+1] = function (t)
     local value = t.request [t.key]
     return  value:find "^%a%a$"
-        or  value:find "^%a%a_%a%a$"
+        or  value:find "^%a%a%-%a%a$"
+        or  value:find "^%a%a%_%a%a$"
         or  nil, {
-              _      = "check:locale:pattern",
+              _      = i18n ["check:locale:pattern"],
               locale = value,
             }
   end
@@ -214,7 +219,7 @@ do
     local pattern = "^%x+$"
     return  value:find (pattern)
         or  nil, {
-              _          = "check:tos_digest:pattern",
+              _          = i18n ["check:tos_digest:pattern"],
               tos_digest = value,
             }
   end
@@ -225,7 +230,7 @@ do
     local tos = Methods.tos { locale = request.locale }
     return  tos.tos_digest == value
         or  nil, {
-              _          = "check:tos_digest:incorrect",
+              _          = i18n ["check:tos_digest:incorrect"],
               tos_digest = value,
             }
   end
@@ -247,7 +252,7 @@ do
     local ok, result = pcall (Token.decode, value)
     if not ok then
       return nil, {
-        _ = "check:token:invalid",
+        _ = i18n ["check:token:invalid"],
       }
     end
     request [key] = result.contents
@@ -269,7 +274,7 @@ do
     local value   = request [t.key]
     return  value.type == "administration"
         or  nil, {
-              _ = "check:token:invalid",
+              _ = i18n ["check:token:invalid"],
             }
   end
   checks [Repository.size (checks)+1] = function (t)
@@ -278,7 +283,7 @@ do
     local Server  = require "cosy.server"
     return  value.passphrase == Server.passphrase
         or  nil, {
-              _ = "check:token:invalid",
+              _ = i18n ["check:token:invalid"],
             }
   end
 end
@@ -297,7 +302,7 @@ do
     local value   = request [t.key]
     return  value.type == "validation"
         or  nil, {
-              _ = "check:token:invalid",
+              _ = i18n ["check:token:invalid"],
             }
   end
 end
@@ -316,7 +321,7 @@ do
     local value   = request [t.key]
     return  value.type == "authentication"
         or  nil, {
-              _ = "check:token:invalid",
+              _ = i18n ["check:token:invalid"],
             }
   end
   checks [Repository.size (checks)+1] = function (t)
@@ -328,7 +333,7 @@ do
        and  user.type   == Methods.Type.user
        and  user.status == Methods.Status.active
         or  nil, {
-              _ = "check:token:invalid",
+              _ = i18n ["check:token:invalid"],
             }
   end
 end

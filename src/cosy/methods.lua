@@ -1,25 +1,3 @@
--- Methods
--- =======
-
--- This module defines the methods exposed by CosyVerif.
--- Methods use the standard [JSON Web Tokens](http://jwt.io/) to authenticate users.
--- Each method takes two parameters: the decoded token contents,
--- and the request itself.
--- 
--- The `cosy.methods` module returns a table containing several variants
--- of the API:
---
--- * `cosy.methods.Localized` exports them as library functions to be used within
---   the server. The `request` parameter is juste a plain table that is
---   automatically converted to a `Request`. Responses and errors are localized
---   using the locale chosen by the user.
---
--- Internally, the module makes use of `cosy.data` to represent its data,
--- and `redis` to store and retrieve them. Any data or subdata can have
--- an expiration date (either handled by `redis` or by `cosy.data`). After
--- expiration, its value and subdata disappear.
-
--- The `Methods` table contains all available methods.
 local Methods  = {}
 
 local Configuration = require "cosy.configuration"
@@ -34,12 +12,15 @@ local Store         = require "cosy.store"
 local Token         = require "cosy.token"
 local Value         = require "cosy.value"
 
+local i18n   = I18n.load (require "cosy.methods-i18n")
+i18n._locale = Configuration.locale._
+
 local Internal      = Repository.of (Configuration) .internal
 
 Internal.redis.key = {
-  users  = "user:%{key}",
-  emails = "email:%{key}",
-  tokens = "token:%{key}",
+  users  = "user:{{{key}}}",
+  emails = "email:{{{key}}}",
+  tokens = "token:{{{key}}}",
 }
 
 Methods.Status = setmetatable ({
@@ -96,8 +77,7 @@ function Methods.tos (request)
   if request.token then
     locale = request.token.locale or locale
   end
-  local tos = I18n {
-    _      = "tos",
+  local tos = i18n ["terms-of-service"] % {
     locale = locale,
   }
   return {
@@ -105,7 +85,6 @@ function Methods.tos (request)
     tos_digest = Digest (tos),
   }
 end
-
 
 Methods.user = {}
 
@@ -123,13 +102,13 @@ function Methods.user.create (request, store, try_only)
   })
   if store.emails [request.email] then
     error {
-      _     = "create-user:email-exists",
+      _     = i18n ["email:exist"],
       email = request.email,
     }
   end
   if store.users [request.username] then
     error {
-      _        = "create-user:username-exists",
+      _        = i18n ["username:exist"],
       username = request.username,
     }
   end
@@ -170,13 +149,13 @@ function Methods.user.authenticate (request, store)
   or user.type   ~= Methods.Type.user
   or user.status ~= Methods.Status.active then
     error {
-      _ = "authenticate:failure",
+      _ = "user:authenticate:failure",
     }
   end
   local verified = Password.verify (request.password, user.password)
   if not verified then
     error {
-      _ = "authenticate:failure",
+      _ = "user:authenticate:failure",
     }
   end
   if type (verified) == "string" then
@@ -209,22 +188,22 @@ function Methods.user.reset (request, store, try_only)
   local sent  = Email.send {
     locale  = user.locale,
     from    = {
-      _     = "email:reset_account:from",
+      _     = i18n ["user:reset:from"],
       name  = Configuration.server.name._,
       email = Configuration.server.email._,
     },
     to      = {
-      _     = "email:reset_account:to",
+      _     = i18n ["user:reset:to"],
       name  = user.username,
       email = user.email,
     },
     subject = {
-      _          = "email:reset_account:subject",
+      _          = i18n ["user:reset:subject"],
       servername = Configuration.server.name._,
       username   = user.username,
     },
     body    = {
-      _          = "email:reset_account:body",
+      _          = i18n ["user:reset:body"],
       username   = user.username,
       validation = token,
     },
@@ -235,7 +214,7 @@ function Methods.user.reset (request, store, try_only)
     return true
   else
     error {
-      _ = "reset-user:retry",
+      _ = i18n ["user:reset:retry"],
     }
   end
 end
@@ -252,15 +231,20 @@ function Methods.user.suspend (request, store)
   local target = store.users [request.username]
   if target.type ~= Methods.Type.user then
     error {
-      _        = "suspend:not-user",
+      _        = i18n ["user:suspend:not-user"],
       username = request.username,
+    }
+  end
+  if request.username == request.token.username then
+    error {
+      _ = i18n ["user:suspend:self"],
     }
   end
   local user       = store.users [request.token.username]
   local reputation = Configuration.reputation.suspend._
   if user.reputation < reputation then
     error {
-      _        = "suspend:not-enough",
+      _        = i18n ["user:suspend:not-enough"],
       owned    = user.reputation,
       required = reputation
     }
@@ -303,7 +287,7 @@ local function wrap (t)
             return result
           end, function (e)
             err = e
-            Logger.debug ("Error: " .. Value.encode (e) .. " => " .. debug.traceback ())
+            Logger.debug ("Error: " .. Value.expression (e) .. " => " .. debug.traceback ())
           end)
           if ok then
             return result or true
@@ -312,7 +296,7 @@ local function wrap (t)
           end
         end
         return nil, {
-          _ = "redis:unavailable",
+          _ = i18n ["redis:unreachable"],
         }
       end
     end

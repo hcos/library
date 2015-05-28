@@ -5,20 +5,16 @@ local Logger = {}
 if _G.js then
   local logger = _G.window.console
   function Logger.debug (t)
-    local i18n = I18n
-    logger:log ("DEBUG: " .. i18n (t))
+    logger:log ("DEBUG: "   .. I18n (t))
   end
   function Logger.info (t)
-    local i18n = I18n
-    logger:log ("INFO: " .. i18n (t))
+    logger:log ("INFO: "    .. I18n (t))
   end
   function Logger.warning (t)
-    local i18n = I18n
-    logger:log ("WARNING: " .. i18n (t))
+    logger:log ("WARNING: " .. I18n (t))
   end
   function Logger.error (t)
-    local i18n = I18n
-    logger:log ("ERROR: " .. i18n (t))
+    logger:log ("ERROR: "   .. I18n (t))
   end
 elseif Loader.nolog then
   function Logger.debug   () end
