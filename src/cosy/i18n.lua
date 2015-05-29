@@ -46,7 +46,9 @@ function I18n.__call (i18n, data)
     end
     if t._ and getmetatable (t._) == Message then
       t.locale  = t.locale or locale
-      t.message =  t._ % t
+      t.message = t._ % t
+      t._       = t._._key
+      t.locale  = nil
     end
     return t.message
   end
