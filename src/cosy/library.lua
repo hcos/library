@@ -7,6 +7,9 @@ local Scheduler     = require "cosy.scheduler"
 local i18n   = I18n.load (require "cosy.library-i18n")
 i18n._locale = Configuration.locale._
 
+local m18n   = I18n.load (require "cosy.methods-i18n")
+m18n._locale = Configuration.locale._
+
 local Library   = {}
 local Client    = {}
 local Operation = {}
@@ -110,40 +113,62 @@ function Operation.__call (operation, parameters, try_only)
   -- Special case:
   if  type (parameters) == "table"
   and parameters.username and parameters.password then
+    client.username = parameters.username
+    client.password = parameters.password
     parameters.password = Digest ("{{{username}}}:{{{password}}}" % {
       username = parameters.username,
       password = parameters.password,
     })
-    client.username = parameters.username
-    client.password = parameters.password
   end
   -- Call:
-  local result
-  local function f ()
-    local co         = coroutine.running ()
-    local identifier = #client._waiting + 1
-    client._waiting [identifier] = co
-    client._results [identifier] = nil
-    client._ws:send (Value.expression {
-      identifier = identifier,
-      operation  = table.concat (operation._keys, ":"),
-      parameters = parameters,
-      try_only   = try_only,
-    })
-    Scheduler.sleep (Configuration.library.timeout._)
-    result = client._results [identifier]
-    client._waiting [identifier] = nil
-    client._results [identifier] = nil
+  local continue = true
+  for _ = 1, 2 do
+    local result
+    local function f ()
+      local co         = coroutine.running ()
+      local identifier = #client._waiting + 1
+      client._waiting [identifier] = co
+      client._results [identifier] = nil
+      client._ws:send (Value.expression {
+        identifier = identifier,
+        operation  = table.concat (operation._keys, ":"),
+        parameters = parameters,
+        try_only   = try_only,
+      })
+      Scheduler.sleep (Configuration.library.timeout._)
+      result = client._results [identifier]
+      client._waiting [identifier] = nil
+      client._results [identifier] = nil
+    end
+    threadof (f)
+    if result == nil then
+      return nil, {
+        _ = i18n ["server:timeout"],
+      }
+    elseif not result.success then
+      if  result.error
+      and result.error._ == "check:error"
+      and #result.error.reasons == 1
+      and result.error.reasons [1].parameter == "token"
+      and result.error.reasons [1]._ == "check:token:invalid"
+      and client.username
+      and client.password
+      then
+        local token = client.user.authenticate {
+          username = client.username,
+          password = client.password,
+        }
+        if not token then
+          return nil, result.error
+        end
+        parameters.token = token
+      else
+        return nil, result.error
+      end
+    else
+      return result.response or true
+    end
   end
-  threadof (f)
-  if result == nil then
-    return nil, {
-      _ = i18n ["server:timeout"],
-    }
-  elseif not result.success then
-    return nil, result.error
-  end
-  return result.response or true
 end
 
 function Library.client (t)
