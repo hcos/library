@@ -90,13 +90,13 @@ table.remove (_G.arg, 1)
 local result = command.run (Cli, ws)
 if type (result) == "boolean" then
   if result then
-    print (Colors ("%{green}" .. "success"))
+    print (Colors ("%{green}" .. i18n ["success"] % {}))
   else
-    print (Colors ("%{white redbg}" .. "failure"))
+    print (Colors ("%{white redbg}" .. i18n ["failure"] % {}))
   end
 elseif type (result) == "table" then
   if result.success then
-    print (Colors ("%{green}" .. "success"))
+    print (Colors ("%{green}" .. i18n ["success"] % {}))
     if type (result.response) == "table" then
       for k, v in pairs (result.response) do
         print (k, "=>", v)
@@ -105,7 +105,8 @@ elseif type (result) == "table" then
       print (result.response)
     end
   elseif result.error then
-    print (Colors ("%{white redbg}" .. I18n (result.error)))
+    print (Colors ("%{green}" .. i18n ["failure"] % {}))
+    print (Colors ("%{white redbg}" .. i18n (result.error)))
     print (Value.expression (result))
   end
 end
