@@ -44,6 +44,18 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
   ["user:authenticate:failure"] = {
     en = "authentication failed",
   },
+  ["user:create:from"] = {
+    en = [["{{{name}}}" <{{{email}}}>]],
+  },
+  ["user:create:to"] = {
+    en = [["{{{name}}}" <{{{email}}}>]],
+  },
+  ["user:create:subject"] = {
+    en = [=[[{{{servername}}}] Welcome, {{{username}}}!]=],
+  },
+  ["user:create:body"] = {
+    en = "{{{username}}}, we are happy to see you!",
+  },
   ["user:reset:from"] = {
     en = [["{{{name}}}" <{{{email}}}>]],
   },
@@ -51,7 +63,7 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
     en = [["{{{name}}}" <{{{email}}}>]],
   },
   ["user:reset:subject"] = {
-    en = [=[[{{{servername}}}] Welcome, {{{username}}}!]=],
+    en = [=[[{{{servername}}}] Welcome back, {{{username}}}!]=],
   },
   ["user:reset:body"] = {
     en = "{{{username}}}, your validation token is <{{{validation}}}>.",

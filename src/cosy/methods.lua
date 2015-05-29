@@ -118,7 +118,7 @@ function Methods.user.create (request, store, try_only)
   store.emails [request.email] = {
     username  = request.username,
   }
-  store.users [request.username] = {
+  local user = {
     type        = Methods.Type.user,
     status      = Methods.Status.active,
     username    = request.username,
@@ -132,7 +132,32 @@ function Methods.user.create (request, store, try_only)
     },
     contents    = {},
   }
-  return Token.authentication (store.users [request.username])
+  store.users [request.username] = user
+  Email.send {
+    locale  = user.locale,
+    from    = {
+      _     = i18n ["user:create:from"],
+      name  = Configuration.server.name._,
+      email = Configuration.server.email._,
+    },
+    to      = {
+      _     = i18n ["user:create:to"],
+      name  = user.username,
+      email = user.email,
+    },
+    subject = {
+      _          = i18n ["user:create:subject"],
+      servername = Configuration.server.name._,
+      username   = user.username,
+    },
+    body    = {
+      _          = i18n ["user:create:body"],
+      username   = user.username,
+    },
+  }
+  return {
+    token = Token.authentication (store.users [request.username]),
+  }
 end
 
 -- ### Authentication
@@ -161,7 +186,9 @@ function Methods.user.authenticate (request, store)
   if type (verified) == "string" then
     user.password = verified
   end
-  return Token.authentication (user)
+  return {
+    token = Token.authentication (user),
+  }
 end
 
 function Methods.user.is_authentified (request)
@@ -194,7 +221,7 @@ function Methods.user.reset (request, store, try_only)
   if try_only then
     return true
   end
-  local sent  = Email.send {
+  Email.send {
     locale  = user.locale,
     from    = {
       _     = i18n ["user:reset:from"],
@@ -217,15 +244,9 @@ function Methods.user.reset (request, store, try_only)
       validation = token,
     },
   }
-  if sent then
-    user.status     = Methods.Status.suspended
-    user.validation = token
-    return true
-  else
-    error {
-      _ = i18n ["user:reset:retry"],
-    }
-  end
+  user.status     = Methods.Status.suspended
+  user.validation = token
+  return true
 end
 
 -- ### Suspend User
