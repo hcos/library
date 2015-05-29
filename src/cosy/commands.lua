@@ -99,11 +99,12 @@ Commands ["server:stop"] = {
       })
       result = ws:receive ()
     end
-    if not result or not result.success then
+    if not result then
       os.remove (Configuration.server.data_file._)
       os.remove (Configuration.server.pid_file ._)
+      return true
     end
-    return true
+    return Value.decode (result)
   end,
 }
 
