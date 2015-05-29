@@ -120,8 +120,10 @@ function Operation.__call (operation, parameters, try_only)
       password = parameters.password,
     })
   end
+  if client.token and not parameters.token then
+    parameters.token = client.token
+  end
   -- Call:
-  local continue = true
   for _ = 1, 2 do
     local result
     local function f ()
@@ -161,6 +163,7 @@ function Operation.__call (operation, parameters, try_only)
         if not token then
           return nil, result.error
         end
+        client    .token = token
         parameters.token = token
       else
         return nil, result.error
@@ -181,7 +184,13 @@ function Library.client (t)
   client.username = t.username or false
   client.password = t.password or false
   Client.connect (client)
-  if      client._status == "opened" then
+  if client._status == "opened" then
+    if client.username and client.password then
+      client.token = client.authenticate {
+        username = client.username,
+        password = client.password,
+      }
+    end
     return client
   elseif client._status == "closed" then
     return nil, client._err
