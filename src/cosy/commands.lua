@@ -236,4 +236,32 @@ Commands ["user:create"] = {
   end,
 }
 
+Commands ["user:authenticate"] = {
+  _   = i18n ["user:authenticate"],
+  run = function (cli, ws)
+    addoptions (cli)
+    cli:add_argument (
+      "username",
+      i18n ["argument:username"] % {}
+    )
+    local args = cli:parse_args ()
+    if not args then
+      cli:print_help ()
+      os.exit (1)
+    end
+    io.write (i18n ["argument:password" .. tostring (1)] % {} .. " ")
+    local password = getpassword ()
+    ws:send (Value.expression {
+      server     = args.server,
+      operation  = "user:authenticate",
+      parameters = {
+        username   = args.username,
+        password   = password,
+      },
+    })
+    local result = ws:receive ()
+    return Value.decode (result)
+  end,
+}
+
 return Commands

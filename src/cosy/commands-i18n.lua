@@ -26,6 +26,9 @@ return {
   ["user:create"] = {
     en = "create a user account on the server",
   },
+  ["user:authenticate"] = {
+    en = "authenticate a user",
+  },
   ["argument:username"] = {
     en = "username",
   },
