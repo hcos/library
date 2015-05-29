@@ -174,13 +174,13 @@ function Methods.user.authenticate (request, store)
   or user.type   ~= Methods.Type.user
   or user.status ~= Methods.Status.active then
     error {
-      _ = "user:authenticate:failure",
+      _ = i18n ["user:authenticate:failure"],
     }
   end
   local verified = Password.verify (request.password, user.password)
   if not verified then
     error {
-      _ = "user:authenticate:failure",
+      _ = i18n ["user:authenticate:failure"],
     }
   end
   if type (verified) == "string" then
