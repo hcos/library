@@ -37,11 +37,8 @@ function Parameters.check (request, parameters)
           }
           checked [key] = true
           if not ok then
-            reason.key           = key
-            reasons [#reasons+1] = {
-              parameter = key,
-              reasons   = reason
-            }
+            reason.parameter     = key
+            reasons [#reasons+1] = reason
             break
           end
         end
