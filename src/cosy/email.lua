@@ -2,6 +2,7 @@ local Configuration = require "cosy.configuration"
 local CSocket       = require "cosy.socket"
 local I18n          = require "cosy.i18n"
 local Logger        = require "cosy.logger"
+local Scheduler     = require "cosy.scheduler"
 local Socket        = require "socket"
 local Smtp          = require "socket.smtp"
 local Ssl           = require "ssl"
@@ -183,32 +184,31 @@ function Email.discover ()
 end
 
 function Email.send (message)
-  local locale        = message.locale or Configuration.locale.default._
-  message.from   .locale = locale
-  message.to     .locale = locale
-  message.subject.locale = locale
-  message.body   .locale = locale
-  message.from    = I18n (message.from   )
-  message.to      = I18n (message.to     )
-  message.subject = I18n (message.subject)
-  message.body    = I18n (message.body   )
-  return Smtp.send {
-    from     = message.from:match (email_pattern),
-    rcpt     = message.to  :match (email_pattern),
-    source   = Smtp.message {
-      headers = {
-        from    = message.from,
-        to      = message.to,
-        subject = message.subject,
+  Scheduler.addthread (function ()
+    local locale    = message.locale or Configuration.locale.default._
+    local si18n     = I18n.new (locale)
+    message.from    = si18n (message.from   )
+    message.to      = si18n (message.to     )
+    message.subject = si18n (message.subject)
+    message.body    = si18n (message.body   )
+    Smtp.send {
+      from     = message.from:match (email_pattern),
+      rcpt     = message.to  :match (email_pattern),
+      source   = Smtp.message {
+        headers = {
+          from    = message.from,
+          to      = message.to,
+          subject = message.subject,
+        },
+        body = message.body
       },
-      body = message.body
-    },
-    user     = Configuration.smtp.username._,
-    password = Configuration.smtp.password._,
-    server   = Configuration.smtp.host._,
-    port     = Configuration.smtp.port._,
-    create   = Tcp [Configuration.smtp.method._] (Configuration.smtp.protocol._, make_socket.async),
-  }
+      user     = Configuration.smtp.username._,
+      password = Configuration.smtp.password._,
+      server   = Configuration.smtp.host._,
+      port     = Configuration.smtp.port._,
+      create   = Tcp [Configuration.smtp.method._] (Configuration.smtp.protocol._, make_socket.async),
+    }
+  end)
 end
 
 do
