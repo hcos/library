@@ -157,7 +157,7 @@ end
 function Nginx.start ()
   Nginx.directory = os.tmpname ()
   Logger.debug {
-    _         = "nginx:directory",
+    _         = i18n ["nginx:directory"],
     directory = Nginx.directory,
   }
   os.execute ([[
