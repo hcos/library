@@ -7,6 +7,13 @@ local Message   = {}
 
 setmetatable (I18n, Metatable)
 
+function I18n.new (locale)
+  return setmetatable ({
+    _store  = {},
+    _locale = locale or "en",
+  }, I18n)
+end
+
 function I18n.load (t)
   return setmetatable ({
     _store  = t,
@@ -17,7 +24,7 @@ end
 function I18n.__index (i18n, key)
   local entry = i18n._store [key]
   if not entry then
-    return nil
+    error ("i18n key " .. tostring (key) .. " not found")
   end
   return setmetatable ({
     _key    = key,
