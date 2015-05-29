@@ -16,6 +16,34 @@ i18n._locale = Configuration.cli.default_locale._
 local directory  = Configuration.cli.directory._
 Lfs.mkdir (directory)
 
+local Commands = require "cosy.commands"
+local command = Commands [arg [1] or false]
+
+if not command then
+  local name_size = 0
+  local names     = {}
+  local list      = {}
+  for name, c in pairs (Commands) do
+    name_size = math.max (name_size, #name)
+    names [#names+1] = name
+    list [name] = I18n (c)
+  end
+  print (Colors ("%{white redbg}" .. i18n ["command:missing"] % {
+    cli    = arg [0],
+  }))
+  print (i18n ["command:available"] % {})
+  table.sort (names)
+  for i = 1, #names do
+    local line = "  %{green}" .. names [i]
+    for _ = #line, name_size+12 do
+      line = line .. " "
+    end
+    line = line .. "%{yellow}" .. list [names [i]]
+    print (Colors (line))
+  end
+  os.exit (1)
+end
+
 local function read (filename)
   local file = io.open (filename, "r")
   if not file then
@@ -57,34 +85,6 @@ or not ws:connect ("ws://{{{interface}}}:{{{port}}}/ws" % {
   end
 end
 
-local Commands = require "cosy.commands"
-local command = Commands [arg [1] or false]
-
-if not command then
-  local name_size = 0
-  local names     = {}
-  local list      = {}
-  for name, c in pairs (Commands) do
-    name_size = math.max (name_size, #name)
-    names [#names+1] = name
-    list [name] = I18n (c)
-  end
-  print (Colors ("%{white redbg}" .. i18n ["command:missing"] % {
-    cli    = arg [0],
-  }))
-  print (i18n ["command:available"] % {})
-  table.sort (names)
-  for i = 1, #names do
-    local line = "  %{green}" .. names [i]
-    for _ = #line, name_size+12 do
-      line = line .. " "
-    end
-    line = line .. "%{yellow}" .. list [names [i]]
-    print (Colors (line))
-  end
-  os.exit (1)
-end
-
 Cli:set_name (_G.arg [0] .. " " .. _G.arg [1])
 table.remove (_G.arg, 1)
 local result = command.run (Cli, ws)
@@ -106,7 +106,7 @@ elseif type (result) == "table" then
     end
   elseif result.error then
     print (Colors ("%{green}" .. i18n ["failure"] % {}))
-    print (Colors ("%{white redbg}" .. i18n (result.error)))
-    print (Value.expression (result))
+    print (Colors ("%{white redbg}" .. result.error.message))
+    print (Colors ("%{dim red whitebg}" .. Value.expression (result)))
   end
 end
