@@ -137,7 +137,11 @@ function Repository.export (proxy)
   return result
 end
 
-function Repository.of (proxy)
+function Repository.repository  (proxy)
+  return proxy [RESOURCE] [REPOSITORY]
+end
+
+function Repository.resource (proxy)
   return proxy [RESOURCE] [REPOSITORY]
 end
 
@@ -147,6 +151,10 @@ end
 
 function Repository.size (proxy)
   return Proxy.__len (proxy)
+end
+
+function Repository.refines (lhs, rhs)
+  return rhs <= lhs
 end
 
 --    > = Repository.export (resource)
@@ -410,6 +418,29 @@ function Proxy.__ipairs (proxy)
   end)
 end
 
+--function Proxy.__eq (lhs, rhs)
+--end
+
+function Proxy.__lt (lhs, rhs)
+  lhs = Proxy.deplaceholderize (lhs)
+  lhs = Proxy.dereference      (lhs)
+  local parents = Proxy.refines (rhs)
+  for i = 1, #parents-1 do
+    if parents [i] == lhs then
+      return true
+    end
+  end
+  return false
+end
+
+function Proxy.__le (lhs, rhs)
+  if lhs == rhs then
+    return true
+  else
+    return Proxy.__lt (lhs, rhs)
+  end
+end
+
 function Proxy.__len (proxy)
   local n = 1
   while Proxy.exists (proxy [n]) do
@@ -417,8 +448,6 @@ function Proxy.__len (proxy)
   end
   return n-1
 end
-
-Proxy.size = Proxy.__len
 
 function Proxy.__tostring (proxy)
   local resource = proxy    [RESOURCE]

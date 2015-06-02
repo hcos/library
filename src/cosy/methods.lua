@@ -15,7 +15,7 @@ local Value         = require "cosy.value"
 local i18n   = I18n.load (require "cosy.methods-i18n")
 i18n._locale = Configuration.locale._
 
-local Internal      = Repository.of (Configuration) .internal
+local Internal      = Repository.repository (Configuration) .internal
 
 Internal.redis.key = {
   users  = "user:{{{key}}}",

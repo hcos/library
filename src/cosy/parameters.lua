@@ -8,7 +8,7 @@ local Token         = require "cosy.token"
 local i18n   = I18n.load (require "cosy.parameters-i18n")
 i18n._locale = Configuration.locale._
 
-local Internal      = Repository.of (Configuration) .internal
+local Internal      = Repository.repository (Configuration) .internal
 local Parameters    = setmetatable ({}, {
   __index = function (_, key)
     return Configuration.data [key]

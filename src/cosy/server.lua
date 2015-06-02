@@ -75,7 +75,7 @@ function Server.start ()
   Server.passphrase = Digest (Random ())
   Server.token      = Token.administration (Server)
   -- Set www path:
-  local internal = Repository.of (Configuration) .internal
+  local internal = Repository.repository (Configuration) .internal
   local main     = package.searchpath ("cosy", package.path)
   if main:sub (1, 1) == "." then
     main = Lfs.currentdir () .. "/" .. main

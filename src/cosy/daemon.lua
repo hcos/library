@@ -53,7 +53,7 @@ end
 
 function Daemon.start ()
   local addserver = Scheduler.addserver
-  local internal  = Repository.of (Configuration) .internal
+  local internal  = Repository.repository (Configuration) .internal
   Scheduler.addserver = function (s, f)
     local ok, port = s:getsockname ()
     if ok then
