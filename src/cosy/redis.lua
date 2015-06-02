@@ -7,6 +7,14 @@ local Scheduler     = require "cosy.scheduler"
 local Socket        = require "cosy.socket"
 local Redis         = require "redis"
 
+local Internal      = Configuration / "default"
+Internal.redis = {
+  interface = "127.0.0.1",
+  port      = 6379,
+  database  = 0,
+  pool_size = 5,
+}
+
 local assigned = {}
 
 return function ()

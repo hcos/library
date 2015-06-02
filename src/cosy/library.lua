@@ -10,6 +10,11 @@ i18n._locale = Configuration.locale._
 local m18n   = I18n.load (require "cosy.methods-i18n")
 m18n._locale = Configuration.locale._
 
+local Internal   = Configuration / "default"
+Internal.library = {
+  timeout = 2,
+}
+
 local Library   = {}
 local Client    = {}
 local Operation = {}
@@ -120,8 +125,8 @@ function Operation.__call (operation, parameters, try_only)
       password = parameters.password,
     })
   end
-  if client.token and not parameters.token then
-    parameters.token = client.token
+  if client._token and not parameters.token then
+    parameters.token = client._token
   end
   -- Call:
   for _ = 1, 2 do
@@ -163,8 +168,8 @@ function Operation.__call (operation, parameters, try_only)
         if not token then
           return nil, result.error
         end
-        client    .token = token
-        parameters.token = token
+        client    ._token = token
+        parameters.token  = token
       else
         return nil, result.error
       end
@@ -178,6 +183,7 @@ function Library.client (t)
   local client = setmetatable ({
     _results = {},
     _waiting = {},
+    _token   = false,
   }, Client)
   client.host     = t.host     or false
   client.port     = t.port     or 80
@@ -185,8 +191,9 @@ function Library.client (t)
   client.password = t.password or false
   Client.connect (client)
   if client._status == "opened" then
-    if client.username and client.password then
-      client.token = client.authenticate {
+    if  client.username and client.username ~= ""
+    and client.password and client.password ~= "" then
+      client._token = client.authenticate {
         username = client.username,
         password = client.password,
       }

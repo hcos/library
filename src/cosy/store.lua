@@ -1,7 +1,6 @@
 local Configuration = require "cosy.configuration"
 local Redis         = require "cosy.redis"
 local Value         = require "cosy.value"
-
 local Coromake      = require "coroutine.make"
 
 local Store      = {}

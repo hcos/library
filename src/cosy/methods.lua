@@ -7,7 +7,6 @@ local I18n          = require "cosy.i18n"
 local Logger        = require "cosy.logger"
 local Parameters    = require "cosy.parameters"
 local Password      = require "cosy.password"
-local Repository    = require "cosy.repository"
 local Store         = require "cosy.store"
 local Token         = require "cosy.token"
 local Value         = require "cosy.value"
@@ -15,12 +14,22 @@ local Value         = require "cosy.value"
 local i18n   = I18n.load (require "cosy.methods-i18n")
 i18n._locale = Configuration.locale._
 
-local Internal      = Repository.repository (Configuration) .internal
-
+local Internal = Configuration / "default"
+Internal.redis.retry = 5
 Internal.redis.key = {
   users  = "user:{{{key}}}",
   emails = "email:{{{key}}}",
   tokens = "token:{{{key}}}",
+}
+Internal.expiration = {
+  account        = 24 * 3600, -- 1 day
+  validation     =  1 * 3600, -- 1 hour
+  authentication =  1 * 3600, -- 1 hour
+  administration =  99 * 365 * 24 * 3600, -- 99 years
+}
+Internal.reputation = {
+  at_creation = 10,
+  suspend     = 50,
 }
 
 Methods.Status = setmetatable ({
@@ -297,8 +306,6 @@ function Methods.user.delete (request, store)
   store.users  [user.username] = nil
   return true
 end
-
-Internal.redis.retry = 2
 
 local function wrap (t)
   for key, value in pairs (t) do

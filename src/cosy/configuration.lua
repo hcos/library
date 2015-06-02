@@ -10,22 +10,52 @@ local repository = Repository.new ()
 Repository.options (repository).create = function () return {} end
 Repository.options (repository).import = function () return {} end
 
-repository.internal = {
-  locale = "en",
-}
-
 repository.whole = {
   [Repository.depends] = {
     repository.default,
-    repository.internal,
     repository.etc,
     repository.home,
     repository.pwd,
   },
 }
 
+local Configuration = {
+  ["cosy:configuration:layers"] = {
+    default = repository.default,
+    etc     = repository.etc,
+    home    = repository.home,
+    pwd     = repository.pwd,
+    whole   = repository.whole,
+  },
+}
+
+function Configuration.load (name)
+  local previous = _G ["cosy:configuration-only"]
+  _G ["cosy:configuration-only"] = true
+  require (name)
+  _G ["cosy:configuration-only"] = previous
+end
+
+local Metatable = {}
+
+function Metatable.__index (configuration, key)
+  return configuration ["cosy:configuration:layers"].whole [key]
+end
+
+function Metatable.__newindex (configuration, key, value)
+  configuration ["cosy:configuration:layers"].whole [key] = value
+end
+
+function Metatable.__div (configuration, name)
+  return configuration ["cosy:configuration:layers"] [name]
+end
+
+setmetatable (Configuration, Metatable)
+
+local Internal  = Configuration / "default"
+Internal.locale = "en"
+
 local files = {
-  default = "cosy.configuration.default",
   etc     = "/etc/cosy.conf",
   home    = os.getenv "HOME" .. "/.cosy/cosy.conf",
   pwd     = os.getenv "PWD" .. "/cosy.conf",
@@ -33,7 +63,6 @@ local files = {
 
 if not _G.js then
   local updater = Scheduler.addthread (function ()
-    local Configuration = require "cosy.configuration"
     local Nginx         = require "cosy.nginx"
     local Redis         = require "cosy.redis"
     if not Nginx.directory then
@@ -94,23 +123,23 @@ if not _G.js then
   for key, name in pairs (files) do
     local result = Loader.hotswap.try_require (name)
     if result then
-      Loader.hotswap.on_change [name] = function ()
+      Loader.hotswap.on_change ["cosy:configuration"] = function ()
         Scheduler.wakeup (updater)
       end
       Logger.debug {
         _      = i18n ["use"],
         path   = name,
-        locale = repository.whole.locale._ or "en",
+        locale = Configuration.locale._ or "en",
       }
       repository [key] = result
     else
       Logger.warning {
         _      = i18n ["skip"],
         path   = name,
-        locale = repository.whole.locale._ or "en",
+        locale = Configuration.locale._ or "en",
       }
     end
   end
 end
 
-return repository.whole
+return Configuration

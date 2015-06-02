@@ -1,8 +1,21 @@
 local Configuration = require "cosy.configuration"
+
+Configuration.load "cosy.server"
+local Internal  = Configuration / "default"
+Internal.daemon = {
+  interface = "127.0.0.1",
+  port      = 0,
+  data_file = os.getenv "HOME" .. "/.cosy/daemon.data",
+  log_file  = os.getenv "HOME" .. "/.cosy/daemon.log",
+  pid_file  = os.getenv "HOME" .. "/.cosy/daemon.pid",
+}
+if _G ["cosy:configuration-only"] then
+  return
+end
+
 local I18n          = require "cosy.i18n"
 local Library       = require "cosy.library"
 local Logger        = require "cosy.logger"
-local Repository    = require "cosy.repository"
 local Value         = require "cosy.value"
 local Scheduler     = require "cosy.scheduler"
 local Ffi           = require "ffi"
@@ -10,6 +23,7 @@ local Websocket     = require "websocket"
 
 local i18n   = I18n.load (require "cosy.daemon-i18n")
 i18n._locale = Configuration.locale._
+
 local Daemon = {}
 
 Daemon.libraries = {}
@@ -53,11 +67,10 @@ end
 
 function Daemon.start ()
   local addserver = Scheduler.addserver
-  local internal  = Repository.repository (Configuration) .internal
   Scheduler.addserver = function (s, f)
     local ok, port = s:getsockname ()
     if ok then
-      internal.daemon.port = port
+      Configuration.daemon.port = port
     end
     addserver (s, f)
   end
@@ -109,8 +122,7 @@ end
 
 function Daemon.stop ()
   Scheduler.addthread (function ()
-    Scheduler.sleep (2)
-    Daemon.ws:close ()
+    Scheduler.sleep (1)
     os.remove (Configuration.daemon.data_file._)
     os.remove (Configuration.daemon.pid_file ._)
     os.exit   (0)
