@@ -12,6 +12,11 @@ local Jwt           = require "luajwt"
 local i18n   = I18n.load (require "cosy.token-i18n")
 i18n._locale = Configuration.locale._
 
+local Internal = Configuration / "default"
+Internal.token = {
+  algorithm = "HS512",
+}
+
 if Configuration.token.secret._ == nil then
   error {
     _ = i18n ["token:no-secret"],

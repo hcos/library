@@ -11,6 +11,9 @@ local Bcrypt        = require "bcrypt"
 local i18n   = I18n.load (require "cosy.password-i18n")
 i18n._locale = Configuration.locale._
 
+local Internal = Configuration / "default"
+Internal.data.password.time = 0.020
+
 local Password = {}
 
 local function compute_rounds ()

@@ -153,9 +153,11 @@ function Repository.size (proxy)
   return Proxy.__len (proxy)
 end
 
+--[[
 function Repository.refines (lhs, rhs)
   return rhs <= lhs
 end
+--]]
 
 --    > = Repository.export (resource)
 --    > = Repository.export (repository.myotherresource)

@@ -10,6 +10,15 @@ local I18n          = require "cosy.i18n"
 local Colors        = require "ansicolors"
 local Websocket     = require "websocket"
 
+Configuration.data.password.time = 0.020
+Configuration.load "cosy.daemon"
+local Internal = Configuration / "default"
+Internal.cli = {
+  directory      = os.getenv "HOME" .. "/.cosy",
+  default_locale = (os.getenv "LANG" or "en"):match "[^%.]+":gsub ("_", "-"),
+  default_server = "http://cosyverif.org/",
+}
+
 local i18n   = I18n.load (require "cosy-i18n")
 i18n._locale = Configuration.cli.default_locale._
 

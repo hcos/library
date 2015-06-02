@@ -2,13 +2,25 @@ package.path  = package.path:gsub ("'", "")
   .. ";/usr/share/lua/5.1/?.lua;/usr/share/lua/5.1/?/init.lua;"
 
 local Configuration = require "cosy.configuration"
+
+local Internal  = Configuration / "default"
+Internal.server = {
+  interface = "127.0.0.1",
+  port      = 0,
+  data_file = os.getenv "HOME" .. "/.cosy/server.data",
+  log_file  = os.getenv "HOME" .. "/.cosy/server.log",
+  pid_file  = os.getenv "HOME" .. "/.cosy/server.pid",
+}
+if _G ["cosy:configuration-only"] then
+  return
+end
+
 local Digest        = require "cosy.digest"
 local I18n          = require "cosy.i18n"
 local Logger        = require "cosy.logger"
 local Methods       = require "cosy.methods"
 local Nginx         = require "cosy.nginx"
 local Random        = require "cosy.random"
-local Repository    = require "cosy.repository"
 local Scheduler     = require "cosy.scheduler"
 local Token         = require "cosy.token"
 local Value         = require "cosy.value"
@@ -20,6 +32,7 @@ local Socket        = require "socket"
 
 local i18n   = I18n.load (require "cosy.server-i18n")
 i18n._locale = Configuration.locale._
+
 local Server = {}
 
 function Server.request (message)
@@ -75,17 +88,16 @@ function Server.start ()
   Server.passphrase = Digest (Random ())
   Server.token      = Token.administration (Server)
   -- Set www path:
-  local internal = Repository.repository (Configuration) .internal
-  local main     = package.searchpath ("cosy", package.path)
+  local main = package.searchpath ("cosy.server", package.path)
   if main:sub (1, 1) == "." then
     main = Lfs.currentdir () .. "/" .. main
   end
-  internal.http.www = main:sub (1, #main-4) .. "/../www/"
+  Internal.http.www = main:gsub ("cosy/server.lua", "cosy/www/")
   local addserver = Scheduler.addserver
   Scheduler.addserver = function (s, f)
     local ok, port = s:getsockname ()
     if ok then
-      internal.server.port = port
+      Configuration.server.port = port
     end
     addserver (s, f)
   end
@@ -140,7 +152,6 @@ end
 function Server.stop ()
   Scheduler.addthread (function ()
     Scheduler.sleep (1)
-    Server.ws:close ()
     Nginx.stop ()
     os.remove (Configuration.server.data_file._)
     os.remove (Configuration.server.pid_file ._)

@@ -13,6 +13,11 @@ end
 local i18n   = I18n.load (require "cosy.email-i18n")
 i18n._locale = Configuration.locale._
 
+local Internal = Configuration / "default"
+Internal.smtp = {
+  timeout = 2,
+}
+
 if _G.js then
   error "Not available"
 end
