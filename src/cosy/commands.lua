@@ -46,6 +46,7 @@ Commands ["server:start"] = {
       os.exit (1)
     end
     if args.clean then
+      Configuration.load "cosy.redis"
       local Redis     = require "redis"
       local host      = Configuration.redis.interface._
       local port      = Configuration.redis.port._
