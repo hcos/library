@@ -21,7 +21,7 @@ local Scheduler     = require "cosy.scheduler"
 local Ffi           = require "ffi"
 local Websocket     = require "websocket"
 
-local i18n   = I18n.load (require "cosy.daemon-i18n")
+local i18n   = I18n.load "cosy.daemon-i18n"
 i18n._locale = Configuration.locale._
 
 local Daemon = {}
@@ -43,7 +43,7 @@ function Daemon.request (message)
       return {
         success = false,
         error   = {
-          _ = i18n ["server:unreachable"],
+          _ = i18n ["server:unreachable"] % {},
         },
       }
     end
@@ -87,6 +87,7 @@ function Daemon.start ()
           end
           message      = Value.decode (message)
           local result = Daemon.request (message)
+          i18n    (result)
           result       = Value.expression (result)
           ws:send (result)
         end
@@ -121,10 +122,10 @@ function Daemon.start ()
 end
 
 function Daemon.stop ()
+  os.remove (Configuration.daemon.data_file._)
+  os.remove (Configuration.daemon.pid_file ._)
   Scheduler.addthread (function ()
     Scheduler.sleep (1)
-    os.remove (Configuration.daemon.data_file._)
-    os.remove (Configuration.daemon.pid_file ._)
     os.exit   (0)
   end)
 end

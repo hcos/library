@@ -14,10 +14,10 @@ function I18n.new (locale)
   }, I18n)
 end
 
-function I18n.load (t)
+function I18n.load (name, locale)
   return setmetatable ({
-    _store  = t,
-    _locale = "en",
+    _store  = require (name),
+    _locale = locale or "en",
   }, I18n)
 end
 
@@ -44,7 +44,7 @@ function I18n.__call (i18n, data)
         translate (v)
       end
     end
-    if t._ and getmetatable (t._) == Message then
+    if t._ then
       t.locale  = t.locale or locale
       t.message = t._ % t
       t._       = t._._key

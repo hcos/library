@@ -4,10 +4,10 @@ local I18n          = require "cosy.i18n"
 local Value         = require "cosy.value"
 local Scheduler     = require "cosy.scheduler"
 
-local i18n   = I18n.load (require "cosy.library-i18n")
+local i18n   = I18n.load "cosy.library-i18n"
 i18n._locale = Configuration.locale._
 
-local m18n   = I18n.load (require "cosy.methods-i18n")
+local m18n   = I18n.load "cosy.methods-i18n"
 m18n._locale = Configuration.locale._
 
 local Internal   = Configuration / "default"

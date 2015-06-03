@@ -5,7 +5,7 @@ local Repository    = require "cosy.repository"
 local Store         = require "cosy.store"
 local Token         = require "cosy.token"
 
-local i18n   = I18n.load (require "cosy.parameters-i18n")
+local i18n   = I18n.load "cosy.parameters-i18n"
 i18n._locale = Configuration.locale._
 
 local Internal = Configuration / "default"

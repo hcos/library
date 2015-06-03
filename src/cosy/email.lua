@@ -10,7 +10,7 @@ if not Ssl then
   Ssl = _G.ssl
 end
 
-local i18n   = I18n.load (require "cosy.email-i18n")
+local i18n   = I18n.load "cosy.email-i18n"
 i18n._locale = Configuration.locale._
 
 local Internal = Configuration / "default"

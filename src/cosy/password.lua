@@ -8,7 +8,7 @@ local Logger        = require "cosy.logger"
 local Time          = require "cosy.time"
 local Bcrypt        = require "bcrypt"
 
-local i18n   = I18n.load (require "cosy.password-i18n")
+local i18n   = I18n.load "cosy.password-i18n"
 i18n._locale = Configuration.locale._
 
 local Internal = Configuration / "default"

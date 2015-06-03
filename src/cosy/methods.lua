@@ -11,7 +11,7 @@ local Store         = require "cosy.store"
 local Token         = require "cosy.token"
 local Value         = require "cosy.value"
 
-local i18n   = I18n.load (require "cosy.methods-i18n")
+local i18n   = I18n.load "cosy.methods-i18n"
 i18n._locale = Configuration.locale._
 
 local Internal = Configuration / "default"

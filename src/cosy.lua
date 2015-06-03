@@ -3,12 +3,6 @@
 local Loader        = require "cosy.loader"
       Loader.nolog  = true
 local Configuration = require "cosy.configuration"
-local Value         = require "cosy.value"
-local Lfs           = require "lfs"
-local Cli           = require "cliargs"
-local I18n          = require "cosy.i18n"
-local Colors        = require "ansicolors"
-local Websocket     = require "websocket"
 
 Configuration.data.password.time = 0.020
 Configuration.load "cosy.daemon"
@@ -18,8 +12,18 @@ Internal.cli = {
   default_locale = (os.getenv "LANG" or "en"):match "[^%.]+":gsub ("_", "-"),
   default_server = "http://cosyverif.org/",
 }
+if _G ["cosy:configuration-only"] then
+  return
+end
 
-local i18n   = I18n.load (require "cosy-i18n")
+local Value         = require "cosy.value"
+local Lfs           = require "lfs"
+local Cli           = require "cliargs"
+local I18n          = require "cosy.i18n"
+local Colors        = require "ansicolors"
+local Websocket     = require "websocket"
+
+local i18n   = I18n.load "cosy-i18n"
 i18n._locale = Configuration.cli.default_locale._
 
 local directory  = Configuration.cli.directory._
@@ -79,29 +83,42 @@ or not ws:connect ("ws://{{{interface}}}:{{{port}}}/ws" % {
     fi
     rm -f {{{pid}}} {{{log}}}
     luajit -e '_G.logfile = "{{{log}}}"; require "cosy.daemon" .start ()' &
-    sleep 2
   ]==] % {
     pid = Configuration.daemon.pid_file._,
     log = Configuration.daemon.log_file._,
   })
-  daemondata = read (Configuration.daemon.data_file._)
-  if not ws:connect ("ws://{{{interface}}}:{{{port}}}/ws" % {
+  local tries = 0
+  local daemondata
+  repeat
+    os.execute ([[sleep {{{time}}}]] % { time = 0.5 })
+    daemondata = read (Configuration.daemon.data_file._)
+    tries      = tries + 1
+  until daemondata or tries == 5
+  if not daemondata
+  or not ws:connect ("ws://{{{interface}}}:{{{port}}}/ws" % {
            interface = daemondata.interface,
            port      = daemondata.port,
          }, "cosy") then
-    print (Colors ("%{white redbg}" .. i18n ["daemon:unreachable"] % {}))
+    print (Colors ("%{white redbg}" .. i18n ["failure"] % {}),
+           Colors ("%{white redbg}" .. i18n ["daemon:unreachable"] % {}))
     os.exit (1)
   end
 end
 
 Cli:set_name (_G.arg [0] .. " " .. _G.arg [1])
+Cli:add_option (
+  "-d, --debug",
+  i18n ["option:debug"] % {}
+)
 table.remove (_G.arg, 1)
 local result = command.run (Cli, ws)
 if type (result) == "boolean" then
   if result then
     print (Colors ("%{green}" .. i18n ["success"] % {}))
+    os.exit (0)
   else
     print (Colors ("%{white redbg}" .. i18n ["failure"] % {}))
+    os.exit (1)
   end
 elseif type (result) == "table" then
   if result.success then
@@ -111,14 +128,18 @@ elseif type (result) == "table" then
         print (k, "=>", v)
       end
     else
-      print (result.response)
+      print (Colors ("%{dim green whitebg}" .. Value.expression (result.response)))
     end
+    os.exit (0)
   elseif result.error then
-    print (Colors ("%{green}" .. i18n ["failure"] % {}))
     if not result.error.message then
       i18n (result.error)
     end
-    print (Colors ("%{white redbg}" .. tostring (result.error.message)))
-    print (Colors ("%{dim red whitebg}" .. Value.expression (result)))
+    print (Colors ("%{white redbg}" .. i18n ["failure"] % {}),
+           Colors ("%{white redbg}" .. tostring (result.error.message)))
+    if Commands.args.debug then
+      print (Colors ("%{dim red whitebg}" .. Value.expression (result)))
+    end
+    os.exit (1)
   end
 end

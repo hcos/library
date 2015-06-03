@@ -11,11 +11,14 @@ return {
   ["server:already-running"] = {
     en = "server is already running",
   },
+  ["option:locale"] = {
+    en = "locale for messages",
+  },
   ["option:server"]= {
     en = "server url"
   },
-  ["option:locale"] = {
-    en = "locale for messages",
+  ["option:token"] = {
+    en = "authentication token",
   },
   ["show:information"] = {
     en = "show information about the server",

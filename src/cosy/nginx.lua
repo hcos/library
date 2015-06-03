@@ -2,7 +2,7 @@ local Configuration = require "cosy.configuration"
 local I18n          = require "cosy.i18n"
 local Logger        = require "cosy.logger"
 
-local i18n   = I18n.load (require "cosy.nginx-i18n")
+local i18n   = I18n.load "cosy.nginx-i18n"
 i18n._locale = Configuration.locale._
 
 local Internal = Configuration / "default"

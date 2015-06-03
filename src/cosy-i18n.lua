@@ -17,4 +17,7 @@ return {
   ["failure"] = {
     en = "failure",
   },
+  ["option:debug"] = {
+    en = "show debug information",
+  },
 }

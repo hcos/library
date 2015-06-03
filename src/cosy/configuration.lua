@@ -4,7 +4,7 @@ local Logger        = require "cosy.logger"
 local Repository    = require "cosy.repository"
 local Scheduler     = require "cosy.scheduler"
 
-local i18n       = I18n.load (require "cosy.configuration-i18n")
+local i18n       = I18n.load "cosy.configuration-i18n"
 local repository = Repository.new ()
 
 Repository.options (repository).create = function () return {} end

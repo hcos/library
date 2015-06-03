@@ -30,7 +30,7 @@ local Lfs           = require "lfs"
 local Socket        = require "socket"
       Socket.unix   = require "socket.unix"
 
-local i18n   = I18n.load (require "cosy.server-i18n")
+local i18n   = I18n.load "cosy.server-i18n"
 i18n._locale = Configuration.locale._
 
 local Server = {}
@@ -150,11 +150,11 @@ function Server.start ()
 end
 
 function Server.stop ()
+  os.remove (Configuration.server.data_file._)
+  os.remove (Configuration.server.pid_file ._)
   Scheduler.addthread (function ()
     Scheduler.sleep (1)
     Nginx.stop ()
-    os.remove (Configuration.server.data_file._)
-    os.remove (Configuration.server.pid_file ._)
     os.exit   (0)
   end)
 end
