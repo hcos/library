@@ -115,7 +115,7 @@ elseif type (result) == "table" then
     end
   elseif result.error then
     print (Colors ("%{green}" .. i18n ["failure"] % {}))
-    print (Colors ("%{white redbg}" .. result.error.message))
+    print (Colors ("%{white redbg}" .. tostring (result.error.message)))
     print (Colors ("%{dim red whitebg}" .. Value.expression (result)))
   end
 end
