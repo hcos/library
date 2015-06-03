@@ -88,7 +88,6 @@ or not ws:connect ("ws://{{{interface}}}:{{{port}}}/ws" % {
     log = Configuration.daemon.log_file._,
   })
   local tries = 0
-  local daemondata
   repeat
     os.execute ([[sleep {{{time}}}]] % { time = 0.5 })
     daemondata = read (Configuration.daemon.data_file._)
