@@ -53,9 +53,9 @@ local Internal  = Configuration / "default"
 Internal.locale = "en"
 
 local files = {
-  etc     = "/etc/cosy.conf",
-  home    = os.getenv "HOME" .. "/.cosy/cosy.conf",
-  pwd     = os.getenv "PWD" .. "/cosy.conf",
+  etc  = "/etc/cosy.conf",
+  home = os.getenv "HOME" .. "/.cosy/cosy.conf",
+  pwd  = os.getenv "PWD" .. "/cosy.conf",
 }
 
 if not _G.js then
