@@ -1,19 +1,19 @@
+local Loader        = require "cosy.loader"
 local Configuration = require "cosy.configuration"
 local Digest        = require "cosy.digest"
 local I18n          = require "cosy.i18n"
+local Json          = require "cosy.json"
 local Value         = require "cosy.value"
 local Scheduler     = require "cosy.scheduler"
+local Coromake      = require "coroutine.make"
 
-local i18n   = I18n.load "cosy.library-i18n"
+Configuration.load "cosy.library"
+
+local i18n   = I18n.load "cosy.library"
 i18n._locale = Configuration.locale._
 
-local m18n   = I18n.load "cosy.methods-i18n"
+local m18n   = I18n.load "cosy.methods"
 m18n._locale = Configuration.locale._
-
-local Internal   = Configuration / "default"
-Internal.library = {
-  timeout = 2,
-}
 
 local Library   = {}
 local Client    = {}
@@ -29,9 +29,10 @@ local function threadof (f, ...)
 end
 
 function Client.connect (client)
+  local data = client._data
   local url = "ws://{{{host}}}:{{{port}}}/ws" % {
-    host = client.host,
-    port = client.port,
+    host = data.host,
+    port = data.port,
   }
   if _G.js then
     client._ws = _G.js.new (_G.window.WebSocket, url, "cosy")
@@ -41,12 +42,6 @@ function Client.connect (client)
       timeout = Configuration.library.timeout._,
       loop    = Scheduler._loop,
     }
-  end
-  client._connect       = function ()
-    client._status = "closed"
-    client._ws:connect (url, "cosy")
-    client._co = coroutine.running ()
-    Scheduler.sleep (-math.huge)
   end
   client._ws.onopen     = function ()
     client._status = "opened"
@@ -72,7 +67,7 @@ function Client.connect (client)
   end
   client._ws.onerror    = function (_, err)
     client._status = "closed"
-    client._err    = err
+    client._error  = err
     Scheduler.wakeup (client._co)
   end
   if not _G.js then
@@ -85,7 +80,73 @@ function Client.connect (client)
     client._co = coroutine.running ()
     Scheduler.sleep (-math.huge)
   else
-    threadof (client._connect)
+    threadof (function ()
+      client._status = "closed"
+      client._ws:connect (url, "cosy")
+      client._co = coroutine.running ()
+      Scheduler.sleep (-math.huge)
+    end)
+  end
+  if  client._status == "opened"
+  and data.username and data.username ~= ""
+  and data.password and data.password ~= "" then
+    client.user.authenticate {}
+  end
+end
+
+local mcoroutine = Coromake ()
+
+Client.methods = {}
+
+Client.methods ["user:create"] = function (operation, parameters)
+  local client        = operation._client
+  local data          = client._data
+  parameters.password = Digest (parameters.password)
+  local result = mcoroutine.yield ()
+  if result.success then
+    data.username = parameters.username
+    data.hashed   = parameters.password
+    data.token    = result.response.token
+  end
+  local position, status = Loader.loadhttp "http://www.telize.com/geoip"
+  if status == 200 then
+    client.user.update {
+      token    = data.token,
+      position = Json.decode (position),
+    }
+  end
+end
+
+Client.methods ["user:authenticate"] = function (operation, parameters)
+  local client        = operation._client
+  local data          = client._data
+  parameters.username = parameters.username or data.username
+  if parameters.password then
+    parameters.password = Digest (parameters.password)
+  elseif data.hashed then
+    parameters.password = data.hashed
+  end
+  local result = mcoroutine.yield ()
+  if result.success then
+    data.username = parameters.username
+    data.hashed   = parameters.password
+    data.token    = result.response.token
+  end
+end
+
+Client.methods ["user:update"] = function (operation, parameters)
+  local client        = operation._client
+  local data          = client._data
+  if parameters.password then
+    parameters.password = Digest (parameters.password)
+  end
+  local result = mcoroutine.yield ()
+  if result.success and parameters.username then
+    data.username = parameters.username
+    data.token    = nil
+  end
+  if result.success and parameters.password then
+    data.hashed = parameters.password
   end
 end
 
@@ -107,6 +168,7 @@ end
 function Operation.__call (operation, parameters, try_only)
   -- Automatic reconnect:
   local client = operation._client
+  local data   = client._data
   if client._status ~= "opened" then
     Client.connect (client)
   end
@@ -115,92 +177,106 @@ function Operation.__call (operation, parameters, try_only)
       _ = i18n ["server:unreachable"],
     }
   end
-  -- Special case:
-  if  type (parameters) == "table"
-  and parameters.username and parameters.password then
-    client.username = parameters.username
-    client.password = parameters.password
-    parameters.password = Digest ("{{{username}}}:{{{password}}}" % {
-      username = parameters.username,
-      password = parameters.password,
-    })
-  end
-  if client._token and not parameters.token then
-    parameters.token = client._token
-  end
+  -- Call special cases:
+  local operator = table.concat (operation._keys, ":")
+  local wrapper  = Client.methods [operator]
+  local co
   -- Call:
-  for _ = 1, 2 do
-    local result
-    local function f ()
-      local co         = coroutine.running ()
-      local identifier = #client._waiting + 1
-      client._waiting [identifier] = co
-      client._results [identifier] = nil
-      client._ws:send (Value.expression {
-        identifier = identifier,
-        operation  = table.concat (operation._keys, ":"),
-        parameters = parameters,
-        try_only   = try_only,
-      })
-      Scheduler.sleep (Configuration.library.timeout._)
-      result = client._results [identifier]
-      client._waiting [identifier] = nil
-      client._results [identifier] = nil
+  local result
+  local function f ()
+    local co         = coroutine.running ()
+    local identifier = #client._waiting + 1
+    client._waiting [identifier] = co
+    client._results [identifier] = nil
+    client._ws:send (Value.expression {
+      identifier = identifier,
+      operation  = operator,
+      parameters = parameters,
+      try_only   = try_only,
+    })
+    Scheduler.sleep (Configuration.library.timeout._)
+    result = client._results [identifier]
+    client._waiting [identifier] = nil
+    client._results [identifier] = nil
+  end
+  -- First try:
+  if data.token and not parameters.token then
+    parameters.token = data.token
+  end
+  if wrapper then
+    co = mcoroutine.create (wrapper)
+    mcoroutine.resume (co, operation, parameters, try_only)
+  end
+  threadof (f)
+  if result == nil then
+    return nil, {
+      _ = i18n ["server:timeout"],
+    }
+  end
+  if co and not try_only then
+    mcoroutine.resume (co, result)
+  end
+  if result.success then
+    return result.response or true
+  end
+  if  result.error
+  and result.error._ == "check:error"
+  and #result.error.reasons == 1
+  and result.error.reasons [1].key == "token"
+  and data.username
+  and data.hashed
+  then
+    local r = client.user.authenticate {}
+    if not r then
+      return nil, result.error
     end
-    threadof (f)
-    if result == nil then
-      return nil, {
-        _ = i18n ["server:timeout"],
-      }
-    elseif not result.success then
-      if  result.error
-      and result.error._ == "check:error"
-      and #result.error.reasons == 1
-      and result.error.reasons [1].parameter == "token"
-      and result.error.reasons [1]._ == "check:token:invalid"
-      and client.username
-      and client.password
-      then
-        local token = client.user.authenticate {
-          username = client.username,
-          password = client.password,
-        }
-        if not token then
-          return nil, result.error
-        end
-        client    ._token = token
-        parameters.token  = token
-      else
-        return nil, result.error
-      end
-    else
-      return result.response or true
-    end
+  else
+    return nil, result.error
+  end
+  -- Retry:
+  if data.token and not parameters.token then
+    parameters.token = data.token
+  end
+  if wrapper then
+    co = mcoroutine.create (wrapper)
+    mcoroutine.resume (co, operation, parameters, try_only)
+  end
+  threadof (f)
+  if result == nil then
+    return nil, {
+      _ = i18n ["server:timeout"],
+    }
+  end
+  if co and not try_only then
+    mcoroutine.resume (co, result)
+  end
+  if result.success then
+    return result.response or true
+  else
+    return nil, result.error
   end
 end
 
 function Library.client (t)
   local client = setmetatable ({
+    _status  = false,
+    _error   = false,
+    _ws      = false,
     _results = {},
     _waiting = {},
-    _token   = false,
+    _data    = {},
   }, Client)
-  client.host     = t.host     or false
-  client.port     = t.port     or 80
-  client.username = t.username or false
-  client.password = t.password or false
+  client._data.host     = t.host     or false
+  client._data.port     = t.port     or 80
+  client._data.username = t.username or false
+  client._data.password = t.password or false
+  client._data.hashed   = false
+  client._data.token    = false
   Client.connect (client)
   if client._status == "opened" then
-    if  client.username and client.username ~= ""
-    and client.password and client.password ~= "" then
-      client._token = client.authenticate {
-        username = client.username,
-        password = client.password,
-      }
-    end
     return client
   elseif client._status == "closed" then
-    return nil, client._err
+    return nil, client._error
   else
     assert (false)
   end

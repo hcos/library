@@ -4,28 +4,12 @@ local Logger        = require "cosy.logger"
 local Repository    = require "cosy.repository"
 local Store         = require "cosy.store"
 local Token         = require "cosy.token"
+local Internal      = Configuration / "default"
 
-local i18n   = I18n.load "cosy.parameters-i18n"
+Configuration.load "cosy.parameters"
+
+local i18n   = I18n.load "cosy.parameters"
 i18n._locale = Configuration.locale._
-
-local Internal = Configuration / "default"
-Internal.data = {
-  username = {
-    min_size = 1,
-    max_size = 32,
-  },
-  password = {
-    min_size = 1,
-    max_size = 128,
-  },
-  name = {
-    min_size = 1,
-    max_size = 128,
-  },
-  email = {
-    max_size = 128,
-  },
-}
 
 local Parameters    = setmetatable ({}, {
   __index = function (_, key)
@@ -76,6 +60,21 @@ function Parameters.check (request, parameters)
       _       = i18n ["check:error"],
       reasons = reasons,
     }
+  end
+end
+
+-- Position
+-- --------
+
+do
+  Internal.data.position = {}
+  local checks = Internal.data.position.check
+  checks [1] = function (t)
+    local value = t.request [t.key]
+    return  type (value) == "table"
+        or  nil, {
+              _   = i18n ["check:is-table"],
+            }
   end
 end
 
@@ -187,6 +186,16 @@ end
 -- ----
 do
   Internal.data.name = {
+    [Repository.refines] = {
+      Configuration.data.trimmed,
+    }
+  }
+end
+
+-- Name
+-- ----
+do
+  Internal.data.organization = {
     [Repository.refines] = {
       Configuration.data.trimmed,
     }

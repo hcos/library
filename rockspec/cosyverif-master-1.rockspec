@@ -18,6 +18,7 @@ dependencies = {
   "bcrypt >= 2",
   "bit32 >= 5",
   "c3 >= 0",
+  "cjson >= 2",
   "copas-ev >= 0",
   "coronest >= 0",
   "hotswap >= 0",

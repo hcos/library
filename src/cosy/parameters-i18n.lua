@@ -8,6 +8,9 @@ return {
   ["check:not-found"] = {
     en = "parameter {{{key}}} is missing",
   },
+  ["check:is-table"] = {
+    en = "a {{{key}}} must be a table",
+  },
   ["check:is-string"] = {
     en = "a {{{key}}} must be a string",
   },

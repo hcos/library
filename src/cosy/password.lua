@@ -8,11 +8,10 @@ local Logger        = require "cosy.logger"
 local Time          = require "cosy.time"
 local Bcrypt        = require "bcrypt"
 
-local i18n   = I18n.load "cosy.password-i18n"
-i18n._locale = Configuration.locale._
+Configuration.load "cosy.password"
 
-local Internal = Configuration / "default"
-Internal.data.password.time = 0.020
+local i18n   = I18n.load "cosy.password"
+i18n._locale = Configuration.locale._
 
 local Password = {}
 

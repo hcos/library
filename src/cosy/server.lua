@@ -2,19 +2,6 @@ package.path  = package.path:gsub ("'", "")
   .. ";/usr/share/lua/5.1/?.lua;/usr/share/lua/5.1/?/init.lua;"
 
 local Configuration = require "cosy.configuration"
-
-local Internal  = Configuration / "default"
-Internal.server = {
-  interface = "127.0.0.1",
-  port      = 0,
-  data_file = os.getenv "HOME" .. "/.cosy/server.data",
-  log_file  = os.getenv "HOME" .. "/.cosy/server.log",
-  pid_file  = os.getenv "HOME" .. "/.cosy/server.pid",
-}
-if _G ["cosy:configuration-only"] then
-  return
-end
-
 local Digest        = require "cosy.digest"
 local I18n          = require "cosy.i18n"
 local Logger        = require "cosy.logger"
@@ -26,11 +13,12 @@ local Token         = require "cosy.token"
 local Value         = require "cosy.value"
 local Websocket     = require "websocket"
 local Ffi           = require "ffi"
-local Lfs           = require "lfs"
 local Socket        = require "socket"
       Socket.unix   = require "socket.unix"
 
-local i18n   = I18n.load "cosy.server-i18n"
+Configuration.load "cosy.server"
+
+local i18n   = I18n.load "cosy.server"
 i18n._locale = Configuration.locale._
 
 local Server = {}
@@ -87,12 +75,6 @@ end
 function Server.start ()
   Server.passphrase = Digest (Random ())
   Server.token      = Token.administration (Server)
-  -- Set www path:
-  local main = package.searchpath ("cosy.server", package.path)
-  if main:sub (1, 1) == "." then
-    main = Lfs.currentdir () .. "/" .. main
-  end
-  Internal.http.www = main:gsub ("cosy/server.lua", "cosy/www/")
   local addserver = Scheduler.addserver
   Scheduler.addserver = function (s, f)
     local ok, port = s:getsockname ()

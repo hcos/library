@@ -16,7 +16,7 @@ end
 
 function I18n.load (name, locale)
   return setmetatable ({
-    _store  = require (name),
+    _store  = require (name .. "-i18n"),
     _locale = locale or "en",
   }, I18n)
 end

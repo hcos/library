@@ -3,19 +3,6 @@
 local Loader        = require "cosy.loader"
       Loader.nolog  = true
 local Configuration = require "cosy.configuration"
-
-Configuration.data.password.time = 0.020
-Configuration.load "cosy.daemon"
-local Internal = Configuration / "default"
-Internal.cli = {
-  directory      = os.getenv "HOME" .. "/.cosy",
-  default_locale = (os.getenv "LANG" or "en"):match "[^%.]+":gsub ("_", "-"),
-  default_server = "http://cosyverif.org/",
-}
-if _G ["cosy:configuration-only"] then
-  return
-end
-
 local Value         = require "cosy.value"
 local Lfs           = require "lfs"
 local Cli           = require "cliargs"
@@ -23,7 +10,10 @@ local I18n          = require "cosy.i18n"
 local Colors        = require "ansicolors"
 local Websocket     = require "websocket"
 
-local i18n   = I18n.load "cosy-i18n"
+Configuration.load "cosy"
+Configuration.load "cosy.daemon"
+
+local i18n   = I18n.load "cosy"
 i18n._locale = Configuration.cli.default_locale._
 
 local directory  = Configuration.cli.directory._
@@ -69,7 +59,7 @@ end
 local daemondata = read (Configuration.daemon.data_file._)
 
 local ws = Websocket.client.sync {
-  timeout = 1,
+  timeout = 5,
 }
 if not daemondata
 or not ws:connect ("ws://{{{interface}}}:{{{port}}}/ws" % {
@@ -121,21 +111,34 @@ if type (result) == "boolean" then
   end
 elseif type (result) == "table" then
   if result.success then
-    print (Colors ("%{green}" .. i18n ["success"] % {}))
+    if type (result.response) == "table" then
+      if not result.response.message then
+        i18n (result.response)
+      end
+      print (Colors ("%{black greenbg}" .. i18n ["success"] % {}),
+             Colors ("%{black greenbg}" .. (result.response.message or "")))
+    else
+      print (Colors ("%{green}" .. i18n ["success"] % {}))
+    end
     if type (result.response) == "table" then
       for k, v in pairs (result.response) do
-        print (k, "=>", v)
+        if k ~= "message" then
+          print (k, "=>", v)
+        end
       end
-    else
+    elseif result.response then
       print (Colors ("%{dim green whitebg}" .. Value.expression (result.response)))
+    end
+    if Commands.args.debug then
+      print (Colors ("%{dim green whitebg}" .. Value.expression (result)))
     end
     os.exit (0)
   elseif result.error then
     if not result.error.message then
       i18n (result.error)
     end
-    print (Colors ("%{white redbg}" .. i18n ["failure"] % {}),
-           Colors ("%{white redbg}" .. tostring (result.error.message)))
+    print (Colors ("%{black redbg}" .. i18n ["failure"] % {}),
+           Colors ("%{black redbg}" .. tostring (result.error.message)))
     if Commands.args.debug then
       print (Colors ("%{dim red whitebg}" .. Value.expression (result)))
     end

@@ -4,7 +4,7 @@ local Logger        = require "cosy.logger"
 local Repository    = require "cosy.repository"
 local Scheduler     = require "cosy.scheduler"
 
-local i18n       = I18n.load "cosy.configuration-i18n"
+local i18n       = I18n.load "cosy.configuration"
 local repository = Repository.new ()
 
 Repository.options (repository).create = function () return {} end
@@ -30,10 +30,7 @@ local Configuration = {
 }
 
 function Configuration.load (name)
-  local previous = _G ["cosy:configuration-only"]
-  _G ["cosy:configuration-only"] = true
-  require (name)
-  _G ["cosy:configuration-only"] = previous
+  require (name .. "-conf")
 end
 
 local Metatable = {}
