@@ -180,7 +180,7 @@ function Operation.__call (operation, parameters, try_only)
   -- Call special cases:
   local operator = table.concat (operation._keys, ":")
   local wrapper  = Client.methods [operator]
-  local co
+  local wrapperco
   -- Call:
   local result
   local function f ()
@@ -204,8 +204,8 @@ function Operation.__call (operation, parameters, try_only)
     parameters.token = data.token
   end
   if wrapper then
-    co = mcoroutine.create (wrapper)
-    mcoroutine.resume (co, operation, parameters, try_only)
+    wrapperco = mcoroutine.create (wrapper)
+    mcoroutine.resume (wrapperco, operation, parameters, try_only)
   end
   threadof (f)
   if result == nil then
@@ -213,8 +213,8 @@ function Operation.__call (operation, parameters, try_only)
       _ = i18n ["server:timeout"],
     }
   end
-  if co and not try_only then
-    mcoroutine.resume (co, result)
+  if wrapperco and not try_only then
+    mcoroutine.resume (wrapperco, result)
   end
   if result.success then
     return result.response or true
@@ -238,8 +238,8 @@ function Operation.__call (operation, parameters, try_only)
     parameters.token = data.token
   end
   if wrapper then
-    co = mcoroutine.create (wrapper)
-    mcoroutine.resume (co, operation, parameters, try_only)
+    wrapperco = mcoroutine.create (wrapper)
+    mcoroutine.resume (wrapperco, operation, parameters, try_only)
   end
   threadof (f)
   if result == nil then
@@ -247,8 +247,8 @@ function Operation.__call (operation, parameters, try_only)
       _ = i18n ["server:timeout"],
     }
   end
-  if co and not try_only then
-    mcoroutine.resume (co, result)
+  if wrapperco and not try_only then
+    mcoroutine.resume (wrapperco, result)
   end
   if result.success then
     return result.response or true
