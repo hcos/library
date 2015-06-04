@@ -13,6 +13,7 @@ local Token         = require "cosy.token"
 local Value         = require "cosy.value"
 
 Configuration.load "cosy.methods"
+Configuration.load "cosy.parameters"
 
 local i18n   = I18n.load "cosy.methods"
 i18n._locale = Configuration.locale._
@@ -210,15 +211,15 @@ function Methods.user.update (request, store)
       token = Parameters.token.authentication,
     },
     optional = {
-      username     = Parameters.username,
+      avatar       = Parameters.avatar,
       email        = Parameters.email,
-      password     = Parameters.password,
-      name         = Parameters.name,
-      organization = Parameters.organization,
-      photo        = Parameters.photo,
       homepage     = Parameters.homepage,
       locale       = Parameters.locale,
+      name         = Parameters.name,
+      organization = Parameters.organization,
+      password     = Parameters.password,
       position     = Parameters.position,
+      username     = Parameters.username,
     },
   })
   local user = store.users [request.token.username]
@@ -279,21 +280,48 @@ function Methods.user.update (request, store)
       city    = request.position.city,
     }
   end
+  if request.avatar then
+    local filename = os.tmpname ()
+    local file = io.open (filename, "w")
+    file:write (request.avatar.content)
+    file:close ()
+    os.execute ([[
+      convert {{{file}}} -resize {{{width}}}x{{{height}}} png:{{{file}}}
+    ]] % {
+      file   = filename,
+      height = Configuration.data.avatar.height._,
+      width  = Configuration.data.avatar.width._,
+    })
+    file = io.open (filename, "r")
+    request.avatar.content = file:read "*all"
+    file:close ()
+    user.avatar = request.avatar
+    --[[
+    local Magick = require "magick"
+    local image  = Magick.load_image_from_blob (request.avatar.content)
+    local width  = Configuration.data.avatar.width._
+    local height = Configuration.data.avatar.height._
+    image:resize (width, height)
+    image:set_format "png"
+    request.avatar.content = image:get_blob ()
+    image:destroy ()
+    --]]
+  end
   for _, key in ipairs { "name", "organization", "locale" } do
     if request [key] then
       user [key] = request [key]
     end
   end
   return {
-    username     = user.username,
+    avatar       = user.avatar,
     email        = user.email,
-    name         = user.name,
-    organization = user.organization,
-    photo        = user.photo,
     homepage     = user.homepage,
     lastseen     = user.lastseen,
     locale       = user.locale,
+    name         = user.name,
+    organization = user.organization,
     position     = user.position,
+    username     = user.username,
   }
 end
 
@@ -314,15 +342,15 @@ function Methods.user.informatioon (request, store)
     }
   end
   return {
-    username     = user.username,
+    avatar       = user.avatar,
     email        = user.email,
-    name         = user.name,
-    organization = user.organization,
-    photo        = user.photo,
     homepage     = user.homepage,
     lastseen     = user.lastseen,
     locale       = user.locale,
+    name         = user.name,
+    organization = user.organization,
     position     = user.position,
+    username     = user.username,
   }
 end
 

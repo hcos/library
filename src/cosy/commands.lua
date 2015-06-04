@@ -23,14 +23,14 @@ end
 
 local function addoptions (cli)
   cli:add_option (
-    "-s, --server=SERVER",
-    i18n ["option:server"] % {},
-    Configuration.cli.default_server._
-  )
-  cli:add_option (
     "-l, --locale=LOCALE",
     i18n ["option:locale"] % {},
     Configuration.cli.default_locale._
+  )
+  cli:add_option (
+    "-s, --server=SERVER",
+    i18n ["option:server"] % {},
+    Configuration.cli.default_server._
   )
 end
 
@@ -145,14 +145,14 @@ Commands ["server:stop"] = {
   run = function (cli, ws)
     local serverdata = read (Configuration.server.data_file._)
     addoptions (cli)
+    cli:add_flag (
+      "-f, --force",
+      i18n ["flag:force"] % {}
+    )
     cli:add_option (
       "-t, --token=TOKEN",
       i18n ["option:token"] % {},
       serverdata and serverdata.token or ""
-    )
-    cli:add_flag (
-      "-f, --force",
-      i18n ["flag:force"] % {}
     )
     Commands.args = cli:parse_args ()
     if not Commands.args then
@@ -344,13 +344,36 @@ Commands ["user:authenticate"] = {
   end,
 }
 
+local function fix_avatar (avatar)
+  local input_filename  = os.tmpname ()
+  local output_filename = os.tmpname ()
+  local file = io.open (input_filename, "w")
+  file:write (avatar.content)
+  file:close ()
+  local result = os.execute ([[
+    img2txt {{{input}}} > {{{output}}} 2> /dev/null
+  ]] % {
+    input  = input_filename,
+    output = output_filename,
+  })
+  if result then
+    file = io.open (output_filename, "r")
+    avatar.content = file:read "*all"
+    file:close ()
+  else
+    avatar.content = nil
+  end
+  os.remove (input_filename )
+  os.remove (output_filename)
+end
+
 Commands ["user:update"] = {
   _   = i18n ["user:update"],
   run = function (cli, ws)
     addoptions (cli)
     cli:add_option (
-      "-u, --username=USERNAME",
-      i18n ["option:username"] % {}
+      "-a, --avatar=PATH or URL",
+      i18n ["option:avatar"] % {}
     )
     cli:add_option (
       "-e, --email=EMAIL",
@@ -368,6 +391,10 @@ Commands ["user:update"] = {
       "-p, --password",
       i18n ["flag:password"] % {}
     )
+    cli:add_option (
+      "-u, --username=USERNAME",
+      i18n ["option:username"] % {}
+    )
     Commands.args = cli:parse_args ()
     if not Commands.args then
       os.exit (1)
@@ -377,10 +404,51 @@ Commands ["user:update"] = {
       io.write (i18n ["argument:password1"] % {} .. " ")
       password = getpassword ()
     end
+    if Commands.args.avatar then
+      if Commands.args.avatar:match "^https?://" then
+        local request = require "socket.http" .request
+        local body, status = request (Commands.args.avatar)
+        if status ~= 200 then
+          return {
+            success = false,
+            error   = {
+              _ = i18n ["url:not-found"] % {
+                url    = Commands.args.avatar,
+                status = status,
+              },
+            },
+          }
+        end
+        Commands.args.avatar = {
+          source  = Commands.args.avatar,
+          content = body,
+        }
+      else
+        local file, err = io.open (Commands.args.avatar, "r")
+        if file then
+          Commands.args.avatar = {
+            source  = Commands.args.avatar,
+            content = file:read "*all",
+          }
+          file:close ()
+        else
+          return {
+            success = false,
+            error   = {
+              _ = i18n ["file:not-found"] % {
+                filename = Commands.args.avatar,
+                reason   = err,
+              },
+            },
+          }
+        end
+      end
+    end
     ws:send (Value.expression {
       server     = Commands.args.server,
       operation  = "user:update",
       parameters = {
+        avatar       = Commands.args.avatar,
         username     = Commands.args.username,
         email        = Commands.args.email,
         name         = Commands.args.name,
@@ -390,7 +458,12 @@ Commands ["user:update"] = {
       },
     })
     local result = ws:receive ()
-    return Value.decode (result)
+    result = Value.decode (result)
+    if result.response and result.response.avatar then
+      fix_avatar (result.response.avatar)
+      result.response.avatar = result.response.avatar.content
+    end
+    return result
   end,
 }
 

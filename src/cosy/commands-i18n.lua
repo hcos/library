@@ -1,4 +1,10 @@
 return {
+  ["file:not-found"] = {
+    en = "file not found: {{{filename}}} ({{{reason}}})",
+  },
+  ["url:not-found"] = {
+    en = "URL not found: {{{url}}} (status {{{status}}})",
+  },
   ["daemon:stop"] = {
     en = "stop cosy daemon",
   },
@@ -16,6 +22,9 @@ return {
   },
   ["server:already-running"] = {
     en = "server is already running",
+  },
+  ["option:avatar"] = {
+    en = "avatar",
   },
   ["option:clean"] = {
     en = "clean redis database before launching the server",
