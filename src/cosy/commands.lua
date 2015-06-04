@@ -1,10 +1,12 @@
 local Configuration = require "cosy.configuration"
-Configuration.load "cosy"
-
 local I18n          = require "cosy.i18n"
 local Value         = require "cosy.value"
 
-local i18n   = I18n.load "cosy.commands-i18n"
+Configuration.load "cosy"
+Configuration.load "cosy.daemon"
+Configuration.load "cosy.server"
+
+local i18n   = I18n.load "cosy.commands"
 i18n._locale = Configuration.cli.default_locale._
 
 local Commands = {}
@@ -21,37 +23,66 @@ end
 
 local function addoptions (cli)
   cli:add_option (
-    "-s, --server=SERVER",
-    i18n ["option:server"] % {},
-    Configuration.cli.default_server._
-  )
-  cli:add_option (
     "-l, --locale=LOCALE",
     i18n ["option:locale"] % {},
     Configuration.cli.default_locale._
+  )
+  cli:add_option (
+    "-s, --server=SERVER",
+    i18n ["option:server"] % {},
+    Configuration.cli.default_server._
   )
 end
 
 Commands ["daemon:stop"] = {
   _   = i18n ["daemon:stop"],
   run = function (cli, ws)
+    cli:add_flag (
+      "-f, --force",
+      i18n ["flag:force"] % {}
+    )
     Commands.args = cli:parse_args ()
     if not Commands.args then
       os.exit (1)
     end
     ws:send (Value.expression "daemon-stop")
     local result = ws:receive ()
-    if not result.success then
+    if not result then
+      local m18n = I18n.load "cosy"
+      result = {
+        success = false,
+        error   = {
+          _ = m18n ["daemon:unreachable"] % {},
+        },
+      }
+    else
+      result = Value.decode (result)
+    end
+    if not result.success and Commands.args.force then
+      os.execute ([==[
+        if [ -f "{{{pid}}}" ]
+        then
+          kill -9 $(cat {{{pid}}}) 2> /dev/null
+        fi
+      ]==] % {
+        pid = Configuration.daemon.pid_file._,
+      })
       os.remove (Configuration.daemon.data_file._)
       os.remove (Configuration.daemon.pid_file ._)
+      result = {
+        success  = true,
+        response = {
+          _ = i18n ["daemon:force-stop"] % {},
+        },
+      }
     end
-    return true
+    return result
   end,
 }
 
 Commands ["server:start"] = {
   _   = i18n ["server:start"],
-  run = function (cli, ws)
+  run = function (cli)
     cli:add_option (
       "-c, --clean",
       i18n ["option:clean"] % {}
@@ -82,7 +113,7 @@ Commands ["server:start"] = {
     os.execute ([==[
       if [ -f "{{{pid}}}" ]
       then
-        kill -9 $(cat {{{pid}}})
+        kill -9 $(cat {{{pid}}}) 2> /dev/null
       fi
       rm -f {{{pid}}} {{{log}}}
       luajit -e '_G.logfile = "{{{log}}}"; require "cosy.server" .start ()' &
@@ -98,7 +129,7 @@ Commands ["server:start"] = {
       tries      = tries + 1
     until serverdata or tries == 10
     if not serverdata then
-      local m18n = I18n.load "cosy.daemon-i18n"
+      local m18n = I18n.load "cosy.daemon"
       return {
         success = false,
         error   = {
@@ -114,6 +145,10 @@ Commands ["server:stop"] = {
   run = function (cli, ws)
     local serverdata = read (Configuration.server.data_file._)
     addoptions (cli)
+    cli:add_flag (
+      "-f, --force",
+      i18n ["flag:force"] % {}
+    )
     cli:add_option (
       "-t, --token=TOKEN",
       i18n ["option:token"] % {},
@@ -134,15 +169,35 @@ Commands ["server:stop"] = {
     })
     local result = ws:receive ()
     if not result then
-      local m18n = I18n.load "cosy-i18n"
-      return {
+      local m18n = I18n.load "cosy"
+      result = {
         success = false,
         error   = {
           _ = m18n ["daemon:unreachable"] % {},
         },
       }
+    else
+      result = Value.decode (result)
     end
-    return Value.decode (result)
+    if not result.success and Commands.args.force then
+      os.execute ([==[
+        if [ -f "{{{pid}}}" ]
+        then
+          kill -9 $(cat {{{pid}}}) 2> /dev/null
+        fi
+      ]==] % {
+        pid = Configuration.server.pid_file._,
+      })
+      os.remove (Configuration.server.data_file._)
+      os.remove (Configuration.server.pid_file ._)
+      result = {
+        success  = true,
+        response = {
+          _ = i18n ["server:force-stop"] % {},
+        },
+      }
+    end
+    return result
   end,
 }
 
@@ -286,6 +341,129 @@ Commands ["user:authenticate"] = {
     })
     local result = ws:receive ()
     return Value.decode (result)
+  end,
+}
+
+local function fix_avatar (avatar)
+  local input_filename  = os.tmpname ()
+  local output_filename = os.tmpname ()
+  local file = io.open (input_filename, "w")
+  file:write (avatar.content)
+  file:close ()
+  local result = os.execute ([[
+    img2txt {{{input}}} > {{{output}}} 2> /dev/null
+  ]] % {
+    input  = input_filename,
+    output = output_filename,
+  })
+  if result then
+    file = io.open (output_filename, "r")
+    avatar.content = file:read "*all"
+    file:close ()
+  else
+    avatar.content = nil
+  end
+  os.remove (input_filename )
+  os.remove (output_filename)
+end
+
+Commands ["user:update"] = {
+  _   = i18n ["user:update"],
+  run = function (cli, ws)
+    addoptions (cli)
+    cli:add_option (
+      "-a, --avatar=PATH or URL",
+      i18n ["option:avatar"] % {}
+    )
+    cli:add_option (
+      "-e, --email=EMAIL",
+      i18n ["option:email"] % {}
+    )
+    cli:add_option (
+      "-n, --name=FULL-NAME",
+      i18n ["option:name"] % {}
+    )
+    cli:add_option (
+      "-o, --organization=ORGANIZATION",
+      i18n ["option:organization"] % {}
+    )
+    cli:add_flag (
+      "-p, --password",
+      i18n ["flag:password"] % {}
+    )
+    cli:add_option (
+      "-u, --username=USERNAME",
+      i18n ["option:username"] % {}
+    )
+    Commands.args = cli:parse_args ()
+    if not Commands.args then
+      os.exit (1)
+    end
+    local password
+    if Commands.args.password then
+      io.write (i18n ["argument:password1"] % {} .. " ")
+      password = getpassword ()
+    end
+    if Commands.args.avatar then
+      if Commands.args.avatar:match "^https?://" then
+        local request = require "socket.http" .request
+        local body, status = request (Commands.args.avatar)
+        if status ~= 200 then
+          return {
+            success = false,
+            error   = {
+              _ = i18n ["url:not-found"] % {
+                url    = Commands.args.avatar,
+                status = status,
+              },
+            },
+          }
+        end
+        Commands.args.avatar = {
+          source  = Commands.args.avatar,
+          content = body,
+        }
+      else
+        local file, err = io.open (Commands.args.avatar, "r")
+        if file then
+          Commands.args.avatar = {
+            source  = Commands.args.avatar,
+            content = file:read "*all",
+          }
+          file:close ()
+        else
+          return {
+            success = false,
+            error   = {
+              _ = i18n ["file:not-found"] % {
+                filename = Commands.args.avatar,
+                reason   = err,
+              },
+            },
+          }
+        end
+      end
+    end
+    ws:send (Value.expression {
+      server     = Commands.args.server,
+      operation  = "user:update",
+      parameters = {
+        avatar       = Commands.args.avatar,
+        username     = Commands.args.username,
+        email        = Commands.args.email,
+        name         = Commands.args.name,
+        organization = Commands.args.organization,
+        locale       = Commands.args.locale,
+        password     = password,
+      },
+    })
+    local result = ws:receive ()
+    result = Value.decode (result)
+    if result.response and result.response.avatar then
+      fix_avatar (result.response.avatar)
+      result.response.avatar = result.response.avatar.content
+    end
+    return result
   end,
 }
 

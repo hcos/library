@@ -50,7 +50,7 @@ if _G.js then
       coroutine.yield ()
     end
     if result then
-      return result
+      return result, request.status
     else
       error (err)
     end
@@ -66,6 +66,11 @@ if _G.js then
   end)
   loader.hotswap   = require "hotswap" .new {}
 else
+  loader.loadhttp  = function (url)
+    local request = (require "copas.http").request
+    local body, status = request (url)
+    return body, status
+  end
   loader.scheduler = require "copas.ev"
   loader.scheduler.make_default ()
   loader.hotswap   = require "hotswap.ev" .new {

@@ -35,6 +35,9 @@ Cas 3b: A l'intention des utilisateurs quand la contribution est intégrée au l
 Be aware the Cosyverif software contains several modules provided "as is", we do not warrant that the modules do not infringe the intellectual property rigths of a third party.
     ]],
   },
+  ["username:miss"] = {
+    en = "username {{{username}}} does not exist",
+  },
   ["username:exist"] = {
     en = "username {{{username}}} exists already",
   },
@@ -55,6 +58,18 @@ Be aware the Cosyverif software contains several modules provided "as is", we do
   },
   ["user:create:body"] = {
     en = "{{{username}}}, we are happy to see you!",
+  },
+  ["user:update:from"] = {
+    en = [["{{{name}}}" <{{{email}}}>]],
+  },
+  ["user:update:to"] = {
+    en = [["{{{name}}}" <{{{email}}}>]],
+  },
+  ["user:update:subject"] = {
+    en = [=[[{{{servername}}}] Update, {{{username}}}!]=],
+  },
+  ["user:update:body"] = {
+    en = "{{{username}}}, you have changed your email address!",
   },
   ["user:reset:from"] = {
     en = [["{{{name}}}" <{{{email}}}>]],

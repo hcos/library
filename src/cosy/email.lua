@@ -10,13 +10,11 @@ if not Ssl then
   Ssl = _G.ssl
 end
 
-local i18n   = I18n.load "cosy.email-i18n"
+Configuration.load "cosy.email"
+
+local i18n   = I18n.load "cosy.email"
 i18n._locale = Configuration.locale._
 
-local Internal = Configuration / "default"
-Internal.smtp = {
-  timeout = 2,
-}
 
 if _G.js then
   error "Not available"

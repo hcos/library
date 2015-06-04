@@ -1,18 +1,4 @@
 local Configuration = require "cosy.configuration"
-
-Configuration.load "cosy.server"
-local Internal  = Configuration / "default"
-Internal.daemon = {
-  interface = "127.0.0.1",
-  port      = 0,
-  data_file = os.getenv "HOME" .. "/.cosy/daemon.data",
-  log_file  = os.getenv "HOME" .. "/.cosy/daemon.log",
-  pid_file  = os.getenv "HOME" .. "/.cosy/daemon.pid",
-}
-if _G ["cosy:configuration-only"] then
-  return
-end
-
 local I18n          = require "cosy.i18n"
 local Library       = require "cosy.library"
 local Logger        = require "cosy.logger"
@@ -21,7 +7,10 @@ local Scheduler     = require "cosy.scheduler"
 local Ffi           = require "ffi"
 local Websocket     = require "websocket"
 
-local i18n   = I18n.load "cosy.daemon-i18n"
+Configuration.load "cosy.daemon"
+Configuration.load "cosy.server"
+
+local i18n   = I18n.load "cosy.daemon"
 i18n._locale = Configuration.locale._
 
 local Daemon = {}

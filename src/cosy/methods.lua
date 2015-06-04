@@ -8,29 +8,15 @@ local Logger        = require "cosy.logger"
 local Parameters    = require "cosy.parameters"
 local Password      = require "cosy.password"
 local Store         = require "cosy.store"
+local Time          = require "cosy.time"
 local Token         = require "cosy.token"
 local Value         = require "cosy.value"
 
-local i18n   = I18n.load "cosy.methods-i18n"
-i18n._locale = Configuration.locale._
+Configuration.load "cosy.methods"
+Configuration.load "cosy.parameters"
 
-local Internal = Configuration / "default"
-Internal.redis.retry = 5
-Internal.redis.key = {
-  users  = "user:{{{key}}}",
-  emails = "email:{{{key}}}",
-  tokens = "token:{{{key}}}",
-}
-Internal.expiration = {
-  account        = 24 * 3600, -- 1 day
-  validation     =  1 * 3600, -- 1 hour
-  authentication =  1 * 3600, -- 1 hour
-  administration =  99 * 365 * 24 * 3600, -- 99 years
-}
-Internal.reputation = {
-  at_creation = 10,
-  suspend     = 50,
-}
+local i18n   = I18n.load "cosy.methods"
+i18n._locale = Configuration.locale._
 
 Methods.Status = setmetatable ({
   inactive  = "inactive",
@@ -54,12 +40,6 @@ function Methods.stop (request)
   })
   local Server = require "cosy.server"
   return Server.stop ()
-end
-
-function Methods.statistics ()
-  local request  = (require "copas.http").request
-  local position = request "http://www.telize.com/geoip"
-  print (position)
 end
 
 -- ### Information
@@ -132,10 +112,12 @@ function Methods.user.create (request, store, try_only)
     status      = Methods.Status.active,
     username    = request.username,
     email       = request.email,
+    checked     = false,
     password    = Password.hash (request.password),
     locale      = request.locale,
     tos_digest  = request.tos_digest,
     reputation  = Configuration.reputation.at_creation._,
+    lastseen    = Time (),
     access      = {
       public = true,
     },
@@ -195,6 +177,7 @@ function Methods.user.authenticate (request, store)
   if type (verified) == "string" then
     user.password = verified
   end
+  user.lastseen = Time ()
   return {
     token = Token.authentication (user),
   }
@@ -207,6 +190,168 @@ function Methods.user.is_authentified (request)
     },
   })
   return true
+end
+
+-- ### Is authentified?
+
+function Methods.user.is_authentified (request)
+  Parameters.check (request, {
+    required = {
+      token = Parameters.token.authentication,
+    },
+  })
+  return true
+end
+
+-- ### Update
+
+function Methods.user.update (request, store)
+  Parameters.check (request, {
+    required = {
+      token = Parameters.token.authentication,
+    },
+    optional = {
+      avatar       = Parameters.avatar,
+      email        = Parameters.email,
+      homepage     = Parameters.homepage,
+      locale       = Parameters.locale,
+      name         = Parameters.name,
+      organization = Parameters.organization,
+      password     = Parameters.password,
+      position     = Parameters.position,
+      username     = Parameters.username,
+    },
+  })
+  local user = store.users [request.token.username]
+  if request.username then
+    if store.users [request.username] then
+      error {
+        _        = i18n ["username:exist"],
+        username = request.username,
+      }
+    end
+    store.users [user.username   ] = nil
+    store.users [request.username] = user
+    user.username = request.username
+    store.emails [user.email].username = request.username
+  end
+  if request.email then
+    if store.emails [request.email] then
+      error {
+        _     = i18n ["email:exist"],
+        email = request.email,
+      }
+    end
+    store.emails [user.email   ] = nil
+    store.emails [request.email] = {
+      username  = user.username,
+    }
+    user.email   = request.email
+    user.checked = false
+    Email.send {
+      locale  = user.locale,
+      from    = {
+        _     = i18n ["user:update:from"],
+        name  = Configuration.server.name._,
+        email = Configuration.server.email._,
+      },
+      to      = {
+        _     = i18n ["user:update:to"],
+        name  = user.username,
+        email = user.email,
+      },
+      subject = {
+        _          = i18n ["user:update:subject"],
+        servername = Configuration.server.name._,
+        username   = user.username,
+      },
+      body    = {
+        _          = i18n ["user:update:body"],
+        username   = user.username,
+      },
+    }
+  end
+  if request.password then
+    user.password = Password.hash (request.password)
+  end
+  if request.position then
+    user.position = {
+      country = request.position.country,
+      city    = request.position.city,
+    }
+  end
+  if request.avatar then
+    local filename = os.tmpname ()
+    local file = io.open (filename, "w")
+    file:write (request.avatar.content)
+    file:close ()
+    os.execute ([[
+      convert {{{file}}} -resize {{{width}}}x{{{height}}} png:{{{file}}}
+    ]] % {
+      file   = filename,
+      height = Configuration.data.avatar.height._,
+      width  = Configuration.data.avatar.width._,
+    })
+    file = io.open (filename, "r")
+    request.avatar.content = file:read "*all"
+    file:close ()
+    user.avatar = request.avatar
+    --[[
+    local Magick = require "magick"
+    local image  = Magick.load_image_from_blob (request.avatar.content)
+    local width  = Configuration.data.avatar.width._
+    local height = Configuration.data.avatar.height._
+    image:resize (width, height)
+    image:set_format "png"
+    request.avatar.content = image:get_blob ()
+    image:destroy ()
+    --]]
+  end
+  for _, key in ipairs { "name", "organization", "locale" } do
+    if request [key] then
+      user [key] = request [key]
+    end
+  end
+  return {
+    avatar       = user.avatar,
+    email        = user.email,
+    homepage     = user.homepage,
+    lastseen     = user.lastseen,
+    locale       = user.locale,
+    name         = user.name,
+    organization = user.organization,
+    position     = user.position,
+    username     = user.username,
+  }
+end
+
+-- ### Update
+
+function Methods.user.informatioon (request, store)
+  Parameters.check (request, {
+    required = {
+      username = Parameters.username,
+    },
+  })
+  local user = store.users [request.username]
+  if not user
+  or user.type   ~= Methods.Type.user then
+    error {
+      _     = i18n ["username:miss"],
+      email = request.email,
+    }
+  end
+  return {
+    avatar       = user.avatar,
+    email        = user.email,
+    homepage     = user.homepage,
+    lastseen     = user.lastseen,
+    locale       = user.locale,
+    name         = user.name,
+    organization = user.organization,
+    position     = user.position,
+    username     = user.username,
+  }
 end
 
 -- ### Reset password

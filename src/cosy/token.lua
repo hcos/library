@@ -9,13 +9,10 @@ local Random        = require "cosy.random"
 local Time          = require "cosy.time"
 local Jwt           = require "luajwt"
 
-local i18n   = I18n.load "cosy.token-i18n"
-i18n._locale = Configuration.locale._
+Configuration.load "cosy.token"
 
-local Internal = Configuration / "default"
-Internal.token = {
-  algorithm = "HS512",
-}
+local i18n   = I18n.load "cosy.token"
+i18n._locale = Configuration.locale._
 
 if Configuration.token.secret._ == nil then
   error {
