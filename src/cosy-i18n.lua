@@ -11,13 +11,4 @@ return {
     en = "available commands are:",
     fr = "les commandes disponibles sont:",
   },
-  ["success"] = {
-    en = "success",
-  },
-  ["failure"] = {
-    en = "failure",
-  },
-  ["option:debug"] = {
-    en = "show debug information",
-  },
 }
