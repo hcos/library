@@ -44,6 +44,7 @@ function Server.request (message)
   local method     = Methods
   for name in operation:gmatch "[^:]+" do
     if method ~= nil then
+      name = name:gsub ("-", "_")
       method = method [name]
     end
   end
