@@ -95,14 +95,26 @@ return {
   ["user:authenticate"] = {
     en = "authenticate a user",
   },
-  ["user:update"] = {
-    en = "update user information",
+  ["user:delete"] = {
+    en = "delete your account",
   },
   ["user:information"] = {
     en = "show user information",
   },
+  ["user:recover"] = {
+    en = "recover your account",
+  },
+  ["user:reset"] = {
+    en = "reset your account",
+  },
+  ["user:suspend"] = {
+    en = "suspend a user account",
+  },
   ["user:send-validation"] = {
     en = "send (again) email validation",
+  },
+  ["user:update"] = {
+    en = "update user information",
   },
   ["user:validate"] = {
     en = "validate email address",

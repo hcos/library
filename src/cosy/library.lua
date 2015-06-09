@@ -96,8 +96,8 @@ local mcoroutine = Coromake ()
 Client.methods = {}
 
 Client.methods ["user:create"] = function (operation, parameters)
-  local client        = operation._client
-  local data          = client._data
+  local client = operation._client
+  local data   = client._data
   parameters.password = Digest (parameters.password)
   local result = mcoroutine.yield ()
   if result.success then
@@ -115,8 +115,8 @@ Client.methods ["user:create"] = function (operation, parameters)
 end
 
 Client.methods ["user:authenticate"] = function (operation, parameters)
-  local client        = operation._client
-  local data          = client._data
+  local client = operation._client
+  local data   = client._data
   parameters.username = parameters.username or data.username
   if parameters.password then
     parameters.password = Digest (parameters.password)
@@ -132,8 +132,8 @@ Client.methods ["user:authenticate"] = function (operation, parameters)
 end
 
 Client.methods ["user:update"] = function (operation, parameters)
-  local client        = operation._client
-  local data          = client._data
+  local client = operation._client
+  local data   = client._data
   if parameters.password then
     parameters.password = Digest (parameters.password)
   end
@@ -146,6 +146,8 @@ Client.methods ["user:update"] = function (operation, parameters)
     data.hashed = parameters.password
   end
 end
+
+Client.methods ["user:recover"] = Client.methods ["user:update"]
 
 function Client.__index (client, key)
   return setmetatable ({

@@ -19,7 +19,6 @@ local i18n   = I18n.load "cosy.methods"
 i18n._locale = Configuration.locale._
 
 Methods.Status = setmetatable ({
-  inactive  = "inactive",
   active    = "active",
   suspended = "suspended",
 }, {
@@ -367,7 +366,30 @@ function Methods.user.information (request, store)
   }
 end
 
--- ### Reset password
+-- ### Recover
+
+function Methods.user.recover (request, store, try_only)
+  Parameters.check (request, {
+    required = {
+      token    = Parameters.token.validation,
+      password = Parameters.password,
+    },
+  })
+  local user = store.users [request.token.username]
+  if try_only then
+    return
+  end
+  Methods.user.update {
+    token    = Token.authentication (user),
+    password = request.password,
+  }
+  return Methods.user.authenticate {
+    username = user.username,
+    password = request.password,
+  }
+end
+
+-- ### Reset
 
 function Methods.user.reset (request, store, try_only)
   Parameters.check (request, {
@@ -377,17 +399,17 @@ function Methods.user.reset (request, store, try_only)
   })
   local email = store.emails [request.email]
   if not email then
-    return true
+    return
   end
   local user = store.users [email.username]
   if not user
-  or user.type   ~= Methods.Type.user then
-    return true
+  or user.type ~= Methods.Type.user then
+    return
   end
-  local token = Token.validation (user)
   if try_only then
-    return true
+    return
   end
+  user.password = ""
   Email.send {
     locale  = user.locale,
     from    = {
@@ -408,12 +430,9 @@ function Methods.user.reset (request, store, try_only)
     body    = {
       _          = i18n ["user:reset:body"],
       username   = user.username,
-      validation = token,
+      validation = Token.validation (user),
     },
   }
-  user.status     = Methods.Status.suspended
-  user.validation = token
-  return true
 end
 
 -- ### Suspend User
@@ -448,7 +467,6 @@ function Methods.user.suspend (request, store)
   end
   user.reputation = user.reputation - reputation
   target.status   = Methods.Status.suspended
-  return true
 end
 
 -- ### User Deletion
@@ -462,8 +480,9 @@ function Methods.user.delete (request, store)
   local user = store.users [request.token.username]
   store.emails [user.email   ] = nil
   store.users  [user.username] = nil
-  return true
 end
+
+-- # Wrapper
 
 local function wrap (t)
   for key, value in pairs (t) do

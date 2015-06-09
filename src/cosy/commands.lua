@@ -49,6 +49,49 @@ local function show_status (result)
   return result
 end
 
+local function user_information (response)
+  if response.avatar then
+    local avatar          = response.avatar
+    local input_filename  = os.tmpname ()
+    local file = io.open (input_filename, "w")
+    file:write (avatar.content)
+    file:close ()
+    os.execute ([[
+      img2txt -W 40 -H 20 {{{input}}} 2> /dev/null
+    ]] % {
+      input  = input_filename,
+    })
+    os.remove (input_filename)
+    response.avatar  = nil
+  end
+  if response.position then
+    response.position = "{{{country}}}/{{{city}}}" % response.position
+  end
+  if response.lastseen then
+    response.lastseen = os.date ("%x, %X", response.lastseen)
+  end
+  local max  = 0
+  local keys = {}
+  for key in pairs (response) do
+    keys [#keys+1] = key
+    max = math.max (max, #key)
+  end
+  max = max + 3
+  table.sort (keys)
+  for i = 1, #keys do
+    local key   = keys [i]
+    local value = response [key]
+    local space = ""
+    for _ = #key, max do
+      space = space .. " "
+    end
+    space = space .. " => "
+    print (Colors ("%{black yellowbg}" .. tostring (key)) ..
+           Colors ("%{reset}" .. space) ..
+           Colors ("%{yellow blackbg}" .. tostring (value)))
+  end
+end
+
 local options = {}
 
 function options.global (cli)
@@ -428,48 +471,120 @@ Commands ["user:authenticate"] = {
   end,
 }
 
-local function user_information (response)
-  if response.avatar then
-    local avatar          = response.avatar
-    local input_filename  = os.tmpname ()
-    local file = io.open (input_filename, "w")
-    file:write (avatar.content)
-    file:close ()
-    os.execute ([[
-      img2txt -W 40 -H 20 {{{input}}} 2> /dev/null
-    ]] % {
-      input  = input_filename,
-    })
-    os.remove (input_filename)
-    response.avatar  = nil
-  end
-  if response.position then
-    response.position = "{{{country}}}/{{{city}}}" % response.position
-  end
-  if response.lastseen then
-    response.lastseen = os.date ("%x, %X", response.lastseen)
-  end
-  local max  = 0
-  local keys = {}
-  for key in pairs (response) do
-    keys [#keys+1] = key
-    max = math.max (max, #key)
-  end
-  max = max + 3
-  table.sort (keys)
-  for i = 1, #keys do
-    local key   = keys [i]
-    local value = response [key]
-    local space = ""
-    for _ = #key, max do
-      space = space .. " "
+Commands ["user:delete"] = {
+  _   = i18n ["user:delete"],
+  run = function (cli, ws)
+    options.global         (cli)
+    options.server         (cli)
+    options.authentication (cli)
+    Commands.args = cli:parse_args ()
+    if not Commands.args then
+      cli:print_help ()
+      os.exit (1)
     end
-    space = space .. " => "
-    print (Colors ("%{black yellowbg}" .. tostring (key)) ..
-           Colors ("%{reset}" .. space) ..
-           Colors ("%{yellow blackbg}" .. tostring (value)))
-  end
-end
+    ws:send (Value.expression {
+      server     = Commands.args.server,
+      operation  = "user:delete",
+      parameters = {},
+    })
+    local result = ws:receive ()
+    result = Value.decode (result)
+    return show_status (result)
+  end,
+}
+
+Commands ["user:reset"] = {
+  _   = i18n ["user:reset"],
+  run = function (cli, ws)
+    options.global (cli)
+    options.server (cli)
+    cli:add_argument (
+      "email",
+      i18n ["argument:email"] % {}
+    )
+    Commands.args = cli:parse_args ()
+    if not Commands.args then
+      cli:print_help ()
+      os.exit (1)
+    end
+    ws:send (Value.expression {
+      server     = Commands.args.server,
+      operation  = "user:reset",
+      parameters = {
+        email = Commands.args.email,
+      },
+    })
+    local result = ws:receive ()
+    result = Value.decode (result)
+    return show_status (result)
+  end,
+}
+
+Commands ["user:recover"] = {
+  _   = i18n ["user:recover"],
+  run = function (cli, ws)
+    options.global (cli)
+    options.server (cli)
+    cli:add_argument (
+      "token",
+      i18n ["argument:token:validation"] % {}
+    )
+    Commands.args = cli:parse_args ()
+    if not Commands.args then
+      cli:print_help ()
+      os.exit (1)
+    end
+    local passwords = {}
+    repeat
+      for i = 1, 2 do
+        io.write (i18n ["argument:password" .. tostring (i)] % {} .. " ")
+        passwords [i] = getpassword ()
+      end
+      if passwords [1] ~= passwords [2] then
+        print (i18n ["argument:password:nomatch"] % {})
+      end
+    until passwords [1] == passwords [2]
+    ws:send (Value.expression {
+      server     = Commands.args.server,
+      operation  = "user:recover",
+      parameters = {
+        token    = Commands.args.token,
+        password = passwords [1],
+      },
+    })
+    local result = ws:receive ()
+    result = Value.decode (result)
+    return show_status (result)
+  end,
+}
+
+Commands ["user:suspend"] = {
+  _   = i18n ["user:suspend"],
+  run = function (cli, ws)
+    options.global         (cli)
+    options.server         (cli)
+    options.authentication (cli)
+    cli:add_argument (
+      "username",
+      i18n ["argument:username"] % {}
+    )
+    Commands.args = cli:parse_args ()
+    if not Commands.args then
+      cli:print_help ()
+      os.exit (1)
+    end
+    ws:send (Value.expression {
+      server     = Commands.args.server,
+      operation  = "user:suspend",
+      parameters = {
+        username = Commands.args.username,
+      },
+    })
+    local result = ws:receive ()
+    result = Value.decode (result)
+    return show_status (result)
+  end,
+}
 
 Commands ["user:update"] = {
   _   = i18n ["user:update"],
@@ -507,8 +622,17 @@ Commands ["user:update"] = {
     end
     local password
     if Commands.args.password then
-      io.write (i18n ["argument:password1"] % {} .. " ")
-      password = getpassword ()
+      local passwords = {}
+      repeat
+        for i = 1, 2 do
+          io.write (i18n ["argument:password" .. tostring (i)] % {} .. " ")
+          passwords [i] = getpassword ()
+        end
+        if passwords [1] ~= passwords [2] then
+          print (i18n ["argument:password:nomatch"] % {})
+        end
+      until passwords [1] == passwords [2]
+      password = passwords [1]
     end
     if Commands.args.avatar then
       if Commands.args.avatar:match "^https?://" then
