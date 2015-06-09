@@ -144,11 +144,64 @@ function Methods.user.create (request, store, try_only)
     body    = {
       _          = i18n ["user:create:body"],
       username   = user.username,
+      token      = Token.validation (user),
     },
   }
   return {
-    token = Token.authentication (store.users [request.username]),
+    token = Token.authentication (user),
   }
+end
+
+-- ### Send Validation email
+
+function Methods.user.send_validation (request, store, try_only)
+  Parameters.check (request, {
+    required = {
+      token = Parameters.token.authentication,
+    },
+  })
+  if try_only then
+    return true
+  end
+  local user = store.users [request.token.username]
+  Email.send {
+    locale  = user.locale,
+    from    = {
+      _     = i18n ["user:update:from"],
+      name  = Configuration.server.name._,
+      email = Configuration.server.email._,
+    },
+    to      = {
+      _     = i18n ["user:update:to"],
+      name  = user.username,
+      email = user.email,
+    },
+    subject = {
+      _          = i18n ["user:update:subject"],
+      servername = Configuration.server.name._,
+      username   = user.username,
+    },
+    body    = {
+      _          = i18n ["user:update:body"],
+      username   = user.username,
+      token      = Token.validation (user),
+    },
+  }
+end
+
+-- ### Validate email
+
+function Methods.user.validate (request, store, try_only)
+  Parameters.check (request, {
+    required = {
+      token = Parameters.token.validation,
+    },
+  })
+  if try_only then
+    return true
+  end
+  local user = store.users [request.token.username]
+  user.checked = true
 end
 
 -- ### Authentication
@@ -181,15 +234,6 @@ function Methods.user.authenticate (request, store)
   return {
     token = Token.authentication (user),
   }
-end
-
-function Methods.user.is_authentified (request)
-  Parameters.check (request, {
-    required = {
-      token = Parameters.token.authentication,
-    },
-  })
-  return true
 end
 
 -- ### Is authentified?
@@ -248,27 +292,8 @@ function Methods.user.update (request, store)
     }
     user.email   = request.email
     user.checked = false
-    Email.send {
-      locale  = user.locale,
-      from    = {
-        _     = i18n ["user:update:from"],
-        name  = Configuration.server.name._,
-        email = Configuration.server.email._,
-      },
-      to      = {
-        _     = i18n ["user:update:to"],
-        name  = user.username,
-        email = user.email,
-      },
-      subject = {
-        _          = i18n ["user:update:subject"],
-        servername = Configuration.server.name._,
-        username   = user.username,
-      },
-      body    = {
-        _          = i18n ["user:update:body"],
-        username   = user.username,
-      },
+    Methods.user.send_validation {
+      token = request.token,
     }
   end
   if request.password then

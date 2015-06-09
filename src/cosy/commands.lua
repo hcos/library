@@ -606,4 +606,51 @@ Commands ["user:information"] = {
   end,
 }
 
+Commands ["user:send-validation"] = {
+  _   = i18n ["user:send-validation"],
+  run = function (cli, ws)
+    options.global (cli)
+    options.server (cli)
+    options.authentication (cli)
+    Commands.args = cli:parse_args ()
+    if not Commands.args then
+      os.exit (1)
+    end
+    ws:send (Value.expression {
+      server     = Commands.args.server,
+      operation  = "user:send-validation",
+      parameters = {},
+    })
+    local result = ws:receive ()
+    result = Value.decode (result)
+    return show_status (result)
+  end,
+}
+
+Commands ["user:validate"] = {
+  _   = i18n ["user:validate"],
+  run = function (cli, ws)
+    options.global (cli)
+    options.server (cli)
+    cli:add_argument (
+      "token",
+      i18n ["argument:token:validation"] % {}
+    )
+    Commands.args = cli:parse_args ()
+    if not Commands.args then
+      os.exit (1)
+    end
+    ws:send (Value.expression {
+      server     = Commands.args.server,
+      operation  = "user:validate",
+      parameters = {
+        token = Commands.args.token,
+      },
+    })
+    local result = ws:receive ()
+    result = Value.decode (result)
+    return show_status (result)
+  end,
+}
+
 return Commands

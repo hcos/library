@@ -80,6 +80,9 @@ return {
   ["argument:password:nomatch"] = {
     en = "entered passwords differ",
   },
+  ["argument:token:validation"] = {
+    en = "validation token",
+  },
   ["show:information"] = {
     en = "show information about the server",
   },
@@ -97,5 +100,11 @@ return {
   },
   ["user:information"] = {
     en = "show user information",
+  },
+  ["user:send-validation"] = {
+    en = "send (again) email validation",
+  },
+  ["user:validate"] = {
+    en = "validate email address",
   },
 }
