@@ -1,5 +1,6 @@
-local Lustache = require "lustache"
-local Plural   = require "i18n.plural"
+local Repository = require "cosy.repository"
+local Lustache   = require "lustache"
+local Plural     = require "i18n.plural"
 
 local I18n      = {}
 local Metatable = {}
@@ -14,30 +15,33 @@ function I18n.new (locale)
   }, I18n)
 end
 
-function I18n.load (...)
-  local store  = {}
-  local unpack = table.unpack or unpack
-  local function l (...)
-    for _, name in ipairs { ... } do
-      if type (name) == "string" then
-        local t = require (name .. "-i18n")
-        for k, v in pairs (t) do
-          if store [k] then
-            error {
-              _   = "i18n key {{{key}}} already exists",
-              key = k,
-            }
-          end
-          store [k] = v
-        end
-      elseif type (name) == "table" then
-        l (unpack (name))
-      else
-        assert (false)
-      end
-    end
+function I18n.load (t)
+  local repository = Repository.new ()
+  Repository.options (repository).create = function () return {} end
+  Repository.options (repository).import = function () return {} end
+  if type (t) ~= "table" then
+    t = { t }
   end
-  l (...)
+  local depends = {}
+  for _, name in ipairs (t) do
+    repository [name] = require (name .. "-i18n")
+    depends [#depends+1] = repository [name]
+  end
+  repository.__all__ = {
+    [Repository.depends] = depends,
+  }
+  local store = setmetatable ({}, {
+    __index = function (_, key)
+      local path = repository.__all__ [key]
+      if Repository.exists (path) then
+        local result = {}
+        for k in pairs (path) do
+          result [k] = path [k]._
+        end
+        return result
+      end
+    end,
+  })
   return setmetatable ({
     _store  = store,
     _locale = false,
