@@ -10,14 +10,37 @@ setmetatable (I18n, Metatable)
 function I18n.new (locale)
   return setmetatable ({
     _store  = {},
-    _locale = locale or "en",
+    _locale = locale,
   }, I18n)
 end
 
-function I18n.load (name, locale)
+function I18n.load (...)
+  local store  = {}
+  local unpack = table.unpack or unpack
+  local function l (...)
+    for _, name in ipairs { ... } do
+      if type (name) == "string" then
+        local t = require (name .. "-i18n")
+        for k, v in pairs (t) do
+          if store [k] then
+            error {
+              _   = "i18n key {{{key}}} already exists",
+              key = k,
+            }
+          end
+          store [k] = v
+        end
+      elseif type (name) == "table" then
+        l (unpack (name))
+      else
+        assert (false)
+      end
+    end
+  end
+  l (...)
   return setmetatable ({
-    _store  = require (name .. "-i18n"),
-    _locale = locale or "en",
+    _store  = store,
+    _locale = false,
   }, I18n)
 end
 
@@ -34,7 +57,10 @@ function I18n.__index (i18n, key)
 end
 
 function I18n.__call (i18n, data)
-  local locale = data.locale or i18n._locale
+  if type (data) ~= "table" then
+    return data
+  end
+  local locale = data.locale or data._locale or i18n._locale or "en"
   local function translate (t)
     if type (t) ~= "table" then
       return t
@@ -58,7 +84,7 @@ end
 Metatable.__call = I18n.__call
 
 function Message.__mod (message, context)
-  local locale = context.locale or message._locale
+  local locale = context.locale or message._locale or "en"
   locale = locale:lower ()
   locale = locale:gsub ("_", "-")
   locale = locale:match "^(%w%w-%w%w)" or locale:match "^(%w%w)"
