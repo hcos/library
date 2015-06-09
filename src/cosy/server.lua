@@ -58,18 +58,21 @@ function Server.request (message)
     })
   end
   local result, err = method (parameters or {}, try_only)
-  if not result then
-    return Value.expression (translate {
+  if result then
+    translate (result)
+    return Value.expression {
+      identifier = identifier,
+      success    = true,
+      response   = result,
+    }
+  else
+    translate (err)
+    return Value.expression {
       identifier = identifier,
       success    = false,
       error      = err,
-    })
+    }
   end
-  return Value.expression (translate {
-    identifier = identifier,
-    success    = true,
-    response   = result,
-  })
 end
 
 function Server.start ()
