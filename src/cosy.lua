@@ -95,53 +95,11 @@ or not ws:connect ("ws://{{{interface}}}:{{{port}}}/ws" % {
 end
 
 Cli:set_name (_G.arg [0] .. " " .. _G.arg [1])
-Cli:add_option (
-  "-d, --debug",
-  i18n ["option:debug"] % {}
-)
 table.remove (_G.arg, 1)
 local result = command.run (Cli, ws)
-if type (result) == "boolean" then
-  if result then
-    print (Colors ("%{green}" .. i18n ["success"] % {}))
-    os.exit (0)
-  else
-    print (Colors ("%{white redbg}" .. i18n ["failure"] % {}))
-    os.exit (1)
-  end
-elseif type (result) == "table" then
-  if result.success then
-    if type (result.response) == "table" then
-      if not result.response.message then
-        i18n (result.response)
-      end
-      print (Colors ("%{black greenbg}" .. i18n ["success"] % {}),
-             Colors ("%{black greenbg}" .. (result.response.message or "")))
-    else
-      print (Colors ("%{green}" .. i18n ["success"] % {}))
-    end
-    if type (result.response) == "table" then
-      for k, v in pairs (result.response) do
-        if k ~= "message" then
-          print (k, "=>", v)
-        end
-      end
-    elseif result.response then
-      print (Colors ("%{dim green whitebg}" .. Value.expression (result.response)))
-    end
-    if Commands.args.debug then
-      print (Colors ("%{dim green whitebg}" .. Value.expression (result)))
-    end
-    os.exit (0)
-  elseif result.error then
-    if not result.error.message then
-      i18n (result.error)
-    end
-    print (Colors ("%{black redbg}" .. i18n ["failure"] % {}),
-           Colors ("%{black redbg}" .. tostring (result.error.message)))
-    if Commands.args.debug then
-      print (Colors ("%{dim red whitebg}" .. Value.expression (result)))
-    end
-    os.exit (1)
-  end
+if result.success then
+  os.exit (0)
+else
+  os.exit (1)
 end
+

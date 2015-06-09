@@ -5,6 +5,12 @@ return {
   ["url:not-found"] = {
     en = "URL not found: {{{url}}} (status {{{status}}})",
   },
+  ["success"] = {
+    en = "success",
+  },
+  ["failure"] = {
+    en = "failure",
+  },
   ["daemon:stop"] = {
     en = "stop cosy daemon",
   },
@@ -26,9 +32,6 @@ return {
   ["option:avatar"] = {
     en = "avatar",
   },
-  ["option:clean"] = {
-    en = "clean redis database before launching the server",
-  },
   ["option:email"] = {
     en = "email address",
   },
@@ -49,6 +52,12 @@ return {
   },
   ["option:username"] = {
     en = "username",
+  },
+  ["flag:clean"] = {
+    en = "clean redis database before launching the server",
+  },
+  ["flag:debug"] = {
+    en = "show debug information",
   },
   ["flag:force"] = {
     en = "force action",
@@ -85,5 +94,8 @@ return {
   },
   ["user:update"] = {
     en = "update user information",
+  },
+  ["user:information"] = {
+    en = "show user information",
   },
 }

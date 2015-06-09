@@ -29,8 +29,17 @@ local Configuration = {
   },
 }
 
-function Configuration.load (name)
-  require (name .. "-conf")
+function Configuration.load (...)
+  local unpack = table.unpack or unpack
+  for _, name in ipairs { ... } do
+    if type (name) == "string" then
+      require (name .. "-conf")
+    elseif type (name) == "table" then
+      Configuration.load (unpack (name))
+    else
+      assert (false)
+    end
+  end
 end
 
 local Metatable = {}

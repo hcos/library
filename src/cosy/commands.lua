@@ -1,12 +1,19 @@
 local Configuration = require "cosy.configuration"
 local I18n          = require "cosy.i18n"
 local Value         = require "cosy.value"
+local Colors        = require "ansicolors"
 
-Configuration.load "cosy"
-Configuration.load "cosy.daemon"
-Configuration.load "cosy.server"
+Configuration.load {
+  "cosy",
+  "cosy.daemon",
+  "cosy.server",
+}
 
-local i18n   = I18n.load "cosy.commands"
+local i18n   = I18n.load {
+  "cosy",
+  "cosy.commands",
+  "cosy.daemon",
+}
 i18n._locale = Configuration.cli.default_locale._
 
 local Commands = {}
@@ -21,12 +28,47 @@ local function read (filename)
   return Value.decode (data)
 end
 
-local function addoptions (cli)
+local function show_status (result)
+  assert (type (result) == "table")
+  if result.success then
+    if type (result.response) ~= "table" then
+      result.response = { message = result.response }
+    elseif not result.response.message then
+      result.response.message = ""
+    end
+    print (Colors ("%{black greenbg}" .. i18n ["success"] % {}),
+           Colors ("%{green blackbg}" .. (result.response.message ~= nil and tostring (result.response.message) or "")))
+    if Commands.args.debug then
+      print (Colors ("%{dim green whitebg}" .. Value.expression (result)))
+    end
+  elseif result.error then
+    if not result.error.message then
+      result.error.message = ""
+    end
+    print (Colors ("%{black redbg}" .. i18n ["failure"] % {}),
+           Colors ("%{red blackbg}" .. tostring (result.error.message)))
+    if Commands.args.debug then
+      print (Colors ("%{dim red whitebg}" .. Value.expression (result)))
+    end
+  end
+  return result
+end
+
+local options = {}
+
+function options.global (cli)
+  cli:add_flag (
+    "-d, --debug",
+    i18n ["flag:debug"] % {}
+  )
   cli:add_option (
     "-l, --locale=LOCALE",
     i18n ["option:locale"] % {},
     Configuration.cli.default_locale._
   )
+end
+
+function options.server (cli)
   cli:add_option (
     "-s, --server=SERVER",
     i18n ["option:server"] % {},
@@ -34,13 +76,25 @@ local function addoptions (cli)
   )
 end
 
+function options.authentication (cli)
+  cli:add_option (
+    "-t, --token=TOKEN",
+    i18n ["option:token"] % {}
+  )
+end
+
+function options.force (cli)
+  cli:add_flag (
+    "-f, --force",
+    i18n ["flag:force"] % {}
+  )
+end
+
 Commands ["daemon:stop"] = {
   _   = i18n ["daemon:stop"],
   run = function (cli, ws)
-    cli:add_flag (
-      "-f, --force",
-      i18n ["flag:force"] % {}
-    )
+    options.global (cli)
+    options.force  (cli)
     Commands.args = cli:parse_args ()
     if not Commands.args then
       os.exit (1)
@@ -48,11 +102,10 @@ Commands ["daemon:stop"] = {
     ws:send (Value.expression "daemon-stop")
     local result = ws:receive ()
     if not result then
-      local m18n = I18n.load "cosy"
       result = {
         success = false,
         error   = {
-          _ = m18n ["daemon:unreachable"] % {},
+          _ = i18n ["daemon:unreachable"] % {},
         },
       }
     else
@@ -76,16 +129,18 @@ Commands ["daemon:stop"] = {
         },
       }
     end
-    return result
+    return show_status (result)
   end,
 }
 
 Commands ["server:start"] = {
   _   = i18n ["server:start"],
   run = function (cli)
-    cli:add_option (
+    options.global (cli)
+    options.force  (cli)
+    cli:add_flag (
       "-c, --clean",
-      i18n ["option:clean"] % {}
+      i18n ["flag:clean"] % {}
     )
     Commands.args = cli:parse_args ()
     if not Commands.args then
@@ -129,26 +184,25 @@ Commands ["server:start"] = {
       tries      = tries + 1
     until serverdata or tries == 10
     if not serverdata then
-      local m18n = I18n.load "cosy.daemon"
       return {
         success = false,
         error   = {
-          _ = m18n ["server:unreachable"] % {},
+          _ = i18n ["server:unreachable"] % {},
         },
       }
     end
-    return true
+    return show_status {
+      success = true,
+    }
   end,
 }
 Commands ["server:stop"] = {
   _   = i18n ["server:stop"],
   run = function (cli, ws)
     local serverdata = read (Configuration.server.data_file._)
-    addoptions (cli)
-    cli:add_flag (
-      "-f, --force",
-      i18n ["flag:force"] % {}
-    )
+    options.global (cli)
+    options.server (cli)
+    options.force  (cli)
     cli:add_option (
       "-t, --token=TOKEN",
       i18n ["option:token"] % {},
@@ -169,11 +223,10 @@ Commands ["server:stop"] = {
     })
     local result = ws:receive ()
     if not result then
-      local m18n = I18n.load "cosy"
       result = {
         success = false,
         error   = {
-          _ = m18n ["daemon:unreachable"] % {},
+          _ = i18n ["daemon:unreachable"] % {},
         },
       }
     else
@@ -197,14 +250,15 @@ Commands ["server:stop"] = {
         },
       }
     end
-    return result
+    return show_status (result)
   end,
 }
 
 Commands ["show:information"] = {
   _   = i18n ["show:information"],
   run = function (cli, ws)
-    addoptions (cli)
+    options.global (cli)
+    options.server (cli)
     Commands.args = cli:parse_args ()
     if not Commands.args then
       os.exit (1)
@@ -217,14 +271,33 @@ Commands ["show:information"] = {
       },
     })
     local result = ws:receive ()
-    return Value.decode (result)
+    result = Value.decode (result)
+    show_status (result)
+    if result.success then
+      local max = 0
+      for key in pairs (result.response) do
+        max = math.max (max, #key)
+      end
+      for key, value in pairs (result.response) do
+        local space = ""
+        for _ = #key, max+3 do
+          space = space .. " "
+        end
+        space = space .. " => "
+        print (Colors ("%{black yellowbg}" .. tostring (key)) ..
+               Colors ("%{reset}" .. space) ..
+               Colors ("%{yellow blackbg}" .. tostring (value)))
+      end
+    end
+    return result
   end,
 }
 
 Commands ["show:tos"] = {
   _   = i18n ["show:tos"],
   run = function (cli, ws)
-    addoptions (cli)
+    options.global (cli)
+    options.server (cli)
     Commands.args = cli:parse_args ()
     if not Commands.args then
       os.exit (1)
@@ -237,7 +310,15 @@ Commands ["show:tos"] = {
       },
     })
     local result = ws:receive ()
-    return Value.decode (result)
+    result = Value.decode (result)
+    show_status (result)
+    if result.success then
+      print (result.response.tos)
+      print (Colors ("%{black yellowbg}" .. "digest") ..
+             Colors ("%{reset}" .. " => ") ..
+             Colors ("%{yellow blackbg}" .. result.response.tos_digest))
+    end
+    return result
   end,
 }
 
@@ -263,7 +344,8 @@ end
 Commands ["user:create"] = {
   _   = i18n ["user:create"],
   run = function (cli, ws)
-    addoptions (cli)
+    options.global (cli)
+    options.server (cli)
     cli:add_argument (
       "username",
       i18n ["argument:username"] % {}
@@ -312,14 +394,16 @@ Commands ["user:create"] = {
       },
     })
     local result = ws:receive ()
-    return Value.decode (result)
+    result = Value.decode (result)
+    return show_status (result)
   end,
 }
 
 Commands ["user:authenticate"] = {
   _   = i18n ["user:authenticate"],
   run = function (cli, ws)
-    addoptions (cli)
+    options.global (cli)
+    options.server (cli)
     cli:add_argument (
       "username",
       i18n ["argument:username"] % {}
@@ -340,37 +424,60 @@ Commands ["user:authenticate"] = {
       },
     })
     local result = ws:receive ()
-    return Value.decode (result)
+    result = Value.decode (result)
+    return show_status (result)
   end,
 }
 
-local function fix_avatar (avatar)
-  local input_filename  = os.tmpname ()
-  local output_filename = os.tmpname ()
-  local file = io.open (input_filename, "w")
-  file:write (avatar.content)
-  file:close ()
-  local result = os.execute ([[
-    img2txt {{{input}}} > {{{output}}} 2> /dev/null
-  ]] % {
-    input  = input_filename,
-    output = output_filename,
-  })
-  if result then
-    file = io.open (output_filename, "r")
-    avatar.content = file:read "*all"
+local function user_information (response)
+  if response.avatar then
+    local avatar          = response.avatar
+    local input_filename  = os.tmpname ()
+    local file = io.open (input_filename, "w")
+    file:write (avatar.content)
     file:close ()
-  else
-    avatar.content = nil
+    os.execute ([[
+      img2txt -W 40 -H 20 {{{input}}} 2> /dev/null
+    ]] % {
+      input  = input_filename,
+    })
+    os.remove (input_filename)
+    response.avatar  = nil
   end
-  os.remove (input_filename )
-  os.remove (output_filename)
+  if response.position then
+    response.position = "{{{country}}}/{{{city}}}" % response.position
+  end
+  if response.lastseen then
+    response.lastseen = os.date ("%x, %X", response.lastseen)
+  end
+  local max  = 0
+  local keys = {}
+  for key in pairs (response) do
+    keys [#keys+1] = key
+    max = math.max (max, #key)
+  end
+  max = max + 3
+  table.sort (keys)
+  for i = 1, #keys do
+    local key   = keys [i]
+    local value = response [key]
+    local space = ""
+    for _ = #key, max do
+      space = space .. " "
+    end
+    space = space .. " => "
+    print (Colors ("%{black yellowbg}" .. tostring (key)) ..
+           Colors ("%{reset}" .. space) ..
+           Colors ("%{yellow blackbg}" .. tostring (value)))
+  end
 end
 
 Commands ["user:update"] = {
   _   = i18n ["user:update"],
   run = function (cli, ws)
-    addoptions (cli)
+    options.global         (cli)
+    options.server         (cli)
+    options.authentication (cli)
     cli:add_option (
       "-a, --avatar=PATH or URL",
       i18n ["option:avatar"] % {}
@@ -424,6 +531,9 @@ Commands ["user:update"] = {
           content = body,
         }
       else
+        if Commands.args.avatar:match "^~" then
+          Commands.args.avatar = os.getenv "HOME" .. Commands.args.avatar:sub (2)
+        end
         local file, err = io.open (Commands.args.avatar, "r")
         if file then
           Commands.args.avatar = {
@@ -459,9 +569,39 @@ Commands ["user:update"] = {
     })
     local result = ws:receive ()
     result = Value.decode (result)
-    if result.response and result.response.avatar then
-      fix_avatar (result.response.avatar)
-      result.response.avatar = result.response.avatar.content
+    show_status (result)
+    if result.success then
+      user_information (result.response)
+    end
+    return result
+  end,
+}
+
+Commands ["user:information"] = {
+  _   = i18n ["user:information"],
+  run = function (cli, ws)
+    options.global         (cli)
+    options.server         (cli)
+    cli:add_argument (
+      "username",
+      i18n ["argument:username"] % {}
+    )
+    Commands.args = cli:parse_args ()
+    if not Commands.args then
+      os.exit (1)
+    end
+    ws:send (Value.expression {
+      server     = Commands.args.server,
+      operation  = "user:information",
+      parameters = {
+        username = Commands.args.username,
+      },
+    })
+    local result = ws:receive ()
+    result = Value.decode (result)
+    show_status (result)
+    if result.success then
+      user_information (result.response)
     end
     return result
   end,

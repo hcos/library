@@ -76,7 +76,6 @@ function Daemon.start ()
           end
           message      = Value.decode (message)
           local result = Daemon.request (message)
-          i18n    (result)
           result       = Value.expression (result)
           ws:send (result)
         end
