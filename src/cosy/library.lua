@@ -12,9 +12,6 @@ Configuration.load "cosy.library"
 local i18n   = I18n.load "cosy.library"
 i18n._locale = Configuration.locale._
 
-local m18n   = I18n.load "cosy.methods"
-m18n._locale = Configuration.locale._
-
 local Library   = {}
 local Client    = {}
 local Operation = {}
