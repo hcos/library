@@ -29,16 +29,12 @@ local Configuration = {
   },
 }
 
-function Configuration.load (...)
-  local unpack = table.unpack or unpack
-  for _, name in ipairs { ... } do
-    if type (name) == "string" then
-      require (name .. "-conf")
-    elseif type (name) == "table" then
-      Configuration.load (unpack (name))
-    else
-      assert (false)
-    end
+function Configuration.load (t)
+  if type (t) ~= "table" then
+    t = { t }
+  end
+  for _, name in ipairs (t) do
+    require (name .. "-conf")
   end
 end
 
