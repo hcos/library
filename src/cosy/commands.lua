@@ -33,8 +33,6 @@ local function show_status (result)
   if result.success then
     if type (result.response) ~= "table" then
       result.response = { message = result.response }
-    elseif not result.response.message then
-      result.response.message = ""
     end
     print (Colors ("%{black greenbg}" .. i18n ["success"] % {}),
            Colors ("%{green blackbg}" .. (result.response.message ~= nil and tostring (result.response.message) or "")))
@@ -42,11 +40,8 @@ local function show_status (result)
       print (Colors ("%{dim green whitebg}" .. Value.expression (result)))
     end
   elseif result.error then
-    if not result.error.message then
-      result.error.message = ""
-    end
     print (Colors ("%{black redbg}" .. i18n ["failure"] % {}),
-           Colors ("%{red blackbg}" .. tostring (result.error.message)))
+           Colors ("%{red blackbg}" .. (result.error.message ~= nil and tostring (result.error.message) or "")))
     if Commands.args.debug then
       print (Colors ("%{dim red whitebg}" .. Value.expression (result)))
     end
@@ -274,11 +269,15 @@ Commands ["show:information"] = {
     result = Value.decode (result)
     show_status (result)
     if result.success then
-      local max = 0
+      local max  = 0
+      local keys = {}
       for key in pairs (result.response) do
+        keys [#keys+1] = key
         max = math.max (max, #key)
       end
-      for key, value in pairs (result.response) do
+      for i = 1, #keys do
+        local key   = keys [i]
+        local value = result.response [key]
         local space = ""
         for _ = #key, max+3 do
           space = space .. " "
