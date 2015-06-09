@@ -59,6 +59,15 @@ return {
   ["user:suspend:self"] = {
     en = "are you mad?",
   },
+  ["user:release:not-user"] = {
+    en = "account {{{username}}} is not a user",
+  },
+  ["user:suspend:not-suspended"] = {
+    en = "account {{{username}}} is not suspended",
+  },
+  ["user:release:self"] = {
+    en = "nice try ;-)"
+  },
   ["user:suspend:not-enough"] = {
     en = "suspending a user requires {{{required}}} reputation, but only {{{owned}}} is owned",
   },

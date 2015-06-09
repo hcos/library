@@ -107,6 +107,9 @@ return {
   ["user:reset"] = {
     en = "reset your account",
   },
+  ["user:release"] = {
+    en = "release a suspended user account",
+  },
   ["user:suspend"] = {
     en = "suspend a user account",
   },

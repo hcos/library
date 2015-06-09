@@ -469,6 +469,46 @@ function Methods.user.suspend (request, store)
   target.status   = Methods.Status.suspended
 end
 
+-- # Release user
+
+function Methods.user.release (request, store)
+  Parameters.check (request, {
+    required = {
+      username = Parameters.username,
+      token    = Parameters.token.authentication,
+    },
+  })
+  local target = store.users [request.username]
+  if target.type ~= Methods.Type.user then
+    error {
+      _        = i18n ["user:release:not-user"],
+      username = request.username,
+    }
+  end
+  if target.status ~= Methods.Status.suspended then
+    error {
+      _        = i18n ["user:release:not-suspended"],
+      username = request.username,
+    }
+  end
+  if request.username == request.token.username then
+    error {
+      _ = i18n ["user:release:self"],
+    }
+  end
+  local user       = store.users [request.token.username]
+  local reputation = Configuration.reputation.release._
+  if user.reputation < reputation then
+    error {
+      _        = i18n ["user:suspend:not-enough"],
+      owned    = user.reputation,
+      required = reputation
+    }
+  end
+  user.reputation = user.reputation - reputation
+  target.status   = Methods.Status.active
+end
+
 -- ### User Deletion
 
 function Methods.user.delete (request, store)

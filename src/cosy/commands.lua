@@ -586,12 +586,43 @@ Commands ["user:suspend"] = {
   end,
 }
 
-Commands ["user:update"] = {
-  _   = i18n ["user:update"],
+Commands ["user:release"] = {
+  _   = i18n ["user:release"],
   run = function (cli, ws)
     options.global         (cli)
     options.server         (cli)
     options.authentication (cli)
+    cli:add_argument (
+      "username",
+      i18n ["argument:username"] % {}
+    )
+    Commands.args = cli:parse_args ()
+    if not Commands.args then
+      cli:print_help ()
+      os.exit (1)
+    end
+    ws:send (Value.expression {
+      server     = Commands.args.server,
+      operation  = "user:release",
+      parameters = {
+        username = Commands.args.username,
+      },
+    })
+    local result = ws:receive ()
+    result = Value.decode (result)
+    return show_status (result)
+  end,
+}
+
+Commands ["user:update"] = {
+  _   = i18n ["user:update"],
+  run = function (cli, ws)
+    options.server         (cli)
+    options.authentication (cli)
+    cli:add_flag (
+      "-d, --debug",
+      i18n ["flag:debug"] % {}
+    )
     cli:add_option (
       "-a, --avatar=PATH or URL",
       i18n ["option:avatar"] % {}
@@ -599,6 +630,10 @@ Commands ["user:update"] = {
     cli:add_option (
       "-e, --email=EMAIL",
       i18n ["option:email"] % {}
+    )
+    cli:add_option (
+      "-l, --locale=LOCALE",
+      i18n ["option:locale"] % {}
     )
     cli:add_option (
       "-n, --name=FULL-NAME",
@@ -703,8 +738,8 @@ Commands ["user:update"] = {
 Commands ["user:information"] = {
   _   = i18n ["user:information"],
   run = function (cli, ws)
-    options.global         (cli)
-    options.server         (cli)
+    options.global (cli)
+    options.server (cli)
     cli:add_argument (
       "username",
       i18n ["argument:username"] % {}
