@@ -296,16 +296,6 @@ function Methods.user.update (request, store)
     request.avatar.content = file:read "*all"
     file:close ()
     user.avatar = request.avatar
-    --[[
-    local Magick = require "magick"
-    local image  = Magick.load_image_from_blob (request.avatar.content)
-    local width  = Configuration.data.avatar.width._
-    local height = Configuration.data.avatar.height._
-    image:resize (width, height)
-    image:set_format "png"
-    request.avatar.content = image:get_blob ()
-    image:destroy ()
-    --]]
   end
   for _, key in ipairs { "name", "organization", "locale" } do
     if request [key] then
@@ -314,6 +304,7 @@ function Methods.user.update (request, store)
   end
   return {
     avatar       = user.avatar,
+    checked      = user.checked,
     email        = user.email,
     homepage     = user.homepage,
     lastseen     = user.lastseen,
@@ -327,7 +318,7 @@ end
 
 -- ### Update
 
-function Methods.user.informatioon (request, store)
+function Methods.user.information (request, store)
   Parameters.check (request, {
     required = {
       username = Parameters.username,
@@ -337,16 +328,13 @@ function Methods.user.informatioon (request, store)
   if not user
   or user.type   ~= Methods.Type.user then
     error {
-      _     = i18n ["username:miss"],
-      email = request.email,
+      _        = i18n ["username:miss"],
+      username = request.username,
     }
   end
   return {
     avatar       = user.avatar,
-    email        = user.email,
     homepage     = user.homepage,
-    lastseen     = user.lastseen,
-    locale       = user.locale,
     name         = user.name,
     organization = user.organization,
     position     = user.position,
