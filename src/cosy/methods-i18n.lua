@@ -1,4 +1,52 @@
 return {
+  ["server:information"] = {
+    en = "show information about the server",
+  },
+  ["server:list-methods"] = {
+    en = "list all methods available on the server",
+  },
+  ["server:tos"] = {
+    en = "show the terms of service of the server",
+  },
+  ["server:stop"] = {
+    en = "stop the server",
+  },
+  ["user:create"] = {
+    en = "create a user account on the server",
+  },
+  ["user:authenticate"] = {
+    en = "authenticate a user",
+  },
+  ["user:delete"] = {
+    en = "delete your account",
+  },
+  ["user:information"] = {
+    en = "show user information",
+  },
+  ["user:is-authentified"] = {
+    en = "checks if a user is authentified",
+  },
+  ["user:recover"] = {
+    en = "recover your account",
+  },
+  ["user:reset"] = {
+    en = "reset your account",
+  },
+  ["user:release"] = {
+    en = "release a suspended user account",
+  },
+  ["user:suspend"] = {
+    en = "suspend a user account",
+  },
+  ["user:send-validation"] = {
+    en = "send (again) email validation",
+  },
+  ["user:update"] = {
+    en = "update user information",
+  },
+  ["user:validate"] = {
+    en = "validate email address",
+  },
   ["terms-of-service"] = {
     en = [[I agree to give my soul to CosyVerif.]],
   },
@@ -70,8 +118,5 @@ return {
   },
   ["user:suspend:not-enough"] = {
     en = "suspending a user requires {{{required}}} reputation, but only {{{owned}}} is owned",
-  },
-  ["redis:unreachable"] = {
-    en = "redis server in unreachable",
   },
 }

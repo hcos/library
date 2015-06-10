@@ -4,13 +4,10 @@ local Configuration = require "cosy.configuration"
 local Digest        = require "cosy.digest"
 local Email         = require "cosy.email"
 local I18n          = require "cosy.i18n"
-local Logger        = require "cosy.logger"
 local Parameters    = require "cosy.parameters"
 local Password      = require "cosy.password"
-local Store         = require "cosy.store"
 local Time          = require "cosy.time"
 local Token         = require "cosy.token"
-local Value         = require "cosy.value"
 
 Configuration.load "cosy.methods"
 Configuration.load "cosy.parameters"
@@ -31,7 +28,35 @@ Methods.Type = setmetatable ({
   __index = assert,
 })
 
-function Methods.stop (request)
+Methods.server = {}
+
+
+function Methods.server.list_methods (request)
+  Parameters.check (request, {
+    optional = {
+      locale = Parameters.locale,
+    },
+  })
+  local locale = Configuration.locale.default._
+  if request.locale then
+    locale = request.locale or locale
+  end
+  local result = {}
+  local function f (current, prefix)
+    for k, v in pairs (current) do
+      if type (v) == "function" then
+        local name = (prefix or "") .. k:gsub ("_", "-")
+        result [name] = i18n [name] % { locale = locale }
+      elseif type (v) == "table" then
+        f (v, (prefix or "") .. k:gsub ("_", "-") .. ":")
+      end
+    end
+  end
+  f (Methods, nil)
+  return result
+end
+
+function Methods.server.stop (request)
   Parameters.check (request, {
     required = {
       token  = Parameters.token.administration,
@@ -43,7 +68,7 @@ end
 
 -- ### Information
 
-function Methods.information ()
+function Methods.server.information ()
   return {
     name = Configuration.server.name._,
   }
@@ -51,7 +76,7 @@ end
 
 -- ### Terms of Service
 
-function Methods.tos (request)
+function Methods.server.tos (request)
   Parameters.check (request, {
     optional = {
       token  = Parameters.token,
@@ -522,40 +547,4 @@ function Methods.user.delete (request, store)
   store.users  [user.username] = nil
 end
 
--- # Wrapper
-
-local function wrap (t)
-  for key, value in pairs (t) do
-    if type (value) == "table" then
-      wrap (value)
-    elseif type (value) == "function" then
-      t [key] = function (request, try_only)
-        for _ = 1, Configuration.redis.retry._ do
-          local err
-          local ok, result = xpcall (function ()
-            local store  = Store.new ()
-            local result = value (request, store, try_only)
-            if not try_only then
-              Store.commit (store)
-            end
-            return result
-          end, function (e)
-            err = e
-            Logger.debug ("Error: " .. Value.expression (e) .. " => " .. debug.traceback ())
-          end)
-          if ok then
-            return result or true
-          elseif err ~= Store.Error then
-            return nil, err
-          end
-        end
-        return nil, {
-          _ = i18n ["redis:unreachable"],
-        }
-      end
-    end
-  end
-  return t
-end
-
-return wrap (Methods)
+return Methods
