@@ -1,4 +1,16 @@
 return {
+  ["command:missing"] = {
+    en = "missing the command to run: {{{cli}}} <command> [parameters...]",
+    fr = "commande non spécifiée: {{{cli}}} <commande> [paramètres...]",
+  },
+  ["command:erroneous"] = {
+    en = "erroneous the command to run: {{{cli}}} <command> [parameters...]",
+    fr = "commande inexistante: {{{cli}}} <commande> [paramètres...]",
+  },
+  ["command:available"] = {
+    en = "available commands are:",
+    fr = "les commandes disponibles sont:",
+  },
   ["file:not-found"] = {
     en = "file not found: {{{filename}}} ({{{reason}}})",
   },
@@ -82,44 +94,5 @@ return {
   },
   ["argument:token:validation"] = {
     en = "validation token",
-  },
-  ["show:information"] = {
-    en = "show information about the server",
-  },
-  ["show:tos"] = {
-    en = "show the terms of service of the server",
-  },
-  ["user:create"] = {
-    en = "create a user account on the server",
-  },
-  ["user:authenticate"] = {
-    en = "authenticate a user",
-  },
-  ["user:delete"] = {
-    en = "delete your account",
-  },
-  ["user:information"] = {
-    en = "show user information",
-  },
-  ["user:recover"] = {
-    en = "recover your account",
-  },
-  ["user:reset"] = {
-    en = "reset your account",
-  },
-  ["user:release"] = {
-    en = "release a suspended user account",
-  },
-  ["user:suspend"] = {
-    en = "suspend a user account",
-  },
-  ["user:send-validation"] = {
-    en = "send (again) email validation",
-  },
-  ["user:update"] = {
-    en = "update user information",
-  },
-  ["user:validate"] = {
-    en = "validate email address",
   },
 }

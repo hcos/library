@@ -1,6 +1,7 @@
 local Configuration = require "cosy.configuration"
 local I18n          = require "cosy.i18n"
 local Value         = require "cosy.value"
+local Cli           = require "cliargs"
 local Colors        = require "ansicolors"
 
 Configuration.load {
@@ -10,13 +11,10 @@ Configuration.load {
 }
 
 local i18n   = I18n.load {
-  "cosy",
   "cosy.commands",
   "cosy.daemon",
 }
 i18n._locale = Configuration.cli.default_locale._
-
-local Commands = {}
 
 local function read (filename)
   local file = io.open (filename, "r")
@@ -47,6 +45,117 @@ local function show_status (result)
     end
   end
   return result
+end
+
+local options = {}
+
+function options.global ()
+  Cli:add_flag (
+    "-d, --debug",
+    i18n ["flag:debug"] % {}
+  )
+  Cli:add_option (
+    "-l, --locale=LOCALE",
+    i18n ["option:locale"] % {},
+    Configuration.cli.default_locale._
+  )
+end
+
+function options.server ()
+  Cli:add_option (
+    "-s, --server=SERVER",
+    i18n ["option:server"] % {},
+    Configuration.cli.default_server._
+  )
+end
+
+function options.authentication ()
+  Cli:add_option (
+    "-t, --token=TOKEN",
+    i18n ["option:token"] % {}
+  )
+end
+
+function options.force ()
+  Cli:add_flag (
+    "-f, --force",
+    i18n ["flag:force"] % {}
+  )
+end
+
+function options.set (part, name, oftype)
+  print (part, name, oftype)
+end
+
+local Commands = {}
+
+function Commands.new (ws)
+  return setmetatable ({
+    ws = ws,
+  }, Commands)
+end
+
+function Commands.print_help (commands)
+  commands.ws:send (Value.expression {
+    server    = commands.server,
+    operation = "server:list-methods",
+  })
+  local result = Value.decode (commands.ws:receive ())
+  local name_size = 0
+  local names     = {}
+  local list      = {}
+  for name, description in pairs (result.response) do
+    name_size = math.max (name_size, #name)
+    names [#names+1] = name
+    list [name] = description
+  end
+  print (Colors ("%{white redbg}" .. i18n ["command:erroneous"] % {
+    cli = arg [0],
+  }))
+  print (i18n ["command:available"] % {})
+  table.sort (names)
+  for i = 1, #names do
+    local line = "  %{green}" .. names [i]
+    for _ = #line, name_size+12 do
+      line = line .. " "
+    end
+    line = line .. "%{yellow}" .. list [names [i]]
+    print (Colors (line))
+  end
+end
+
+function Commands.__index (commands, key)
+  local server
+  for i = 1, #_G.arg do
+    server = _G.arg [i]:match "^-s=(.)"
+          or _G.arg [i]:match "^--server=(.)"
+  end
+  if not server then
+    server = Configuration.cli.default_server._
+  end
+  commands.server = server
+  commands.ws:send (Value.expression {
+    server    = server,
+    operation = key .. "?",
+  })
+  local result = Value.decode (commands.ws:receive ())
+  if not result.success and result.error._ == "server:no-operation" then
+    Commands.print_help (commands)
+    os.exit (1)
+  end
+  print (Value.expression (result))
+  if not result.success then
+    show_status (result)
+    os.exit (1)
+  end
+  options.server ()
+  for part, t in pairs (parameters) do
+    for name, oftype in pairs (t) do
+      options.set (part, name, oftype)
+    end
+  end
+  -- TODO: generate cli dependeing on parameters
+  -- TODO: call method again
 end
 
 local function user_information (response)
@@ -92,277 +201,229 @@ local function user_information (response)
   end
 end
 
-local options = {}
-
-function options.global (cli)
-  cli:add_flag (
-    "-d, --debug",
-    i18n ["flag:debug"] % {}
-  )
-  cli:add_option (
-    "-l, --locale=LOCALE",
-    i18n ["option:locale"] % {},
-    Configuration.cli.default_locale._
-  )
-end
-
-function options.server (cli)
-  cli:add_option (
-    "-s, --server=SERVER",
-    i18n ["option:server"] % {},
-    Configuration.cli.default_server._
-  )
-end
-
-function options.authentication (cli)
-  cli:add_option (
-    "-t, --token=TOKEN",
-    i18n ["option:token"] % {}
-  )
-end
-
-function options.force (cli)
-  cli:add_flag (
-    "-f, --force",
-    i18n ["flag:force"] % {}
-  )
-end
-
-Commands ["daemon:stop"] = {
-  _   = i18n ["daemon:stop"],
-  run = function (cli, ws)
-    options.global (cli)
-    options.force  (cli)
-    Commands.args = cli:parse_args ()
-    if not Commands.args then
-      os.exit (1)
-    end
-    ws:send (Value.expression "daemon-stop")
-    local result = ws:receive ()
-    if not result then
-      result = {
-        success = false,
-        error   = {
-          _ = i18n ["daemon:unreachable"] % {},
-        },
-      }
-    else
-      result = Value.decode (result)
-    end
-    if not result.success and Commands.args.force then
-      os.execute ([==[
-        if [ -f "{{{pid}}}" ]
-        then
-          kill -9 $(cat {{{pid}}}) 2> /dev/null
-        fi
-      ]==] % {
-        pid = Configuration.daemon.pid_file._,
-      })
-      os.remove (Configuration.daemon.data_file._)
-      os.remove (Configuration.daemon.pid_file ._)
-      result = {
-        success  = true,
-        response = {
-          _ = i18n ["daemon:force-stop"] % {},
-        },
-      }
-    end
-    return show_status (result)
-  end,
-}
-
-Commands ["server:start"] = {
-  _   = i18n ["server:start"],
-  run = function (cli)
-    options.global (cli)
-    options.force  (cli)
-    cli:add_flag (
-      "-c, --clean",
-      i18n ["flag:clean"] % {}
-    )
-    Commands.args = cli:parse_args ()
-    if not Commands.args then
-      os.exit (1)
-    end
-    if Commands.args.clean then
-      Configuration.load "cosy.redis"
-      local Redis     = require "redis"
-      local host      = Configuration.redis.interface._
-      local port      = Configuration.redis.port._
-      local database  = Configuration.redis.database._
-      local client    = Redis.connect (host, port)
-      client:select (database)
-      client:flushdb ()
-      package.loaded ["redis"] = nil
-    end
-    if io.open (Configuration.server.pid_file._, "r") then
-      return {
-        success = false,
-        error   = {
-          _ = i18n ["server:already-running"] % {},
-        },
-      }
-    end
+Commands ["daemon:stop"] = function (cli, ws)
+  options.global (cli)
+  options.force  (cli)
+  Commands.args = cli:parse_args ()
+  if not Commands.args then
+    os.exit (1)
+  end
+  ws:send (Value.expression "daemon-stop")
+  local result = ws:receive ()
+  if not result then
+    result = {
+      success = false,
+      error   = {
+        _ = i18n ["daemon:unreachable"] % {},
+      },
+    }
+  else
+    result = Value.decode (result)
+  end
+  if not result.success and Commands.args.force then
     os.execute ([==[
       if [ -f "{{{pid}}}" ]
       then
         kill -9 $(cat {{{pid}}}) 2> /dev/null
       fi
-      rm -f {{{pid}}} {{{log}}}
-      luajit -e '_G.logfile = "{{{log}}}"; require "cosy.server" .start ()' &
+    ]==] % {
+      pid = Configuration.daemon.pid_file._,
+    })
+    os.remove (Configuration.daemon.data_file._)
+    os.remove (Configuration.daemon.pid_file ._)
+    result = {
+      success  = true,
+      response = {
+        _ = i18n ["daemon:force-stop"] % {},
+      },
+    }
+  end
+  return show_status (result)
+end
+
+Commands ["server:start"] = function (cli)
+  options.global (cli)
+  options.force  (cli)
+  cli:add_flag (
+    "-c, --clean",
+    i18n ["flag:clean"] % {}
+  )
+  Commands.args = cli:parse_args ()
+  if not Commands.args then
+    os.exit (1)
+  end
+  if Commands.args.clean then
+    Configuration.load "cosy.redis"
+    local Redis     = require "redis"
+    local host      = Configuration.redis.interface._
+    local port      = Configuration.redis.port._
+    local database  = Configuration.redis.database._
+    local client    = Redis.connect (host, port)
+    client:select (database)
+    client:flushdb ()
+    package.loaded ["redis"] = nil
+  end
+  if io.open (Configuration.server.pid_file._, "r") then
+    return {
+      success = false,
+      error   = {
+        _ = i18n ["server:already-running"] % {},
+      },
+    }
+  end
+  os.execute ([==[
+    if [ -f "{{{pid}}}" ]
+    then
+      kill -9 $(cat {{{pid}}}) 2> /dev/null
+    fi
+    rm -f {{{pid}}} {{{log}}}
+    luajit -e '_G.logfile = "{{{log}}}"; require "cosy.server" .start ()' &
+  ]==] % {
+    pid = Configuration.server.pid_file._,
+    log = Configuration.server.log_file._,
+  })
+  local tries = 0
+  local serverdata
+  repeat
+    os.execute ([[sleep {{{time}}}]] % { time = 0.5 })
+    serverdata = read (Configuration.server.data_file._)
+    tries      = tries + 1
+  until serverdata or tries == 10
+  if not serverdata then
+    return {
+      success = false,
+      error   = {
+        _ = i18n ["server:unreachable"] % {},
+      },
+    }
+  end
+  return show_status {
+    success = true,
+  }
+end
+
+Commands ["server:stop"] = function (cli, ws)
+  local serverdata = read (Configuration.server.data_file._)
+  options.global (cli)
+  options.server (cli)
+  options.force  (cli)
+  cli:add_option (
+    "-t, --token=TOKEN",
+    i18n ["option:token"] % {},
+    serverdata and serverdata.token or ""
+  )
+  Commands.args = cli:parse_args ()
+  if not Commands.args then
+    os.exit (1)
+  end
+  ws:send (Value.expression {
+    server     = Commands.args.server,
+    operation  = "stop",
+    parameters = {
+      server = Commands.args.server,
+      token  = Commands.args.token,
+      locale = Commands.args.locale,
+    },
+  })
+  local result = ws:receive ()
+  if not result then
+    result = {
+      success = false,
+      error   = {
+        _ = i18n ["daemon:unreachable"] % {},
+      },
+    }
+  else
+    result = Value.decode (result)
+  end
+  if not result.success and Commands.args.force then
+    os.execute ([==[
+      if [ -f "{{{pid}}}" ]
+      then
+        kill -9 $(cat {{{pid}}}) 2> /dev/null
+      fi
     ]==] % {
       pid = Configuration.server.pid_file._,
-      log = Configuration.server.log_file._,
     })
-    local tries = 0
-    local serverdata
-    repeat
-      os.execute ([[sleep {{{time}}}]] % { time = 0.5 })
-      serverdata = read (Configuration.server.data_file._)
-      tries      = tries + 1
-    until serverdata or tries == 10
-    if not serverdata then
-      return {
-        success = false,
-        error   = {
-          _ = i18n ["server:unreachable"] % {},
-        },
-      }
-    end
-    return show_status {
-      success = true,
+    os.remove (Configuration.server.data_file._)
+    os.remove (Configuration.server.pid_file ._)
+    result = {
+      success  = true,
+      response = {
+        _ = i18n ["server:force-stop"] % {},
+      },
     }
-  end,
-}
-Commands ["server:stop"] = {
-  _   = i18n ["server:stop"],
-  run = function (cli, ws)
-    local serverdata = read (Configuration.server.data_file._)
-    options.global (cli)
-    options.server (cli)
-    options.force  (cli)
-    cli:add_option (
-      "-t, --token=TOKEN",
-      i18n ["option:token"] % {},
-      serverdata and serverdata.token or ""
-    )
-    Commands.args = cli:parse_args ()
-    if not Commands.args then
-      os.exit (1)
-    end
-    ws:send (Value.expression {
-      server     = Commands.args.server,
-      operation  = "stop",
-      parameters = {
-        server = Commands.args.server,
-        token  = Commands.args.token,
-        locale = Commands.args.locale,
-      },
-    })
-    local result = ws:receive ()
-    if not result then
-      result = {
-        success = false,
-        error   = {
-          _ = i18n ["daemon:unreachable"] % {},
-        },
-      }
-    else
-      result = Value.decode (result)
-    end
-    if not result.success and Commands.args.force then
-      os.execute ([==[
-        if [ -f "{{{pid}}}" ]
-        then
-          kill -9 $(cat {{{pid}}}) 2> /dev/null
-        fi
-      ]==] % {
-        pid = Configuration.server.pid_file._,
-      })
-      os.remove (Configuration.server.data_file._)
-      os.remove (Configuration.server.pid_file ._)
-      result = {
-        success  = true,
-        response = {
-          _ = i18n ["server:force-stop"] % {},
-        },
-      }
-    end
-    return show_status (result)
-  end,
-}
+  end
+  return show_status (result)
+end
 
-Commands ["show:information"] = {
-  _   = i18n ["show:information"],
-  run = function (cli, ws)
-    options.global (cli)
-    options.server (cli)
-    Commands.args = cli:parse_args ()
-    if not Commands.args then
-      os.exit (1)
+Commands ["show:information"] = function (cli, ws)
+  options.global (cli)
+  options.server (cli)
+  Commands.args = cli:parse_args ()
+  if not Commands.args then
+    os.exit (1)
+  end
+  ws:send (Value.expression {
+    server     = Commands.args.server,
+    operation  = "information",
+    parameters = {
+      locale = Commands.args.locale,
+    },
+  })
+  local result = ws:receive ()
+  result = Value.decode (result)
+  show_status (result)
+  if result.success then
+    local max  = 0
+    local keys = {}
+    for key in pairs (result.response) do
+      keys [#keys+1] = key
+      max = math.max (max, #key)
     end
-    ws:send (Value.expression {
-      server     = Commands.args.server,
-      operation  = "information",
-      parameters = {
-        locale = Commands.args.locale,
-      },
-    })
-    local result = ws:receive ()
-    result = Value.decode (result)
-    show_status (result)
-    if result.success then
-      local max  = 0
-      local keys = {}
-      for key in pairs (result.response) do
-        keys [#keys+1] = key
-        max = math.max (max, #key)
+    for i = 1, #keys do
+      local key   = keys [i]
+      local value = result.response [key]
+      local space = ""
+      for _ = #key, max+3 do
+        space = space .. " "
       end
-      for i = 1, #keys do
-        local key   = keys [i]
-        local value = result.response [key]
-        local space = ""
-        for _ = #key, max+3 do
-          space = space .. " "
-        end
-        space = space .. " => "
-        print (Colors ("%{black yellowbg}" .. tostring (key)) ..
-               Colors ("%{reset}" .. space) ..
-               Colors ("%{yellow blackbg}" .. tostring (value)))
-      end
+      space = space .. " => "
+      print (Colors ("%{black yellowbg}" .. tostring (key)) ..
+             Colors ("%{reset}" .. space) ..
+             Colors ("%{yellow blackbg}" .. tostring (value)))
     end
-    return result
-  end,
-}
+  end
+  return result
+end
 
-Commands ["show:tos"] = {
-  _   = i18n ["show:tos"],
-  run = function (cli, ws)
-    options.global (cli)
-    options.server (cli)
-    Commands.args = cli:parse_args ()
-    if not Commands.args then
-      os.exit (1)
-    end
-    ws:send (Value.expression {
-      server     = Commands.args.server,
-      operation  = "tos",
-      parameters = {
-        locale = Commands.args.locale,
-      },
-    })
-    local result = ws:receive ()
-    result = Value.decode (result)
-    show_status (result)
-    if result.success then
-      print (result.response.tos)
-      print (Colors ("%{black yellowbg}" .. "digest") ..
-             Colors ("%{reset}" .. " => ") ..
-             Colors ("%{yellow blackbg}" .. result.response.tos_digest))
-    end
-    return result
-  end,
-}
+--[[
+Commands ["show:tos"] = function (cli, ws)
+  options.global (cli)
+  options.server (cli)
+  Commands.args = cli:parse_args ()
+  if not Commands.args then
+    os.exit (1)
+  end
+  ws:send (Value.expression {
+    server     = Commands.args.server,
+    operation  = "tos",
+    parameters = {
+      locale = Commands.args.locale,
+    },
+  })
+  local result = ws:receive ()
+  result = Value.decode (result)
+  show_status (result)
+  if result.success then
+    print (result.response.tos)
+    print (Colors ("%{black yellowbg}" .. "digest") ..
+           Colors ("%{reset}" .. " => ") ..
+           Colors ("%{yellow blackbg}" .. result.response.tos_digest))
+  end
+  return result
+end
+--]]
 
 -- http://lua.2524044.n2.nabble.com/Reading-passwords-in-a-console-application-td6641037.html
 local function getpassword ()
@@ -383,9 +444,7 @@ local function getpassword ()
   end 
 end
 
-Commands ["user:create"] = {
-  _   = i18n ["user:create"],
-  run = function (cli, ws)
+Commands ["user:create"] = function (cli, ws)
     options.global (cli)
     options.server (cli)
     cli:add_argument (
@@ -438,12 +497,9 @@ Commands ["user:create"] = {
     local result = ws:receive ()
     result = Value.decode (result)
     return show_status (result)
-  end,
-}
+  end
 
-Commands ["user:authenticate"] = {
-  _   = i18n ["user:authenticate"],
-  run = function (cli, ws)
+Commands ["user:authenticate"] = function (cli, ws)
     options.global (cli)
     options.server (cli)
     cli:add_argument (
@@ -459,21 +515,19 @@ Commands ["user:authenticate"] = {
     local password = getpassword ()
     ws:send (Value.expression {
       server     = Commands.args.server,
-      operation  = "user:authenticate",
+      operation  = "user:authenticate?",
       parameters = {
         username   = Commands.args.username,
         password   = password,
       },
     })
     local result = ws:receive ()
+    print (result)
     result = Value.decode (result)
     return show_status (result)
-  end,
-}
+  end
 
-Commands ["user:delete"] = {
-  _   = i18n ["user:delete"],
-  run = function (cli, ws)
+Commands ["user:delete"] = function (cli, ws)
     options.global         (cli)
     options.server         (cli)
     options.authentication (cli)
@@ -490,12 +544,9 @@ Commands ["user:delete"] = {
     local result = ws:receive ()
     result = Value.decode (result)
     return show_status (result)
-  end,
-}
+  end
 
-Commands ["user:reset"] = {
-  _   = i18n ["user:reset"],
-  run = function (cli, ws)
+Commands ["user:reset"] = function (cli, ws)
     options.global (cli)
     options.server (cli)
     cli:add_argument (
@@ -517,12 +568,9 @@ Commands ["user:reset"] = {
     local result = ws:receive ()
     result = Value.decode (result)
     return show_status (result)
-  end,
-}
+  end
 
-Commands ["user:recover"] = {
-  _   = i18n ["user:recover"],
-  run = function (cli, ws)
+Commands ["user:recover"] =  function (cli, ws)
     options.global (cli)
     options.server (cli)
     cli:add_argument (
@@ -555,12 +603,9 @@ Commands ["user:recover"] = {
     local result = ws:receive ()
     result = Value.decode (result)
     return show_status (result)
-  end,
-}
+  end
 
-Commands ["user:suspend"] = {
-  _   = i18n ["user:suspend"],
-  run = function (cli, ws)
+Commands ["user:suspend"] = function (cli, ws)
     options.global         (cli)
     options.server         (cli)
     options.authentication (cli)
@@ -583,12 +628,9 @@ Commands ["user:suspend"] = {
     local result = ws:receive ()
     result = Value.decode (result)
     return show_status (result)
-  end,
-}
+  end
 
-Commands ["user:release"] = {
-  _   = i18n ["user:release"],
-  run = function (cli, ws)
+Commands ["user:release"] = function (cli, ws)
     options.global         (cli)
     options.server         (cli)
     options.authentication (cli)
@@ -611,12 +653,9 @@ Commands ["user:release"] = {
     local result = ws:receive ()
     result = Value.decode (result)
     return show_status (result)
-  end,
-}
+  end
 
-Commands ["user:update"] = {
-  _   = i18n ["user:update"],
-  run = function (cli, ws)
+Commands ["user:update"] = function (cli, ws)
     options.server         (cli)
     options.authentication (cli)
     cli:add_flag (
@@ -732,12 +771,9 @@ Commands ["user:update"] = {
       user_information (result.response)
     end
     return result
-  end,
-}
+  end
 
-Commands ["user:information"] = {
-  _   = i18n ["user:information"],
-  run = function (cli, ws)
+Commands ["user:information"] = function (cli, ws)
     options.global (cli)
     options.server (cli)
     cli:add_argument (
@@ -762,12 +798,9 @@ Commands ["user:information"] = {
       user_information (result.response)
     end
     return result
-  end,
-}
+  end
 
-Commands ["user:send-validation"] = {
-  _   = i18n ["user:send-validation"],
-  run = function (cli, ws)
+Commands ["user:send-validation"] = function (cli, ws)
     options.global (cli)
     options.server (cli)
     options.authentication (cli)
@@ -783,12 +816,9 @@ Commands ["user:send-validation"] = {
     local result = ws:receive ()
     result = Value.decode (result)
     return show_status (result)
-  end,
-}
+  end
 
-Commands ["user:validate"] = {
-  _   = i18n ["user:validate"],
-  run = function (cli, ws)
+Commands ["user:validate"] = function (cli, ws)
     options.global (cli)
     options.server (cli)
     cli:add_argument (
@@ -809,7 +839,6 @@ Commands ["user:validate"] = {
     local result = ws:receive ()
     result = Value.decode (result)
     return show_status (result)
-  end,
-}
+  end
 
 return Commands

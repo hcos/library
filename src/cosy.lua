@@ -5,34 +5,40 @@ local Loader        = require "cosy.loader"
 local Configuration = require "cosy.configuration"
 local Value         = require "cosy.value"
 local Lfs           = require "lfs"
-local Cli           = require "cliargs"
 local I18n          = require "cosy.i18n"
+local Cli           = require "cliargs"
 local Colors        = require "ansicolors"
 local Websocket     = require "websocket"
 
-Configuration.load "cosy"
-Configuration.load "cosy.daemon"
+Configuration.load {
+  "cosy",
+  "cosy.daemon",
+}
 
-local i18n   = I18n.load "cosy"
+local i18n   = I18n.load {
+  "cosy",
+  "cosy.commands",
+  "cosy.daemon",
+}
 i18n._locale = Configuration.cli.default_locale._
 
 local directory  = Configuration.cli.directory._
 Lfs.mkdir (directory)
 
 local Commands = require "cosy.commands"
-local command = Commands [arg [1] or false]
 
+  --[==[
 if not command then
   local name_size = 0
   local names     = {}
   local list      = {}
-  for name, c in pairs (Commands) do
+  for name in pairs (Commands) do
     name_size = math.max (name_size, #name)
     names [#names+1] = name
-    list [name] = I18n (c)
+    list [name] = i18n [name] % {}
   end
   print (Colors ("%{white redbg}" .. i18n ["command:missing"] % {
-    cli    = arg [0],
+    cli = arg [0],
   }))
   print (i18n ["command:available"] % {})
   table.sort (names)
@@ -46,6 +52,7 @@ if not command then
   end
   os.exit (1)
 end
+  --]==]
 
 local function read (filename)
   local file = io.open (filename, "r")
@@ -94,9 +101,13 @@ or not ws:connect ("ws://{{{interface}}}:{{{port}}}/ws" % {
   end
 end
 
+local commands = Commands.new (ws)
+local command  = commands [arg [1] or false]
+
 Cli:set_name (_G.arg [0] .. " " .. _G.arg [1])
 table.remove (_G.arg, 1)
-local result = command.run (Cli, ws)
+
+local result = command ()
 if result.success then
   os.exit (0)
 else
