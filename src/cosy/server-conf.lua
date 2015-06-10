@@ -9,6 +9,7 @@ Internal.server = {
   log_file  = os.getenv "HOME" .. "/.cosy/server.log",
   pid_file  = os.getenv "HOME" .. "/.cosy/server.pid",
 }
+Internal.redis.retry = 5
 
 -- Set www path:
 local main = package.searchpath ("cosy.server", package.path)
