@@ -64,14 +64,14 @@ function I18n.__call (i18n, data)
   if type (data) ~= "table" then
     return data
   end
-  local locale = data.locale or data._locale or i18n._locale or "en"
-  local function translate (t)
+  local function translate (locale, t)
+    locale = t.locale or locale
     if type (t) ~= "table" then
       return t
     end
     for _, v in pairs (t) do
       if type (v) == "table" and not getmetatable (v) then
-        translate (v)
+        translate (locale, v)
       end
     end
     if t._ then
@@ -80,9 +80,10 @@ function I18n.__call (i18n, data)
       t._       = t._._key
       t.locale  = nil
     end
-    return t.message
+    return t
   end
-  return translate (data)
+  local locale = data.locale or data._locale or i18n._locale or "en"
+  return translate (locale, data)
 end
 
 Metatable.__call = I18n.__call
