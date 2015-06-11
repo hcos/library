@@ -17,6 +17,12 @@ local i18n   = I18n.load {
 }
 i18n._locale = Configuration.cli.default_locale._
 
+if _G.nocolor then
+  Colors = function (s)
+    return s:gsub ("(%%{(.-)})", "")
+  end
+end
+
 local function read (filename)
   local file = io.open (filename, "r")
   if not file then
