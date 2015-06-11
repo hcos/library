@@ -19,10 +19,10 @@ local libraries = {}
 return function (message)
   local decoded, request = pcall (Value.decode, message)
   if not decoded or type (request) ~= "table" then
-    return Value.expression ({
+    return Value.expression (i18n {
       success = false,
       error   = i18n {
-        _ = i18n ["message:invalid"],
+        _ = i18n ["message:invalid"] % {},
       },
     })
   end
@@ -31,12 +31,12 @@ return function (message)
   if not lib then
     lib = Library.connect (server)
     if not lib then
-      return {
+      return Value.expression (i18n {
         success = false,
         error   = {
           _ = i18n ["server:unreachable"] % {},
         },
-      }
+      })
     end
     libraries [server] = lib
   end
