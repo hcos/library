@@ -233,7 +233,7 @@ do
     local request = t.request
     local value   = request [t.key]
     local Methods = require "cosy.methods"
-    local tos = Methods.tos { locale = request.locale }
+    local tos = Methods.server.tos { locale = request.locale }
     return  tos.tos_digest == value
         or  nil, {
               _          = i18n ["check:tos_digest:incorrect"],
