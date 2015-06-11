@@ -102,12 +102,16 @@ or not ws:connect ("ws://{{{interface}}}:{{{port}}}/ws" % {
 end
 
 local commands = Commands.new (ws)
-local command  = commands [arg [1] or false]
+local command  = commands [_G.arg [1] or false]
 
 Cli:set_name (_G.arg [0] .. " " .. _G.arg [1])
 table.remove (_G.arg, 1)
 
-local result = command ()
+local ok, result = pcall (command)
+if not ok then
+  print (Value.expression (result))
+  print (Colors ("%{white redbg}" .. i18n (result.error).message))
+end
 if result.success then
   os.exit (0)
 else

@@ -3,6 +3,7 @@ local I18n          = require "cosy.i18n"
 local Value         = require "cosy.value"
 local Cli           = require "cliargs"
 local Colors        = require "ansicolors"
+local Websocket     = require "websocket"
 
 Configuration.load {
   "cosy",
@@ -26,6 +27,25 @@ local function read (filename)
   return Value.decode (data)
 end
 
+-- http://lua.2524044.n2.nabble.com/Reading-passwords-in-a-console-application-td6641037.html
+local function getpassword ()
+  local stty_ret = os.execute ("stty -echo 2>/dev/null")
+  if stty_ret ~= 0 then
+    io.write("\027[08m") -- ANSI 'hidden' text attribute 
+  end 
+  local ok, pass = pcall (io.read, "*l")
+  if stty_ret == 0 then
+    os.execute("stty sane")
+  else 
+    io.write("\027[00m")
+  end 
+  io.write("\n")
+  os.execute("stty sane") 
+  if ok then 
+    return pass
+  end 
+end
+
 local function show_status (result)
   assert (type (result) == "table")
   if result.success then
@@ -34,60 +54,119 @@ local function show_status (result)
     end
     print (Colors ("%{black greenbg}" .. i18n ["success"] % {}),
            Colors ("%{green blackbg}" .. (result.response.message ~= nil and tostring (result.response.message) or "")))
-    if Commands.args.debug then
-      print (Colors ("%{dim green whitebg}" .. Value.expression (result)))
-    end
   elseif result.error then
     print (Colors ("%{black redbg}" .. i18n ["failure"] % {}),
            Colors ("%{red blackbg}" .. (result.error.message ~= nil and tostring (result.error.message) or "")))
-    if Commands.args.debug then
-      print (Colors ("%{dim red whitebg}" .. Value.expression (result)))
-    end
   end
   return result
 end
 
-local options = {}
-
-function options.global ()
-  Cli:add_flag (
-    "-d, --debug",
-    i18n ["flag:debug"] % {}
-  )
-  Cli:add_option (
-    "-l, --locale=LOCALE",
-    i18n ["option:locale"] % {},
-    Configuration.cli.default_locale._
-  )
-end
-
-function options.server ()
-  Cli:add_option (
-    "-s, --server=SERVER",
-    i18n ["option:server"] % {},
-    Configuration.cli.default_server._
-  )
-end
-
-function options.authentication ()
-  Cli:add_option (
-    "-t, --token=TOKEN",
-    i18n ["option:token"] % {}
-  )
-end
-
-function options.force ()
-  Cli:add_flag (
-    "-f, --force",
-    i18n ["flag:force"] % {}
-  )
-end
-
-function options.set (part, name, oftype)
-  print (part, name, oftype)
-end
-
 local Commands = {}
+local Prepares = {}
+local Options  = {}
+local Results  = {}
+
+function Options.set (part, name, oftype)
+  if     part == "optional" and name == "server" then
+    Cli:add_option (
+      "-s, --server=SERVER",
+      i18n ["option:server"] % {},
+      Configuration.cli.default_server._
+    )
+  elseif part == "optional" and name == "debug" then
+    Cli:add_flag (
+      "-d, --debug",
+      i18n ["flag:debug"] % {}
+    )
+  elseif part == "optional" and name == "force" then
+    Cli:add_flag (
+      "-f, --force",
+      i18n ["flag:force"] % {}
+    )
+  elseif part == "optional" and name == "clean" then
+    Cli:add_flag (
+      "-c, --clean",
+      i18n ["flag:clean"] % {}
+    )
+  elseif oftype == "locale" then
+    Cli:add_option (
+      "-l, --locale=LOCALE",
+      i18n ["option:locale"] % {},
+      Configuration.cli.default_locale._
+    )
+  elseif oftype == "token.authentication" then
+    Cli:add_option (
+      "-t, --token=TOKEN",
+      i18n ["option:token:authentication"] % {}
+    )
+  elseif oftype == "token.validation"and part == "required" then
+    Cli:add_argument (
+      "token",
+      i18n ["argument:token:validation"] % {}
+    )
+  elseif oftype == "username" and part == "required" then
+    Cli:add_argument (
+      "username",
+      i18n ["argument:username"] % {}
+    )
+  elseif oftype == "username" and part == "optional" then
+    Cli:add_option (
+      "-u, --username=USERNAME",
+      i18n ["option:username"] % {}
+    )
+  elseif oftype == "email" and part == "required" then
+    Cli:add_argument (
+      "email",
+      i18n ["argument:email"] % {}
+    )
+  elseif oftype == "email" and part == "optional" then
+    Cli:add_option (
+      "-e, --email=EMAIL",
+      i18n ["argument:email"] % {}
+    )
+  elseif oftype == "avatar" and part == "optional" then
+    Cli:add_option (
+      "-a, --avatar=PATH_or_URL",
+      i18n ["option:avatar"] % {}
+    )
+  elseif oftype == "homepage" and part == "optional" then
+    Cli:add_option (
+      "-m, --homepage=URL",
+      i18n ["option:homepage"] % {}
+    )
+  elseif oftype == "name" and part == "optional" then
+    Cli:add_option (
+      "-n, --name=FULL-NAME",
+      i18n ["option:name"] % {}
+    )
+  elseif oftype == "organization" and part == "optional" then
+    Cli:add_option (
+      "-o, --organization=ORGANIZATION",
+      i18n ["option:organization"] % {}
+    )
+  elseif oftype == "password.checked" and part == "required" then
+    Cli:add_flag (
+      "-p, --password",
+      i18n ["flag:password"] % {},
+      true
+    )
+  elseif oftype == "password.checked" and part == "optional" then
+    Cli:add_flag (
+      "-p, --password",
+      i18n ["flag:password"] % {}
+    )
+  elseif oftype == "tos_digest" then
+    Cli:add_option (
+      "-t, --tos=TOS_DIGEST",
+      i18n ["option:tos"] % {}
+    )
+  elseif oftype == "position" and part == "optional" then
+    -- do nothing
+  else
+    print (part, name, oftype)
+    assert (false)
+  end
+end
 
 function Commands.new (ws)
   return setmetatable ({
@@ -104,6 +183,10 @@ function Commands.print_help (commands)
   local name_size = 0
   local names     = {}
   local list      = {}
+  if not result.success then
+    show_status (result)
+    os.exit (1)
+  end
   for name, description in pairs (result.response) do
     name_size = math.max (name_size, #name)
     names [#names+1] = name
@@ -125,6 +208,11 @@ function Commands.print_help (commands)
 end
 
 function Commands.__index (commands, key)
+  if Commands [key] then
+    return function ()
+      return Commands [key] (commands)
+    end
+  end
   local server
   for i = 1, #_G.arg do
     server = _G.arg [i]:match "^-s=(.)"
@@ -134,6 +222,10 @@ function Commands.__index (commands, key)
     server = Configuration.cli.default_server._
   end
   commands.server = server
+  if not key then
+    Commands.print_help (commands)
+    os.exit (1)
+  end
   commands.ws:send (Value.expression {
     server    = server,
     operation = key .. "?",
@@ -143,75 +235,146 @@ function Commands.__index (commands, key)
     Commands.print_help (commands)
     os.exit (1)
   end
-  print (Value.expression (result))
   if not result.success then
     show_status (result)
     os.exit (1)
   end
-  options.server ()
-  for part, t in pairs (parameters) do
+  if not result.response.optional then
+    result.response.optional = {}
+  end
+  result.response.optional.debug  = "debug"
+  result.response.optional.server = "server"
+  local option_names = {}
+  local option_parts = {}
+  local option_types = {}
+  for part, t in pairs (result.response) do
     for name, oftype in pairs (t) do
-      options.set (part, name, oftype)
+      option_names [#option_names+1] = name
+      option_parts [name] = part
+      option_types [name] = oftype
     end
   end
-  -- TODO: generate cli dependeing on parameters
-  -- TODO: call method again
-end
-
-local function user_information (response)
-  if response.avatar then
-    local avatar          = response.avatar
-    local input_filename  = os.tmpname ()
-    local file = io.open (input_filename, "w")
-    file:write (avatar.content)
-    file:close ()
-    os.execute ([[
-      img2txt -W 40 -H 20 {{{input}}} 2> /dev/null
-    ]] % {
-      input  = input_filename,
+  table.sort (option_names)
+  for i = 1, #option_names do
+    local name   = option_names [i]
+    local part   = option_parts [name]
+    local oftype = option_types [name]
+    Options.set (part, name, oftype)
+  end
+  return function ()
+    local args, s = Cli:parse_args ()
+    if not args then
+      if not s:match "^Usage" then
+        Cli:print_help ()
+      end
+      os.exit (1)
+    end
+    if Prepares [key] then
+      Prepares [key] (commands, args)
+    end
+    local parameters = {}
+    for _, t in pairs (result.response) do
+      for name, oftype in pairs (t) do
+        if not args [name] then
+          -- do nothing
+        elseif oftype == "password" then
+          args [name] = getpassword ()
+        elseif oftype == "password.checked" then
+          local passwords = {}
+          repeat
+            for i = 1, 2 do
+              io.write (i18n ["argument:password" .. tostring (i)] % {} .. " ")
+              passwords [i] = getpassword ()
+            end
+            if passwords [1] ~= passwords [2] then
+              print (i18n ["argument:password:nomatch"] % {})
+            end
+          until passwords [1] == passwords [2]
+          parameters [name] = passwords [1]
+        elseif oftype == "token.authentication" then
+          -- do nothing
+        elseif oftype == "avatar" then
+          local avatar = args [name]
+          if avatar:match "^https?://" then
+            local request = require "socket.http" .request
+            local body, status = request (avatar)
+            if status ~= 200 then
+              return {
+                success = false,
+                error   = {
+                  _ = i18n ["url:not-found"] % {
+                    url    = avatar,
+                    status = status,
+                  },
+                },
+              }
+            end
+            args [name] = {
+              source  = avatar,
+              content = body,
+            }
+          else
+            if avatar:match "^~" then
+              avatar = os.getenv "HOME" .. avatar:sub (2)
+            end
+            local file, err = io.open (avatar, "r")
+            if file then
+              args [name] = {
+                source  = avatar,
+                content = file:read "*all",
+              }
+              file:close ()
+            else
+              return {
+                success = false,
+                error   = {
+                  _ = i18n ["file:not-found"] % {
+                    filename = avatar,
+                    reason   = err,
+                  },
+                },
+              }
+            end
+          end
+        else
+          parameters [name] = args [name]
+        end
+      end
+    end
+    parameters.server = nil
+    parameters.debug  = nil
+    commands.ws:send (Value.expression {
+      server     = server,
+      operation  = key,
+      parameters = parameters,
     })
-    os.remove (input_filename)
-    response.avatar  = nil
-  end
-  if response.position then
-    response.position = "{{{country}}}/{{{city}}}" % response.position
-  end
-  if response.lastseen then
-    response.lastseen = os.date ("%x, %X", response.lastseen)
-  end
-  local max  = 0
-  local keys = {}
-  for key in pairs (response) do
-    keys [#keys+1] = key
-    max = math.max (max, #key)
-  end
-  max = max + 3
-  table.sort (keys)
-  for i = 1, #keys do
-    local key   = keys [i]
-    local value = response [key]
-    local space = ""
-    for _ = #key, max do
-      space = space .. " "
+    result = commands.ws:receive ()
+    result = Value.decode (result)
+    show_status (result)
+    if  result.success
+    and type (result.response) == "table"
+    and Results [key] then
+      Results [key] (result.response)
     end
-    space = space .. " => "
-    print (Colors ("%{black yellowbg}" .. tostring (key)) ..
-           Colors ("%{reset}" .. space) ..
-           Colors ("%{yellow blackbg}" .. tostring (value)))
+    if args.debug then
+      print (Colors ("%{white yellowbg}" .. Value.expression (result)))
+    end
+    return result
   end
 end
 
-Commands ["daemon:stop"] = function (cli, ws)
-  options.global (cli)
-  options.force  (cli)
-  Commands.args = cli:parse_args ()
-  if not Commands.args then
+Commands ["daemon:stop"] = function (commands)
+  Options.set ("optional", "debug" , "debug" )
+  Options.set ("optional", "force" , "force" )
+  Options.set ("optional", "server", "server")
+  local args = Cli:parse_args ()
+  if not args then
     os.exit (1)
   end
-  ws:send (Value.expression "daemon-stop")
-  local result = ws:receive ()
+  commands.ws:send "daemon-stop"
+  local result = commands.ws:receive ()
   if not result then
-    result = {
+    result = i18n {
       success = false,
       error   = {
         _ = i18n ["daemon:unreachable"] % {},
@@ -220,7 +383,7 @@ Commands ["daemon:stop"] = function (cli, ws)
   else
     result = Value.decode (result)
   end
-  if not result.success and Commands.args.force then
+  if not result.success and args.force then
     os.execute ([==[
       if [ -f "{{{pid}}}" ]
       then
@@ -231,28 +394,48 @@ Commands ["daemon:stop"] = function (cli, ws)
     })
     os.remove (Configuration.daemon.data_file._)
     os.remove (Configuration.daemon.pid_file ._)
-    result = {
+    result = i18n {
       success  = true,
       response = {
         _ = i18n ["daemon:force-stop"] % {},
       },
     }
   end
-  return show_status (result)
+  show_status (result)
+  if args.debug then
+    print (Colors ("%{white yellowbg}" .. Value.expression (result)))
+  end
+  return result
 end
 
-Commands ["server:start"] = function (cli)
-  options.global (cli)
-  options.force  (cli)
-  cli:add_flag (
+Commands ["server:start"] = function ()
+  Options.set ("optional", "debug" , "debug" )
+  Options.set ("optional", "server", "server")
+  Cli:add_flag (
     "-c, --clean",
     i18n ["flag:clean"] % {}
   )
-  Commands.args = cli:parse_args ()
-  if not Commands.args then
+  local args = Cli:parse_args ()
+  if not args then
+--    Cli:print_help ()
     os.exit (1)
   end
-  if Commands.args.clean then
+  do
+    local ws = Websocket.client.sync {
+      timeout = 5,
+    }
+    local url = args.server:gsub ("^http", "ws"):gsub ("/$", "") .. "/ws"
+    if ws:connect (url) then
+      local result = i18n {
+        success = false,
+        error   = {
+          _ = i18n ["server:already-running"] % {},
+        },
+      }
+      return show_status (result)
+    end
+  end
+  if args.clean then
     Configuration.load "cosy.redis"
     local Redis     = require "redis"
     local host      = Configuration.redis.interface._
@@ -289,45 +472,52 @@ Commands ["server:start"] = function (cli)
     serverdata = read (Configuration.server.data_file._)
     tries      = tries + 1
   until serverdata or tries == 10
-  if not serverdata then
-    return {
+  local result
+  if serverdata then
+    result = {
+      success = true,
+    }
+  else
+    result = i18n {
       success = false,
       error   = {
         _ = i18n ["server:unreachable"] % {},
       },
     }
   end
-  return show_status {
-    success = true,
-  }
+  show_status (result)
+  if args.debug then
+    print (Colors ("%{white yellowbg}" .. Value.expression (result)))
+  end
+  return result
 end
 
-Commands ["server:stop"] = function (cli, ws)
+Commands ["server:stop"] = function (commands)
   local serverdata = read (Configuration.server.data_file._)
-  options.global (cli)
-  options.server (cli)
-  options.force  (cli)
-  cli:add_option (
+  Options.set ("optional", "debug" , "debug" )
+  Options.set ("optional", "force" , "force" )
+  Options.set ("optional", "server", "server")
+  Cli:add_option (
     "-t, --token=TOKEN",
-    i18n ["option:token"] % {},
-    serverdata and serverdata.token or ""
+    "administration token",
+    serverdata and serverdata.token or nil
   )
-  Commands.args = cli:parse_args ()
-  if not Commands.args then
+  local args = Cli:parse_args ()
+  if not args then
     os.exit (1)
   end
-  ws:send (Value.expression {
-    server     = Commands.args.server,
-    operation  = "stop",
+  commands.ws:send (Value.expression {
+    server     = args.server,
+    operation  = "server:stop",
     parameters = {
-      server = Commands.args.server,
-      token  = Commands.args.token,
-      locale = Commands.args.locale,
+      server         = args.server,
+      authentication = args.token,
+      locale         = args.locale,
     },
   })
-  local result = ws:receive ()
+  local result = commands.ws:receive ()
   if not result then
-    result = {
+    result = i18n {
       success = false,
       error   = {
         _ = i18n ["daemon:unreachable"] % {},
@@ -336,7 +526,7 @@ Commands ["server:stop"] = function (cli, ws)
   else
     result = Value.decode (result)
   end
-  if not result.success and Commands.args.force then
+  if not result.success and args.force then
     os.execute ([==[
       if [ -f "{{{pid}}}" ]
       then
@@ -347,498 +537,110 @@ Commands ["server:stop"] = function (cli, ws)
     })
     os.remove (Configuration.server.data_file._)
     os.remove (Configuration.server.pid_file ._)
-    result = {
+    result = i18n {
       success  = true,
       response = {
         _ = i18n ["server:force-stop"] % {},
       },
     }
   end
-  return show_status (result)
-end
-
-Commands ["show:information"] = function (cli, ws)
-  options.global (cli)
-  options.server (cli)
-  Commands.args = cli:parse_args ()
-  if not Commands.args then
-    os.exit (1)
-  end
-  ws:send (Value.expression {
-    server     = Commands.args.server,
-    operation  = "information",
-    parameters = {
-      locale = Commands.args.locale,
-    },
-  })
-  local result = ws:receive ()
-  result = Value.decode (result)
   show_status (result)
-  if result.success then
-    local max  = 0
-    local keys = {}
-    for key in pairs (result.response) do
-      keys [#keys+1] = key
-      max = math.max (max, #key)
-    end
-    for i = 1, #keys do
-      local key   = keys [i]
-      local value = result.response [key]
-      local space = ""
-      for _ = #key, max+3 do
-        space = space .. " "
-      end
-      space = space .. " => "
-      print (Colors ("%{black yellowbg}" .. tostring (key)) ..
-             Colors ("%{reset}" .. space) ..
-             Colors ("%{yellow blackbg}" .. tostring (value)))
-    end
+  if args.debug then
+    print (Colors ("%{white yellowbg}" .. Value.expression (result)))
   end
   return result
 end
 
---[[
-Commands ["show:tos"] = function (cli, ws)
-  options.global (cli)
-  options.server (cli)
-  Commands.args = cli:parse_args ()
-  if not Commands.args then
-    os.exit (1)
+Results ["server:information"] = function (response)
+  local max  = 0
+  local keys = {}
+  for key in pairs (response) do
+    keys [#keys+1] = key
+    max = math.max (max, #key)
   end
-  ws:send (Value.expression {
-    server     = Commands.args.server,
-    operation  = "tos",
-    parameters = {
-      locale = Commands.args.locale,
-    },
-  })
-  local result = ws:receive ()
-  result = Value.decode (result)
-  show_status (result)
-  if result.success then
-    print (result.response.tos)
-    print (Colors ("%{black yellowbg}" .. "digest") ..
-           Colors ("%{reset}" .. " => ") ..
-           Colors ("%{yellow blackbg}" .. result.response.tos_digest))
+  for i = 1, #keys do
+    local key   = keys [i]
+    local value = response [key]
+    local space = ""
+    for _ = #key, max+3 do
+      space = space .. " "
+    end
+    space = space .. " => "
+    print (Colors ("%{black yellowbg}" .. tostring (key)) ..
+           Colors ("%{reset}" .. space) ..
+           Colors ("%{yellow blackbg}" .. tostring (value)))
   end
-  return result
-end
---]]
-
--- http://lua.2524044.n2.nabble.com/Reading-passwords-in-a-console-application-td6641037.html
-local function getpassword ()
-  local stty_ret = os.execute ("stty -echo 2>/dev/null")
-  if stty_ret ~= 0 then
-    io.write("\027[08m") -- ANSI 'hidden' text attribute 
-  end 
-  local ok, pass = pcall (io.read, "*l")
-  if stty_ret == 0 then
-    os.execute("stty sane")
-  else 
-    io.write("\027[00m")
-  end 
-  io.write("\n")
-  os.execute("stty sane") 
-  if ok then 
-    return pass
-  end 
 end
 
-Commands ["user:create"] = function (cli, ws)
-    options.global (cli)
-    options.server (cli)
-    cli:add_argument (
-      "username",
-      i18n ["argument:username"] % {}
-    )
-    cli:add_argument (
-      "email",
-      i18n ["argument:email"] % {}
-    )
-    Commands.args = cli:parse_args ()
-    if not Commands.args then
-      cli:print_help ()
-      os.exit (1)
-    end
-    ws:send (Value.expression {
-      server     = Commands.args.server,
-      operation  = "tos",
+Results ["server:tos"] = function (response)
+  print (response.tos)
+  print (Colors ("%{black yellowbg}" .. "digest") ..
+         Colors ("%{reset}" .. " => ") ..
+         Colors ("%{yellow blackbg}" .. response.tos_digest))
+end
+
+Prepares ["user:create"] = function (commands, args)
+    commands.ws:send (Value.expression {
+      server     = args.server,
+      operation  = "server:tos",
       parameters = {
-        locale = Commands.args.locale,
+        locale = args.locale,
       },
     })
-    local tosresult = ws:receive ()
-    tosresult = Value.decode (tosresult)
-    if not tosresult.success then
-      return tosresult
+    local tosresult = Value.decode (commands.ws:receive ())
+    if tosresult.success then
+      args.tos_digest = tosresult.response.tos_digest
     end
-    local digest = tosresult.response.tos_digest
-    local passwords = {}
-    repeat
-      for i = 1, 2 do
-        io.write (i18n ["argument:password" .. tostring (i)] % {} .. " ")
-        passwords [i] = getpassword ()
-      end
-      if passwords [1] ~= passwords [2] then
-        print (i18n ["argument:password:nomatch"] % {})
-      end
-    until passwords [1] == passwords [2]
-    ws:send (Value.expression {
-      server     = Commands.args.server,
-      operation  = "user:create",
-      parameters = {
-        username   = Commands.args.username,
-        password   = passwords [1],
-        email      = Commands.args.email,
-        tos_digest = digest,
-        locale     = Commands.args.locale,
-      },
-    })
-    local result = ws:receive ()
-    result = Value.decode (result)
-    return show_status (result)
   end
 
-Commands ["user:authenticate"] = function (cli, ws)
-    options.global (cli)
-    options.server (cli)
-    cli:add_argument (
-      "username",
-      i18n ["argument:username"] % {}
-    )
-    Commands.args = cli:parse_args ()
-    if not Commands.args then
-      cli:print_help ()
-      os.exit (1)
-    end
-    io.write (i18n ["argument:password" .. tostring (1)] % {} .. " ")
-    local password = getpassword ()
-    ws:send (Value.expression {
-      server     = Commands.args.server,
-      operation  = "user:authenticate?",
-      parameters = {
-        username   = Commands.args.username,
-        password   = password,
-      },
-    })
-    local result = ws:receive ()
-    print (result)
-    result = Value.decode (result)
-    return show_status (result)
-  end
+Results ["user:update"] = function (response)
+  Results ["user:information"] (response)
+end
 
-Commands ["user:delete"] = function (cli, ws)
-    options.global         (cli)
-    options.server         (cli)
-    options.authentication (cli)
-    Commands.args = cli:parse_args ()
-    if not Commands.args then
-      cli:print_help ()
-      os.exit (1)
-    end
-    ws:send (Value.expression {
-      server     = Commands.args.server,
-      operation  = "user:delete",
-      parameters = {},
+Results ["user:information"] = function (response)
+  if response.avatar then
+    local avatar          = response.avatar
+    local input_filename  = os.tmpname ()
+    local file = io.open (input_filename, "w")
+    file:write (avatar.content)
+    file:close ()
+    os.execute ([[
+      img2txt -W 40 -H 20 {{{input}}} 2> /dev/null
+    ]] % {
+      input  = input_filename,
     })
-    local result = ws:receive ()
-    result = Value.decode (result)
-    return show_status (result)
+    os.remove (input_filename)
+    response.avatar  = nil
   end
-
-Commands ["user:reset"] = function (cli, ws)
-    options.global (cli)
-    options.server (cli)
-    cli:add_argument (
-      "email",
-      i18n ["argument:email"] % {}
-    )
-    Commands.args = cli:parse_args ()
-    if not Commands.args then
-      cli:print_help ()
-      os.exit (1)
-    end
-    ws:send (Value.expression {
-      server     = Commands.args.server,
-      operation  = "user:reset",
-      parameters = {
-        email = Commands.args.email,
-      },
-    })
-    local result = ws:receive ()
-    result = Value.decode (result)
-    return show_status (result)
+  if response.position then
+    response.position = "{{{country}}}/{{{city}}}" % response.position
   end
-
-Commands ["user:recover"] =  function (cli, ws)
-    options.global (cli)
-    options.server (cli)
-    cli:add_argument (
-      "token",
-      i18n ["argument:token:validation"] % {}
-    )
-    Commands.args = cli:parse_args ()
-    if not Commands.args then
-      cli:print_help ()
-      os.exit (1)
-    end
-    local passwords = {}
-    repeat
-      for i = 1, 2 do
-        io.write (i18n ["argument:password" .. tostring (i)] % {} .. " ")
-        passwords [i] = getpassword ()
-      end
-      if passwords [1] ~= passwords [2] then
-        print (i18n ["argument:password:nomatch"] % {})
-      end
-    until passwords [1] == passwords [2]
-    ws:send (Value.expression {
-      server     = Commands.args.server,
-      operation  = "user:recover",
-      parameters = {
-        token    = Commands.args.token,
-        password = passwords [1],
-      },
-    })
-    local result = ws:receive ()
-    result = Value.decode (result)
-    return show_status (result)
+  if response.lastseen then
+    response.lastseen = os.date ("%x, %X", response.lastseen)
   end
-
-Commands ["user:suspend"] = function (cli, ws)
-    options.global         (cli)
-    options.server         (cli)
-    options.authentication (cli)
-    cli:add_argument (
-      "username",
-      i18n ["argument:username"] % {}
-    )
-    Commands.args = cli:parse_args ()
-    if not Commands.args then
-      cli:print_help ()
-      os.exit (1)
-    end
-    ws:send (Value.expression {
-      server     = Commands.args.server,
-      operation  = "user:suspend",
-      parameters = {
-        username = Commands.args.username,
-      },
-    })
-    local result = ws:receive ()
-    result = Value.decode (result)
-    return show_status (result)
+  if response.token then
+    response.token = nil
   end
-
-Commands ["user:release"] = function (cli, ws)
-    options.global         (cli)
-    options.server         (cli)
-    options.authentication (cli)
-    cli:add_argument (
-      "username",
-      i18n ["argument:username"] % {}
-    )
-    Commands.args = cli:parse_args ()
-    if not Commands.args then
-      cli:print_help ()
-      os.exit (1)
-    end
-    ws:send (Value.expression {
-      server     = Commands.args.server,
-      operation  = "user:release",
-      parameters = {
-        username = Commands.args.username,
-      },
-    })
-    local result = ws:receive ()
-    result = Value.decode (result)
-    return show_status (result)
+  local max  = 0
+  local keys = {}
+  for key in pairs (response) do
+    keys [#keys+1] = key
+    max = math.max (max, #key)
   end
-
-Commands ["user:update"] = function (cli, ws)
-    options.server         (cli)
-    options.authentication (cli)
-    cli:add_flag (
-      "-d, --debug",
-      i18n ["flag:debug"] % {}
-    )
-    cli:add_option (
-      "-a, --avatar=PATH or URL",
-      i18n ["option:avatar"] % {}
-    )
-    cli:add_option (
-      "-e, --email=EMAIL",
-      i18n ["option:email"] % {}
-    )
-    cli:add_option (
-      "-l, --locale=LOCALE",
-      i18n ["option:locale"] % {}
-    )
-    cli:add_option (
-      "-n, --name=FULL-NAME",
-      i18n ["option:name"] % {}
-    )
-    cli:add_option (
-      "-o, --organization=ORGANIZATION",
-      i18n ["option:organization"] % {}
-    )
-    cli:add_flag (
-      "-p, --password",
-      i18n ["flag:password"] % {}
-    )
-    cli:add_option (
-      "-u, --username=USERNAME",
-      i18n ["option:username"] % {}
-    )
-    Commands.args = cli:parse_args ()
-    if not Commands.args then
-      os.exit (1)
+  max = max + 3
+  table.sort (keys)
+  for i = 1, #keys do
+    local key   = keys [i]
+    local value = response [key]
+    local space = ""
+    for _ = #key, max do
+      space = space .. " "
     end
-    local password
-    if Commands.args.password then
-      local passwords = {}
-      repeat
-        for i = 1, 2 do
-          io.write (i18n ["argument:password" .. tostring (i)] % {} .. " ")
-          passwords [i] = getpassword ()
-        end
-        if passwords [1] ~= passwords [2] then
-          print (i18n ["argument:password:nomatch"] % {})
-        end
-      until passwords [1] == passwords [2]
-      password = passwords [1]
-    end
-    if Commands.args.avatar then
-      if Commands.args.avatar:match "^https?://" then
-        local request = require "socket.http" .request
-        local body, status = request (Commands.args.avatar)
-        if status ~= 200 then
-          return {
-            success = false,
-            error   = {
-              _ = i18n ["url:not-found"] % {
-                url    = Commands.args.avatar,
-                status = status,
-              },
-            },
-          }
-        end
-        Commands.args.avatar = {
-          source  = Commands.args.avatar,
-          content = body,
-        }
-      else
-        if Commands.args.avatar:match "^~" then
-          Commands.args.avatar = os.getenv "HOME" .. Commands.args.avatar:sub (2)
-        end
-        local file, err = io.open (Commands.args.avatar, "r")
-        if file then
-          Commands.args.avatar = {
-            source  = Commands.args.avatar,
-            content = file:read "*all",
-          }
-          file:close ()
-        else
-          return {
-            success = false,
-            error   = {
-              _ = i18n ["file:not-found"] % {
-                filename = Commands.args.avatar,
-                reason   = err,
-              },
-            },
-          }
-        end
-      end
-    end
-    ws:send (Value.expression {
-      server     = Commands.args.server,
-      operation  = "user:update",
-      parameters = {
-        avatar       = Commands.args.avatar,
-        username     = Commands.args.username,
-        email        = Commands.args.email,
-        name         = Commands.args.name,
-        organization = Commands.args.organization,
-        locale       = Commands.args.locale,
-        password     = password,
-      },
-    })
-    local result = ws:receive ()
-    result = Value.decode (result)
-    show_status (result)
-    if result.success then
-      user_information (result.response)
-    end
-    return result
+    space = space .. " => "
+    print (Colors ("%{black yellowbg}" .. tostring (key)) ..
+           Colors ("%{reset}" .. space) ..
+           Colors ("%{yellow blackbg}" .. tostring (value)))
   end
-
-Commands ["user:information"] = function (cli, ws)
-    options.global (cli)
-    options.server (cli)
-    cli:add_argument (
-      "username",
-      i18n ["argument:username"] % {}
-    )
-    Commands.args = cli:parse_args ()
-    if not Commands.args then
-      os.exit (1)
-    end
-    ws:send (Value.expression {
-      server     = Commands.args.server,
-      operation  = "user:information",
-      parameters = {
-        username = Commands.args.username,
-      },
-    })
-    local result = ws:receive ()
-    result = Value.decode (result)
-    show_status (result)
-    if result.success then
-      user_information (result.response)
-    end
-    return result
-  end
-
-Commands ["user:send-validation"] = function (cli, ws)
-    options.global (cli)
-    options.server (cli)
-    options.authentication (cli)
-    Commands.args = cli:parse_args ()
-    if not Commands.args then
-      os.exit (1)
-    end
-    ws:send (Value.expression {
-      server     = Commands.args.server,
-      operation  = "user:send-validation",
-      parameters = {},
-    })
-    local result = ws:receive ()
-    result = Value.decode (result)
-    return show_status (result)
-  end
-
-Commands ["user:validate"] = function (cli, ws)
-    options.global (cli)
-    options.server (cli)
-    cli:add_argument (
-      "token",
-      i18n ["argument:token:validation"] % {}
-    )
-    Commands.args = cli:parse_args ()
-    if not Commands.args then
-      os.exit (1)
-    end
-    ws:send (Value.expression {
-      server     = Commands.args.server,
-      operation  = "user:validate",
-      parameters = {
-        token = Commands.args.token,
-      },
-    })
-    local result = ws:receive ()
-    result = Value.decode (result)
-    return show_status (result)
-  end
+end
 
 return Commands

@@ -4,7 +4,7 @@ return {
     fr = "commande non spécifiée: {{{cli}}} <commande> [paramètres...]",
   },
   ["command:erroneous"] = {
-    en = "erroneous the command to run: {{{cli}}} <command> [parameters...]",
+    en = "erroneous command to run: {{{cli}}} <command> [parameters...]",
     fr = "commande inexistante: {{{cli}}} <commande> [paramètres...]",
   },
   ["command:available"] = {
@@ -47,6 +47,9 @@ return {
   ["option:email"] = {
     en = "email address",
   },
+  ["option:homepage"] = {
+    en = "homepage URL",
+  },
   ["option:locale"] = {
     en = "locale for messages",
   },
@@ -59,8 +62,11 @@ return {
   ["option:server"]= {
     en = "server url"
   },
-  ["option:token"] = {
+  ["option:token:authentication"] = {
     en = "authentication token",
+  },
+  ["option:tos"] = {
+    en = "terms of service digest",
   },
   ["option:username"] = {
     en = "username",
