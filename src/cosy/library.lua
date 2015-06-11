@@ -103,13 +103,13 @@ Client.methods ["user:create"] = function (operation, parameters)
   if result.success then
     data.username = parameters.username
     data.hashed   = parameters.password
-    data.token    = result.response.token
+    data.token    = result.response.authentication
   end
   local position, status = Loader.loadhttp "http://www.telize.com/geoip"
   if status == 200 then
     client.user.update {
-      token    = data.token,
-      position = Json.decode (position),
+      authentication = data.token,
+      position       = Json.decode (position),
     }
   end
 end
@@ -127,7 +127,7 @@ Client.methods ["user:authenticate"] = function (operation, parameters)
   if result.success then
     data.username = parameters.username
     data.hashed   = parameters.password
-    data.token    = result.response.token
+    data.token    = result.response.authentication
   end
 end
 
@@ -139,8 +139,8 @@ Client.methods ["user:update"] = function (operation, parameters)
   end
   local result = mcoroutine.yield ()
   if result.success and parameters.username then
-    data.username = parameters.username
-    data.token    = nil
+    data.username = result.response.username
+    data.token    = result.response.authentication
   end
   if result.success and parameters.password then
     data.hashed = parameters.password
@@ -199,8 +199,8 @@ function Operation.__call (operation, parameters, try_only)
     client._results [identifier] = nil
   end
   -- First try:
-  if data.token and not parameters.token then
-    parameters.token = data.token
+  if data.token and parameters and not parameters.token then
+    parameters.authentication = data.token
   end
   if wrapper then
     wrapperco = mcoroutine.create (wrapper)
@@ -221,20 +221,23 @@ function Operation.__call (operation, parameters, try_only)
   if  result.error
   and result.error._ == "check:error"
   and #result.error.reasons == 1
-  and result.error.reasons [1].key == "token"
+  and result.error.reasons [1].parameter == "authentication"
   and data.username
   and data.hashed
   then
     local r = client.user.authenticate {}
     if not r then
-      return nil, result.error
+      data.username             = nil
+      data.hashed               = nil
+      data.token                = nil
+      parameters.authentication = nil
     end
   else
     return nil, result.error
   end
   -- Retry:
-  if data.token and not parameters.token then
-    parameters.token = data.token
+  if data.token and parameters and not parameters.token then
+    parameters.authentication = data.token
   end
   if wrapper then
     wrapperco = mcoroutine.create (wrapper)
@@ -242,8 +245,8 @@ function Operation.__call (operation, parameters, try_only)
   end
   threadof (f)
   if result == nil then
-    return nil, {
-      _ = i18n ["server:timeout"],
+    return nil, i18n {
+      _ = i18n ["server:timeout"] % {},
     }
   end
   if wrapperco and not try_only then

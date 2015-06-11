@@ -1,6 +1,6 @@
 local Configuration = require "cosy.configuration"
 local I18n          = require "cosy.i18n"
-local Library       = require "cosy.library"
+local Handler       = require "cosy.daemon-handler"
 local Logger        = require "cosy.logger"
 local Value         = require "cosy.value"
 local Scheduler     = require "cosy.scheduler"
@@ -16,43 +16,6 @@ i18n._locale = Configuration.locale._
 local Daemon = {}
 
 Daemon.libraries = {}
-
-function Daemon.request (message)
-  if message == "daemon-stop" then
-    Daemon.stop ()
-    return {
-      success = true,
-    }
-  end
-  local server = message.server
-  local lib    = Daemon.libraries [server]
-  if not lib then
-    lib = Library.connect (server)
-    if not lib then
-      return {
-        success = false,
-        error   = {
-          _ = i18n ["server:unreachable"] % {},
-        },
-      }
-    end
-    Daemon.libraries [server] = lib
-  end
-  local method = lib [message.operation]
-  local result, err = method (message.parameters, message.try_only)
-  if result then
-    result = {
-      success  = true,
-      response = result,
-    }
-  else
-    result = {
-      success = false,
-      error   = err,
-    }
-  end
-  return result
-end
 
 function Daemon.start ()
   local addserver = Scheduler.addserver
@@ -73,11 +36,14 @@ function Daemon.start ()
           if not message then
             ws:close ()
             return
+          elseif message == "daemon-stop" then
+            Daemon.stop ()
+            ws:send (Value.expression {
+              success = true,
+            })
+          else
+            ws:send (Handler (message))
           end
-          message      = Value.decode (message)
-          local result = Daemon.request (message)
-          result       = Value.expression (result)
-          ws:send (result)
         end
       end
     }

@@ -15,8 +15,19 @@ local Parameters    = setmetatable ({}, {
 })
 
 function Parameters.check (request, parameters)
-  request    = request    or {}
   parameters = parameters or {}
+  if request == nil then
+    local result = {
+      required = {},
+      optional = {},
+    }
+    for _, part in ipairs { "required", "optional" } do
+      for k, v in pairs (parameters [part] or {}) do
+        result [part] [k] = tostring (v):gsub ("/whole/.data.", "")
+      end
+    end
+    error (result)
+  end
   local reasons = {}
   local checked = {}
   for _, field in ipairs { "required", "optional" } do

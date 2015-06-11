@@ -190,10 +190,10 @@ function Email.send (message)
   Scheduler.addthread (function ()
     local locale    = message.locale or Configuration.locale.default._
     local si18n     = I18n.new (locale)
-    message.from    = si18n (message.from   )
-    message.to      = si18n (message.to     )
-    message.subject = si18n (message.subject)
-    message.body    = si18n (message.body   )
+    message.from    = si18n (message.from   ).message
+    message.to      = si18n (message.to     ).message
+    message.subject = si18n (message.subject).message
+    message.body    = si18n (message.body   ).message
     Smtp.send {
       from     = message.from:match (email_pattern),
       rcpt     = message.to  :match (email_pattern),

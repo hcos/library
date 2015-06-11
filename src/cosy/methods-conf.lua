@@ -1,7 +1,6 @@
 local Configuration = require "cosy.configuration"
 local Internal      = Configuration / "default"
 
-Internal.redis.retry = 5
 Internal.redis.key   = {
   users  = "user:{{{key}}}",
   emails = "email:{{{key}}}",

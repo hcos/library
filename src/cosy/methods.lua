@@ -4,13 +4,10 @@ local Configuration = require "cosy.configuration"
 local Digest        = require "cosy.digest"
 local Email         = require "cosy.email"
 local I18n          = require "cosy.i18n"
-local Logger        = require "cosy.logger"
 local Parameters    = require "cosy.parameters"
 local Password      = require "cosy.password"
-local Store         = require "cosy.store"
 local Time          = require "cosy.time"
 local Token         = require "cosy.token"
-local Value         = require "cosy.value"
 
 Configuration.load "cosy.methods"
 Configuration.load "cosy.parameters"
@@ -31,10 +28,38 @@ Methods.Type = setmetatable ({
   __index = assert,
 })
 
-function Methods.stop (request)
+Methods.server = {}
+
+
+function Methods.server.list_methods (request)
+  Parameters.check (request, {
+    optional = {
+      locale = Parameters.locale,
+    },
+  })
+  local locale = Configuration.locale.default._
+  if request.locale then
+    locale = request.locale or locale
+  end
+  local result = {}
+  local function f (current, prefix)
+    for k, v in pairs (current) do
+      if type (v) == "function" then
+        local name = (prefix or "") .. k:gsub ("_", "-")
+        result [name] = i18n [name] % { locale = locale }
+      elseif type (v) == "table" then
+        f (v, (prefix or "") .. k:gsub ("_", "-") .. ":")
+      end
+    end
+  end
+  f (Methods, nil)
+  return result
+end
+
+function Methods.server.stop (request)
   Parameters.check (request, {
     required = {
-      token  = Parameters.token.administration,
+      authentication = Parameters.token.administration,
     },
   })
   local Server = require "cosy.server"
@@ -43,7 +68,8 @@ end
 
 -- ### Information
 
-function Methods.information ()
+function Methods.server.information (request)
+  Parameters.check (request, {})
   return {
     name = Configuration.server.name._,
   }
@@ -51,19 +77,19 @@ end
 
 -- ### Terms of Service
 
-function Methods.tos (request)
+function Methods.server.tos (request)
   Parameters.check (request, {
     optional = {
-      token  = Parameters.token,
-      locale = Parameters.locale,
+      authentication = Parameters.token.authentication,
+      locale         = Parameters.locale,
     },
   })
   local locale = Configuration.locale.default._
   if request.locale then
     locale = request.locale or locale
   end
-  if request.token then
-    locale = request.token.locale or locale
+  if request.authentication then
+    locale = request.authentication.locale or locale
   end
   local tos = i18n ["terms-of-service"] % {
     locale = locale,
@@ -82,7 +108,7 @@ function Methods.user.create (request, store, try_only)
   Parameters.check (request, {
     required = {
       username   = Parameters.username,
-      password   = Parameters.password,
+      password   = Parameters.password.checked,
       email      = Parameters.email,
       tos_digest = Parameters.tos_digest,
       locale     = Parameters.locale,
@@ -147,7 +173,7 @@ function Methods.user.create (request, store, try_only)
     },
   }
   return {
-    token = Token.authentication (user),
+    authentication = Token.authentication (user),
   }
 end
 
@@ -156,13 +182,13 @@ end
 function Methods.user.send_validation (request, store, try_only)
   Parameters.check (request, {
     required = {
-      token = Parameters.token.authentication,
+      authentication = Parameters.token.authentication,
     },
   })
   if try_only then
     return true
   end
-  local user = store.users [request.token.username]
+  local user = store.users [request.authentication.username]
   Email.send {
     locale  = user.locale,
     from    = {
@@ -193,13 +219,13 @@ end
 function Methods.user.validate (request, store, try_only)
   Parameters.check (request, {
     required = {
-      token = Parameters.token.validation,
+      validation = Parameters.token.validation,
     },
   })
   if try_only then
     return true
   end
-  local user = store.users [request.token.username]
+  local user = store.users [request.authentication.username]
   user.checked = true
 end
 
@@ -231,7 +257,7 @@ function Methods.user.authenticate (request, store)
   end
   user.lastseen = Time ()
   return {
-    token = Token.authentication (user),
+    authentication = Token.authentication (user),
   }
 end
 
@@ -240,7 +266,7 @@ end
 function Methods.user.is_authentified (request)
   Parameters.check (request, {
     required = {
-      token = Parameters.token.authentication,
+      authentication = Parameters.token.authentication,
     },
   })
   return true
@@ -251,7 +277,7 @@ end
 function Methods.user.update (request, store)
   Parameters.check (request, {
     required = {
-      token = Parameters.token.authentication,
+      authentication = Parameters.token.authentication,
     },
     optional = {
       avatar       = Parameters.avatar,
@@ -260,12 +286,12 @@ function Methods.user.update (request, store)
       locale       = Parameters.locale,
       name         = Parameters.name,
       organization = Parameters.organization,
-      password     = Parameters.password,
+      password     = Parameters.password.checked,
       position     = Parameters.position,
       username     = Parameters.username,
     },
   })
-  local user = store.users [request.token.username]
+  local user = store.users [request.authentication.username]
   if request.username then
     if store.users [request.username] then
       error {
@@ -292,7 +318,7 @@ function Methods.user.update (request, store)
     user.email   = request.email
     user.checked = false
     Methods.user.send_validation {
-      token = request.token,
+      authentication = request.authentication,
     }
   end
   if request.password then
@@ -327,16 +353,17 @@ function Methods.user.update (request, store)
     end
   end
   return {
-    avatar       = user.avatar,
-    checked      = user.checked,
-    email        = user.email,
-    homepage     = user.homepage,
-    lastseen     = user.lastseen,
-    locale       = user.locale,
-    name         = user.name,
-    organization = user.organization,
-    position     = user.position,
-    username     = user.username,
+    avatar         = user.avatar,
+    checked        = user.checked,
+    email          = user.email,
+    homepage       = user.homepage,
+    lastseen       = user.lastseen,
+    locale         = user.locale,
+    name           = user.name,
+    organization   = user.organization,
+    position       = user.position,
+    username       = user.username,
+    authentication = Token.authentication (user)
   }
 end
 
@@ -371,17 +398,17 @@ end
 function Methods.user.recover (request, store, try_only)
   Parameters.check (request, {
     required = {
-      token    = Parameters.token.validation,
-      password = Parameters.password,
+      validation = Parameters.token.validation,
+      password   = Parameters.password.checked,
     },
   })
-  local user = store.users [request.token.username]
+  local user = store.users [request.validation.username]
   if try_only then
     return
   end
   Methods.user.update {
-    token    = Token.authentication (user),
-    password = request.password,
+    authentication = Token.authentication (user),
+    password       = request.password,
   }
   return Methods.user.authenticate {
     username = user.username,
@@ -440,8 +467,8 @@ end
 function Methods.user.suspend (request, store)
   Parameters.check (request, {
     required = {
-      username = Parameters.username,
-      token    = Parameters.token.authentication,
+      username       = Parameters.username,
+      authentication = Parameters.token.authentication,
     },
   })
   local target = store.users [request.username]
@@ -451,12 +478,12 @@ function Methods.user.suspend (request, store)
       username = request.username,
     }
   end
-  if request.username == request.token.username then
+  if request.username == request.authentication.username then
     error {
       _ = i18n ["user:suspend:self"],
     }
   end
-  local user       = store.users [request.token.username]
+  local user       = store.users [request.authentication.username]
   local reputation = Configuration.reputation.suspend._
   if user.reputation < reputation then
     error {
@@ -474,8 +501,8 @@ end
 function Methods.user.release (request, store)
   Parameters.check (request, {
     required = {
-      username = Parameters.username,
-      token    = Parameters.token.authentication,
+      username       = Parameters.username,
+      authentication = Parameters.token.authentication,
     },
   })
   local target = store.users [request.username]
@@ -491,12 +518,12 @@ function Methods.user.release (request, store)
       username = request.username,
     }
   end
-  if request.username == request.token.username then
+  if request.username == request.authentication.username then
     error {
       _ = i18n ["user:release:self"],
     }
   end
-  local user       = store.users [request.token.username]
+  local user       = store.users [request.authentication.username]
   local reputation = Configuration.reputation.release._
   if user.reputation < reputation then
     error {
@@ -514,48 +541,12 @@ end
 function Methods.user.delete (request, store)
   Parameters.check (request, {
     required = {
-      token = Parameters.token.authentication,
+      authentication = Parameters.token.authentication,
     },
   })
-  local user = store.users [request.token.username]
+  local user = store.users [request.authentication.username]
   store.emails [user.email   ] = nil
   store.users  [user.username] = nil
 end
 
--- # Wrapper
-
-local function wrap (t)
-  for key, value in pairs (t) do
-    if type (value) == "table" then
-      wrap (value)
-    elseif type (value) == "function" then
-      t [key] = function (request, try_only)
-        for _ = 1, Configuration.redis.retry._ do
-          local err
-          local ok, result = xpcall (function ()
-            local store  = Store.new ()
-            local result = value (request, store, try_only)
-            if not try_only then
-              Store.commit (store)
-            end
-            return result
-          end, function (e)
-            err = e
-            Logger.debug ("Error: " .. Value.expression (e) .. " => " .. debug.traceback ())
-          end)
-          if ok then
-            return result or true
-          elseif err ~= Store.Error then
-            return nil, err
-          end
-        end
-        return nil, {
-          _ = i18n ["redis:unreachable"],
-        }
-      end
-    end
-  end
-  return t
-end
-
-return wrap (Methods)
+return Methods
