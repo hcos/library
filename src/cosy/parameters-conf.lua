@@ -131,6 +131,14 @@ do
   }
 end
 
+do
+  Internal.data.password.checked = {
+    [Repository.refines] = {
+      Configuration.data.password,
+    }
+  }
+end
+
 -- Email
 -- -----
 do
