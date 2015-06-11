@@ -59,7 +59,7 @@ end
 function Methods.server.stop (request)
   Parameters.check (request, {
     required = {
-      token  = Parameters.token.administration,
+      authentication = Parameters.token.administration,
     },
   })
   local Server = require "cosy.server"
@@ -68,7 +68,8 @@ end
 
 -- ### Information
 
-function Methods.server.information ()
+function Methods.server.information (request)
+  Parameters.check (request, {})
   return {
     name = Configuration.server.name._,
   }
@@ -79,16 +80,16 @@ end
 function Methods.server.tos (request)
   Parameters.check (request, {
     optional = {
-      token  = Parameters.token,
-      locale = Parameters.locale,
+      authentication = Parameters.token.authentication,
+      locale         = Parameters.locale,
     },
   })
   local locale = Configuration.locale.default._
   if request.locale then
     locale = request.locale or locale
   end
-  if request.token then
-    locale = request.token.locale or locale
+  if request.authentication then
+    locale = request.authentication.locale or locale
   end
   local tos = i18n ["terms-of-service"] % {
     locale = locale,
@@ -107,7 +108,7 @@ function Methods.user.create (request, store, try_only)
   Parameters.check (request, {
     required = {
       username   = Parameters.username,
-      password   = Parameters.password,
+      password   = Parameters.password.checked,
       email      = Parameters.email,
       tos_digest = Parameters.tos_digest,
       locale     = Parameters.locale,
@@ -172,7 +173,7 @@ function Methods.user.create (request, store, try_only)
     },
   }
   return {
-    token = Token.authentication (user),
+    authentication = Token.authentication (user),
   }
 end
 
@@ -181,13 +182,13 @@ end
 function Methods.user.send_validation (request, store, try_only)
   Parameters.check (request, {
     required = {
-      token = Parameters.token.authentication,
+      authentication = Parameters.token.authentication,
     },
   })
   if try_only then
     return true
   end
-  local user = store.users [request.token.username]
+  local user = store.users [request.authentication.username]
   Email.send {
     locale  = user.locale,
     from    = {
@@ -218,13 +219,13 @@ end
 function Methods.user.validate (request, store, try_only)
   Parameters.check (request, {
     required = {
-      token = Parameters.token.validation,
+      validation = Parameters.token.validation,
     },
   })
   if try_only then
     return true
   end
-  local user = store.users [request.token.username]
+  local user = store.users [request.authentication.username]
   user.checked = true
 end
 
@@ -256,7 +257,7 @@ function Methods.user.authenticate (request, store)
   end
   user.lastseen = Time ()
   return {
-    token = Token.authentication (user),
+    authentication = Token.authentication (user),
   }
 end
 
@@ -265,7 +266,7 @@ end
 function Methods.user.is_authentified (request)
   Parameters.check (request, {
     required = {
-      token = Parameters.token.authentication,
+      authentication = Parameters.token.authentication,
     },
   })
   return true
@@ -276,7 +277,7 @@ end
 function Methods.user.update (request, store)
   Parameters.check (request, {
     required = {
-      token = Parameters.token.authentication,
+      authentication = Parameters.token.authentication,
     },
     optional = {
       avatar       = Parameters.avatar,
@@ -285,12 +286,12 @@ function Methods.user.update (request, store)
       locale       = Parameters.locale,
       name         = Parameters.name,
       organization = Parameters.organization,
-      password     = Parameters.password,
+      password     = Parameters.password.checked,
       position     = Parameters.position,
       username     = Parameters.username,
     },
   })
-  local user = store.users [request.token.username]
+  local user = store.users [request.authentication.username]
   if request.username then
     if store.users [request.username] then
       error {
@@ -317,7 +318,7 @@ function Methods.user.update (request, store)
     user.email   = request.email
     user.checked = false
     Methods.user.send_validation {
-      token = request.token,
+      authentication = request.authentication,
     }
   end
   if request.password then
@@ -352,16 +353,17 @@ function Methods.user.update (request, store)
     end
   end
   return {
-    avatar       = user.avatar,
-    checked      = user.checked,
-    email        = user.email,
-    homepage     = user.homepage,
-    lastseen     = user.lastseen,
-    locale       = user.locale,
-    name         = user.name,
-    organization = user.organization,
-    position     = user.position,
-    username     = user.username,
+    avatar         = user.avatar,
+    checked        = user.checked,
+    email          = user.email,
+    homepage       = user.homepage,
+    lastseen       = user.lastseen,
+    locale         = user.locale,
+    name           = user.name,
+    organization   = user.organization,
+    position       = user.position,
+    username       = user.username,
+    authentication = Token.authentication (user)
   }
 end
 
@@ -396,17 +398,17 @@ end
 function Methods.user.recover (request, store, try_only)
   Parameters.check (request, {
     required = {
-      token    = Parameters.token.validation,
-      password = Parameters.password,
+      validation = Parameters.token.validation,
+      password   = Parameters.password.checked,
     },
   })
-  local user = store.users [request.token.username]
+  local user = store.users [request.validation.username]
   if try_only then
     return
   end
   Methods.user.update {
-    token    = Token.authentication (user),
-    password = request.password,
+    authentication = Token.authentication (user),
+    password       = request.password,
   }
   return Methods.user.authenticate {
     username = user.username,
@@ -465,8 +467,8 @@ end
 function Methods.user.suspend (request, store)
   Parameters.check (request, {
     required = {
-      username = Parameters.username,
-      token    = Parameters.token.authentication,
+      username       = Parameters.username,
+      authentication = Parameters.token.authentication,
     },
   })
   local target = store.users [request.username]
@@ -476,12 +478,12 @@ function Methods.user.suspend (request, store)
       username = request.username,
     }
   end
-  if request.username == request.token.username then
+  if request.username == request.authentication.username then
     error {
       _ = i18n ["user:suspend:self"],
     }
   end
-  local user       = store.users [request.token.username]
+  local user       = store.users [request.authentication.username]
   local reputation = Configuration.reputation.suspend._
   if user.reputation < reputation then
     error {
@@ -499,8 +501,8 @@ end
 function Methods.user.release (request, store)
   Parameters.check (request, {
     required = {
-      username = Parameters.username,
-      token    = Parameters.token.authentication,
+      username       = Parameters.username,
+      authentication = Parameters.token.authentication,
     },
   })
   local target = store.users [request.username]
@@ -516,12 +518,12 @@ function Methods.user.release (request, store)
       username = request.username,
     }
   end
-  if request.username == request.token.username then
+  if request.username == request.authentication.username then
     error {
       _ = i18n ["user:release:self"],
     }
   end
-  local user       = store.users [request.token.username]
+  local user       = store.users [request.authentication.username]
   local reputation = Configuration.reputation.release._
   if user.reputation < reputation then
     error {
@@ -539,10 +541,10 @@ end
 function Methods.user.delete (request, store)
   Parameters.check (request, {
     required = {
-      token = Parameters.token.authentication,
+      authentication = Parameters.token.authentication,
     },
   })
-  local user = store.users [request.token.username]
+  local user = store.users [request.authentication.username]
   store.emails [user.email   ] = nil
   store.users  [user.username] = nil
 end
