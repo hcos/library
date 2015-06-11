@@ -188,7 +188,6 @@ end
 
 function Email.send (message)
   Scheduler.addthread (function ()
-    local Value = require "cosy.value"
     local locale    = message.locale or Configuration.locale.default._
     local si18n     = I18n.new (locale)
     message.from    = si18n (message.from   ).message

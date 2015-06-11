@@ -161,7 +161,7 @@ function Options.set (part, name, oftype)
       i18n ["option:tos"] % {}
     )
   elseif oftype == "position" and part == "optional" then
-    -- do nothing
+    local _ = false
   else
     print (part, name, oftype)
     assert (false)
@@ -275,69 +275,69 @@ function Commands.__index (commands, key)
     local parameters = {}
     for _, t in pairs (result.response) do
       for name, oftype in pairs (t) do
-        if not args [name] then
-          -- do nothing
-        elseif oftype == "password" then
-          args [name] = getpassword ()
-        elseif oftype == "password.checked" then
-          local passwords = {}
-          repeat
-            for i = 1, 2 do
-              io.write (i18n ["argument:password" .. tostring (i)] % {} .. " ")
-              passwords [i] = getpassword ()
-            end
-            if passwords [1] ~= passwords [2] then
-              print (i18n ["argument:password:nomatch"] % {})
-            end
-          until passwords [1] == passwords [2]
-          parameters [name] = passwords [1]
-        elseif oftype == "token.authentication" then
-          -- do nothing
-        elseif oftype == "avatar" then
-          local avatar = args [name]
-          if avatar:match "^https?://" then
-            local request = require "socket.http" .request
-            local body, status = request (avatar)
-            if status ~= 200 then
-              return {
-                success = false,
-                error   = {
-                  _ = i18n ["url:not-found"] % {
-                    url    = avatar,
-                    status = status,
+        if args [name] then
+          if oftype == "password" then
+            args [name] = getpassword ()
+          elseif oftype == "password.checked" then
+            local passwords = {}
+            repeat
+              for i = 1, 2 do
+                io.write (i18n ["argument:password" .. tostring (i)] % {} .. " ")
+                passwords [i] = getpassword ()
+              end
+              if passwords [1] ~= passwords [2] then
+                print (i18n ["argument:password:nomatch"] % {})
+              end
+            until passwords [1] == passwords [2]
+            parameters [name] = passwords [1]
+          elseif oftype == "token.authentication" then
+            local _ = false
+          elseif oftype == "avatar" then
+            local avatar = args [name]
+            if avatar:match "^https?://" then
+              local request = require "socket.http" .request
+              local body, status = request (avatar)
+              if status ~= 200 then
+                return {
+                  success = false,
+                  error   = {
+                    _ = i18n ["url:not-found"] % {
+                      url    = avatar,
+                      status = status,
+                    },
                   },
-                },
-              }
-            end
-            args [name] = {
-              source  = avatar,
-              content = body,
-            }
-          else
-            if avatar:match "^~" then
-              avatar = os.getenv "HOME" .. avatar:sub (2)
-            end
-            local file, err = io.open (avatar, "r")
-            if file then
+                }
+              end
               args [name] = {
                 source  = avatar,
-                content = file:read "*all",
+                content = body,
               }
-              file:close ()
             else
-              return {
-                success = false,
-                error   = {
-                  _ = i18n ["file:not-found"] % {
-                    filename = avatar,
-                    reason   = err,
+              if avatar:match "^~" then
+                avatar = os.getenv "HOME" .. avatar:sub (2)
+              end
+              local file, err = io.open (avatar, "r")
+              if file then
+                args [name] = {
+                  source  = avatar,
+                  content = file:read "*all",
+                }
+                file:close ()
+              else
+                return {
+                  success = false,
+                  error   = {
+                    _ = i18n ["file:not-found"] % {
+                      filename = avatar,
+                      reason   = err,
+                    },
                   },
-                },
-              }
+                }
+              end
             end
+          else
+            parameters [name] = args [name]
           end
-        else
-          parameters [name] = args [name]
         end
       end
     end
