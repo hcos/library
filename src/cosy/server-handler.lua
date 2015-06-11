@@ -10,19 +10,22 @@ Configuration.load "cosy.server"
 local i18n   = I18n.load "cosy.server"
 i18n._locale = Configuration.locale._
 
-local function call_method (method, request, try_only)
+local function call_method (method, parameters, try_only)
   for _ = 1, Configuration.redis.retry._ do
     local err
     local ok, result = xpcall (function ()
       local store  = Store.new ()
-      local result = method (request, store, try_only)
+      local result = method (parameters, store, try_only)
       if not try_only then
         Store.commit (store)
       end
       return result
     end, function (e)
       err = e
-      Logger.debug ("Error: " .. Value.expression (e) .. " => " .. debug.traceback ())
+      Logger.debug {
+        _      = i18n "server:exception",
+        reason = Value.expression (e) .. " => " .. debug.traceback (),
+      }
     end)
     if ok then
       return result or true
@@ -41,14 +44,9 @@ local function call_parameters (method)
 end
 
 return function (message)
-  local function translate (x)
-    i18n (x)
-    return x
-  end
-  Logger.warning (message)
   local decoded, request = pcall (Value.decode, message)
   if not decoded or type (request) ~= "table" then
-    return Value.expression (translate {
+    return Value.expression (i18n {
       success = false,
       error   = {
         _ = i18n ["message:invalid"],
@@ -72,7 +70,7 @@ return function (message)
     end
   end
   if not method then
-    return Value.expression (translate {
+    return Value.expression (i18n {
       identifier = identifier,
       success    = false,
       error      = {
@@ -85,18 +83,16 @@ return function (message)
   if parameters_only then
     result      = call_parameters (method)
   else
-    result, err = call_method (method, parameters or {}, try_only)
+    result, err = call_method (method, parameters, try_only)
   end
   if result then
-    translate (result)
-    result = {
+    result = i18n {
       identifier = identifier,
       success    = true,
       response   = result,
     }
   else
-    translate (err)
-    result = {
+    result = i18n {
       identifier = identifier,
       success    = false,
       error      = err,
