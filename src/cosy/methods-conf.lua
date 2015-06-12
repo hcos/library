@@ -22,3 +22,11 @@ Internal.reputation = {
   suspend     = 50,
   release     = 50,
 }
+Internal.resource.status = {
+  active    = "active",
+  suspended = "suspended",
+}
+Internal.resouce.type = {
+  user    = "user",
+  project = "project",
+}

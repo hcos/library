@@ -4,6 +4,7 @@ local Configuration = require "cosy.configuration"
 local Digest        = require "cosy.digest"
 local Email         = require "cosy.email"
 local I18n          = require "cosy.i18n"
+local Logger        = require "cosy.logger"
 local Parameters    = require "cosy.parameters"
 local Password      = require "cosy.password"
 local Store         = require "cosy.store"
@@ -16,26 +17,13 @@ Configuration.load "cosy.parameters"
 local i18n   = I18n.load "cosy.methods"
 i18n._locale = Configuration.locale._
 
-Methods.Status = setmetatable ({
-  active    = "active",
-  suspended = "suspended",
-}, {
-  __index = assert,
-})
-
-Methods.Type = setmetatable ({
-  user = "user",
-}, {
-  __index = assert,
-})
-
 -- Server
 -- ------
 
 Methods.server = {}
 
-function Methods.server.list_methods (request)
-  Parameters.check (request, {
+function Methods.server.list_methods (request, store)
+  Parameters.check (store, request, {
     optional = {
       locale = Parameters.locale,
     },
@@ -47,11 +35,21 @@ function Methods.server.list_methods (request)
   local result = {}
   local function f (current, prefix)
     for k, v in pairs (current) do
-      if type (v) == "function" then
+      local ok, err = pcall (function ()
+        if type (v) == "function" then
+          local name = (prefix or "") .. k:gsub ("_", "-")
+          result [name] = i18n [name] % { locale = locale }
+        elseif type (v) == "table" then
+          f (v, (prefix or "") .. k:gsub ("_", "-") .. ":")
+        end
+      end)
+      if not ok then
+        Logger.warning {
+          _      = i18n ["translation:failure"],
+          reason = err,
+        }
         local name = (prefix or "") .. k:gsub ("_", "-")
-        result [name] = i18n [name] % { locale = locale }
-      elseif type (v) == "table" then
-        f (v, (prefix or "") .. k:gsub ("_", "-") .. ":")
+        result [name] = name
       end
     end
   end
@@ -59,8 +57,8 @@ function Methods.server.list_methods (request)
   return result
 end
 
-function Methods.server.stop (request)
-  Parameters.check (request, {
+function Methods.server.stop (request, store)
+  Parameters.check (store, request, {
     required = {
       authentication = Parameters.token.administration,
     },
@@ -69,15 +67,15 @@ function Methods.server.stop (request)
   return Server.stop ()
 end
 
-function Methods.server.information (request)
-  Parameters.check (request, {})
+function Methods.server.information (request, store)
+  Parameters.check (store, request, {})
   return {
     name = Configuration.server.name._,
   }
 end
 
-function Methods.server.tos (request)
-  Parameters.check (request, {
+function Methods.server.tos (request, store)
+  Parameters.check (store, request, {
     optional = {
       authentication = Parameters.token.authentication,
       locale         = Parameters.locale,
@@ -104,8 +102,25 @@ end
 
 Methods.user = {}
 
+function Methods.user.list (request, store)
+  Parameters.check (store, request, {
+    optional = {
+      prefix = Parameters.string.trimmed,
+      locale = Parameters.locale,
+    },
+  })
+  local filter = Configuration.redis.pattern.user._ % {
+    user = (request.prefix or "") .. "*",
+  }
+  local result = {}
+  for _, user in Store.iterate (store.users, filter) do
+    result [#result+1] = user.username
+  end
+  return result
+end
+
 function Methods.user.create (request, store, try_only)
-  Parameters.check (request, {
+  Parameters.check (store, request, {
     required = {
       username   = Parameters.username,
       password   = Parameters.password.checked,
@@ -133,8 +148,8 @@ function Methods.user.create (request, store, try_only)
     request.locale = Configuration.locale.default._
   end
   local user = {
-    type        = Methods.Type.user,
-    status      = Methods.Status.active,
+    type        = Configuration.resource.type.user._,
+    status      = Configuration.resource.status.active._,
     username    = request.username,
     email       = request.email,
     checked     = false,
@@ -177,12 +192,12 @@ function Methods.user.create (request, store, try_only)
 end
 
 function Methods.user.send_validation (request, store, try_only)
-  Parameters.check (request, {
+  Parameters.check (store, request, {
     required = {
       authentication = Parameters.token.authentication,
     },
   })
-  local user = store.users [request.authentication.username]
+  local user = request.authentication.user
   if try_only then
     return true
   end
@@ -212,30 +227,29 @@ function Methods.user.send_validation (request, store, try_only)
 end
 
 function Methods.user.validate (request, store)
-  Parameters.check (request, {
+  Parameters.check (store, request, {
     required = {
       validation = Parameters.token.validation,
     },
   })
-  local user = store.users [request.validation.username]
+  local user = request.validation.user
   user.checked = true
 end
 
 function Methods.user.authenticate (request, store)
-  Parameters.check (request, {
-    required = {
-      username = Parameters.username,
-      password = Parameters.password,
-    },
-  })
-  local user = store.users [request.username]
-  if not user
-  or user.type   ~= Methods.Type.user
-  or user.status ~= Methods.Status.active then
+  if not pcall (function ()
+    Parameters.check (store, request, {
+      required = {
+        user     = Parameters.user.active,
+        password = Parameters.password,
+      },
+    })
+  end) then
     error {
       _ = i18n ["user:authenticate:failure"],
     }
   end
+  local user     = request.user
   local verified = Password.verify (request.password, user.password)
   if not verified then
     error {
@@ -251,8 +265,8 @@ function Methods.user.authenticate (request, store)
   }
 end
 
-function Methods.user.is_authentified (request)
-  Parameters.check (request, {
+function Methods.user.is_authentified (request, store)
+  Parameters.check (store, request, {
     required = {
       authentication = Parameters.token.authentication,
     },
@@ -261,7 +275,7 @@ function Methods.user.is_authentified (request)
 end
 
 function Methods.user.update (request, store, try_only)
-  Parameters.check (request, {
+  Parameters.check (store, request, {
     required = {
       authentication = Parameters.token.authentication,
     },
@@ -277,7 +291,7 @@ function Methods.user.update (request, store, try_only)
       username     = Parameters.username,
     },
   })
-  local user = store.users [request.authentication.username]
+  local user = request.authentication.user
   if request.username then
     if store.users [request.username] then
       error {
@@ -292,11 +306,11 @@ function Methods.user.update (request, store, try_only)
     for name, project in Store.iterate (store.projects, filter) do
       local projectname = (Configuration.redis.pattern.project._ / name).project
       project.username = request.username
-      local old = Configuration.redis.pattern.project % {
+      local old = Configuration.redis.pattern.project._ % {
         user    = user.username,
         project = projectname,
       }
-      local new = Configuration.redis.pattern.project % {
+      local new = Configuration.redis.pattern.project._ % {
         user    = request.username,
         project = projectname,
       }
@@ -373,19 +387,12 @@ function Methods.user.update (request, store, try_only)
 end
 
 function Methods.user.information (request, store)
-  Parameters.check (request, {
+  Parameters.check (store, request, {
     required = {
-      username = Parameters.username,
+      user = Parameters.user,
     },
   })
-  local user = store.users [request.username]
-  if not user
-  or user.type   ~= Methods.Type.user then
-    error {
-      _        = i18n ["username:miss"],
-      username = request.username,
-    }
-  end
+  local user = request.user
   return {
     avatar       = user.avatar,
     homepage     = user.homepage,
@@ -397,13 +404,13 @@ function Methods.user.information (request, store)
 end
 
 function Methods.user.recover (request, store, try_only)
-  Parameters.check (request, {
+  Parameters.check (store, request, {
     required = {
       validation = Parameters.token.validation,
       password   = Parameters.password.checked,
     },
   })
-  local user = store.users [request.validation.username]
+  local user = request.validation.user
   Methods.user.update {
     authentication = Token.authentication (user),
     password       = request.password,
@@ -416,7 +423,7 @@ function Methods.user.recover (request, store, try_only)
 end
 
 function Methods.user.reset (request, store, try_only)
-  Parameters.check (request, {
+  Parameters.check (store, request, {
     required = {
       email = Parameters.email,
     },
@@ -427,7 +434,7 @@ function Methods.user.reset (request, store, try_only)
   end
   local user = store.users [email.username]
   if not user
-  or user.type ~= Methods.Type.user then
+  or user.type ~= Configuration.resource.type.user._ then
     return
   end
   user.password = ""
@@ -460,25 +467,19 @@ function Methods.user.reset (request, store, try_only)
 end
 
 function Methods.user.suspend (request, store)
-  Parameters.check (request, {
+  Parameters.check (store, request, {
     required = {
-      username       = Parameters.username,
       authentication = Parameters.token.authentication,
+      user           = Parameters.user.active,
     },
   })
-  local target = store.users [request.username]
-  if target.type ~= Methods.Type.user then
-    error {
-      _        = i18n ["user:suspend:not-user"],
-      username = request.username,
-    }
-  end
-  if request.username == request.authentication.username then
+  local target = request.user
+  if request.user.username == request.authentication.username then
     error {
       _ = i18n ["user:suspend:self"],
     }
   end
-  local user       = store.users [request.authentication.username]
+  local user       = request.authentication.user
   local reputation = Configuration.reputation.suspend._
   if user.reputation < reputation then
     error {
@@ -492,31 +493,19 @@ function Methods.user.suspend (request, store)
 end
 
 function Methods.user.release (request, store)
-  Parameters.check (request, {
+  Parameters.check (store, request, {
     required = {
-      username       = Parameters.username,
+      user           = Parameters.user.suspended,
       authentication = Parameters.token.authentication,
     },
   })
-  local target = store.users [request.username]
-  if target.type ~= Methods.Type.user then
-    error {
-      _        = i18n ["user:release:not-user"],
-      username = request.username,
-    }
-  end
-  if target.status ~= Methods.Status.suspended then
-    error {
-      _        = i18n ["user:release:not-suspended"],
-      username = request.username,
-    }
-  end
-  if request.username == request.authentication.username then
+  local target = request.user
+  if request.user.username == request.authentication.username then
     error {
       _ = i18n ["user:release:self"],
     }
   end
-  local user       = store.users [request.authentication.username]
+  local user       = request.authentication.user
   local reputation = Configuration.reputation.release._
   if user.reputation < reputation then
     error {
@@ -530,12 +519,12 @@ function Methods.user.release (request, store)
 end
 
 function Methods.user.delete (request, store)
-  Parameters.check (request, {
+  Parameters.check (store, request, {
     required = {
       authentication = Parameters.token.authentication,
     },
   })
-  local user = store.users [request.authentication.username]
+  local user = request.authentication.user
   store.emails [user.email   ] = nil
   store.users  [user.username] = nil
   local filter = Configuration.redis.pattern.project._ % {
@@ -551,6 +540,24 @@ end
 -- -------
 
 Methods.project = {}
+
+function Methods.project.list (request, store)
+  Parameters.check (request, {
+    optional = {
+      prefix = Parameters.prefix,
+      user   = Parameters.user,
+      locale = Parameters.locale,
+    },
+  })
+  local filter = Configuration.redis.pattern.project._ % {
+    user = (request.prefix or "") .. "*",
+  }
+  local result = {}
+  for _, user in Store.iterate (store.users, filter) do
+    result [#result+1] = user.username
+  end
+  return result
+end
 
 function Methods.project.create (request, store)
   Parameters.check (request, {
@@ -575,9 +582,12 @@ function Methods.project.create (request, store)
     }
   end
   store.projects [name] = {
+    type        = Methods.Type.project,
     username    = user.username,
     projectname = request.projectname,
-    is_private  = request.is_private,
+    access      = {
+      is_private = request.is_private,
+    },
   }
 end
 
@@ -585,23 +595,27 @@ function Methods.project.delete (request, store)
   Parameters.check (request, {
     required = {
       authentication = Parameters.token.authentication,
-      projectname    = Parameters.projectname,
+      project        = Parameters.project,
     },
   })
-  local user = store.users [request.authentication.username]
-  local name = Configuration.redis.pattern.project._ % {
-    user    = user.username,
-    project = request.projectname,
-  }
-  local project = store.projects [name]
+  local project = store.projects [request.project.rawname]
   if not project then
     error {
       _    = i18n ["project:miss"],
-      name = name,
+      name = request.project.rawname,
     }
   end
-  store.projects [name] = nil
+  local user    = store.users [request.authentication.username]
+  if project.username ~= user.username then
+    error {
+      _    = i18n ["project:forbidden"],
+      name = project.projectname,
+    }
+  end
+  store.projects [request.project.rawname] = nil
 end
+
+--[[
 
 function Methods.project.update (request, store)
   Parameters.check (request, {
@@ -652,5 +666,26 @@ function Methods.project.update (request, store)
     description = project.description,
   }
 end
+
+function Methods.project.information (request, store)
+  Parameters.check (request, {
+    required = {
+      project = Parameters.project,
+    },
+    optional = {
+      authentication = Parameters.token.authentication,
+    },
+  })
+  local project = store.projects [request.project.rawname]
+  
+  local result  = {
+    username    = project.username,
+    projectname = project.projectname,
+    name        = project.name,
+    homepage    = project.homepage,
+    description = project.description,
+  }
+end
+--]]
 
 return Methods

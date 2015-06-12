@@ -1,4 +1,7 @@
 return {
+  ["translation:failure"] = {
+    "translation failed: {{{reason}}}",
+  },
   ["server:information"] = {
     en = "show information about the server",
   },
@@ -25,6 +28,9 @@ return {
   },
   ["user:is-authentified"] = {
     en = "checks if a user is authentified",
+  },
+  ["user:list"] = {
+    en = "list all users",
   },
   ["user:recover"] = {
     en = "recover your account",
@@ -128,13 +134,10 @@ return {
   ["user:suspend:not-enough"] = {
     en = "suspending a user requires {{{required}}} reputation, but only {{{owned}}} is owned",
   },
-  ["project:miss"] = {
-    en = "project {{{name}}} does not exist",
-  },
   ["project:exist"] = {
     en = "project {{{name}}} exists already",
   },
-  ["project:update:projectname"] = {
-    en = "updating the projectname is restricted to project owner",
+  ["project:forbidden"] = {
+    en = "restricted to project owner",
   },
 }
