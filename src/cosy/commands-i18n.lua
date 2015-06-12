@@ -50,6 +50,9 @@ return {
   ["option:server"]= {
     en = "server url"
   },
+  ["flag:clean"] = {
+    en = "clean database before run",
+  },
   ["flag:debug"] = {
     en = "show debug information",
   },

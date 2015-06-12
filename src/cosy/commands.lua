@@ -223,11 +223,11 @@ function Commands.__index (commands, key)
   local option_types = {}
   local option_descs = {}
   for part, t in pairs (result.response) do
-    for name, t in pairs (t) do
+    for name, x in pairs (t) do
       option_names [#option_names+1] = name
       option_parts [name] = part
-      option_types [name] = t.type
-      option_descs [name] = t.description
+      option_types [name] = x.type
+      option_descs [name] = x.description
     end
   end
   table.sort (option_names)
@@ -253,8 +253,8 @@ function Commands.__index (commands, key)
       Prepares [key] (commands, args)
     end
     local parameters = {}
-    for _, t in pairs (result.response) do
-      for name, t in pairs (t) do
+    for _, x in pairs (result.response) do
+      for name, t in pairs (x) do
         if t.type == "password" then
           io.write (i18n ["argument:password" .. tostring (1)] % {} .. " ")
           parameters [name] = getpassword ()
@@ -627,6 +627,12 @@ Results ["user:information"] = function (response)
     print (Colors ("%{black yellowbg}" .. tostring (key)) ..
            Colors ("%{reset}" .. space) ..
            Colors ("%{yellow blackbg}" .. tostring (value)))
+  end
+end
+
+Results ["user:list"] = function (response)
+  for i = 1, #response do
+    print (Colors ("%{yellow blackbg}" .. tostring (response [i])))
   end
 end
 
