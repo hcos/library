@@ -16,14 +16,39 @@ local Parameters    = setmetatable ({}, {
 
 function Parameters.check (request, parameters)
   parameters = parameters or {}
-  if request == nil then
+  if request.__DESCRIBE then
     local result = {
       required = {},
       optional = {},
     }
+    local locale = Configuration.locale.default._
+    if request.locale then
+      locale = request.locale or locale
+    end
     for _, part in ipairs { "required", "optional" } do
       for k, v in pairs (parameters [part] or {}) do
-        result [part] [k] = tostring (v):gsub ("/whole/.data.", "")
+        local ok, err = pcall (function ()
+          result [part] [k] = {
+            type        = tostring (v):gsub ("/whole/.data.", ""),
+            description = i18n ["{{{part}}}:{{{name}}}" % {
+              locale = locale,
+              part   = part,
+              name   = tostring (v):gsub ("/whole/.data.", "")
+                                   :gsub ("_", "-")
+                                   :gsub ("%.", ":"),
+            }] % {}
+          }
+        end)
+        if not ok then
+          Logger.warning {
+            _      = i18n ["translation:failure"],
+            reason = err,
+          }
+          result [part] [k] = {
+            type        = tostring (v):gsub ("/whole/.data.", ""),
+            description = "(missing)",
+          }
+        end
       end
     end
     error (result)

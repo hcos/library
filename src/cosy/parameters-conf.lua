@@ -8,6 +8,44 @@ local Internal      = Configuration / "default"
 local i18n   = I18n.load "cosy.parameters"
 i18n._locale = Configuration.locale._
 
+local function check (value, data)
+  local request = {
+    key = value,
+  }
+  for i = 1, Repository.size (data.check) do
+    local ok, reason = data.check [i]._ {
+      parameter = data,
+      request   = request,
+      key       = "key",
+    }
+    if not ok then
+      return nil, reason
+    end
+  end
+  return true
+end
+
+-- Boolean
+-- ------
+
+Internal.data.boolean = {}
+do
+  local checks = Internal.data.boolean.check
+  checks [1] = function (t)
+    local value = t.request [t.key]
+    return  type (value) == "boolean"
+        or  nil, {
+              _   = i18n ["check:is-table"],
+            }
+  end
+end
+
+Internal.data.is_private = {
+  [Repository.refines] = {
+    Configuration.data.boolean,
+  }
+}
+
 -- Avatar
 -- ------
 
@@ -119,6 +157,62 @@ do
   end
 end
 
+-- Project name
+-- ------------
+do
+  Internal.data.projectname = {
+    min_size = 1,
+    max_size = 32,
+    [Repository.refines] = {
+      Configuration.data.trimmed,
+    }
+  }
+  local checks = Internal.data.projectname.check
+  checks [Repository.size (checks)+1] = function (t)
+    local value = t.request [t.key]
+    return  value:find "^%w[%w%-_]+$"
+        or  nil, {
+              _           = i18n ["check:alphanumeric"],
+              projectname = value,
+            }
+  end
+end
+
+-- Project
+-- -------
+do
+  Internal.data.project = {
+    min_size = 1,
+    max_size = 1
+             + Configuration.data.username   .max_size._
+             + Configuration.data.projectname.max_size._,
+    [Repository.refines] = {
+      Configuration.data.trimmed,
+    }
+  }
+  local checks = Internal.data.project.check
+  checks [Repository.size (checks)+1] = function (t)
+    local request = t.request
+    local key     = t.key
+    local value   = request [key]
+    local username, projectname = value:match "^(.-)/(.-)$"
+    if not check (username   , Configuration.data.username   )
+    or not check (projectname, Configuration.data.projectname)
+    then
+      return  nil, {
+                _           = i18n ["check:project"],
+                projectname = value,
+              }
+    end
+    request [key] = {
+      rawname     = value,
+      username    = username,
+      projectname = projectname,
+    }
+    return true
+  end
+end
+
 -- Password
 -- --------
 do
@@ -178,6 +272,18 @@ do
   Internal.data.organization = {
     min_size = 1,
     max_size = 128,
+    [Repository.refines] = {
+      Configuration.data.trimmed,
+    }
+  }
+end
+
+-- Description
+-- -----------
+do
+  Internal.data.description = {
+    min_size = 1,
+    max_size = 4096,
     [Repository.refines] = {
       Configuration.data.trimmed,
     }

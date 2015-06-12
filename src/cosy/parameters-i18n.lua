@@ -38,4 +38,91 @@ return {
   ["check:token:invalid"] = {
     en = "token is invalid",
   },
+  ["check:project"] = {
+    en = "a project must be like username/projectname",
+  },
+  ["translation:failure"] = {
+    "translation failed: {{{reason}}}",
+  },
+  ["optional:avatar"] = {
+    en = "avatar",
+  },
+  ["optional:is-private"] = {
+    en = "set as private",
+  },
+  ["optional:description"] = {
+    en = "description",
+  },
+  ["optional:email"] = {
+    en = "email address",
+  },
+  ["optional:homepage"] = {
+    en = "homepage URL",
+  },
+  ["optional:is-private"] = {
+    en = "set as private",
+  },
+  ["optional:locale"] = {
+    en = "locale for messages",
+  },
+  ["optional:name"] = {
+    en = "full name",
+  },
+  ["optional:organization"] = {
+    en = "organization",
+  },
+  ["optional:password"] = {
+    en = "password",
+  },
+  ["optional:password:checked"] = {
+    en = "password",
+  },
+  ["optional:projectname"] = {
+    en = "project identifier",
+  },
+  ["optional:server"]= {
+    en = "server url"
+  },
+  ["optional:token:authentication"] = {
+    en = "authentication token",
+  },
+  ["optional:tos"] = {
+    en = "terms of service digest",
+  },
+  ["optional:username"] = {
+    en = "username",
+  },
+  ["optional:clean"] = {
+    en = "clean redis database before launching the server",
+  },
+  ["required:email"] = {
+    en = "email address",
+  },
+  ["required:locale"] = {
+    en = "locale",
+  },
+  ["required:password"] = {
+    en = "password",
+  },
+  ["required:password:checked"] = {
+    en = "password",
+  },
+  ["required:project"] = {
+    en = "project",
+  },
+  ["required:projectname"] = {
+    en = "project identifier",
+  },
+  ["required:username"] = {
+    en = "user identifier",
+  },
+  ["required:token:authentication"] = {
+    en = "validation token",
+  },
+  ["required:token:validation"] = {
+    en = "validation token",
+  },
+  ["required:tos-digest"] = {
+    en = "terms of service digest",
+  },
 }
