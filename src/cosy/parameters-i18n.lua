@@ -9,7 +9,31 @@ return {
     en = "parameter {{{key}}} is missing",
   },
   ["check:is-table"] = {
-    en = "a {{{key}}} must be a table",
+    en = "{{{key}}} must be a table",
+  },
+  ["check:is-position"] = {
+    en = "{{{key}}} must contain a country, and city",
+  },
+  ["check:user:miss"] = {
+    en = "user {{{name}}} does not exist",
+  },
+  ["check:user:not-user"] = {
+    en = "resource {{{name}}} is not a user",
+  },
+  ["check:user:not-active"] = {
+    en = "user {{{name}}} is not active",
+  },
+  ["check:user:not-suspended"] = {
+    en = "user {{{name}}} is not suspended",
+  },
+  ["check:user:suspended"] = {
+    en = "user {{{name}}} is suspended",
+  },
+  ["check:project:miss"] = {
+    en = "project {{{name}}} does not exist",
+  },
+  ["check:is-avatar"] = {
+    en = "a {{{key}}} must be a table with contents and source",
   },
   ["check:is-string"] = {
     en = "a {{{key}}} must be a string",
@@ -38,91 +62,67 @@ return {
   ["check:token:invalid"] = {
     en = "token is invalid",
   },
+  ["check:user"] = {
+    en = "a {{{key}}} must be like username",
+  },
   ["check:project"] = {
     en = "a project must be like username/projectname",
   },
   ["translation:failure"] = {
     "translation failed: {{{reason}}}",
   },
-  ["optional:avatar"] = {
-    en = "avatar",
+  ["avatar"] = {
+    en = "avatar file or URL",
   },
-  ["optional:is-private"] = {
-    en = "set as private",
-  },
-  ["optional:description"] = {
+  ["description"] = {
     en = "description",
   },
-  ["optional:email"] = {
+  ["email"] = {
     en = "email address",
   },
-  ["optional:homepage"] = {
+  ["homepage"] = {
     en = "homepage URL",
   },
-  ["optional:is-private"] = {
+  ["is-private"] = {
     en = "set as private",
   },
-  ["optional:locale"] = {
+  ["locale"] = {
     en = "locale for messages",
   },
-  ["optional:name"] = {
+  ["name"] = {
     en = "full name",
   },
-  ["optional:organization"] = {
+  ["organization"] = {
     en = "organization",
   },
-  ["optional:password"] = {
+  ["password"] = {
     en = "password",
   },
-  ["optional:password:checked"] = {
+  ["password:checked"] = {
     en = "password",
   },
-  ["optional:projectname"] = {
-    en = "project identifier",
-  },
-  ["optional:server"]= {
-    en = "server url"
-  },
-  ["optional:token:authentication"] = {
+  ["token:authentication"] = {
     en = "authentication token",
   },
-  ["optional:tos"] = {
+  ["token:validation"] = {
+    en = "validation token",
+  },
+  ["tos"] = {
+    en = "terms of service",
+  },
+  ["tos-digest"] = {
     en = "terms of service digest",
   },
-  ["optional:username"] = {
+  ["user"] = {
+    en = "user",
+  },
+  ["user:active"] = {
+    en = "active user",
+  },
+  ["user:suspended"] = {
+    en = "suspended user",
+  },
+  ["username"] = {
     en = "username",
-  },
-  ["optional:clean"] = {
-    en = "clean redis database before launching the server",
-  },
-  ["required:email"] = {
-    en = "email address",
-  },
-  ["required:locale"] = {
-    en = "locale",
-  },
-  ["required:password"] = {
-    en = "password",
-  },
-  ["required:password:checked"] = {
-    en = "password",
-  },
-  ["required:project"] = {
-    en = "project",
-  },
-  ["required:projectname"] = {
-    en = "project identifier",
-  },
-  ["required:username"] = {
-    en = "user identifier",
-  },
-  ["required:token:authentication"] = {
-    en = "validation token",
-  },
-  ["required:token:validation"] = {
-    en = "validation token",
-  },
-  ["required:tos-digest"] = {
-    en = "terms of service digest",
   },
 }

@@ -14,7 +14,7 @@ local Parameters    = setmetatable ({}, {
   end,
 })
 
-function Parameters.check (request, parameters)
+function Parameters.check (store, request, parameters)
   parameters = parameters or {}
   if request.__DESCRIBE then
     local result = {
@@ -28,15 +28,14 @@ function Parameters.check (request, parameters)
     for _, part in ipairs { "required", "optional" } do
       for k, v in pairs (parameters [part] or {}) do
         local ok, err = pcall (function ()
+          local name = tostring (v):gsub ("/whole/.data.", "")
+                                   :gsub ("_", "-")
+                                   :gsub ("%.", ":")
           result [part] [k] = {
             type        = tostring (v):gsub ("/whole/.data.", ""),
-            description = i18n ["{{{part}}}:{{{name}}}" % {
+            description = i18n [name] % {
               locale = locale,
-              part   = part,
-              name   = tostring (v):gsub ("/whole/.data.", "")
-                                   :gsub ("_", "-")
-                                   :gsub ("%.", ":"),
-            }] % {}
+            }
           }
         end)
         if not ok then
@@ -46,7 +45,7 @@ function Parameters.check (request, parameters)
           }
           result [part] [k] = {
             type        = tostring (v):gsub ("/whole/.data.", ""),
-            description = "(missing)",
+            description = "(missing description)",
           }
         end
       end
@@ -69,6 +68,7 @@ function Parameters.check (request, parameters)
             parameter = parameter,
             request   = request,
             key       = key,
+            store     = store,
           }
           checked [key] = true
           if not ok then
