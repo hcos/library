@@ -23,7 +23,7 @@ local function call_method (method, parameters, try_only)
     end, function (e)
       err = e
       Logger.debug {
-        _      = i18n "server:exception",
+        _      = i18n ["server:exception"],
         reason = Value.expression (e) .. " => " .. debug.traceback (),
       }
     end)
