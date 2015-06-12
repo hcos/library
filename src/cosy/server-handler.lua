@@ -38,8 +38,9 @@ local function call_method (method, parameters, try_only)
   }
 end
 
-local function call_parameters (method)
-  local _, result = pcall (method)
+local function call_parameters (method, parameters)
+  parameters.__DESCRIBE = true
+  local _, result = pcall (method, parameters)
   return result
 end
 
@@ -81,7 +82,7 @@ return function (message)
   end
   local result, err
   if parameters_only then
-    result      = call_parameters (method)
+    result      = call_parameters (method, parameters)
   else
     result, err = call_method (method, parameters, try_only)
   end
