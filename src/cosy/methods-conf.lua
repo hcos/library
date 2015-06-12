@@ -2,9 +2,15 @@ local Configuration = require "cosy.configuration"
 local Internal      = Configuration / "default"
 
 Internal.redis.key   = {
-  users  = "user:{{{key}}}",
-  emails = "email:{{{key}}}",
-  tokens = "token:{{{key}}}",
+  emails   = "email:{{{key}}}",
+  projects = "project:{{{key}}}",
+  tokens   = "token:{{{key}}}",
+  users    = "user:{{{key}}}",
+}
+Internal.redis.pattern = {
+  user     = "{{{user}}}",
+  project  = "{{{user}}}/{{{project}}}",
+  resource = "{{{user}}}/{{{project}}}/{{{resource}}}",
 }
 Internal.expiration = {
   validation     =  1 * 3600, -- 1 hour

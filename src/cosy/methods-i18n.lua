@@ -47,6 +47,15 @@ return {
   ["user:validate"] = {
     en = "validate email address",
   },
+  ["project:create"] = {
+    en = "create a project",
+  },
+  ["project:delete"] = {
+    en = "delete a project",
+  },
+  ["project:update"] = {
+    en = "update project information",
+  },
   ["terms-of-service"] = {
     en = [[I agree to give my soul to CosyVerif.]],
   },
@@ -118,5 +127,14 @@ return {
   },
   ["user:suspend:not-enough"] = {
     en = "suspending a user requires {{{required}}} reputation, but only {{{owned}}} is owned",
+  },
+  ["project:miss"] = {
+    en = "project {{{name}}} does not exist",
+  },
+  ["project:exist"] = {
+    en = "project {{{name}}} exists already",
+  },
+  ["project:update:projectname"] = {
+    en = "updating the projectname is restricted to project owner",
   },
 }
