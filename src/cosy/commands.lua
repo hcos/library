@@ -15,7 +15,7 @@ local i18n   = I18n.load {
   "cosy.commands",
   "cosy.daemon",
 }
-i18n._locale = Configuration.cli.default_locale [nil]
+i18n._locale = Configuration.cli.locale [nil]
 
 if _G.nocolor then
   Colors = function (s)
@@ -98,14 +98,14 @@ function Options.set (part, name, oftype, description)
       Cli:add_option (
         "-l, --locale=LOCALE",
         i18n ["option:locale"] % {},
-        Configuration.cli.default_locale [nil]
+        Configuration.cli.locale [nil]
       )
     end
   elseif part == "optional" and name == "server" then
     Cli:add_option (
       "-s, --server=SERVER",
       i18n ["option:server"] % {},
-      Configuration.cli.default_server [nil]
+      Configuration.cli.server [nil]
     )
   elseif part == "optional" and name == "debug" then
     Cli:add_flag (
@@ -215,7 +215,7 @@ function Commands.__index (commands, key)
           or _G.arg [i]:match "^--server=(.)"
   end
   if not server then
-    server = Configuration.cli.default_server [nil]
+    server = Configuration.cli.server [nil]
   end
   commands.server = server
   if not key then
