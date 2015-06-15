@@ -1,6 +1,6 @@
-local Repository = require "cosy.repository"
-local Lustache   = require "lustache"
-local Plural     = require "i18n.plural"
+local Layer     = require "layeredata"
+local Lustache  = require "lustache"
+local Plural    = require "i18n.plural"
 
 local I18n      = {}
 local Metatable = {}
@@ -16,27 +16,25 @@ function I18n.new (locale)
 end
 
 function I18n.load (t)
-  local repository = Repository.new ()
-  Repository.options (repository).create = function () return {} end
-  Repository.options (repository).import = function () return {} end
   if type (t) ~= "table" then
     t = { t }
   end
   local depends = {}
   for _, name in ipairs (t) do
-    repository [name] = require (name .. "-i18n")
-    depends [#depends+1] = repository [name]
+    local layer = Layer.new { name = name, data = require (name .. "-i18n") }
+    depends [#depends+1] = layer
   end
-  repository.__all__ = {
-    [Repository.depends] = depends,
+  local all = Layer.new { data = {
+      __depends__ = depends,
+    }
   }
   local store = setmetatable ({}, {
     __index = function (_, key)
-      local path = repository.__all__ [key]
-      if Repository.exists (path) then
+      local path = all [key]
+      if Layer.exists (path) then
         local result = {}
-        for k in pairs (path) do
-          result [k] = path [k]._
+        for k, p in Layer.pairs (path) do
+          result [k] = p [nil]
         end
         return result
       end
