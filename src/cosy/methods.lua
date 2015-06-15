@@ -11,11 +11,13 @@ local Store         = require "cosy.store"
 local Time          = require "cosy.time"
 local Token         = require "cosy.token"
 
-Configuration.load "cosy.methods"
-Configuration.load "cosy.parameters"
+Configuration.load {
+  "cosy.methods",
+  "cosy.parameters",
+}
 
 local i18n   = I18n.load "cosy.methods"
-i18n._locale = Configuration.locale._
+i18n._locale = Configuration.locale [nil]
 
 -- Server
 -- ------
@@ -28,7 +30,7 @@ function Methods.server.list_methods (request, store)
       locale = Parameters.locale,
     },
   })
-  local locale = Configuration.locale.default._
+  local locale = Configuration.locale [nil]
   if request.locale then
     locale = request.locale or locale
   end
@@ -70,7 +72,7 @@ end
 function Methods.server.information (request, store)
   Parameters.check (store, request, {})
   return {
-    name = Configuration.server.name._,
+    name = Configuration.server.name [nil],
   }
 end
 
@@ -81,7 +83,7 @@ function Methods.server.tos (request, store)
       locale         = Parameters.locale,
     },
   })
-  local locale = Configuration.locale.default._
+  local locale = Configuration.locale [nil]
   if request.locale then
     locale = request.locale or locale
   end
@@ -109,7 +111,7 @@ function Methods.user.list (request, store)
       locale = Parameters.locale,
     },
   })
-  local filter = Configuration.redis.pattern.user._ % {
+  local filter = Configuration.redis.pattern.user [nil] % {
     user = (request.prefix or "") .. "*",
   }
   local result = {}
@@ -145,18 +147,18 @@ function Methods.user.create (request, store, try_only)
     username  = request.username,
   }
   if request.locale == nil then
-    request.locale = Configuration.locale.default._
+    request.locale = Configuration.locale [nil]
   end
   local user = {
-    type        = Configuration.resource.type.user._,
-    status      = Configuration.resource.status.active._,
+    type        = Configuration.resource.type.user [nil],
+    status      = Configuration.resource.status.active [nil],
     username    = request.username,
     email       = request.email,
     checked     = false,
     password    = Password.hash (request.password),
     locale      = request.locale,
     tos_digest  = request.tos_digest,
-    reputation  = Configuration.reputation.at_creation._,
+    reputation  = Configuration.reputation.at_creation [nil],
     lastseen    = Time (),
   }
   store.users [request.username] = user
@@ -167,8 +169,8 @@ function Methods.user.create (request, store, try_only)
     locale  = user.locale,
     from    = {
       _     = i18n ["user:create:from"],
-      name  = Configuration.server.name._,
-      email = Configuration.server.email._,
+      name  = Configuration.server.name  [nil],
+      email = Configuration.server.email [nil],
     },
     to      = {
       _     = i18n ["user:create:to"],
@@ -177,7 +179,7 @@ function Methods.user.create (request, store, try_only)
     },
     subject = {
       _          = i18n ["user:create:subject"],
-      servername = Configuration.server.name._,
+      servername = Configuration.server.name [nil],
       username   = user.username,
     },
     body    = {
@@ -205,8 +207,8 @@ function Methods.user.send_validation (request, store, try_only)
     locale  = user.locale,
     from    = {
       _     = i18n ["user:update:from"],
-      name  = Configuration.server.name._,
-      email = Configuration.server.email._,
+      name  = Configuration.server.name  [nil],
+      email = Configuration.server.email [nil],
     },
     to      = {
       _     = i18n ["user:update:to"],
@@ -215,7 +217,7 @@ function Methods.user.send_validation (request, store, try_only)
     },
     subject = {
       _          = i18n ["user:update:subject"],
-      servername = Configuration.server.name._,
+      servername = Configuration.server.name [nil],
       username   = user.username,
     },
     body    = {
@@ -299,18 +301,18 @@ function Methods.user.update (request, store, try_only)
         username = request.username,
       }
     end
-    local filter = Configuration.redis.pattern.project._ % {
+    local filter = Configuration.redis.pattern.project [nil] % {
       user    = user.username,
       project = "*",
     }
     for name, project in Store.iterate (store.projects, filter) do
-      local projectname = (Configuration.redis.pattern.project._ / name).project
+      local projectname = (Configuration.redis.pattern.project [nil] / name).project
       project.username = request.username
-      local old = Configuration.redis.pattern.project._ % {
+      local old = Configuration.redis.pattern.project [nil] % {
         user    = user.username,
         project = projectname,
       }
-      local new = Configuration.redis.pattern.project._ % {
+      local new = Configuration.redis.pattern.project [nil] % {
         user    = request.username,
         project = projectname,
       }
@@ -358,8 +360,8 @@ function Methods.user.update (request, store, try_only)
       convert {{{file}}} -resize {{{width}}}x{{{height}}} png:{{{file}}}
     ]] % {
       file   = filename,
-      height = Configuration.data.avatar.height._,
-      width  = Configuration.data.avatar.width._,
+      height = Configuration.data.avatar.height [nil],
+      width  = Configuration.data.avatar.width  [nil],
     })
     file = io.open (filename, "r")
     request.avatar.content = file:read "*all"
@@ -434,7 +436,7 @@ function Methods.user.reset (request, store, try_only)
   end
   local user = store.users [email.username]
   if not user
-  or user.type ~= Configuration.resource.type.user._ then
+  or user.type ~= Configuration.resource.type.user [nil] then
     return
   end
   user.password = ""
@@ -445,8 +447,8 @@ function Methods.user.reset (request, store, try_only)
     locale  = user.locale,
     from    = {
       _     = i18n ["user:reset:from"],
-      name  = Configuration.server.name._,
-      email = Configuration.server.email._,
+      name  = Configuration.server.name  [nil],
+      email = Configuration.server.email [nil],
     },
     to      = {
       _     = i18n ["user:reset:to"],
@@ -455,7 +457,7 @@ function Methods.user.reset (request, store, try_only)
     },
     subject = {
       _          = i18n ["user:reset:subject"],
-      servername = Configuration.server.name._,
+      servername = Configuration.server.name [nil],
       username   = user.username,
     },
     body    = {
@@ -480,7 +482,7 @@ function Methods.user.suspend (request, store)
     }
   end
   local user       = request.authentication.user
-  local reputation = Configuration.reputation.suspend._
+  local reputation = Configuration.reputation.suspend [nil]
   if user.reputation < reputation then
     error {
       _        = i18n ["user:suspend:not-enough"],
@@ -506,7 +508,7 @@ function Methods.user.release (request, store)
     }
   end
   local user       = request.authentication.user
-  local reputation = Configuration.reputation.release._
+  local reputation = Configuration.reputation.release [nil]
   if user.reputation < reputation then
     error {
       _        = i18n ["user:suspend:not-enough"],
@@ -527,7 +529,7 @@ function Methods.user.delete (request, store)
   local user = request.authentication.user
   store.emails [user.email   ] = nil
   store.users  [user.username] = nil
-  local filter = Configuration.redis.pattern.project._ % {
+  local filter = Configuration.redis.pattern.project [nil] % {
     user    = user.username,
     project = "*",
   }
@@ -549,7 +551,7 @@ function Methods.project.list (request, store)
       locale = Parameters.locale,
     },
   })
-  local filter = Configuration.redis.pattern.project._ % {
+  local filter = Configuration.redis.pattern.project [nil] % {
     user = (request.prefix or "") .. "*",
   }
   local result = {}
@@ -570,7 +572,7 @@ function Methods.project.create (request, store)
     },
   })
   local user = store.users [request.authentication.username]
-  local name = Configuration.redis.pattern.project._ % {
+  local name = Configuration.redis.pattern.project [nil] % {
     user    = user.username,
     project = request.projectname,
   }
