@@ -1,33 +1,31 @@
 local Loader        = require "cosy.loader"
 local I18n          = require "cosy.i18n"
 local Logger        = require "cosy.logger"
-local Repository    = require "cosy.repository"
 local Scheduler     = require "cosy.scheduler"
+local Layer         = require "layeredata"
 
 local i18n       = I18n.load "cosy.configuration"
-local repository = Repository.new ()
 
-Repository.options (repository).create = function () return {} end
-Repository.options (repository).import = function () return {} end
+local layers = {
+  default = Layer.new { name = "default", data = { locale = "en" } },
+  etc     = Layer.new { name = "etc"     },
+  home    = Layer.new { name = "home"    },
+  pwd     = Layer.new { name = "pwd"     },
+}
 
-repository.whole = {
-  [Repository.depends] = {
-    repository.default,
-    repository.etc,
-    repository.home,
-    repository.pwd,
+layers.whole = Layer.new {
+  name = "whole",
+  data = {
+    __depends__ = {
+      layers.default,
+      layers.etc,
+      layers.home,
+      layers.pwd,
+    },
   },
 }
 
-local Configuration = {
-  ["cosy:configuration:layers"] = {
-    default = repository.default,
-    etc     = repository.etc,
-    home    = repository.home,
-    pwd     = repository.pwd,
-    whole   = repository.whole,
-  },
-}
+local Configuration = {}
 
 function Configuration.load (t)
   if type (t) ~= "table" then
@@ -40,33 +38,30 @@ end
 
 local Metatable = {}
 
-function Metatable.__index (configuration, key)
-  return configuration ["cosy:configuration:layers"].whole [key]
+function Metatable.__index (_, key)
+  return layers.whole [key]
 end
 
-function Metatable.__newindex (configuration, key, value)
-  configuration ["cosy:configuration:layers"].whole [key] = value
+function Metatable.__newindex (_, key, value)
+  layers.whole [key] = value
 end
 
-function Metatable.__div (configuration, name)
-  return configuration ["cosy:configuration:layers"] [name]
+function Metatable.__div (_, name)
+  return layers [name]
 end
 
 setmetatable (Configuration, Metatable)
 
-local Internal  = Configuration / "default"
-Internal.locale = "en"
-
 local files = {
   etc  = "/etc/cosy.conf",
   home = os.getenv "HOME" .. "/.cosy/cosy.conf",
-  pwd  = os.getenv "PWD" .. "/cosy.conf",
+  pwd  = os.getenv "PWD"  .. "/cosy.conf",
 }
 
 if not _G.js then
   local updater = Scheduler.addthread (function ()
-    local Nginx         = require "cosy.nginx"
-    local Redis         = require "cosy.redis"
+    local Nginx = require "cosy.nginx"
+    local Redis = require "cosy.redis"
     if not Nginx.directory then
       return
     end
@@ -80,9 +75,7 @@ if not _G.js then
           redis.call ("del", unpack (keys, i, math.min (i+n-1, #keys)))
         end
       ]] }
-      for name in pairs (Configuration.dependencies) do
-        local source = Configuration.dependencies [name]
-        local url    = tostring (source._)
+      for name, url in Layer.pairs (Configuration.dependencies) do
         if url:match "^http" then
           script [#script+1] = ([[
             redis.call ("set", "foreign:{{{name}}}", "{{{source}}}")
@@ -131,14 +124,14 @@ if not _G.js then
       Logger.debug {
         _      = i18n ["use"],
         path   = name,
-        locale = Configuration.locale._ or "en",
+        locale = Configuration.locale [nil] or "en",
       }
-      repository [key] = result
+      Layer.replacewith (layers [key], result)
     else
       Logger.warning {
         _      = i18n ["skip"],
         path   = name,
-        locale = Configuration.locale._ or "en",
+        locale = Configuration.locale [nil] or "en",
       }
     end
   end
