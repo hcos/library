@@ -7,11 +7,13 @@ local Scheduler     = require "cosy.scheduler"
 local Ffi           = require "ffi"
 local Websocket     = require "websocket"
 
-Configuration.load "cosy.daemon"
-Configuration.load "cosy.server"
+Configuration.load {
+  "cosy.daemon",
+  "cosy.server",
+}
 
 local i18n   = I18n.load "cosy.daemon"
-i18n._locale = Configuration.locale._
+i18n._locale = Configuration.locale [nil]
 
 local Daemon = {}
 
@@ -27,8 +29,8 @@ function Daemon.start ()
     addserver (s, f)
   end
   Daemon.ws = Websocket.server.copas.listen {
-    interface = Configuration.daemon.interface._,
-    port      = Configuration.daemon.port._,
+    interface = Configuration.daemon.interface [nil],
+    port      = Configuration.daemon.port [nil],
     protocols = {
       cosy = function (ws)
         while true do
@@ -51,22 +53,22 @@ function Daemon.start ()
   Scheduler.addserver = addserver
   Logger.debug {
     _    = i18n ["websocket:listen"],
-    host = Configuration.daemon.interface._,
-    port = Configuration.daemon.port._,
+    host = Configuration.daemon.interface [nil],
+    port = Configuration.daemon.port [nil],
   }
   do
-    local daemonfile = Configuration.daemon.data_file._
+    local daemonfile = Configuration.daemon.data_file [nil]
     local file       = io.open (daemonfile, "w")
     file:write (Value.expression {
-      interface = Configuration.daemon.interface._,
-      port      = Configuration.daemon.port._,
+      interface = Configuration.daemon.interface [nil],
+      port      = Configuration.daemon.port [nil],
     })
     file:close ()
     os.execute ([[ chmod 0600 {{{file}}} ]] % { file = daemonfile })
   end
   do
     Ffi.cdef [[ unsigned int getpid (); ]]
-    local pidfile = Configuration.daemon.pid_file._
+    local pidfile = Configuration.daemon.pid_file [nil]
     local file    = io.open (pidfile, "w")
     file:write (Ffi.C.getpid ())
     file:close ()
@@ -76,8 +78,8 @@ function Daemon.start ()
 end
 
 function Daemon.stop ()
-  os.remove (Configuration.daemon.data_file._)
-  os.remove (Configuration.daemon.pid_file ._)
+  os.remove (Configuration.daemon.data_file [nil])
+  os.remove (Configuration.daemon.pid_file  [nil])
   Scheduler.addthread (function ()
     Scheduler.sleep (1)
     os.exit   (0)
