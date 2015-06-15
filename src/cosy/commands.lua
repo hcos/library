@@ -63,6 +63,26 @@ local function show_status (result)
   elseif result.error then
     print (Colors ("%{black redbg}" .. i18n ["failure"] % {}),
            Colors ("%{red blackbg}" .. (result.error.message ~= nil and tostring (result.error.message) or "")))
+    if result.error._ == "check:error" then
+      local max = 0
+      for i = 1, #result.error.reasons do
+        local reason = result.error.reasons [i]
+        max = math.max (max, #reason.parameter)
+      end
+      for i = 1, #result.error.reasons do
+        local reason    = result.error.reasons [i]
+        local parameter = reason.parameter
+        local message   = reason.message
+        local space = ""
+        for _ = #parameter, max+3 do
+          space = space .. " "
+        end
+        space = space .. " => "
+        print (Colors ("%{black redbg}" .. tostring (parameter)) ..
+               Colors ("%{reset}" .. space) ..
+               Colors ("%{red blackbg}" .. tostring (message)))
+      end
+    end
   end
   return result
 end
