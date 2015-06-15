@@ -10,7 +10,7 @@ local Coromake      = require "coroutine.make"
 Configuration.load "cosy.library"
 
 local i18n   = I18n.load "cosy.library"
-i18n._locale = Configuration.locale._
+i18n._locale = Configuration.locale [nil]
 
 local Library   = {}
 local Client    = {}
@@ -36,7 +36,7 @@ function Client.connect (client)
   else
     local Websocket = require "websocket"
     client._ws = Websocket.client.ev {
-      timeout = Configuration.library.timeout._,
+      timeout = Configuration.library.timeout [nil],
       loop    = Scheduler._loop,
     }
   end
@@ -193,7 +193,7 @@ function Operation.__call (operation, parameters, try_only)
       parameters = parameters,
       try_only   = try_only,
     })
-    Scheduler.sleep (Configuration.library.timeout._)
+    Scheduler.sleep (Configuration.library.timeout [nil])
     result = client._results [identifier]
     client._waiting [identifier] = nil
     client._results [identifier] = nil
