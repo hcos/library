@@ -15,7 +15,7 @@ local i18n   = I18n.load {
   "cosy.commands",
   "cosy.daemon",
 }
-i18n._locale = Configuration.cli.default_locale._
+i18n._locale = Configuration.cli.default_locale [nil]
 
 if _G.nocolor then
   Colors = function (s)
@@ -98,14 +98,14 @@ function Options.set (part, name, oftype, description)
       Cli:add_option (
         "-l, --locale=LOCALE",
         i18n ["option:locale"] % {},
-        Configuration.cli.default_locale._
+        Configuration.cli.default_locale [nil]
       )
     end
   elseif part == "optional" and name == "server" then
     Cli:add_option (
       "-s, --server=SERVER",
       i18n ["option:server"] % {},
-      Configuration.cli.default_server._
+      Configuration.cli.default_server [nil]
     )
   elseif part == "optional" and name == "debug" then
     Cli:add_flag (
@@ -172,7 +172,7 @@ function Commands.print_help (commands)
     server     = commands.server,
     operation  = "server:list-methods",
     parameters = {
-      locale = Configuration.locale.default._,
+      locale = Configuration.locale.default [nil],
     }
   })
   local result = Value.decode (commands.ws:receive ())
@@ -215,7 +215,7 @@ function Commands.__index (commands, key)
           or _G.arg [i]:match "^--server=(.)"
   end
   if not server then
-    server = Configuration.cli.default_server._
+    server = Configuration.cli.default_server [nil]
   end
   commands.server = server
   if not key then
@@ -391,10 +391,10 @@ Commands ["daemon:stop"] = function (commands)
         kill -9 $(cat {{{pid}}}) 2> /dev/null
       fi
     ]==] % {
-      pid = Configuration.daemon.pid_file._,
+      pid = Configuration.daemon.pid_file [nil],
     })
-    os.remove (Configuration.daemon.data_file._)
-    os.remove (Configuration.daemon.pid_file ._)
+    os.remove (Configuration.daemon.data_file [nil])
+    os.remove (Configuration.daemon.pid_file  [nil])
     result = i18n {
       success  = true,
       response = {
@@ -440,15 +440,15 @@ Commands ["server:start"] = function ()
   if args.clean then
     Configuration.load "cosy.redis"
     local Redis     = require "redis"
-    local host      = Configuration.redis.interface._
-    local port      = Configuration.redis.port._
-    local database  = Configuration.redis.database._
+    local host      = Configuration.redis.interface [nil]
+    local port      = Configuration.redis.port [nil]
+    local database  = Configuration.redis.database [nil]
     local client    = Redis.connect (host, port)
     client:select (database)
     client:flushdb ()
     package.loaded ["redis"] = nil
   end
-  if io.open (Configuration.server.pid_file._, "r") then
+  if io.open (Configuration.server.pid_file [nil], "r") then
     local result = {
       success = false,
       error   = i18n {
@@ -469,14 +469,14 @@ Commands ["server:start"] = function ()
     rm -f {{{pid}}} {{{log}}}
     luajit -e '_G.logfile = "{{{log}}}"; require "cosy.server" .start ()' &
   ]==] % {
-    pid = Configuration.server.pid_file._,
-    log = Configuration.server.log_file._,
+    pid = Configuration.server.pid_file [nil],
+    log = Configuration.server.log_file [nil],
   })
   local tries = 0
   local serverdata
   repeat
     os.execute ([[sleep {{{time}}}]] % { time = 0.5 })
-    serverdata = read (Configuration.server.data_file._)
+    serverdata = read (Configuration.server.data_file [nil])
     tries      = tries + 1
   until serverdata or tries == 10
   local result
@@ -500,7 +500,7 @@ Commands ["server:start"] = function ()
 end
 
 Commands ["server:stop"] = function (commands)
-  local serverdata = read (Configuration.server.data_file._)
+  local serverdata = read (Configuration.server.data_file [nil])
   Options.set ("optional", "debug" )
   Options.set ("optional", "force" )
   Options.set ("optional", "server")
@@ -540,10 +540,10 @@ Commands ["server:stop"] = function (commands)
         kill -9 $(cat {{{pid}}}) 2> /dev/null
       fi
     ]==] % {
-      pid = Configuration.server.pid_file._,
+      pid = Configuration.server.pid_file [nil],
     })
-    os.remove (Configuration.server.data_file._)
-    os.remove (Configuration.server.pid_file ._)
+    os.remove (Configuration.server.data_file [nil])
+    os.remove (Configuration.server.pid_file  [nil])
     result = i18n {
       success  = true,
       response = {
