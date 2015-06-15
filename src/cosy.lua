@@ -20,9 +20,9 @@ local i18n   = I18n.load {
   "cosy.commands",
   "cosy.daemon",
 }
-i18n._locale = Configuration.cli.default_locale._
+i18n._locale = Configuration.cli.locale [nil]
 
-local directory  = Configuration.cli.directory._
+local directory  = Configuration.cli.directory [nil]
 Lfs.mkdir (directory)
 
 local function read (filename)
@@ -34,7 +34,7 @@ local function read (filename)
   file:close ()
   return Value.decode (data)
 end
-local daemondata = read (Configuration.daemon.data_file._)
+local daemondata = read (Configuration.daemon.data_file [nil])
 
 if _G.arg [1] == "--no-color" then
   _G.nocolor = true
@@ -63,13 +63,13 @@ or not ws:connect ("ws://{{{interface}}}:{{{port}}}/ws" % {
     rm -f {{{pid}}} {{{log}}}
     luajit -e '_G.logfile = "{{{log}}}"; require "cosy.daemon" .start ()' &
   ]==] % {
-    pid = Configuration.daemon.pid_file._,
-    log = Configuration.daemon.log_file._,
+    pid = Configuration.daemon.pid_file [nil],
+    log = Configuration.daemon.log_file [nil],
   })
   local tries = 0
   repeat
     os.execute ([[sleep {{{time}}}]] % { time = 0.5 })
-    daemondata = read (Configuration.daemon.data_file._)
+    daemondata = read (Configuration.daemon.data_file [nil])
     tries      = tries + 1
   until daemondata or tries == 5
   if not daemondata
