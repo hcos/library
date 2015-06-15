@@ -79,7 +79,7 @@ function Store.iterate (collection, filter)
 end
 
 function Collection.new (key)
-  local pattern = Configuration.redis.key [key]._
+  local pattern = Configuration.redis.key [key] [nil]
   assert (pattern, key)
   return setmetatable ({
     [PATTERN] = pattern,
