@@ -6,7 +6,7 @@ local Repository    = require "cosy.repository"
 Configuration.load "cosy.parameters"
 
 local i18n   = I18n.load "cosy.parameters"
-i18n._locale = Configuration.locale._
+i18n._locale = Configuration.locale [nil]
 
 local Parameters    = setmetatable ({}, {
   __index = function (_, key)
@@ -21,7 +21,7 @@ function Parameters.check (store, request, parameters)
       required = {},
       optional = {},
     }
-    local locale = Configuration.locale.default._
+    local locale = Configuration.locale.default [nil]
     if request.locale then
       locale = request.locale or locale
     end
@@ -63,8 +63,9 @@ function Parameters.check (store, request, parameters)
           key = key,
         }
       elseif value ~= nil then
+        print ("# checks", parameter, Repository.size (parameter.check))
         for i = 1, Repository.size (parameter.check) do
-          local ok, reason = parameter.check [i]._ {
+          local ok, reason = parameter.check [i] [nil] {
             parameter = parameter,
             request   = request,
             key       = key,
@@ -86,6 +87,7 @@ function Parameters.check (store, request, parameters)
         _   = i18n ["check:no-check"],
         key = key,
       }
+      request [key] = nil
     end
   end
   if #reasons ~= 0 then
