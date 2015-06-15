@@ -14,7 +14,7 @@ Configuration.load "cosy.token"
 local i18n   = I18n.load "cosy.token"
 i18n._locale = Configuration.locale [nil]
 
-if Configuration.token.secret._ == nil then
+if Configuration.token.secret [nil] == nil then
   error {
     _ = i18n ["token:no-secret"],
   }
