@@ -8,10 +8,10 @@ local Value         = require "cosy.value"
 Configuration.load "cosy.server"
 
 local i18n   = I18n.load "cosy.server"
-i18n._locale = Configuration.locale._
+i18n._locale = Configuration.locale [nil]
 
 local function call_method (method, parameters, try_only)
-  for _ = 1, Configuration.redis.retry._ do
+  for _ = 1, Configuration.redis.retry [nil] do
     local err
     local ok, result = xpcall (function ()
       local store  = Store.new ()
