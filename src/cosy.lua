@@ -34,7 +34,7 @@ local function read (filename)
   file:close ()
   return Value.decode (data)
 end
-local daemondata = read (Configuration.daemon.data_file [nil])
+local daemondata = read (Configuration.daemon.data [nil])
 
 if _G.arg [1] == "--no-color" then
   _G.nocolor = true
@@ -63,13 +63,13 @@ or not ws:connect ("ws://{{{interface}}}:{{{port}}}/ws" % {
     rm -f {{{pid}}} {{{log}}}
     luajit -e '_G.logfile = "{{{log}}}"; require "cosy.daemon" .start ()' &
   ]==] % {
-    pid = Configuration.daemon.pid_file [nil],
-    log = Configuration.daemon.log_file [nil],
+    pid = Configuration.daemon.pid [nil],
+    log = Configuration.daemon.log [nil],
   })
   local tries = 0
   repeat
     os.execute ([[sleep {{{time}}}]] % { time = 0.5 })
-    daemondata = read (Configuration.daemon.data_file [nil])
+    daemondata = read (Configuration.daemon.data [nil])
     tries      = tries + 1
   until daemondata or tries == 5
   if not daemondata

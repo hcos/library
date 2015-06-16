@@ -75,8 +75,9 @@ if not _G.js then
           redis.call ("del", unpack (keys, i, math.min (i+n-1, #keys)))
         end
       ]] }
-      for name, url in Layer.pairs (Configuration.dependencies) do
-        if url:match "^http" then
+      for name, p in Layer.pairs (Configuration.dependencies) do
+        local url = p [nil]
+        if type (url) == "string" and url:match "^http" then
           script [#script+1] = ([[
             redis.call ("set", "foreign:{{{name}}}", "{{{source}}}")
           ]]) % {

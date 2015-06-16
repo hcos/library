@@ -141,7 +141,7 @@ function Nginx.configure ()
     host           = Configuration.http.interface   [nil],
     port           = Configuration.http.port        [nil],
     www            = Configuration.http.www         [nil],
-    pidfile        = Configuration.http.pid_file    [nil],
+    pidfile        = Configuration.http.pid         [nil],
     name           = Configuration.server.name      [nil],
     wshost         = Configuration.server.interface [nil],
     wsport         = Configuration.server.port      [nil],
@@ -151,26 +151,25 @@ function Nginx.configure ()
     path           = package.path,
     resolver       = resolver,
   }
-  local file = io.open (Nginx.directory .. "/nginx.conf", "w")
+  local file = io.open (Configuration.http.configuration [nil], "w")
   file:write (configuration)
   file:close ()
 end
 
 function Nginx.start ()
-  Nginx.directory = os.tmpname ()
-  Logger.debug {
-    _         = i18n ["nginx:directory"],
-    directory = Nginx.directory,
-  }
   os.execute ([[
     rm -f {{{directory}}} && mkdir -p {{{directory}}}
-  ]] % { directory = Nginx.directory })
+  ]] % {
+    directory = Configuration.http.directory [nil],
+  })
   Nginx.configure ()
   os.execute ([[
-    {{{nginx}}} -p {{{directory}}} -c {{{directory}}}/nginx.conf 2>> {{{directory}}}/error.log
+    {{{nginx}}} -p {{{directory}}} -c {{{configuration}}} 2>> {{{error}}}
   ]] % {
-    nginx     = Configuration.http.nginx [nil],
-    directory = Nginx.directory,
+    directory     = Configuration.http.directory     [nil],
+    nginx         = Configuration.http.nginx         [nil],
+    configuration = Configuration.http.configuration [nil],
+    error         = Configuration.http.error         [nil],
   })
 end
 
@@ -179,10 +178,14 @@ function Nginx.stop ()
     [ -f {{{pidfile}}} ] && {
       kill -QUIT $(cat {{{pidfile}}})
     }
-  ]] % { pidfile = Configuration.http.pid_file [nil] })
+  ]] % {
+    pidfile = Configuration.http.pid [nil],
+  })
   os.execute ([[
     rm -rf {{{directory}}}
-  ]] % { directory = Nginx.directory })
+  ]] % {
+    directory = Configuration.http.directory [nil],
+  })
   Nginx.directory = nil
 end
 
@@ -192,7 +195,9 @@ function Nginx.update ()
     [ -f {{{pidfile}}} ] && {
       kill -HUP $(cat {{{pidfile}}})
     }
-  ]] % { pidfile = Configuration.http.pid_file [nil] })
+  ]] % {
+    pidfile = Configuration.http.pid [nil],
+  })
 end
 
 return Nginx

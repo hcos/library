@@ -53,7 +53,7 @@ function Server.start ()
     port = Configuration.server.port      [nil],
   }
   do
-    local datafile = Configuration.server.data_file [nil]
+    local datafile = Configuration.server.data [nil]
     local file     = io.open (datafile, "w")
     file:write (Value.expression {
       token     = Server.token,
@@ -69,7 +69,7 @@ function Server.start ()
   end
   do
     Ffi.cdef [[ unsigned int getpid (); ]]
-    local pidfile = Configuration.server.pid_file [nil]
+    local pidfile = Configuration.server.pid [nil]
     local file    = io.open (pidfile, "w")
     file:write (Ffi.C.getpid ())
     file:close ()
@@ -79,8 +79,8 @@ function Server.start ()
 end
 
 function Server.stop ()
-  os.remove (Configuration.server.data_file [nil])
-  os.remove (Configuration.server.pid_file  [nil])
+  os.remove (Configuration.server.data [nil])
+  os.remove (Configuration.server.pid  [nil])
   Scheduler.addthread (function ()
     Scheduler.sleep (1)
     Nginx.stop ()

@@ -391,10 +391,10 @@ Commands ["daemon:stop"] = function (commands)
         kill -9 $(cat {{{pid}}}) 2> /dev/null
       fi
     ]==] % {
-      pid = Configuration.daemon.pid_file [nil],
+      pid = Configuration.daemon.pid [nil],
     })
-    os.remove (Configuration.daemon.data_file [nil])
-    os.remove (Configuration.daemon.pid_file  [nil])
+    os.remove (Configuration.daemon.data [nil])
+    os.remove (Configuration.daemon.pid  [nil])
     result = i18n {
       success  = true,
       response = {
@@ -448,7 +448,7 @@ Commands ["server:start"] = function ()
     client:flushdb ()
     package.loaded ["redis"] = nil
   end
-  if io.open (Configuration.server.pid_file [nil], "r") then
+  if io.open (Configuration.server.pid [nil], "r") then
     local result = {
       success = false,
       error   = i18n {
@@ -469,14 +469,14 @@ Commands ["server:start"] = function ()
     rm -f {{{pid}}} {{{log}}}
     luajit -e '_G.logfile = "{{{log}}}"; require "cosy.server" .start ()' &
   ]==] % {
-    pid = Configuration.server.pid_file [nil],
-    log = Configuration.server.log_file [nil],
+    pid = Configuration.server.pid [nil],
+    log = Configuration.server.log [nil],
   })
   local tries = 0
   local serverdata
   repeat
     os.execute ([[sleep {{{time}}}]] % { time = 0.5 })
-    serverdata = read (Configuration.server.data_file [nil])
+    serverdata = read (Configuration.server.data [nil])
     tries      = tries + 1
   until serverdata or tries == 10
   local result
@@ -500,7 +500,7 @@ Commands ["server:start"] = function ()
 end
 
 Commands ["server:stop"] = function (commands)
-  local serverdata = read (Configuration.server.data_file [nil])
+  local serverdata = read (Configuration.server.data [nil])
   Options.set ("optional", "debug" )
   Options.set ("optional", "force" )
   Options.set ("optional", "server")
@@ -540,10 +540,10 @@ Commands ["server:stop"] = function (commands)
         kill -9 $(cat {{{pid}}}) 2> /dev/null
       fi
     ]==] % {
-      pid = Configuration.server.pid_file [nil],
+      pid = Configuration.server.pid [nil],
     })
-    os.remove (Configuration.server.data_file [nil])
-    os.remove (Configuration.server.pid_file  [nil])
+    os.remove (Configuration.server.data [nil])
+    os.remove (Configuration.server.pid  [nil])
     result = i18n {
       success  = true,
       response = {
@@ -606,17 +606,17 @@ end
 
 Results ["user:information"] = function (response)
   if response.avatar then
-    local avatar          = response.avatar
-    local input_filename  = os.tmpname ()
-    local file = io.open (input_filename, "w")
+    local avatar     = response.avatar
+    local inputname  = os.tmpname ()
+    local file = io.open (inputname, "w")
     file:write (avatar.content)
     file:close ()
     os.execute ([[
       img2txt -W 40 -H 20 {{{input}}} 2> /dev/null
     ]] % {
-      input  = input_filename,
+      input  = inputname,
     })
-    os.remove (input_filename)
+    os.remove (inputname)
     response.avatar  = nil
   end
   if response.position then

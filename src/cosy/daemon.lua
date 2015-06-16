@@ -57,7 +57,7 @@ function Daemon.start ()
     port = Configuration.daemon.port [nil],
   }
   do
-    local daemonfile = Configuration.daemon.data_file [nil]
+    local daemonfile = Configuration.daemon.data [nil]
     local file       = io.open (daemonfile, "w")
     file:write (Value.expression {
       interface = Configuration.daemon.interface [nil],
@@ -68,7 +68,7 @@ function Daemon.start ()
   end
   do
     Ffi.cdef [[ unsigned int getpid (); ]]
-    local pidfile = Configuration.daemon.pid_file [nil]
+    local pidfile = Configuration.daemon.pid [nil]
     local file    = io.open (pidfile, "w")
     file:write (Ffi.C.getpid ())
     file:close ()
@@ -78,8 +78,8 @@ function Daemon.start ()
 end
 
 function Daemon.stop ()
-  os.remove (Configuration.daemon.data_file [nil])
-  os.remove (Configuration.daemon.pid_file  [nil])
+  os.remove (Configuration.daemon.data [nil])
+  os.remove (Configuration.daemon.pid  [nil])
   Scheduler.addthread (function ()
     Scheduler.sleep (1)
     os.exit   (0)

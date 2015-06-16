@@ -1,7 +1,7 @@
 local Configuration = require "cosy.configuration"
 local I18n          = require "cosy.i18n"
 local Logger        = require "cosy.logger"
-local Repository    = require "cosy.repository"
+local Layer         = require "layeredata"
 
 Configuration.load "cosy.parameters"
 
@@ -63,8 +63,7 @@ function Parameters.check (store, request, parameters)
           key = key,
         }
       elseif value ~= nil then
-        print ("# checks", parameter, Repository.size (parameter.check))
-        for i = 1, Repository.size (parameter.check) do
+        for i = 1, Layer.size (parameter.check) do
           local ok, reason = parameter.check [i] [nil] {
             parameter = parameter,
             request   = request,

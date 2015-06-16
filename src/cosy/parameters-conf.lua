@@ -1,23 +1,23 @@
 local Configuration = require "cosy.configuration"
-local Repository    = require "cosy.repository"
 local I18n          = require "cosy.i18n"
 local Store         = require "cosy.store"
 local Token         = require "cosy.token"
 local Internal      = Configuration / "default"
+local Layer         = require "layeredata"
 
 Configuration.load {
   "cosy.methods",
 }
 
 local i18n   = I18n.load "cosy.parameters"
-i18n._locale = Configuration.locale._
+i18n._locale = Configuration.locale [nil]
 
 local function check (store, value, data)
   local request = {
     key = value,
   }
-  for i = 1, Repository.size (data.check) do
-    local ok, reason = data.check [i]._ {
+  for i = 1, Layer.size (data.check) do
+    local ok, reason = data.check [i] [nil] {
       parameter = data,
       request   = request,
       key       = "key",
@@ -46,7 +46,7 @@ do
 end
 
 Internal.data.is_private = {
-  [Repository.refines] = {
+  __refines__ = {
     Configuration.data.boolean,
   }
 }
@@ -98,6 +98,8 @@ do
     local value   = request [key]
     return  value.country
        and  value.city
+       and  value.latitude
+       and  value.longiture
         or  nil, {
               _   = i18n ["check:is-position"],
             }
@@ -125,7 +127,7 @@ do
     local request = t.request
     local key     = t.key
     local value   = request [key]
-    local size    = t.parameter.min_size._
+    local size    = t.parameter.min_size [nil]
     return  #value >= size
         or  nil, {
               _     = i18n ["check:min-size"],
@@ -136,7 +138,7 @@ do
     local request = t.request
     local key     = t.key
     local value   = request [key]
-    local size    = t.parameter.max_size._
+    local size    = t.parameter.max_size [nil]
     return  #value <= size
         or  nil, {
               _     = i18n ["check:max-size"],
@@ -147,7 +149,7 @@ end
 
 do
   Internal.data.string.trimmed = {
-    [Repository.refines] = {
+    __refines__ = {
       Configuration.data.string,
     }
   }
@@ -159,18 +161,18 @@ do
     request [key] = value:trim ()
     return true
   end
-  checks [3] = Internal.data.string.check [2]._
-  checks [4] = Internal.data.string.check [3]._
+  checks [3] = Internal.data.string.check [2] [nil]
+  checks [4] = Internal.data.string.check [3] [nil]
 end
 
 do
   Internal.data.locale = {
-    [Repository.refines] = {
+    __refines__ = {
       Configuration.data.string.trimmed,
     }
   }
   local checks = Internal.data.locale.check
-  checks [Repository.size (checks)+1] = function (t)
+  checks [Layer.size (checks)+1] = function (t)
     local value = t.request [t.key]
     return  value:find "^%a%a$"
         or  value:find "^%a%a%-%a%a$"
@@ -186,13 +188,34 @@ end
 -- User
 -- ----
 do
+  Internal.data.username = {
+    min_size = 1,
+    max_size = 32,
+    __refines__ = {
+      Configuration.data.string.trimmed,
+    }
+  }
+  local checks = Internal.data.username.check
+  checks [Layer.size (checks)+1] = function (t)
+    local request = t.request
+    local key     = t.key
+    local value   = request [key]
+    return  value:find "^%w[%w%-_]+$"
+        or  nil, {
+              _   = i18n ["check:alphanumeric"],
+              key = key,
+            }
+  end
+end
+
+do
   Internal.data.user = {
-    [Repository.refines] = {
+    __refines__ = {
       Configuration.data.username,
     },
   }
   local checks = Internal.data.user.check
-  checks [Repository.size (checks)+1] = function (t)
+  checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
     local value   = request [key]
@@ -208,7 +231,7 @@ do
     }
     return true
   end
-  checks [Repository.size (checks)+1] = function (t)
+  checks [Layer.size (checks)+1] = function (t)
     local store   = t.store
     local request = t.request
     local key     = t.key
@@ -221,12 +244,12 @@ do
               name = name,
             }
   end
-  checks [Repository.size (checks)+1] = function (t)
+  checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
     local name    = request [key].name
     local user    = request [key].user
-    return  user.type == Configuration.resource.type.user._
+    return  user.type == Configuration.resource.type.user [nil]
         or  nil, {
               _    = i18n ["check:user:not-user"],
               name = name,
@@ -236,17 +259,17 @@ end
 
 do
   Internal.data.user.active = {
-    [Repository.refines] = {
+    __refines__ = {
       Configuration.data.user,
     },
   }
   local checks = Internal.data.user.active.check
-  checks [Repository.size (checks)+1] = function (t)
+  checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
     local name    = request [key].name
     local user    = request [key].user
-    return  user.status == Configuration.resource.status.active._
+    return  user.status == Configuration.resource.status.active [nil]
         or  nil, {
               _    = i18n ["check:user:not-active"],
               name = name,
@@ -256,41 +279,20 @@ end
 
 do
   Internal.data.user.suspended = {
-    [Repository.refines] = {
+    __refines__ = {
       Configuration.data.user,
     },
   }
   local checks = Internal.data.user.suspended.check
-  checks [Repository.size (checks)+1] = function (t)
+  checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
     local name    = request [key].name
     local user    = request [key].user
-    return  user.status == Configuration.resource.status.suspended._
+    return  user.status == Configuration.resource.status.suspended [nil]
         or  nil, {
               _    = i18n ["check:user:not-suspended"],
               name = name,
-            }
-  end
-end
-
-do
-  Internal.data.username = {
-    min_size = 1,
-    max_size = 32,
-    [Repository.refines] = {
-      Configuration.data.string.trimmed,
-    }
-  }
-  local checks = Internal.data.username.check
-  checks [Repository.size (checks)+1] = function (t)
-    local request = t.request
-    local key     = t.key
-    local value   = request [key]
-    return  value:find "^%w[%w%-_]+$"
-        or  nil, {
-              _   = i18n ["check:alphanumeric"],
-              key = key,
             }
   end
 end
@@ -301,12 +303,12 @@ do
   Internal.data.projectname = {
     min_size = 1,
     max_size = 32,
-    [Repository.refines] = {
+    __refines__ = {
       Configuration.data.string.trimmed,
     }
   }
   local checks = Internal.data.projectname.check
-  checks [Repository.size (checks)+1] = function (t)
+  checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
     local value   = request [key]
@@ -322,12 +324,12 @@ end
 -- -------
 do
   Internal.data.project = {
-    [Repository.refines] = {
+    __refines__ = {
       Configuration.data.projectname,
     }
   }
   local checks = Internal.data.project.check
-  checks [Repository.size (checks)+1] = function (t)
+  checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
     local value   = request [key]
@@ -346,7 +348,7 @@ do
     }
     return true
   end
-  checks [Repository.size (checks)+1] = function (t)
+  checks [Layer.size (checks)+1] = function (t)
     local store   = Store.new ()
     local request = t.request
     local key     = t.key
@@ -368,7 +370,7 @@ do
   Internal.data.password = {
     min_size = 1,
     max_size = 128,
-    [Repository.refines] = {
+    __refines__ = {
       Configuration.data.string.trimmed,
     }
   }
@@ -376,7 +378,7 @@ end
 
 do
   Internal.data.password.checked = {
-    [Repository.refines] = {
+    __refines__ = {
       Configuration.data.string.password,
     }
   }
@@ -387,12 +389,12 @@ end
 do
   Internal.data.email = {
     max_size = 128,
-    [Repository.refines] = {
+    __refines__ = {
       Configuration.data.string.trimmed,
     }
   }
   local checks = Internal.data.email.check
-  checks [Repository.size (checks)+1] = function (t)
+  checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
     local value   = request [key]
@@ -411,7 +413,7 @@ do
   Internal.data.name = {
     min_size = 1,
     max_size = 128,
-    [Repository.refines] = {
+    __refines__ = {
       Configuration.data.string.trimmed,
     }
   }
@@ -423,7 +425,7 @@ do
   Internal.data.organization = {
     min_size = 1,
     max_size = 128,
-    [Repository.refines] = {
+    __refines__ = {
       Configuration.data.string.trimmed,
     }
   }
@@ -435,7 +437,7 @@ do
   Internal.data.description = {
     min_size = 1,
     max_size = 4096,
-    [Repository.refines] = {
+    __refines__ = {
       Configuration.data.string.trimmed,
     }
   }
@@ -445,21 +447,21 @@ end
 -- ------------------------
 do
   Internal.data.tos_digest = {
-    [Repository.refines] = {
+    __refines__ = {
       Configuration.data.string.trimmed,
     },
     min_size = 64,
     max_size = 64,
   }
   local checks = Internal.data.tos_digest.check
-  checks [Repository.size (checks)+1] = function (t)
+  checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
     local value   = request [key]
     request [key] = value:lower ()
     return  true
   end
-  checks [Repository.size (checks)+1] = function (t)
+  checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
     local value   = request [key]
@@ -470,7 +472,7 @@ do
               tos_digest = value,
             }
   end
-  checks [Repository.size (checks)+1] = function (t)
+  checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
     local value   = request [key]
@@ -488,12 +490,12 @@ end
 -- -----
 do
   Internal.data.token = {
-    [Repository.refines] = {
+    __refines__ = {
       Configuration.data.string.trimmed,
     },
   }
   local checks = Internal.data.token.check
-  checks [Repository.size (checks)+1] = function (t)
+  checks [Layer.size (checks)+1] = function (t)
     local request    = t.request
     local key        = t.key
     local value      = request [key]
@@ -512,12 +514,12 @@ end
 -- --------------------
 do
   Internal.data.token.administration = {
-    [Repository.refines] = {
+    __refines__ = {
       Configuration.data.token,
     },
   }
   local checks = Internal.data.token.administration.check
-  checks [Repository.size (checks)+1] = function (t)
+  checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
     local value   = request [key]
@@ -526,7 +528,7 @@ do
               _ = i18n ["check:token:invalid"],
             }
   end
-  checks [Repository.size (checks)+1] = function (t)
+  checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
     local value   = request [key]
@@ -542,12 +544,12 @@ end
 -- ----------------
 do
   Internal.data.token.validation = {
-    [Repository.refines] = {
+    __refines__ = {
       Configuration.data.token,
     },
   }
   local checks = Internal.data.token.validation.check
-  checks [Repository.size (checks)+1] = function (t)
+  checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
     local value   = request [key]
@@ -556,7 +558,7 @@ do
               _ = i18n ["check:token:invalid"],
             }
   end
-  checks [Repository.size (checks)+1] = function (t)
+  checks [Layer.size (checks)+1] = function (t)
     local store    = t.store
     local request  = t.request
     local key      = t.key
@@ -575,12 +577,12 @@ end
 -- --------------------
 do
   Internal.data.token.authentication = {
-    [Repository.refines] = {
+    __refines__ = {
       Configuration.data.token,
     },
   }
   local checks = Internal.data.token.authentication.check
-  checks [Repository.size (checks)+1] = function (t)
+  checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
     local value   = request [key]
@@ -589,7 +591,7 @@ do
               _ = i18n ["check:token:invalid"],
             }
   end
-  checks [Repository.size (checks)+1] = function (t)
+  checks [Layer.size (checks)+1] = function (t)
     local store    = t.store
     local request  = t.request
     local key      = t.key
@@ -597,8 +599,8 @@ do
     local user     = store.users [username]
     request [key].user = user
     return  user
-       and  user.type   == Configuration.resource.type.user._
-       and  user.status == Configuration.resource.status.active._
+       and  user.type   == Configuration.resource.type.user     [nil]
+       and  user.status == Configuration.resource.status.active [nil]
         or  nil, {
               _ = i18n ["check:token:invalid"],
             }

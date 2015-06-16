@@ -2,12 +2,15 @@ local Configuration = require "cosy.configuration"
 local Internal      = Configuration / "default"
 
 Internal.http  = {
-  nginx     = "nginx",
-  interface = "*",
-  port      = 8080,
-  salt      = "cosyverif",
-  timeout   = 5,
-  pid_file  = os.getenv "HOME" .. "/.cosy/nginx.pid",
+  nginx         = "nginx",
+  interface     = "*",
+  port          = 8080,
+  salt          = "cosyverif",
+  timeout       = 5,
+  pid           = os.getenv "HOME" .. "/.cosy/nginx.pid",
+  configuration = os.getenv "HOME" .. "/.cosy/nginx.conf",
+  error         = os.getenv "HOME" .. "/.cosy/nginx.log",
+  directory     = os.getenv "HOME" .. "/.cosy/nginx/",
 }
 Internal.www = {
   root = (os.getenv "PWD") .. "/www",
