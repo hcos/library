@@ -8,7 +8,7 @@ Configuration.load "cosy.parameters"
 local i18n   = I18n.load "cosy.parameters"
 i18n._locale = Configuration.locale [nil]
 
-local Parameters    = setmetatable ({}, {
+local Parameters = setmetatable ({}, {
   __index = function (_, key)
     return Configuration.data [key]
   end,
@@ -28,9 +28,11 @@ function Parameters.check (store, request, parameters)
     for _, part in ipairs { "required", "optional" } do
       for k, v in pairs (parameters [part] or {}) do
         local ok, err = pcall (function ()
-          local name = tostring (v):gsub ("/whole/.data.", "")
-                                   :gsub ("_", "-")
-                                   :gsub ("%.", ":")
+          local name = {}
+          for i = 2, #v.__keys do
+            name [#name+1] = v.__keys [i]
+          end
+          name = table.concat (name, ":")
           result [part] [k] = {
             type        = tostring (v):gsub ("/whole/.data.", ""),
             description = i18n [name] % {
