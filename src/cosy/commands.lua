@@ -117,11 +117,11 @@ function Options.set (part, name, oftype, description)
       "-f, --force",
       i18n ["flag:force"] % {}
     )
-  elseif oftype == "password.checked" and part == "required" then
+  elseif oftype == "password:checked" and part == "required" then
     local _ = false
   elseif oftype == "password" and part == "required" then
     local _ = false
-  elseif oftype == "password.checked" and part == "optional" then
+  elseif oftype == "password:checked" and part == "optional" then
     Cli:add_flag (
       "--{{{name}}}" % { name = name },
       i18n ["flag:password"] % {}
@@ -131,12 +131,12 @@ function Options.set (part, name, oftype, description)
       "--{{{name}}}" % { name = name },
       i18n ["flag:password"] % {}
     )
-  elseif oftype == "token.authentication" then
+  elseif oftype == "token:authentication" then
     Cli:add_option (
       "--{{{name}}}=TOKEN" % { name = name },
       description
     )
-  elseif oftype == "tos_digest" then
+  elseif oftype == "tos:digest" then
     local _ = false
   elseif oftype == "position" then
     local _ = false
@@ -278,7 +278,7 @@ function Commands.__index (commands, key)
         if t.type == "password" then
           io.write (i18n ["argument:password" .. tostring (1)] % {} .. " ")
           parameters [name] = getpassword ()
-        elseif t.type == "password.checked" then
+        elseif t.type == "password:checked" then
           local passwords = {}
           repeat
             for i = 1, 2 do
@@ -291,7 +291,7 @@ function Commands.__index (commands, key)
           until passwords [1] == passwords [2]
           parameters [name] = passwords [1]
         elseif args [name] then
-          if t.type == "token.authentication" then
+          if t.type == "token:authentication" then
             local _ = false
           elseif t.type == "avatar" then
             local avatar = args [name]

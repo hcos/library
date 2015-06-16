@@ -122,7 +122,7 @@ return {
   ["user:suspended"] = {
     en = "suspended user",
   },
-  ["username"] = {
+  ["user:name"] = {
     en = "username",
   },
 }

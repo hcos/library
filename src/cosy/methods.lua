@@ -124,10 +124,10 @@ end
 function Methods.user.create (request, store, try_only)
   Parameters.check (store, request, {
     required = {
-      username   = Parameters.username,
+      username   = Parameters.user.name,
       password   = Parameters.password.checked,
       email      = Parameters.email,
-      tos_digest = Parameters.tos_digest,
+      tos_digest = Parameters.tos.digest,
       locale     = Parameters.locale,
     },
   })

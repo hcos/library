@@ -4,6 +4,7 @@ local Store         = require "cosy.store"
 local Token         = require "cosy.token"
 local Internal      = Configuration / "default"
 local Layer         = require "layeredata"
+local this          = Layer.placeholder
 
 Configuration.load {
   "cosy.methods",
@@ -47,7 +48,7 @@ end
 
 Internal.data.is_private = {
   __refines__ = {
-    Configuration.data.boolean,
+    this.data.boolean,
   }
 }
 
@@ -150,7 +151,7 @@ end
 do
   Internal.data.string.trimmed = {
     __refines__ = {
-      Configuration.data.string,
+      this.data.string,
     }
   }
   local checks = Internal.data.string.trimmed.check
@@ -168,7 +169,7 @@ end
 do
   Internal.data.locale = {
     __refines__ = {
-      Configuration.data.string.trimmed,
+      this.data.string.trimmed,
     }
   }
   local checks = Internal.data.locale.check
@@ -188,14 +189,14 @@ end
 -- User
 -- ----
 do
-  Internal.data.username = {
+  Internal.data.user.name = {
     min_size = 1,
     max_size = 32,
     __refines__ = {
-      Configuration.data.string.trimmed,
+      this.data.string.trimmed,
     }
   }
-  local checks = Internal.data.username.check
+  local checks = Internal.data.user.name.check
   checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
@@ -209,10 +210,8 @@ do
 end
 
 do
-  Internal.data.user = {
-    __refines__ = {
-      Configuration.data.username,
-    },
+  Internal.data.user.__refines__ = {
+    this.data.user.name,
   }
   local checks = Internal.data.user.check
   checks [Layer.size (checks)+1] = function (t)
@@ -260,7 +259,7 @@ end
 do
   Internal.data.user.active = {
     __refines__ = {
-      Configuration.data.user,
+      this.data.user,
     },
   }
   local checks = Internal.data.user.active.check
@@ -280,7 +279,7 @@ end
 do
   Internal.data.user.suspended = {
     __refines__ = {
-      Configuration.data.user,
+      this.data.user,
     },
   }
   local checks = Internal.data.user.suspended.check
@@ -300,14 +299,14 @@ end
 -- Project name
 -- ------------
 do
-  Internal.data.projectname = {
+  Internal.data.project.name = {
     min_size = 1,
     max_size = 32,
     __refines__ = {
-      Configuration.data.string.trimmed,
+      this.data.string.trimmed,
     }
   }
-  local checks = Internal.data.projectname.check
+  local checks = Internal.data.project.name.check
   checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
@@ -323,10 +322,8 @@ end
 -- Project
 -- -------
 do
-  Internal.data.project = {
-    __refines__ = {
-      Configuration.data.projectname,
-    }
+  Internal.data.project.__refines__ = {
+    this.data.project.name,
   }
   local checks = Internal.data.project.check
   checks [Layer.size (checks)+1] = function (t)
@@ -371,7 +368,7 @@ do
     min_size = 1,
     max_size = 128,
     __refines__ = {
-      Configuration.data.string.trimmed,
+      this.data.string.trimmed,
     }
   }
 end
@@ -379,7 +376,7 @@ end
 do
   Internal.data.password.checked = {
     __refines__ = {
-      Configuration.data.string.password,
+      this.data.password,
     }
   }
 end
@@ -390,7 +387,7 @@ do
   Internal.data.email = {
     max_size = 128,
     __refines__ = {
-      Configuration.data.string.trimmed,
+      this.data.string.trimmed,
     }
   }
   local checks = Internal.data.email.check
@@ -414,7 +411,7 @@ do
     min_size = 1,
     max_size = 128,
     __refines__ = {
-      Configuration.data.string.trimmed,
+      this.data.string.trimmed,
     }
   }
 end
@@ -426,7 +423,7 @@ do
     min_size = 1,
     max_size = 128,
     __refines__ = {
-      Configuration.data.string.trimmed,
+      this.data.string.trimmed,
     }
   }
 end
@@ -438,7 +435,7 @@ do
     min_size = 1,
     max_size = 4096,
     __refines__ = {
-      Configuration.data.string.trimmed,
+      this.data.string.trimmed,
     }
   }
 end
@@ -446,14 +443,14 @@ end
 -- Terms of Services Digest
 -- ------------------------
 do
-  Internal.data.tos_digest = {
+  Internal.data.tos.digest = {
     __refines__ = {
-      Configuration.data.string.trimmed,
+      this.data.string.trimmed,
     },
     min_size = 64,
     max_size = 64,
   }
-  local checks = Internal.data.tos_digest.check
+  local checks = Internal.data.tos.digest.check
   checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
@@ -491,7 +488,7 @@ end
 do
   Internal.data.token = {
     __refines__ = {
-      Configuration.data.string.trimmed,
+      this.data.string.trimmed,
     },
   }
   local checks = Internal.data.token.check
@@ -515,7 +512,7 @@ end
 do
   Internal.data.token.administration = {
     __refines__ = {
-      Configuration.data.token,
+      this.data.token,
     },
   }
   local checks = Internal.data.token.administration.check
@@ -545,7 +542,7 @@ end
 do
   Internal.data.token.validation = {
     __refines__ = {
-      Configuration.data.token,
+      this.data.token,
     },
   }
   local checks = Internal.data.token.validation.check
@@ -578,7 +575,7 @@ end
 do
   Internal.data.token.authentication = {
     __refines__ = {
-      Configuration.data.token,
+      this.data.token,
     },
   }
   local checks = Internal.data.token.authentication.check
