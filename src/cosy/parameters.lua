@@ -27,14 +27,14 @@ function Parameters.check (store, request, parameters)
     end
     for _, part in ipairs { "required", "optional" } do
       for k, v in pairs (parameters [part] or {}) do
+        local name = {}
+        for i = 2, #v.__keys do
+          name [#name+1] = v.__keys [i]
+        end
+        name = table.concat (name, ":")
         local ok, err = pcall (function ()
-          local name = {}
-          for i = 2, #v.__keys do
-            name [#name+1] = v.__keys [i]
-          end
-          name = table.concat (name, ":")
           result [part] [k] = {
-            type        = tostring (v):gsub ("/whole/.data.", ""),
+            type        = name,
             description = i18n [name] % {
               locale = locale,
             }
@@ -46,7 +46,7 @@ function Parameters.check (store, request, parameters)
             reason = err,
           }
           result [part] [k] = {
-            type        = tostring (v):gsub ("/whole/.data.", ""),
+            type        = name,
             description = "(missing description)",
           }
         end
