@@ -79,9 +79,9 @@ end
 
 function Daemon.stop ()
   os.remove (Configuration.daemon.data [nil])
-  os.remove (Configuration.daemon.pid  [nil])
   Scheduler.addthread (function ()
     Scheduler.sleep (1)
+    os.remove (Configuration.daemon.pid  [nil])
     os.exit   (0)
   end)
 end
