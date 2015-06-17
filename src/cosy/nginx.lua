@@ -2,7 +2,10 @@ local Configuration = require "cosy.configuration"
 local I18n          = require "cosy.i18n"
 local Logger        = require "cosy.logger"
 
-Configuration.load "cosy.nginx"
+Configuration.load {
+  "cosy.nginx",
+  "cosy.redis",
+}
 
 local i18n   = I18n.load "cosy.nginx"
 i18n._locale = Configuration.locale [nil]
@@ -47,7 +50,7 @@ http {
     root          "{{{www}}}";
     
     location / {
-      try_files $uri $uri/ /index.html @foreigns;
+      try_files $uri $uri/ $uri/index.html @foreigns;
     }
 
     location @foreigns {

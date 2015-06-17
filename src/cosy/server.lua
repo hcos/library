@@ -1,6 +1,7 @@
 package.path  = package.path:gsub ("'", "")
   .. ";/usr/share/lua/5.1/?.lua;/usr/share/lua/5.1/?/init.lua;"
 
+                      require "cosy.loader"
 local Configuration = require "cosy.configuration"
 local Digest        = require "cosy.digest"
 local I18n          = require "cosy.i18n"
