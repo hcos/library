@@ -8,10 +8,10 @@ local Value         = require "cosy.value"
 Configuration.load "cosy.server"
 
 local i18n   = I18n.load "cosy.server"
-i18n._locale = Configuration.locale._
+i18n._locale = Configuration.locale [nil]
 
 local function call_method (method, parameters, try_only)
-  for _ = 1, Configuration.redis.retry._ do
+  for _ = 1, Configuration.redis.retry [nil] do
     local err
     local ok, result = xpcall (function ()
       local store  = Store.new ()
@@ -23,7 +23,7 @@ local function call_method (method, parameters, try_only)
     end, function (e)
       err = e
       Logger.debug {
-        _      = i18n "server:exception",
+        _      = i18n ["server:exception"],
         reason = Value.expression (e) .. " => " .. debug.traceback (),
       }
     end)
@@ -38,8 +38,9 @@ local function call_method (method, parameters, try_only)
   }
 end
 
-local function call_parameters (method)
-  local _, result = pcall (method)
+local function call_parameters (method, parameters)
+  parameters.__DESCRIBE = true
+  local _, result = pcall (method, parameters)
   return result
 end
 
@@ -81,7 +82,7 @@ return function (message)
   end
   local result, err
   if parameters_only then
-    result      = call_parameters (method)
+    result      = call_parameters (method, parameters)
   else
     result, err = call_method (method, parameters, try_only)
   end

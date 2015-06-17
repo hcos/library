@@ -12,10 +12,11 @@ Configuration.load {
 }
 
 local i18n   = I18n.load {
+  "cosy",
   "cosy.commands",
   "cosy.daemon",
 }
-i18n._locale = Configuration.cli.default_locale._
+i18n._locale = Configuration.cli.locale [nil]
 
 if _G.nocolor then
   Colors = function (s)
@@ -63,6 +64,26 @@ local function show_status (result)
   elseif result.error then
     print (Colors ("%{black redbg}" .. i18n ["failure"] % {}),
            Colors ("%{red blackbg}" .. (result.error.message ~= nil and tostring (result.error.message) or "")))
+    if result.error._ == "check:error" then
+      local max = 0
+      for i = 1, #result.error.reasons do
+        local reason = result.error.reasons [i]
+        max = math.max (max, #reason.parameter)
+      end
+      for i = 1, #result.error.reasons do
+        local reason    = result.error.reasons [i]
+        local parameter = reason.parameter
+        local message   = reason.message
+        local space = ""
+        for _ = #parameter, max+3 do
+          space = space .. " "
+        end
+        space = space .. " => "
+        print (Colors ("%{black redbg}" .. tostring (parameter)) ..
+               Colors ("%{reset}" .. space) ..
+               Colors ("%{red blackbg}" .. tostring (message)))
+      end
+    end
   end
   return result
 end
@@ -72,12 +93,20 @@ local Prepares = {}
 local Options  = {}
 local Results  = {}
 
-function Options.set (part, name, oftype)
-  if     part == "optional" and name == "server" then
+function Options.set (part, name, oftype, description)
+  if name == "locale" then
+    if not oftype then
+      Cli:add_option (
+        "-l, --locale=LOCALE",
+        i18n ["option:locale"] % {},
+        Configuration.cli.locale [nil]
+      )
+    end
+  elseif part == "optional" and name == "server" then
     Cli:add_option (
       "-s, --server=SERVER",
       i18n ["option:server"] % {},
-      Configuration.cli.default_server._
+      Configuration.cli.server [nil]
     )
   elseif part == "optional" and name == "debug" then
     Cli:add_flag (
@@ -89,85 +118,42 @@ function Options.set (part, name, oftype)
       "-f, --force",
       i18n ["flag:force"] % {}
     )
-  elseif part == "optional" and name == "clean" then
+  elseif oftype == "password:checked" then
     Cli:add_flag (
-      "-c, --clean",
-      i18n ["flag:clean"] % {}
-    )
-  elseif oftype == "locale" then
-    Cli:add_option (
-      "-l, --locale=LOCALE",
-      i18n ["option:locale"] % {},
-      Configuration.cli.default_locale._
-    )
-  elseif oftype == "token.authentication" then
-    Cli:add_option (
-      "-t, --token=TOKEN",
-      i18n ["option:token:authentication"] % {}
-    )
-  elseif oftype == "token.validation"and part == "required" then
-    Cli:add_argument (
-      "token",
-      i18n ["argument:token:validation"] % {}
-    )
-  elseif oftype == "username" and part == "required" then
-    Cli:add_argument (
-      "username",
-      i18n ["argument:username"] % {}
-    )
-  elseif oftype == "username" and part == "optional" then
-    Cli:add_option (
-      "-u, --username=USERNAME",
-      i18n ["option:username"] % {}
-    )
-  elseif oftype == "email" and part == "required" then
-    Cli:add_argument (
-      "email",
-      i18n ["argument:email"] % {}
-    )
-  elseif oftype == "email" and part == "optional" then
-    Cli:add_option (
-      "-e, --email=EMAIL",
-      i18n ["argument:email"] % {}
-    )
-  elseif oftype == "avatar" and part == "optional" then
-    Cli:add_option (
-      "-a, --avatar=PATH_or_URL",
-      i18n ["option:avatar"] % {}
-    )
-  elseif oftype == "homepage" and part == "optional" then
-    Cli:add_option (
-      "-m, --homepage=URL",
-      i18n ["option:homepage"] % {}
-    )
-  elseif oftype == "name" and part == "optional" then
-    Cli:add_option (
-      "-n, --name=FULL-NAME",
-      i18n ["option:name"] % {}
-    )
-  elseif oftype == "organization" and part == "optional" then
-    Cli:add_option (
-      "-o, --organization=ORGANIZATION",
-      i18n ["option:organization"] % {}
-    )
-  elseif oftype == "password.checked" and part == "required" then
-    Cli:add_flag (
-      "-p, --password",
+      "--{{{name}}}" % { name = name },
       i18n ["flag:password"] % {},
-      true
+      part == "required"
     )
-  elseif oftype == "password.checked" and part == "optional" then
+  elseif oftype == "password" then
     Cli:add_flag (
-      "-p, --password",
-      i18n ["flag:password"] % {}
+      "--{{{name}}}" % { name = name },
+      i18n ["flag:password"] % {},
+      part == "required"
     )
-  elseif oftype == "tos_digest" then
+  elseif oftype == "token:authentication" then
     Cli:add_option (
-      "-t, --tos=TOS_DIGEST",
-      i18n ["option:tos"] % {}
+      "--{{{name}}}=TOKEN" % { name = name },
+      description
     )
-  elseif oftype == "position" and part == "optional" then
+  elseif oftype == "tos:digest" then
     local _ = false
+  elseif oftype == "position" then
+    local _ = false
+  elseif oftype == "boolean" then
+    Cli:add_flag (
+      "--{{{name}}}" % { name = name },
+      description
+    )
+  elseif part == "required" then
+    Cli:add_argument (
+      "{{{name}}}" % { name = name },
+      description
+    )
+  elseif part == "optional" then
+    Cli:add_option (
+      "--{{{name}}}=..." % { name = name },
+      description
+    )
   else
     print (part, name, oftype)
     assert (false)
@@ -182,10 +168,23 @@ end
 
 function Commands.print_help (commands)
   commands.ws:send (Value.expression {
-    server    = commands.server,
-    operation = "server:list-methods",
+    server     = commands.server,
+    operation  = "server:list-methods",
+    parameters = {
+      locale = Configuration.locale.default [nil],
+    }
   })
-  local result = Value.decode (commands.ws:receive ())
+  local result = commands.ws:receive ()
+  if not result then
+    result = {
+      success = false,
+      error   = i18n {
+        _ = i18n ["daemon:unreachable"] % {},
+      },
+    }
+  else
+    result = Value.decode (result)
+  end
   local name_size = 0
   local names     = {}
   local list      = {}
@@ -225,7 +224,7 @@ function Commands.__index (commands, key)
           or _G.arg [i]:match "^--server=(.)"
   end
   if not server then
-    server = Configuration.cli.default_server._
+    server = Configuration.cli.server [nil]
   end
   commands.server = server
   if not key then
@@ -248,16 +247,16 @@ function Commands.__index (commands, key)
   if not result.response.optional then
     result.response.optional = {}
   end
-  result.response.optional.debug  = "debug"
-  result.response.optional.server = "server"
   local option_names = {}
   local option_parts = {}
   local option_types = {}
+  local option_descs = {}
   for part, t in pairs (result.response) do
-    for name, oftype in pairs (t) do
+    for name, x in pairs (t) do
       option_names [#option_names+1] = name
       option_parts [name] = part
-      option_types [name] = oftype
+      option_types [name] = x.type
+      option_descs [name] = x.description
     end
   end
   table.sort (option_names)
@@ -265,8 +264,12 @@ function Commands.__index (commands, key)
     local name   = option_names [i]
     local part   = option_parts [name]
     local oftype = option_types [name]
-    Options.set (part, name, oftype)
+    local desc   = option_descs [name]
+    Options.set (part, name, oftype, desc)
   end
+  Options.set ("optional", "debug" )
+  Options.set ("optional", "locale")
+  Options.set ("optional", "server")
   return function ()
     local args, s = Cli:parse_args ()
     if not args then
@@ -279,26 +282,27 @@ function Commands.__index (commands, key)
       Prepares [key] (commands, args)
     end
     local parameters = {}
-    for _, t in pairs (result.response) do
-      for name, oftype in pairs (t) do
-        if args [name] then
-          if oftype == "password" then
-            args [name] = getpassword ()
-          elseif oftype == "password.checked" then
-            local passwords = {}
-            repeat
-              for i = 1, 2 do
-                io.write (i18n ["argument:password" .. tostring (i)] % {} .. " ")
-                passwords [i] = getpassword ()
-              end
-              if passwords [1] ~= passwords [2] then
-                print (i18n ["argument:password:nomatch"] % {})
-              end
-            until passwords [1] == passwords [2]
-            parameters [name] = passwords [1]
-          elseif oftype == "token.authentication" then
+    for _, x in pairs (result.response) do
+      for name, t in pairs (x) do
+        if t.type == "password" and args [name] then
+          io.write (i18n ["argument:password" .. tostring (1)] % {} .. " ")
+          parameters [name] = getpassword ()
+        elseif t.type == "password:checked" and args [name] then
+          local passwords = {}
+          repeat
+            for i = 1, 2 do
+              io.write (i18n ["argument:password" .. tostring (i)] % {} .. " ")
+              passwords [i] = getpassword ()
+            end
+            if passwords [1] ~= passwords [2] then
+              print (i18n ["argument:password:nomatch"] % {})
+            end
+          until passwords [1] == passwords [2]
+          parameters [name] = passwords [1]
+        elseif args [name] then
+          if t.type == "token:authentication" then
             local _ = false
-          elseif oftype == "avatar" then
+          elseif t.type == "avatar" then
             local avatar = args [name]
             if avatar:match "^https?://" then
               local request = require "socket.http" .request
@@ -314,7 +318,7 @@ function Commands.__index (commands, key)
                   },
                 }
               end
-              args [name] = {
+              parameters [name] = {
                 source  = avatar,
                 content = body,
               }
@@ -324,7 +328,7 @@ function Commands.__index (commands, key)
               end
               local file, err = io.open (avatar, "r")
               if file then
-                args [name] = {
+                parameters [name] = {
                   source  = avatar,
                   content = file:read "*all",
                 }
@@ -396,15 +400,35 @@ Commands ["daemon:stop"] = function (commands)
         kill -9 $(cat {{{pid}}}) 2> /dev/null
       fi
     ]==] % {
-      pid = Configuration.daemon.pid_file._,
+      pid = Configuration.daemon.pid [nil],
     })
-    os.remove (Configuration.daemon.data_file._)
-    os.remove (Configuration.daemon.pid_file ._)
+    os.remove (Configuration.daemon.data [nil])
+    os.remove (Configuration.daemon.pid  [nil])
     result = i18n {
       success  = true,
       response = {
         _ = i18n ["daemon:force-stop"] % {},
       },
+    }
+    show_status (result)
+  end
+  local daemonpid
+  local tries = 0
+  repeat
+    os.execute ([[sleep {{{time}}}]] % { time = 0.2 })
+    daemonpid = read (Configuration.daemon.pid [nil])
+    tries     = tries + 1
+  until not daemonpid or tries == 10
+  if daemonpid then
+    result = i18n {
+      success = false,
+      error   = {
+        _ = i18n ["daemon:not-stopped"] % {},
+      },
+    }
+  else
+    result = {
+      success = true,
     }
   end
   show_status (result)
@@ -415,10 +439,11 @@ Commands ["daemon:stop"] = function (commands)
 end
 
 Commands ["server:start"] = function ()
-  Options.set ("optional", "debug" , "debug" )
-  Options.set ("optional", "server", "server")
+  Options.set ("optional", "debug" )
+  Options.set ("optional", "force" )
+  Options.set ("optional", "server")
   Cli:add_flag (
-    "-c, --clean",
+    "--clean",
     i18n ["flag:clean"] % {}
   )
   local args = Cli:parse_args ()
@@ -428,7 +453,7 @@ Commands ["server:start"] = function ()
   end
   do
     local ws = Websocket.client.sync {
-      timeout = 5,
+      timeout = 0.5,
     }
     local url = args.server:gsub ("^http", "ws"):gsub ("/$", "") .. "/ws"
     if ws:connect (url) then
@@ -444,21 +469,26 @@ Commands ["server:start"] = function ()
   if args.clean then
     Configuration.load "cosy.redis"
     local Redis     = require "redis"
-    local host      = Configuration.redis.interface._
-    local port      = Configuration.redis.port._
-    local database  = Configuration.redis.database._
+    local host      = Configuration.redis.interface [nil]
+    local port      = Configuration.redis.port [nil]
+    local database  = Configuration.redis.database [nil]
     local client    = Redis.connect (host, port)
     client:select (database)
     client:flushdb ()
     package.loaded ["redis"] = nil
   end
-  if io.open (Configuration.server.pid_file._, "r") then
-    return {
+  if io.open (Configuration.server.pid [nil], "r") then
+    local result = {
       success = false,
-      error   = {
-        _ = i18n ["server:already-running"] % {},
-      },
+      error   = i18n {
+        _ = i18n ["server:dead"] % {},
+      }
     }
+    if args.force then
+      print (Colors ("%{yellow blackbg}" .. result.error.message))
+    else
+      return show_status (result)
+    end
   end
   os.execute ([==[
     if [ -f "{{{pid}}}" ]
@@ -468,14 +498,14 @@ Commands ["server:start"] = function ()
     rm -f {{{pid}}} {{{log}}}
     luajit -e '_G.logfile = "{{{log}}}"; require "cosy.server" .start ()' &
   ]==] % {
-    pid = Configuration.server.pid_file._,
-    log = Configuration.server.log_file._,
+    pid = Configuration.server.pid [nil],
+    log = Configuration.server.log [nil],
   })
   local tries = 0
   local serverdata
   repeat
     os.execute ([[sleep {{{time}}}]] % { time = 0.5 })
-    serverdata = read (Configuration.server.data_file._)
+    serverdata = read (Configuration.server.data [nil])
     tries      = tries + 1
   until serverdata or tries == 10
   local result
@@ -499,12 +529,12 @@ Commands ["server:start"] = function ()
 end
 
 Commands ["server:stop"] = function (commands)
-  local serverdata = read (Configuration.server.data_file._)
-  Options.set ("optional", "debug" , "debug" )
-  Options.set ("optional", "force" , "force" )
-  Options.set ("optional", "server", "server")
+  local serverdata = read (Configuration.server.data [nil])
+  Options.set ("optional", "debug" )
+  Options.set ("optional", "force" )
+  Options.set ("optional", "server")
   Cli:add_option (
-    "-t, --token=TOKEN",
+    "--administration=TOKEN",
     "administration token",
     serverdata and serverdata.token or nil
   )
@@ -517,7 +547,7 @@ Commands ["server:stop"] = function (commands)
     operation  = "server:stop",
     parameters = {
       server         = args.server,
-      authentication = args.token,
+      administration = args.administration,
       locale         = args.locale,
     },
   })
@@ -539,15 +569,35 @@ Commands ["server:stop"] = function (commands)
         kill -9 $(cat {{{pid}}}) 2> /dev/null
       fi
     ]==] % {
-      pid = Configuration.server.pid_file._,
+      pid = Configuration.server.pid [nil],
     })
-    os.remove (Configuration.server.data_file._)
-    os.remove (Configuration.server.pid_file ._)
+    os.remove (Configuration.server.data [nil])
+    os.remove (Configuration.server.pid  [nil])
     result = i18n {
       success  = true,
       response = {
         _ = i18n ["server:force-stop"] % {},
       },
+    }
+    show_status (result)
+  end
+  local serverpid
+  local tries = 0
+  repeat
+    os.execute ([[sleep {{{time}}}]] % { time = 0.2 })
+    serverpid = read (Configuration.server.pid [nil])
+    tries     = tries + 1
+  until not serverpid or tries == 10
+  if serverpid then
+    result = i18n {
+      success = false,
+      error   = {
+        _ = i18n ["server:not-stopped"] % {},
+      },
+    }
+  else
+    result = {
+      success = true,
     }
   end
   show_status (result)
@@ -586,36 +636,42 @@ Results ["server:tos"] = function (response)
 end
 
 Prepares ["user:create"] = function (commands, args)
-    commands.ws:send (Value.expression {
-      server     = args.server,
-      operation  = "server:tos",
-      parameters = {
-        locale = args.locale,
-      },
-    })
-    local tosresult = Value.decode (commands.ws:receive ())
-    if tosresult.success then
-      args.tos_digest = tosresult.response.tos_digest
-    end
+  commands.ws:send (Value.expression {
+    server     = args.server,
+    operation  = "server:tos",
+    parameters = {
+      locale = args.locale,
+    },
+  })
+  local tosresult = Value.decode (commands.ws:receive ())
+  if tosresult.success then
+    args.tos_digest = tosresult.response.tos_digest
   end
+end
 
 Results ["user:update"] = function (response)
   Results ["user:information"] (response)
 end
 
+Results ["user:is_authentified"] = function (response)
+  print (Colors ("%{black yellowbg}" .. "username") ..
+         Colors ("%{reset}" .. " => ") ..
+         Colors ("%{yellow blackbg}" .. response.username))
+end
+
 Results ["user:information"] = function (response)
   if response.avatar then
-    local avatar          = response.avatar
-    local input_filename  = os.tmpname ()
-    local file = io.open (input_filename, "w")
+    local avatar     = response.avatar
+    local inputname  = os.tmpname ()
+    local file = io.open (inputname, "w")
     file:write (avatar.content)
     file:close ()
     os.execute ([[
       img2txt -W 40 -H 20 {{{input}}} 2> /dev/null
     ]] % {
-      input  = input_filename,
+      input  = inputname,
     })
-    os.remove (input_filename)
+    os.remove (inputname)
     response.avatar  = nil
   end
   if response.position then
@@ -624,8 +680,8 @@ Results ["user:information"] = function (response)
   if response.lastseen then
     response.lastseen = os.date ("%x, %X", response.lastseen)
   end
-  if response.token then
-    response.token = nil
+  if response.authentication then
+    response.authentication = nil
   end
   local max  = 0
   local keys = {}
@@ -646,6 +702,12 @@ Results ["user:information"] = function (response)
     print (Colors ("%{black yellowbg}" .. tostring (key)) ..
            Colors ("%{reset}" .. space) ..
            Colors ("%{yellow blackbg}" .. tostring (value)))
+  end
+end
+
+Results ["user:list"] = function (response)
+  for i = 1, #response do
+    print (Colors ("%{yellow blackbg}" .. tostring (response [i])))
   end
 end
 

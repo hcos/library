@@ -1,4 +1,7 @@
 return {
+  ["translation:failure"] = {
+    "translation failed: {{{reason}}}",
+  },
   ["server:information"] = {
     en = "show information about the server",
   },
@@ -26,6 +29,9 @@ return {
   ["user:is-authentified"] = {
     en = "checks if a user is authentified",
   },
+  ["user:list"] = {
+    en = "list all users",
+  },
   ["user:recover"] = {
     en = "recover your account",
   },
@@ -46,6 +52,15 @@ return {
   },
   ["user:validate"] = {
     en = "validate email address",
+  },
+  ["project:create"] = {
+    en = "create a project",
+  },
+  ["project:delete"] = {
+    en = "delete a project",
+  },
+  ["project:update"] = {
+    en = "update project information",
   },
   ["terms-of-service"] = {
     en = [[I agree to give my soul to CosyVerif.]],
@@ -118,5 +133,11 @@ return {
   },
   ["user:suspend:not-enough"] = {
     en = "suspending a user requires {{{required}}} reputation, but only {{{owned}}} is owned",
+  },
+  ["project:exist"] = {
+    en = "project {{{name}}} exists already",
+  },
+  ["project:forbidden"] = {
+    en = "restricted to project owner",
   },
 }

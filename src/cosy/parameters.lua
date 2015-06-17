@@ -1,29 +1,55 @@
 local Configuration = require "cosy.configuration"
 local I18n          = require "cosy.i18n"
 local Logger        = require "cosy.logger"
-local Repository    = require "cosy.repository"
+local Layer         = require "layeredata"
 
 Configuration.load "cosy.parameters"
 
 local i18n   = I18n.load "cosy.parameters"
-i18n._locale = Configuration.locale._
+i18n._locale = Configuration.locale [nil]
 
-local Parameters    = setmetatable ({}, {
+local Parameters = setmetatable ({}, {
   __index = function (_, key)
     return Configuration.data [key]
   end,
 })
 
-function Parameters.check (request, parameters)
+function Parameters.check (store, request, parameters)
   parameters = parameters or {}
-  if request == nil then
+  if request.__DESCRIBE then
     local result = {
       required = {},
       optional = {},
     }
+    local locale = Configuration.locale.default [nil]
+    if request.locale then
+      locale = request.locale or locale
+    end
     for _, part in ipairs { "required", "optional" } do
       for k, v in pairs (parameters [part] or {}) do
-        result [part] [k] = tostring (v):gsub ("/whole/.data.", "")
+        local name = {}
+        for i = 2, #v.__keys do
+          name [#name+1] = v.__keys [i]
+        end
+        name = table.concat (name, ":")
+        local ok, err = pcall (function ()
+          result [part] [k] = {
+            type        = name,
+            description = i18n [name] % {
+              locale = locale,
+            }
+          }
+        end)
+        if not ok then
+          Logger.warning {
+            _      = i18n ["translation:failure"],
+            reason = err,
+          }
+          result [part] [k] = {
+            type        = name,
+            description = "(missing description)",
+          }
+        end
       end
     end
     error (result)
@@ -39,11 +65,12 @@ function Parameters.check (request, parameters)
           key = key,
         }
       elseif value ~= nil then
-        for i = 1, Repository.size (parameter.check) do
-          local ok, reason = parameter.check [i]._ {
+        for i = 1, Layer.size (parameter.check) do
+          local ok, reason = parameter.check [i] [nil] {
             parameter = parameter,
             request   = request,
             key       = key,
+            store     = store,
           }
           checked [key] = true
           if not ok then
@@ -61,6 +88,7 @@ function Parameters.check (request, parameters)
         _   = i18n ["check:no-check"],
         key = key,
       }
+      request [key] = nil
     end
   end
   if #reasons ~= 0 then

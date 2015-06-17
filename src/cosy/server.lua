@@ -15,7 +15,7 @@ local Websocket     = require "websocket"
 local Ffi           = require "ffi"
 
 local i18n   = I18n.load "cosy.server"
-i18n._locale = Configuration.locale._
+i18n._locale = Configuration.locale [nil]
 
 local Server = {}
 
@@ -31,8 +31,8 @@ function Server.start ()
     addserver (s, f)
   end
   Server.ws = Websocket.server.copas.listen {
-    interface = Configuration.server.interface._,
-    port      = Configuration.server.port._,
+    interface = Configuration.server.interface [nil],
+    port      = Configuration.server.port      [nil],
     protocols = {
       cosy = function (ws)
         while true do
@@ -49,27 +49,27 @@ function Server.start ()
   Scheduler.addserver = addserver
   Logger.debug {
     _    = i18n ["websocket:listen"],
-    host = Configuration.server.interface._,
-    port = Configuration.server.port._,
+    host = Configuration.server.interface [nil],
+    port = Configuration.server.port      [nil],
   }
-  do
-    local datafile = Configuration.server.data_file._
-    local file     = io.open (datafile, "w")
-    file:write (Value.expression {
-      token     = Server.token,
-      interface = Configuration.server.interface._,
-      port      = Configuration.server.port._,
-    })
-    file:close ()
-    os.execute ([[ chmod 0600 {{{file}}} ]] % { file = datafile })
-  end
   do
     Nginx.stop  ()
     Nginx.start ()
   end
   do
+    local datafile = Configuration.server.data [nil]
+    local file     = io.open (datafile, "w")
+    file:write (Value.expression {
+      token     = Server.token,
+      interface = Configuration.server.interface [nil],
+      port      = Configuration.server.port      [nil],
+    })
+    file:close ()
+    os.execute ([[ chmod 0600 {{{file}}} ]] % { file = datafile })
+  end
+  do
     Ffi.cdef [[ unsigned int getpid (); ]]
-    local pidfile = Configuration.server.pid_file._
+    local pidfile = Configuration.server.pid [nil]
     local file    = io.open (pidfile, "w")
     file:write (Ffi.C.getpid ())
     file:close ()
@@ -79,11 +79,11 @@ function Server.start ()
 end
 
 function Server.stop ()
-  os.remove (Configuration.server.data_file._)
-  os.remove (Configuration.server.pid_file ._)
+  os.remove (Configuration.server.data [nil])
   Scheduler.addthread (function ()
     Scheduler.sleep (1)
     Nginx.stop ()
+    os.remove (Configuration.server.pid  [nil])
     os.exit   (0)
   end)
 end

@@ -13,7 +13,7 @@ end
 Configuration.load "cosy.email"
 
 local i18n   = I18n.load "cosy.email"
-i18n._locale = Configuration.locale._
+i18n._locale = Configuration.locale [nil]
 
 
 if _G.js then
@@ -29,7 +29,7 @@ local make_socket = {}
 
 function make_socket.sync ()
   local result = Socket.tcp ()
-  result:settimeout (Configuration.smtp.timeout._)
+  result:settimeout (Configuration.smtp.timeout [nil])
   result:setoption ("keepalive", true)
   result:setoption ("reuseaddr", true)
   result:setoption ("tcp-nodelay", true)
@@ -38,7 +38,7 @@ end
 
 function make_socket.async ()
   local result = CSocket ()
-  result:settimeout (Configuration.smtp.timeout._)
+  result:settimeout (Configuration.smtp.timeout [nil])
   result:setoption ("keepalive", true)
   result:setoption ("reuseaddr", true)
   result:setoption ("tcp-nodelay", true)
@@ -128,11 +128,11 @@ function Tcp.STARTTLS (protocol, make)
 end
 
 function Email.discover ()
-  local domain        = Configuration.server.root._
-  local host          = Configuration.smtp.host._
-  local username      = Configuration.smtp.username._
-  local password      = Configuration.smtp.password._
-  local methods       = { Configuration.smtp.method._ }
+  local domain        = Configuration.server.root   [nil]
+  local host          = Configuration.smtp.host     [nil]
+  local username      = Configuration.smtp.username [nil]
+  local password      = Configuration.smtp.password [nil]
+  local methods       = { Configuration.smtp.method [nil] }
   if #methods == 0 then
     methods = {
       "STARTTLS",
@@ -140,7 +140,7 @@ function Email.discover ()
       "PLAINTEXT",
     }
   end
-  local protocols = { Configuration.smtp.protocol._ }
+  local protocols = { Configuration.smtp.protocol [nil] }
   if #protocols == 0 then
     protocols = {
       "TLS v1.2",
@@ -150,7 +150,7 @@ function Email.discover ()
       "SSL v2",
     }
   end
-  local ports     = { Configuration.smtp.port._ }
+  local ports     = { Configuration.smtp.port [nil] }
   if #ports == 0 then
     ports = {
       25,
@@ -188,7 +188,7 @@ end
 
 function Email.send (message)
   Scheduler.addthread (function ()
-    local locale    = message.locale or Configuration.locale.default._
+    local locale    = message.locale or Configuration.locale [nil]
     local si18n     = I18n.new (locale)
     message.from    = si18n (message.from   ).message
     message.to      = si18n (message.to     ).message
@@ -205,11 +205,11 @@ function Email.send (message)
         },
         body = message.body
       },
-      user     = Configuration.smtp.username._,
-      password = Configuration.smtp.password._,
-      server   = Configuration.smtp.host._,
-      port     = Configuration.smtp.port._,
-      create   = Tcp [Configuration.smtp.method._] (Configuration.smtp.protocol._, make_socket.async),
+      user     = Configuration.smtp.username [nil],
+      password = Configuration.smtp.password [nil],
+      server   = Configuration.smtp.host [nil],
+      port     = Configuration.smtp.port [nil],
+      create   = Tcp [Configuration.smtp.method [nil]] (Configuration.smtp.protocol [nil], make_socket.async),
     }
   end)
 end
@@ -222,10 +222,10 @@ do
   else
     Logger.info {
       _        = i18n ["smtp:available"],
-      host     = Configuration.smtp.host._,
-      port     = Configuration.smtp.port._,
-      method   = Configuration.smtp.method._,
-      protocol = Configuration.smtp.protocol._,
+      host     = Configuration.smtp.host     [nil],
+      port     = Configuration.smtp.port     [nil],
+      method   = Configuration.smtp.method   [nil],
+      protocol = Configuration.smtp.protocol [nil],
     }
   end
 end

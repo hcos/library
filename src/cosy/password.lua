@@ -11,7 +11,7 @@ local Bcrypt        = require "bcrypt"
 Configuration.load "cosy.password"
 
 local i18n   = I18n.load "cosy.password"
-i18n._locale = Configuration.locale._
+i18n._locale = Configuration.locale [nil]
 
 local Password = {}
 
@@ -22,7 +22,7 @@ local function compute_rounds ()
       local start = Time ()
       Bcrypt.digest ("some random string", rounds)
       local delta = Time () - start
-      if delta > Configuration.data.password.time._ then
+      if delta > Configuration.data.password.time [nil] then
         Password.rounds = math.max (Password.rounds or 0, rounds)
         break
       end
@@ -51,7 +51,7 @@ do
   Logger.debug {
     _      = i18n ["bcrypt:rounds"],
     rounds = Password.rounds,
-    time   = Configuration.data.password.time._ * 1000,
+    time   = Configuration.data.password.time [nil] * 1000,
   }
 end
 

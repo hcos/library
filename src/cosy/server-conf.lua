@@ -5,9 +5,9 @@ local Internal      = Configuration / "default"
 Internal.server = {
   interface = "127.0.0.1",
   port      = 0,
-  data_file = os.getenv "HOME" .. "/.cosy/server.data",
-  log_file  = os.getenv "HOME" .. "/.cosy/server.log",
-  pid_file  = os.getenv "HOME" .. "/.cosy/server.pid",
+  data      = os.getenv "HOME" .. "/.cosy/server.data",
+  log       = os.getenv "HOME" .. "/.cosy/server.log",
+  pid       = os.getenv "HOME" .. "/.cosy/server.pid",
 }
 Internal.redis.retry = 5
 

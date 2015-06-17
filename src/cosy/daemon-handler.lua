@@ -12,7 +12,7 @@ local i18n   = I18n.load {
   "cosy.daemon",
   "cosy.server",
 }
-i18n._locale = Configuration.locale._
+i18n._locale = Configuration.locale [nil]
 
 local libraries = {}
 

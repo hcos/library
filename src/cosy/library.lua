@@ -10,7 +10,7 @@ local Coromake      = require "coroutine.make"
 Configuration.load "cosy.library"
 
 local i18n   = I18n.load "cosy.library"
-i18n._locale = Configuration.locale._
+i18n._locale = Configuration.locale [nil]
 
 local Library   = {}
 local Client    = {}
@@ -36,7 +36,7 @@ function Client.connect (client)
   else
     local Websocket = require "websocket"
     client._ws = Websocket.client.ev {
-      timeout = Configuration.library.timeout._,
+      timeout = Configuration.library.timeout [nil],
       loop    = Scheduler._loop,
     }
   end
@@ -98,6 +98,7 @@ Client.methods = {}
 Client.methods ["user:create"] = function (operation, parameters)
   local client = operation._client
   local data   = client._data
+  data.token          = nil
   parameters.password = Digest (parameters.password)
   local result = mcoroutine.yield ()
   if result.success then
@@ -117,6 +118,7 @@ end
 Client.methods ["user:authenticate"] = function (operation, parameters)
   local client = operation._client
   local data   = client._data
+  data.token          = nil
   parameters.username = parameters.username or data.username
   if parameters.password then
     parameters.password = Digest (parameters.password)
@@ -129,6 +131,13 @@ Client.methods ["user:authenticate"] = function (operation, parameters)
     data.hashed   = parameters.password
     data.token    = result.response.authentication
   end
+end
+
+Client.methods ["user:delete"] = function (operation)
+  local client = operation._client
+  local data   = client._data
+  data.token   = nil
+  mcoroutine.yield ()
 end
 
 Client.methods ["user:update"] = function (operation, parameters)
@@ -172,8 +181,8 @@ function Operation.__call (operation, parameters, try_only)
     Client.connect (client)
   end
   if client._status ~= "opened" then
-    return nil, {
-      _ = i18n ["server:unreachable"],
+    return nil, i18n {
+      _ = i18n ["server:unreachable"] % {},
     }
   end
   -- Call special cases:
@@ -193,7 +202,7 @@ function Operation.__call (operation, parameters, try_only)
       parameters = parameters,
       try_only   = try_only,
     })
-    Scheduler.sleep (Configuration.library.timeout._)
+    Scheduler.sleep (Configuration.library.timeout [nil])
     result = client._results [identifier]
     client._waiting [identifier] = nil
     client._results [identifier] = nil

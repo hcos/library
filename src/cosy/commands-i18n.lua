@@ -29,6 +29,9 @@ return {
   ["daemon:force-stop"] = {
     en = "daemon has been forced to stop",
   },
+  ["daemon:not-stopped"] = {
+    en = "cosy daemon is not stopped",
+  },
   ["server:force-stop"] = {
     en = "server has been forced to stop",
   },
@@ -38,41 +41,23 @@ return {
   ["server:stop"] = {
     en = "stop cosy server",
   },
+  ["server:not-stopped"] = {
+    en = "cosy server is not stopped",
+  },
   ["server:already-running"] = {
     en = "server is already running",
   },
-  ["option:avatar"] = {
-    en = "avatar",
-  },
-  ["option:email"] = {
-    en = "email address",
-  },
-  ["option:homepage"] = {
-    en = "homepage URL",
+  ["server:dead"] = {
+    en = "server seems to be dead",
   },
   ["option:locale"] = {
     en = "locale for messages",
   },
-  ["option:name"] = {
-    en = "full name",
-  },
-  ["option:organization"] = {
-    en = "organization",
-  },
   ["option:server"]= {
     en = "server url"
   },
-  ["option:token:authentication"] = {
-    en = "authentication token",
-  },
-  ["option:tos"] = {
-    en = "terms of service digest",
-  },
-  ["option:username"] = {
-    en = "username",
-  },
   ["flag:clean"] = {
-    en = "clean redis database before launching the server",
+    en = "clean database before run",
   },
   ["flag:debug"] = {
     en = "show debug information",
@@ -83,22 +68,10 @@ return {
   ["flag:password"] = {
     en = "update password",
   },
-  ["argument:username"] = {
-    en = "username",
-  },
-  ["argument:email"] = {
-    en = "email address",
-  },
   ["argument:password1"] = {
-    en = "please type your password:";
+    en = "plase type your password",
   },
   ["argument:password2"] = {
-    en = "please type again the same password:",
-  },
-  ["argument:password:nomatch"] = {
-    en = "entered passwords differ",
-  },
-  ["argument:token:validation"] = {
-    en = "validation token",
+    en = "plase type the same password again",
   },
 }

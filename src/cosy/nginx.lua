@@ -5,7 +5,7 @@ local Logger        = require "cosy.logger"
 Configuration.load "cosy.nginx"
 
 local i18n   = I18n.load "cosy.nginx"
-i18n._locale = Configuration.locale._
+i18n._locale = Configuration.locale [nil]
 
 local Nginx = {}
 
@@ -138,39 +138,38 @@ function Nginx.configure ()
     resolver = table.concat (result, " ")
   end
   local configuration = configuration_template % {
-    host           = Configuration.http.interface._,
-    port           = Configuration.http.port._,
-    www            = Configuration.http.www._,
-    pidfile        = Configuration.http.pid_file._,
-    name           = Configuration.server.name._,
-    wshost         = Configuration.server.interface._,
-    wsport         = Configuration.server.port._,
-    redis_host     = Configuration.redis.interface._,
-    redis_port     = Configuration.redis.port._,
-    redis_database = Configuration.redis.database._,
+    host           = Configuration.http.interface   [nil],
+    port           = Configuration.http.port        [nil],
+    www            = Configuration.http.www         [nil],
+    pidfile        = Configuration.http.pid         [nil],
+    name           = Configuration.server.name      [nil],
+    wshost         = Configuration.server.interface [nil],
+    wsport         = Configuration.server.port      [nil],
+    redis_host     = Configuration.redis.interface  [nil],
+    redis_port     = Configuration.redis.port       [nil],
+    redis_database = Configuration.redis.database   [nil],
     path           = package.path,
     resolver       = resolver,
   }
-  local file = io.open (Nginx.directory .. "/nginx.conf", "w")
+  local file = io.open (Configuration.http.configuration [nil], "w")
   file:write (configuration)
   file:close ()
 end
 
 function Nginx.start ()
-  Nginx.directory = os.tmpname ()
-  Logger.debug {
-    _         = i18n ["nginx:directory"],
-    directory = Nginx.directory,
-  }
   os.execute ([[
     rm -f {{{directory}}} && mkdir -p {{{directory}}}
-  ]] % { directory = Nginx.directory })
+  ]] % {
+    directory = Configuration.http.directory [nil],
+  })
   Nginx.configure ()
   os.execute ([[
-    {{{nginx}}} -p {{{directory}}} -c {{{directory}}}/nginx.conf 2>> {{{directory}}}/error.log
+    {{{nginx}}} -p {{{directory}}} -c {{{configuration}}} 2>> {{{error}}}
   ]] % {
-    nginx     = Configuration.http.nginx._,
-    directory = Nginx.directory,
+    directory     = Configuration.http.directory     [nil],
+    nginx         = Configuration.http.nginx         [nil],
+    configuration = Configuration.http.configuration [nil],
+    error         = Configuration.http.error         [nil],
   })
 end
 
@@ -179,10 +178,14 @@ function Nginx.stop ()
     [ -f {{{pidfile}}} ] && {
       kill -QUIT $(cat {{{pidfile}}})
     }
-  ]] % { pidfile = Configuration.http.pid_file._ })
+  ]] % {
+    pidfile = Configuration.http.pid [nil],
+  })
   os.execute ([[
     rm -rf {{{directory}}}
-  ]] % { directory = Nginx.directory })
+  ]] % {
+    directory = Configuration.http.directory [nil],
+  })
   Nginx.directory = nil
 end
 
@@ -192,7 +195,9 @@ function Nginx.update ()
     [ -f {{{pidfile}}} ] && {
       kill -HUP $(cat {{{pidfile}}})
     }
-  ]] % { pidfile = Configuration.http.pid_file._ })
+  ]] % {
+    pidfile = Configuration.http.pid [nil],
+  })
 end
 
 return Nginx

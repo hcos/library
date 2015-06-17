@@ -35,7 +35,7 @@ function Store.commit (store)
     for key, document in pairs (collection [DATA]) do
       if document [DIRTY] then
         local name  = pattern % {
-          key = Value.expression (key),
+          key = key,
         }
         local value = document [DATA]
         if value == nil then
@@ -56,8 +56,30 @@ function Store.commit (store)
   end
 end
 
+function Store.iterate (collection, filter)
+  local coroutine = Coromake ()
+  return coroutine.wrap (function ()
+    local name   = collection [PATTERN] % { key = filter }
+    local client = Redis ()
+    local cursor = 0
+    repeat
+      local t = client:scan (cursor, {
+        match = name,
+        count = 100,
+      })
+      cursor = t [1]
+      local data = t [2]
+      for i = 1, #data do
+        local key   = (collection [PATTERN] / data [i]).key
+        local value = collection [key]
+        coroutine.yield (key, value)
+      end
+    until cursor == "0"
+  end)
+end
+
 function Collection.new (key)
-  local pattern = Configuration.redis.key [key]._
+  local pattern = Configuration.redis.key [key] [nil]
   assert (pattern, key)
   return setmetatable ({
     [PATTERN] = pattern,
@@ -68,7 +90,7 @@ end
 function Collection.__index (collection, key)
   if not collection [DATA] [key] then
     local name   = collection [PATTERN] % {
-      key = Value.expression (key),
+      key = key,
     }
     local client = Redis ()
     client:watch (name)
@@ -92,25 +114,7 @@ function Collection.__newindex (collection, key, value)
 end
 
 function Collection.__pairs (collection)
-  local coroutine = require "coroutine.make" ()
-  return coroutine.wrap (function ()
-    local name   = collection [PATTERN] % { key = "*" }
-    local client = Redis ()
-    local cursor = 0
-    repeat
-      local t = client:scan (cursor, {
-        match = name,
-        count = 100,
-      })
-      cursor = t [1]
-      local data = t [2]
-      for i = 1, #data do
-        local key   = (collection [PATTERN] / data [i]).key
-        local value = collection [key]
-        coroutine.yield (Value.decode (key), value)
-      end
-    until cursor == "0"
-  end)
+  return Store.iterate (collection, "*")
 end
 
 function Collection.__len (collection)
