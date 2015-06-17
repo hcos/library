@@ -29,6 +29,9 @@ return {
   ["daemon:force-stop"] = {
     en = "daemon has been forced to stop",
   },
+  ["daemon:not-stopped"] = {
+    en = "cosy daemon is not stopped",
+  },
   ["server:force-stop"] = {
     en = "server has been forced to stop",
   },
@@ -37,6 +40,9 @@ return {
   },
   ["server:stop"] = {
     en = "stop cosy server",
+  },
+  ["server:not-stopped"] = {
+    en = "cosy server is not stopped",
   },
   ["server:already-running"] = {
     en = "server is already running",

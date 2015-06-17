@@ -12,6 +12,7 @@ Configuration.load {
 }
 
 local i18n   = I18n.load {
+  "cosy",
   "cosy.commands",
   "cosy.daemon",
 }
@@ -117,19 +118,17 @@ function Options.set (part, name, oftype, description)
       "-f, --force",
       i18n ["flag:force"] % {}
     )
-  elseif oftype == "password:checked" and part == "required" then
-    local _ = false
-  elseif oftype == "password" and part == "required" then
-    local _ = false
-  elseif oftype == "password:checked" and part == "optional" then
+  elseif oftype == "password:checked" then
     Cli:add_flag (
       "--{{{name}}}" % { name = name },
-      i18n ["flag:password"] % {}
+      i18n ["flag:password"] % {},
+      part == "required"
     )
-  elseif oftype == "password" and part == "optional" then
+  elseif oftype == "password" then
     Cli:add_flag (
       "--{{{name}}}" % { name = name },
-      i18n ["flag:password"] % {}
+      i18n ["flag:password"] % {},
+      part == "required"
     )
   elseif oftype == "token:authentication" then
     Cli:add_option (
@@ -175,7 +174,17 @@ function Commands.print_help (commands)
       locale = Configuration.locale.default [nil],
     }
   })
-  local result = Value.decode (commands.ws:receive ())
+  local result = commands.ws:receive ()
+  if not result then
+    result = {
+      success = false,
+      error   = i18n {
+        _ = i18n ["daemon:unreachable"] % {},
+      },
+    }
+  else
+    result = Value.decode (result)
+  end
   local name_size = 0
   local names     = {}
   local list      = {}
@@ -275,10 +284,10 @@ function Commands.__index (commands, key)
     local parameters = {}
     for _, x in pairs (result.response) do
       for name, t in pairs (x) do
-        if t.type == "password" then
+        if t.type == "password" and args [name] then
           io.write (i18n ["argument:password" .. tostring (1)] % {} .. " ")
           parameters [name] = getpassword ()
-        elseif t.type == "password:checked" then
+        elseif t.type == "password:checked" and args [name] then
           local passwords = {}
           repeat
             for i = 1, 2 do
@@ -401,6 +410,26 @@ Commands ["daemon:stop"] = function (commands)
         _ = i18n ["daemon:force-stop"] % {},
       },
     }
+    show_status (result)
+  end
+  local daemonpid
+  local tries = 0
+  repeat
+    os.execute ([[sleep {{{time}}}]] % { time = 0.2 })
+    daemonpid = read (Configuration.daemon.pid [nil])
+    tries     = tries + 1
+  until not daemonpid or tries == 10
+  if daemonpid then
+    result = i18n {
+      success = false,
+      error   = {
+        _ = i18n ["daemon:not-stopped"] % {},
+      },
+    }
+  else
+    result = {
+      success = true,
+    }
   end
   show_status (result)
   if args.debug then
@@ -424,7 +453,7 @@ Commands ["server:start"] = function ()
   end
   do
     local ws = Websocket.client.sync {
-      timeout = 5,
+      timeout = 0.5,
     }
     local url = args.server:gsub ("^http", "ws"):gsub ("/$", "") .. "/ws"
     if ws:connect (url) then
@@ -505,7 +534,7 @@ Commands ["server:stop"] = function (commands)
   Options.set ("optional", "force" )
   Options.set ("optional", "server")
   Cli:add_option (
-    "--token=TOKEN",
+    "--administration=TOKEN",
     "administration token",
     serverdata and serverdata.token or nil
   )
@@ -518,7 +547,7 @@ Commands ["server:stop"] = function (commands)
     operation  = "server:stop",
     parameters = {
       server         = args.server,
-      authentication = args.token,
+      administration = args.administration,
       locale         = args.locale,
     },
   })
@@ -549,6 +578,26 @@ Commands ["server:stop"] = function (commands)
       response = {
         _ = i18n ["server:force-stop"] % {},
       },
+    }
+    show_status (result)
+  end
+  local serverpid
+  local tries = 0
+  repeat
+    os.execute ([[sleep {{{time}}}]] % { time = 0.2 })
+    serverpid = read (Configuration.server.pid [nil])
+    tries     = tries + 1
+  until not serverpid or tries == 10
+  if serverpid then
+    result = i18n {
+      success = false,
+      error   = {
+        _ = i18n ["server:not-stopped"] % {},
+      },
+    }
+  else
+    result = {
+      success = true,
     }
   end
   show_status (result)
@@ -602,6 +651,12 @@ end
 
 Results ["user:update"] = function (response)
   Results ["user:information"] (response)
+end
+
+Results ["user:is_authentified"] = function (response)
+  print (Colors ("%{black yellowbg}" .. "username") ..
+         Colors ("%{reset}" .. " => ") ..
+         Colors ("%{yellow blackbg}" .. response.username))
 end
 
 Results ["user:information"] = function (response)
