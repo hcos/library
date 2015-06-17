@@ -53,6 +53,10 @@ function Server.start ()
     port = Configuration.server.port      [nil],
   }
   do
+    Nginx.stop  ()
+    Nginx.start ()
+  end
+  do
     local datafile = Configuration.server.data [nil]
     local file     = io.open (datafile, "w")
     file:write (Value.expression {
@@ -62,10 +66,6 @@ function Server.start ()
     })
     file:close ()
     os.execute ([[ chmod 0600 {{{file}}} ]] % { file = datafile })
-  end
-  do
-    Nginx.stop  ()
-    Nginx.start ()
   end
   do
     Ffi.cdef [[ unsigned int getpid (); ]]
@@ -80,10 +80,10 @@ end
 
 function Server.stop ()
   os.remove (Configuration.server.data [nil])
-  os.remove (Configuration.server.pid  [nil])
   Scheduler.addthread (function ()
     Scheduler.sleep (1)
     Nginx.stop ()
+    os.remove (Configuration.server.pid  [nil])
     os.exit   (0)
   end)
 end
