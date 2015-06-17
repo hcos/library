@@ -100,7 +100,7 @@ do
     return  value.country
        and  value.city
        and  value.latitude
-       and  value.longiture
+       and  value.longitude
         or  nil, {
               _   = i18n ["check:is-position"],
             }
@@ -189,11 +189,16 @@ end
 -- User
 -- ----
 do
-  Internal.data.user.name = {
-    min_size = 1,
-    max_size = 32,
+  Internal.data.user = {
     __refines__ = {
-      this.data.string.trimmed,
+      this.data.user.name,
+    },
+    name = {
+      min_size = 1,
+      max_size = 32,
+      __refines__ = {
+        this.data.string.trimmed,
+      }
     }
   }
   local checks = Internal.data.user.name.check
@@ -210,15 +215,12 @@ do
 end
 
 do
-  Internal.data.user.__refines__ = {
-    this.data.user.name,
-  }
   local checks = Internal.data.user.check
   checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
     local value   = request [key]
-    local name    = (Configuration.redis.pattern.user / value).user
+    local name    = (Configuration.redis.pattern.user [nil] / value).user
     if not name then
       return nil, {
         _   = i18n ["check:user"],
@@ -236,7 +238,7 @@ do
     local key     = t.key
     local name    = request [key].name
     local user    = store.users [name]
-    request [key].user = user
+    request [key] = user
     return  user
         or  nil, {
               _    = i18n ["check:user:miss"],
@@ -246,12 +248,11 @@ do
   checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
-    local name    = request [key].name
-    local user    = request [key].user
+    local user    = request [key]
     return  user.type == Configuration.resource.type.user [nil]
         or  nil, {
               _    = i18n ["check:user:not-user"],
-              name = name,
+              name = user.username,
             }
   end
 end
@@ -266,12 +267,11 @@ do
   checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
-    local name    = request [key].name
-    local user    = request [key].user
+    local user    = request [key]
     return  user.status == Configuration.resource.status.active [nil]
         or  nil, {
               _    = i18n ["check:user:not-active"],
-              name = name,
+              name = user.username,
             }
   end
 end
@@ -286,12 +286,11 @@ do
   checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
-    local name    = request [key].name
-    local user    = request [key].user
+    local user    = request [key]
     return  user.status == Configuration.resource.status.suspended [nil]
         or  nil, {
               _    = i18n ["check:user:not-suspended"],
-              name = name,
+              name = user.username,
             }
   end
 end
@@ -299,11 +298,16 @@ end
 -- Project name
 -- ------------
 do
-  Internal.data.project.name = {
-    min_size = 1,
-    max_size = 32,
+  Internal.data.project = {
     __refines__ = {
-      this.data.string.trimmed,
+      this.data.project.name,
+    },
+    name = {
+      min_size = 1,
+      max_size = 32,
+      __refines__ = {
+        this.data.string.trimmed,
+      }
     }
   }
   local checks = Internal.data.project.name.check
@@ -322,15 +326,12 @@ end
 -- Project
 -- -------
 do
-  Internal.data.project.__refines__ = {
-    this.data.project.name,
-  }
   local checks = Internal.data.project.check
   checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
     local value   = request [key]
-    local r       = Configuration.redis.pattern.project / value
+    local r       = Configuration.redis.pattern.project [nil] / value
     if not check (r.user   , Configuration.data.username   )
     or not check (r.project, Configuration.data.projectname)
     then
