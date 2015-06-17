@@ -62,9 +62,6 @@ if not _G.js then
   local updater = Scheduler.addthread (function ()
     local Nginx = require "cosy.nginx"
     local Redis = require "cosy.redis"
-    if not Nginx.directory then
-      return
-    end
     while true do
       local redis = Redis ()
       -- http://stackoverflow.com/questions/4006324
@@ -92,9 +89,12 @@ if not _G.js then
       script = table.concat (script)
       redis:eval (script, 1, "foreign:*")
       os.execute ([[
-        find {{{root}}}/cache -type f -delete
+        if [ -d {{{root}}}/cache ]
+        then
+          find {{{root}}}/cache -type f -delete
+        fi
       ]] % {
-        root = Nginx.directory,
+        root = Configuration.http.directory [nil],
       })
       Logger.debug {
         _ = i18n ["updated"],
