@@ -181,8 +181,8 @@ function Operation.__call (operation, parameters, try_only)
     Client.connect (client)
   end
   if client._status ~= "opened" then
-    return nil, {
-      _ = i18n ["server:unreachable"],
+    return nil, i18n {
+      _ = i18n ["server:unreachable"] % {},
     }
   end
   -- Call special cases:
