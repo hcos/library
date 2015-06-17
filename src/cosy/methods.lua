@@ -354,8 +354,10 @@ function Methods.user.update (request, store, try_only)
   end
   if request.position then
     user.position = {
-      country = request.position.country,
-      city    = request.position.city,
+      country   = request.position.country,
+      city      = request.position.city,
+      latitude  = request.position.latitude,
+      longitude = request.position.longitude,
     }
   end
   if request.avatar then
