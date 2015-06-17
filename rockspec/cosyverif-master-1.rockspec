@@ -20,6 +20,7 @@ dependencies = {
   "cjson >= 2",
   "copas-ev >= 0",
   "coronest >= 0",
+  "dkjson >= 2.5",
   "hotswap >= 0",
   "i18n >= 0",
   "layeredata >= 0",
