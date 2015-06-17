@@ -1,7 +1,4 @@
-local location = js.global.location
-local loader    = require (location.origin .. "/lua/cosy.loader")
-
-
+local loader    = require "cosy.loader"
 local mainregister
 local profile
 
@@ -24,7 +21,6 @@ local value   = require "cosy.value"
   local ok = true
   while ok do
     local event = coroutine.yield ()
-    js.global.console:log (event)
     if event == "auth" then
       local user  = js.global.document:getElementById("username").value
       local pass  = js.global.document:getElementById("pass").value
@@ -32,12 +28,13 @@ local value   = require "cosy.value"
         user  = user,
         password   = pass,
       }
+      js.global.console:log (result)
 
       if result then
         window:jQuery('#success #message'):html("User authentificated")
         window:jQuery('#success'):show()
         local storage = js.global.sessionStorage
-        storage:setItem("cosytoken",result.token)
+        storage:setItem("cosytoken",result.authentication)
         storage:setItem("cosyuser",user)
         js.global.location.href = "/"
       else
@@ -156,5 +153,7 @@ local value   = require "cosy.value"
   end
 end
 
-local co = coroutine.create (mainlogin)
-coroutine.resume (co)
+return {
+  login    = mainlogin,
+  register = mainregister,
+}

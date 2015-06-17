@@ -9,18 +9,22 @@ local profile = function  ()
   local username = storage:getItem("cosyuser")
   js.global.document:getElementById("content-wrapper").innerHTML = loader.loadhttp ( "/html/profile.html")
 
-  local result, err = client.user.information {
-        user   = username
-        }
+  local result, err = client.user.update {
+    authentication = token
+    }
+  
   if result then
   js.global.document:getElementById("username").value = result.username
   js.global.document:getElementById("name").value = result.name
+  js.global.document:getElementById("email").value = result.email
+
   js.global.document:getElementById("home").value = result.homepage
   js.global.document:getElementById("org").value = result.organization
   print ( value.expression (result))
 
   else 
-  
+    print ( value.expression (err))
+
   end
   js.global.document:getElementById("update").onclick = function()
      coroutine.resume(co,"update")
@@ -34,7 +38,8 @@ local profile = function  ()
       local user  = js.global.document:getElementById("username").value
       local email  = js.global.document:getElementById("email").value
     --  local avatar  = client.server.tos ()
-    
+      local email  = js.global.document:getElementById("email").value
+
       local result, err = client.user.create {
       username   = user,
       password   = pass,
