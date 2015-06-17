@@ -35,7 +35,7 @@ if _G.js then
         if request.status == 200 then
           result = request.responseText
         else
-          err    = event.target.status
+          err    = event.status
         end
         if not sync then
           coroutine.resume (co)
