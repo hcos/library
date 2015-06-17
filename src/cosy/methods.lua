@@ -62,7 +62,7 @@ end
 function Methods.server.stop (request, store)
   Parameters.check (store, request, {
     required = {
-      authentication = Parameters.token.administration,
+      administration = Parameters.token.administration,
     },
   })
   local Server = require "cosy.server"
@@ -239,17 +239,22 @@ function Methods.user.validate (request, store)
 end
 
 function Methods.user.authenticate (request, store)
-  if not pcall (function ()
+  local ok, err = pcall (function ()
     Parameters.check (store, request, {
       required = {
         user     = Parameters.user.active,
         password = Parameters.password,
       },
     })
-  end) then
-    error {
-      _ = i18n ["user:authenticate:failure"],
-    }
+  end)
+  if not ok then
+    if request.__DESCRIBE then
+      error (err)
+    else
+      error {
+        _ = i18n ["user:authenticate:failure"],
+      }
+    end
   end
   local user     = request.user
   local verified = Password.verify (request.password, user.password)
@@ -273,7 +278,9 @@ function Methods.user.is_authentified (request, store)
       authentication = Parameters.token.authentication,
     },
   })
-  return true
+  return {
+    username = request.authentication.username,
+  }
 end
 
 function Methods.user.update (request, store, try_only)
