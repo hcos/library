@@ -1,0 +1,47 @@
+<section class="content-header">
+          <h1>
+            Sign-in
+          </h1>
+</section>
+ <section class="content" id="content">
+<div class="login-box">
+<div class="login-box-body">
+<p class="login-box-msg">Sign in to start your session</p>
+<form action="../../index2.html" method="post">
+<div class="form-group has-feedback" id="userdiv">
+<input id="username" type="text" class="form-control" placeholder="Username"/>
+<span class="glyphicon glyphicon-envelope form-control-feedback"></span>
+<span id="usererror" style="color:red;display:none;"></span>
+</div>
+<div class="form-group has-feedback">
+<input id="pass" type="password" class="form-control" placeholder="Password"/>
+<span class="glyphicon glyphicon-lock form-control-feedback"></span>
+</div>
+<div class="row">
+<div class="col-xs-8">    
+<div class="checkbox icheck">
+
+</div>                        
+</div><!-- /.col -->
+<div class="col-xs-4">
+<button type="submit" class="btn btn-primary btn-block btn-flat" id="signin">Sign In</button>
+</div><!-- /.col -->
+</div>
+</form>
+
+<a href="#">I forgot my password</a><br>
+<a href="register.html" class="text-center" id="register">Register a new membership</a>
+
+</div><!-- /.login-box-body -->
+<div id="error" style="display:none;">
+<div class="alert alert-danger" role="alert">
+<strong>Error: </strong><span id="message"></span>
+</div>
+</div>
+<div id="success" style="display:none;">
+<div class="alert alert-success" role="alert">
+<strong>Success: </strong><span id="message"></span>
+</div>
+</div>
+</div>
+</section>
