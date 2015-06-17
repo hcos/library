@@ -1,3 +1,4 @@
+                      require "cosy.loader"
 local Configuration = require "cosy.configuration"
 local I18n          = require "cosy.i18n"
 local Handler       = require "cosy.daemon-handler"
