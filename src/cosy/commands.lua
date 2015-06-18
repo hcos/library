@@ -304,52 +304,61 @@ function Commands.__index (commands, key)
           if t.type == "token:authentication" then
             local _ = false
           elseif t.type == "avatar" then
+            local http   = require "socket.http"
+            local ltn12  = require "ltn12"
             local avatar = args [name]
-            local content
+            local filename = avatar
+            local result
             if avatar:match "^https?://" then
-              local request = require "socket.http" .request
-              local body, status = request (avatar)
+              filename   = os.tmpname ()
+              local file = io.open (filename, "w")
+              local _, status = http.request {
+                method = "GET",
+                url    = avatar,
+                sink   = ltn12.sink.file (file),
+              }
               if status ~= 200 then
-                return {
+                result = {
                   success = false,
-                  error   = {
-                    _ = i18n ["url:not-found"] % {
-                      url    = avatar,
-                      status = status,
-                    },
+                  error   = i18n {
+                    _      = i18n ["url:not-found"],
+                    url    = avatar,
+                    reason = status,
                   },
                 }
               end
-              content = body
-            else
-              if avatar:match "^~" then
-                avatar = os.getenv "HOME" .. avatar:sub (2)
-              end
-              local file, err = io.open (avatar, "r")
-              if file then
-                content = file:read "*all"
-                file:close ()
-              else
-                return {
-                  success = false,
-                  error   = {
-                    _ = i18n ["file:not-found"] % {
-                      filename = avatar,
-                      reason   = err,
-                    },
-                  },
-                }
-              end
+              file:close ()
+            elseif avatar:match "^~" then
+              filename = os.getenv "HOME" .. avatar:sub (2)
             end
-            local http  = require "socket.http"
-            local ltn12 = require "ltn12"
-            local _, status, headers = http.request {
-              method = "POST",
-              url    = args.server .. "/upload",
-              source = ltn12.source.string (content),
-            }
+            local file, err = io.open (filename, "r")
+            if not file then
+              result = {
+                success = false,
+                error   = i18n {
+                  _        = i18n ["file:not-found"],
+                  filename = filename,
+                  reason   = err,
+                },
+              }
+            end
+            local body = file:read "*all"
+            file:close ()
+            local _, status, headers = http.request (args.server .. "/upload", body)
             if status == 200 then
               parameters [name] = headers ["cosy-avatar"]
+            else
+              result = {
+                success = false,
+                error   = i18n {
+                  _      = i18n ["upload:failure"],
+                  status = status,
+                },
+              }
+            end
+            if result then
+              show_status (result)
+              os.exit (1)
             end
           else
             parameters [name] = args [name]
@@ -671,7 +680,8 @@ Results ["user:information"] = function (response)
     local avatar     = response.avatar
     local inputname  = os.tmpname ()
     local file = io.open (inputname, "w")
-    file:write (avatar.content)
+    assert (file)
+    file:write (avatar)
     file:close ()
     os.execute ([[
       img2txt -W 40 -H 20 {{{input}}} 2> /dev/null

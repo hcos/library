@@ -23,6 +23,9 @@ return {
   ["failure"] = {
     en = "failure",
   },
+  ["upload:failure"] = {
+    en = "failed to upload content (error {{{status}}})",
+  },
   ["daemon:stop"] = {
     en = "stop cosy daemon",
   },

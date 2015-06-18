@@ -119,9 +119,9 @@ http {
 
     location /upload {
       limit_except               POST { deny all; }
-      client_body_temp_path      {{{uploads}}};
+      client_body_temp_path      uploads/;
       client_body_buffer_size    128K;
-      client_max_body_size       10M;
+      client_max_body_size       10240K;
       content_by_lua '
         ngx.req.read_body ()
         local redis   = require "nginx.redis" :new ()
@@ -162,12 +162,25 @@ function Nginx.configure ()
     file:close ()
     resolver = table.concat (result, " ")
   end
+  os.execute ([[
+    if [ ! -d {{{directory}}} ]
+    then
+      mkdir {{{directory}}}
+    fi
+    if [ ! -d {{{uploads}}} ]
+    then
+      mkdir {{{uploads}}}
+    fi
+  ]] % {
+    directory = Configuration.http.directory [nil],
+    uploads   = Configuration.http.uploads   [nil],
+  })
   local configuration = configuration_template % {
     host           = Configuration.http.interface   [nil],
     port           = Configuration.http.port        [nil],
     www            = Configuration.http.www         [nil],
-    pidfile        = Configuration.http.pid         [nil],
     uploads        = Configuration.http.uploads     [nil],
+    pidfile        = Configuration.http.pid         [nil],
     name           = Configuration.server.name      [nil],
     wshost         = Configuration.server.interface [nil],
     wsport         = Configuration.server.port      [nil],
