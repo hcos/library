@@ -425,15 +425,15 @@ function Methods.user.recover (request, store, try_only)
     },
   })
   local user = request.validation.user
-  Methods.user.update {
+  Methods.user.update ({
     authentication = Token.authentication (user),
     password       = request.password,
     try_only       = try_only,
-  }
-  return Methods.user.authenticate {
+  }, store)
+  return Methods.user.authenticate ({
     username = user.username,
     password = request.password,
-  }
+  }, store)
 end
 
 function Methods.user.reset (request, store, try_only)
