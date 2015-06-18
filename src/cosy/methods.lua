@@ -503,7 +503,7 @@ function Methods.user.suspend (request, store)
     }
   end
   user.reputation = user.reputation - reputation
-  target.status   = Methods.Status.suspended
+  target.status   = Configuration.resource.status.suspended [nil]
 end
 
 function Methods.user.release (request, store)
@@ -529,7 +529,7 @@ function Methods.user.release (request, store)
     }
   end
   user.reputation = user.reputation - reputation
-  target.status   = Methods.Status.active
+  target.status   = Configuration.resource.status.active [nil]
 end
 
 function Methods.user.delete (request, store)
@@ -596,7 +596,7 @@ function Methods.project.create (request, store)
     }
   end
   store.projects [name] = {
-    type        = Methods.Type.project,
+    type        = Configuration.resource.type.project [nil],
     username    = user.username,
     projectname = request.projectname,
     access      = {
