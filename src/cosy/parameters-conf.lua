@@ -59,23 +59,10 @@ do
   Internal.data.avatar = {
     width  = 400,
     height = 400,
+    __refines__ = {
+      this.data.string,
+    },
   }
-  local checks = Internal.data.avatar.check
-  checks [1] = function (t)
-    local value = t.request [t.key]
-    return  type (value) == "table"
-        or  nil, {
-              _   = i18n ["check:is-table"],
-            }
-  end
-  checks [2] = function (t)
-    local value = t.request [t.key]
-    return  type (value.source ) == "string"
-       and  type (value.content) == "string"
-        or  nil, {
-              _   = i18n ["check:is-avatar"],
-            }
-  end
 end
 
 -- Position

@@ -2,13 +2,12 @@ local Configuration = require "cosy.configuration"
 local Lfs           = require "lfs"
 local Internal      = Configuration / "default"
 
-Internal.server = {
-  interface = "127.0.0.1",
-  port      = 0,
-  data      = os.getenv "HOME" .. "/.cosy/server.data",
-  log       = os.getenv "HOME" .. "/.cosy/server.log",
-  pid       = os.getenv "HOME" .. "/.cosy/server.pid",
-}
+Internal.server.interface = "127.0.0.1"
+Internal.server.port      = 0 -- random port
+Internal.server.data      = os.getenv "HOME" .. "/.cosy/server.data"
+Internal.server.log       = os.getenv "HOME" .. "/.cosy/server.log"
+Internal.server.pid       = os.getenv "HOME" .. "/.cosy/server.pid"
+
 Internal.redis.retry = 5
 
 -- Set www path:
