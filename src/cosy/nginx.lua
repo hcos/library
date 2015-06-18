@@ -48,7 +48,7 @@ http {
     default_type  application/octet-stream;
     access_log    access.log;
     root          "{{{www}}}";
-    
+
     location / {
       try_files $uri $uri/ $uri/index.html @foreigns;
     }
@@ -117,6 +117,28 @@ http {
       ';
     }
 
+    location /upload {
+      limit_except               POST { deny all; }
+      client_body_temp_path      {{{uploads}}};
+      client_body_buffer_size    128K;
+      client_max_body_size       10M;
+      content_by_lua '
+        ngx.req.read_body ()
+        local redis   = require "nginx.redis" :new ()
+        local ok, err = redis:connect ("{{{redis_host}}}", {{{redis_port}}})
+        if not ok then
+          ngx.log (ngx.ERR, "failed to connect to redis: ", err)
+          return ngx.exit (500)
+        end
+        redis:select ({{{redis_database}}})
+        local id = redis:incr "#upload"
+        local key = "upload:" .. tostring (id)
+        redis:set (key, ngx.req.get_body_data ())
+        redis:expire (key, 300)
+        ngx.header ["Cosy-Avatar"] = key
+      ';
+    }
+
   }
 }
 ]]
@@ -145,6 +167,7 @@ function Nginx.configure ()
     port           = Configuration.http.port        [nil],
     www            = Configuration.http.www         [nil],
     pidfile        = Configuration.http.pid         [nil],
+    uploads        = Configuration.http.uploads     [nil],
     name           = Configuration.server.name      [nil],
     wshost         = Configuration.server.interface [nil],
     wsport         = Configuration.server.port      [nil],
