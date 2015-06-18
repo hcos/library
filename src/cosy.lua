@@ -91,7 +91,7 @@ Cli:set_name (_G.arg [0] .. " " .. _G.arg [1])
 table.remove (_G.arg, 1)
 
 local ok, result = xpcall (command, function (e)
-  print (e)
+  print (Value.expression (e))
   print (debug.traceback ())
 end)
 if not ok then
