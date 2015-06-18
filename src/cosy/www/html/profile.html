@@ -4,41 +4,51 @@
           </h1>
 </section>
  <section class="content" id="content">
-  <div class="login-box">
-      <div class="register-box-body">
-        <p class="login-box-msg">User:<strong><span id="pusername"></span></strong></p>
+  <div class="row">
+    <div class="col-md-4"></div>
+      <div class="col-md-4">
+        <div class="box box-primary">
+        <p class="login-box-msg">User: <strong><span id="pusername"></span></strong></p>
         <form action="../../index.html" method="post" enctype="multipart/form-data">
+          <div class="box-body">
             <div class="form-group has-feedback" id="avatardiv">
-            <p id="pavatar"></p>
-            
-            <input id="avatar" type="file" class="form-control"/>
+            <div id="pavatar" style="width:150px;height:150px;border:1px solid #000;text-align:center;margin:auto;">Your Picture</div>
+            <label>Upload</label>
+          <input id="avatar" type="file" class="form-control"/>
           </div>
-          <div class="form-group has-feedback" id="userdiv">
+          <!--<div class="form-group has-feedback" id="userdiv">
             <input id="username" type="text" class="form-control" placeholder="Username"/>
             <span class="glyphicon glyphicon-user form-control-feedback"></span>
             <span id="usererror" style="color:red;display:none;"></span>
-          </div>
+          </div>-->
           <div class="form-group has-feedback" id="emaildiv">
+            <label>Email</label>
             <input id="email" type="text" class="form-control" placeholder="Email"/>
             <span class="glyphicon glyphicon-envelope form-control-feedback"></span>
             <span id="emailerror" style="color:red;display:none;"></span>
           </div>
            <div class="form-group has-feedback" id="namediv">
+             <label>Name</label>
             <input id="name" type="text" class="form-control" placeholder="Name"/>
           </div>
            <div class="form-group has-feedback" id="orgdiv">
+             <label>Organization</label>
             <input id="org" type="text" class="form-control" placeholder="organization"/>
           </div>
            <div class="form-group has-feedback" id="homediv">
+             <label>Home Page</label>
             <input id="home" type="text" class="form-control" placeholder="Home Page"/>
           </div>
           <div class="form-group has-feedback" id="homediv">
-              Language: <select id="lang">
-              <option value="EN">English</option>
+            <label>Language</label>
+              <select id="lang">
+              <option value="en">English</option>
               </select>
           </div>
           <div class="form-group has-feedback" id="homediv">
-          Country: <select id="country">
+            <label>Country</label>
+            
+          <select id="country">
               <option value="AF">Afghanistan</option>
               <option value="AX">Åland Islands</option>
               <option value="AL">Albania</option>
@@ -290,11 +300,15 @@
               <option value="ZW">Zimbabwe</option>
             </select>
           </div>
-          <div class="form-group has-feedback" id="homediv">
+          <div class="form-group has-feedback" id="citydiv">
+            <label>City</label>
             <input id="city" type="text" class="form-control" placeholder="City"/>
             </div>
+            </div>
+            <div class="box-footer">
            <div class="form-group has-feedback" id="homediv">
            <button type="submit" class="btn btn-primary btn-block btn-flat" id="update">Save</button>
+          </div>
           </div>
          
         </form>        
@@ -310,6 +324,8 @@
 <strong>Success: </strong><span id="message"></span>
 </div>
 </div>
+</div>
+<div class="col-md-4"></div>
 </div>
 
 </section>
