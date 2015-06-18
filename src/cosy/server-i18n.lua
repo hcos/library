@@ -14,4 +14,8 @@ return {
   ["redis:unreachable"] = {
     en = "redis server in unreachable",
   },
+  ["updated"] = {
+    en = "configuration has been updated",
+    fr = "la configuration vient d'être mise à jour",
+  },
 }
