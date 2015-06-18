@@ -345,10 +345,10 @@ function Methods.user.update (request, store, try_only)
     }
     user.email   = request.email
     user.checked = false
-    Methods.user.send_validation {
-      authentication = request.authentication,
+    Methods.user.send_validation ({
+      authentication = Token.authentication (user),
       try_only       = try_only,
-    }
+    }, store)
   end
   if request.password then
     user.password = Password.hash (request.password)
