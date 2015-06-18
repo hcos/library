@@ -508,14 +508,15 @@ Commands ["server:start"] = function ()
     log = Configuration.server.log [nil],
   })
   local tries = 0
-  local serverdata
+  local serverpid, nginxpid
   repeat
     os.execute ([[sleep {{{time}}}]] % { time = 0.5 })
-    serverdata = read (Configuration.server.data [nil])
+    serverpid = read (Configuration.server.pid [nil])
+    nginxpid  = read (Configuration.http  .pid [nil])
     tries      = tries + 1
-  until serverdata or tries == 10
+  until (serverpid and nginxpid) or tries == 0
   local result
-  if serverdata then
+  if serverpid and nginxpid then
     result = {
       success = true,
     }
