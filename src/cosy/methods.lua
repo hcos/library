@@ -297,7 +297,7 @@ function Methods.user.update (request, store, try_only)
       organization = Parameters.organization,
       password     = Parameters.password.checked,
       position     = Parameters.position,
-      username     = Parameters.username,
+      username     = Parameters.user.name,
     },
   })
   local user = request.authentication.user
