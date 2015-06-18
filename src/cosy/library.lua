@@ -119,7 +119,7 @@ Client.methods ["user:authenticate"] = function (operation, parameters)
   local client = operation._client
   local data   = client._data
   data.token          = nil
-  parameters.username = parameters.username or data.username
+  parameters.user = parameters.user or data.username
   if parameters.password then
     parameters.password = Digest (parameters.password)
   elseif data.hashed then
@@ -127,7 +127,7 @@ Client.methods ["user:authenticate"] = function (operation, parameters)
   end
   local result = mcoroutine.yield ()
   if result.success then
-    data.username = parameters.username
+    data.username = parameters.user
     data.hashed   = parameters.password
     data.token    = result.response.authentication
   end
