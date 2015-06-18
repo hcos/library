@@ -1,6 +1,7 @@
 local Configuration = require "cosy.configuration"
 local I18n          = require "cosy.i18n"
 local Logger        = require "cosy.logger"
+local Value         = require "cosy.value"
 local Layer         = require "layeredata"
 
 Configuration.load "cosy.parameters"
@@ -82,11 +83,17 @@ function Parameters.check (store, request, parameters)
       end
     end
   end
+  -- Special case: authentication can be added in any request
+  -- without issuing an error...
+  if request.authentication and not checked.authentication then
+    request.authentication = nil
+  end
   for key in pairs (request) do
     if not checked [key] then
       Logger.warning {
-        _   = i18n ["check:no-check"],
-        key = key,
+        _       = i18n ["check:no-check"],
+        key     = key,
+        request = Value.expression (request),
       }
       request [key] = nil
     end
