@@ -182,7 +182,7 @@ function Operation.__call (operation, parameters, try_only)
   end
   if client._status ~= "opened" then
     return nil, i18n {
-      _ = i18n ["server:unreachable"] % {},
+      _ = i18n ["server:unreachable"],
     }
   end
   -- Call special cases:
@@ -255,7 +255,7 @@ function Operation.__call (operation, parameters, try_only)
   threadof (f)
   if result == nil then
     return nil, i18n {
-      _ = i18n ["server:timeout"] % {},
+      _ = i18n ["server:timeout"],
     }
   end
   if wrapperco and not try_only then
