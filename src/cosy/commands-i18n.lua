@@ -74,4 +74,7 @@ return {
   ["argument:password2"] = {
     en = "plase type the same password again",
   },
+  ["argument:password:nomatch"] = {
+    en = "passwords are not the same",
+  },
 }
