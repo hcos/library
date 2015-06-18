@@ -552,8 +552,8 @@ Commands ["server:stop"] = function (commands)
   commands.ws:send (Value.expression {
     server     = args.server,
     operation  = "server:stop",
+    server     = args.server,
     parameters = {
-      server         = args.server,
       administration = args.administration,
       locale         = args.locale,
     },
