@@ -69,11 +69,11 @@ local function show_status (result)
       local max = 0
       for i = 1, #result.error.reasons do
         local reason = result.error.reasons [i]
-        max = math.max (max, #reason.parameter)
+        max = math.max (max, #reason.key)
       end
       for i = 1, #result.error.reasons do
         local reason    = result.error.reasons [i]
-        local parameter = reason.parameter
+        local parameter = reason.key
         local message   = reason.message
         local space = ""
         for _ = #parameter, max+3 do
