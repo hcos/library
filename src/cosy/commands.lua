@@ -8,6 +8,7 @@ local Websocket     = require "websocket"
 Configuration.load {
   "cosy",
   "cosy.daemon",
+  "cosy.nginx",
   "cosy.server",
 }
 
@@ -304,6 +305,7 @@ function Commands.__index (commands, key)
             local _ = false
           elseif t.type == "avatar" then
             local avatar = args [name]
+            local content
             if avatar:match "^https?://" then
               local request = require "socket.http" .request
               local body, status = request (avatar)
@@ -318,20 +320,14 @@ function Commands.__index (commands, key)
                   },
                 }
               end
-              parameters [name] = {
-                source  = avatar,
-                content = body,
-              }
+              content = body
             else
               if avatar:match "^~" then
                 avatar = os.getenv "HOME" .. avatar:sub (2)
               end
               local file, err = io.open (avatar, "r")
               if file then
-                parameters [name] = {
-                  source  = avatar,
-                  content = file:read "*all",
-                }
+                content = file:read "*all"
                 file:close ()
               else
                 return {
@@ -344,6 +340,16 @@ function Commands.__index (commands, key)
                   },
                 }
               end
+            end
+            local http  = require "socket.http"
+            local ltn12 = require "ltn12"
+            local _, status, headers = http.request {
+              method = "POST",
+              url    = args.server .. "/upload",
+              source = ltn12.source.string (content),
+            }
+            if status == 200 then
+              parameters [name] = headers ["cosy-avatar"]
             end
           else
             parameters [name] = args [name]
