@@ -11,7 +11,7 @@ local i18n   = I18n.load "cosy.server"
 i18n._locale = Configuration.locale [nil]
 
 local function call_method (method, parameters, try_only)
-  for _ = 1, Configuration.redis.retry [nil] do
+  for _ = 1, Configuration.redis.retry [nil] or 1 do
     local err
     local ok, result = xpcall (function ()
       local store  = Store.new ()
