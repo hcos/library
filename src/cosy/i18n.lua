@@ -80,7 +80,10 @@ function I18n.__call (i18n, data)
     end
     return t
   end
-  local locale = data.locale or data._locale or i18n._locale or "en"
+  local locale = data.locale
+              or data._locale
+              or i18n._locale
+              or "en"
   return translate (locale, data)
 end
 
