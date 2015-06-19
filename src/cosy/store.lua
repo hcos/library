@@ -11,8 +11,10 @@ local Document   = {}
 Store.Error     = setmetatable ({}, { __tostring = function () return "ERROR"   end })
 
 function Store.new ()
+  local client = Redis ()
+  client:unwatch ()
   return setmetatable ({
-    __redis       = Redis (),
+    __redis       = client,
     __collections = {},
   }, Store)
 end
