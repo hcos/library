@@ -1,14 +1,15 @@
 local Configuration = require "cosy.configuration"
+local I18n          = require "cosy.i18n"
 local Redis         = require "cosy.redis"
 local Value         = require "cosy.value"
 local Coromake      = require "coroutine.make"
 local Layer         = require "layeredata"
 
+local i18n = I18n.load "store"
+
 local Store      = {}
 local Collection = {}
 local Document   = {}
-
-Store.Error     = setmetatable ({}, { __tostring = function () return "ERROR"   end })
 
 function Store.new ()
   local client = Redis ()
@@ -43,7 +44,7 @@ end
 function Store.commit (store)
   local client = store.__redis
   client:multi ()
-  local ok, err = pcall (function ()
+  local ok = pcall (function ()
     for _, collection in pairs (store.__collections) do 
       local pattern = collection.__pattern
       for key, document in pairs (collection.__data) do
@@ -69,7 +70,11 @@ function Store.commit (store)
     end
   end)
   if ok then
-    client:exec ()
+    if not client:exec () then
+      error {
+        _ = i18n ["redis:retry"],
+      }
+    end
   else
     client:discard ()
   end

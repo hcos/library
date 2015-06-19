@@ -12,7 +12,6 @@ i18n._locale = Configuration.locale [nil]
 
 local function call_method (method, parameters, try_only)
   for _ = 1, Configuration.redis.retry [nil] or 1 do
-    local err
     local store  = Store.new ()
     local ok, result = xpcall (function ()
       local result = method (parameters, store, try_only)
@@ -22,10 +21,15 @@ local function call_method (method, parameters, try_only)
       return result
     end, function (e)
       if tostring (e):match "ERR MULTI" then
-        store.__redis:discard ()
-      end
-      err = e
-      if  not e._ or not e._._key then
+        store.__redis:discard ()      
+      elseif type (e  ) == "table"
+         and type (e._) == "table"
+         and e._._key   == "redis:retry" then
+        Logger.debug {
+          _      = i18n ["server:exception"],
+          reason = e,
+        }
+      else
         Logger.debug {
           _      = i18n ["server:exception"],
           reason = Value.expression (e) .. " => " .. debug.traceback (),
@@ -34,12 +38,10 @@ local function call_method (method, parameters, try_only)
     end)
     if ok then
       return result or true
-    elseif err ~= Store.Error then
-      return nil, err
     end
   end
   return nil, {
-    _ = i18n ["redis:unreachable"],
+    _ = i18n ["error:internal"],
   }
 end
 
