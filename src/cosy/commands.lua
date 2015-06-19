@@ -308,7 +308,7 @@ function Commands.__index (commands, key)
             local ltn12  = require "ltn12"
             local avatar = args [name]
             local filename = avatar
-            local result
+            local errresult
             if avatar:match "^https?://" then
               filename   = os.tmpname ()
               local file = io.open (filename, "w")
@@ -318,7 +318,7 @@ function Commands.__index (commands, key)
                 sink   = ltn12.sink.file (file),
               }
               if status ~= 200 then
-                result = {
+                errresult = {
                   success = false,
                   error   = i18n {
                     _      = i18n ["url:not-found"],
@@ -333,7 +333,7 @@ function Commands.__index (commands, key)
             end
             local file, err = io.open (filename, "r")
             if not file then
-              result = {
+              errresult = {
                 success = false,
                 error   = i18n {
                   _        = i18n ["file:not-found"],
@@ -348,7 +348,7 @@ function Commands.__index (commands, key)
             if status == 200 then
               parameters [name] = headers ["cosy-avatar"]
             else
-              result = {
+              errresult = {
                 success = false,
                 error   = i18n {
                   _      = i18n ["upload:failure"],
@@ -356,8 +356,8 @@ function Commands.__index (commands, key)
                 },
               }
             end
-            if result then
-              show_status (result)
+            if errresult then
+              show_status (errresult)
               os.exit (1)
             end
           else
