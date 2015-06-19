@@ -51,7 +51,7 @@ local function getpassword ()
   os.execute("stty sane") 
   if ok then 
     return pass
-  end 
+  end
 end
 
 local function show_status (result)
