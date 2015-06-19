@@ -68,6 +68,9 @@ return {
   ["check:project"] = {
     en = "a project must be like username/projectname",
   },
+  ["check:iterator:function"] = {
+    en = "an iterator must be a valid and dumpable Lua function",
+  },
   ["translation:failure"] = {
     "translation failed: {{{reason}}}",
   },

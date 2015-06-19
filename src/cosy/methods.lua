@@ -100,6 +100,16 @@ function Methods.server.tos (request, store)
   }
 end
 
+function Methods.server.filter (request, store)
+  Parameters.check (store, request, {
+    required = {
+      authentication = Parameters.token.authentication,
+      iterator       = Parameters.iterator,
+    },
+  })
+
+end
+
 -- User
 -- ----
 
@@ -116,7 +126,7 @@ function Methods.user.list (request, store)
     user = (request.prefix or "") .. "*",
   }
   local result = {}
-  for _, user in Store.iterate (store.users, filter) do
+  for _, user in Store.filter (store.user, filter) do
     result [#result+1] = user.username
   end
   return result
@@ -132,19 +142,19 @@ function Methods.user.create (request, store, try_only)
       locale     = Parameters.locale,
     },
   })
-  if store.emails [request.email] then
+  if store.email [request.email] then
     error {
       _     = i18n ["email:exist"],
       email = request.email,
     }
   end
-  if store.users [request.username] then
+  if store.user [request.username] then
     error {
       _        = i18n ["username:exist"],
       username = request.username,
     }
   end
-  store.emails [request.email] = {
+  store.email [request.email] = {
     username  = request.username,
   }
   if request.locale == nil then
@@ -162,7 +172,7 @@ function Methods.user.create (request, store, try_only)
     reputation  = Configuration.reputation.at_creation [nil],
     lastseen    = Time (),
   }
-  store.users [request.username] = user
+  store.user [request.username] = user
   if try_only then
     return true
   end
@@ -303,7 +313,7 @@ function Methods.user.update (request, store, try_only)
   })
   local user = request.authentication.user
   if request.username then
-    if store.users [request.username] then
+    if store.user [request.username] then
       error {
         _        = i18n ["username:exist"],
         username = request.username,
@@ -313,7 +323,7 @@ function Methods.user.update (request, store, try_only)
       user    = user.username,
       project = "*",
     }
-    for name, project in Store.iterate (store.projects, filter) do
+    for name, project in Store.filter (store.project, filter) do
       local projectname = (Configuration.redis.pattern.project [nil] / name).project
       project.username = request.username
       local old = Configuration.redis.pattern.project [nil] % {
@@ -324,23 +334,23 @@ function Methods.user.update (request, store, try_only)
         user    = request.username,
         project = projectname,
       }
-      store.projects [old] = nil
-      store.projects [new] = project
+      store.project [old] = nil
+      store.project [new] = project
     end
-    store.users [user.username   ] = nil
-    store.users [request.username] = user
+    store.user [user.username   ] = nil
+    store.user [request.username] = user
     user.username = request.username
-    store.emails [user.email].username = request.username
+    store.email [user.email].username = request.username
   end
   if request.email then
-    if store.emails [request.email] then
+    if store.email [request.email] then
       error {
         _     = i18n ["email:exist"],
         email = request.email,
       }
     end
-    store.emails [user.email   ] = nil
-    store.emails [request.email] = {
+    store.email [user.email   ] = nil
+    store.email [request.email] = {
       username  = user.username,
     }
     user.email   = request.email
@@ -442,11 +452,11 @@ function Methods.user.reset (request, store, try_only)
       email = Parameters.email,
     },
   })
-  local email = store.emails [request.email]
+  local email = store.email [request.email]
   if not email then
     return
   end
-  local user = store.users [email.username]
+  local user = store.user [email.username]
   if not user
   or user.type ~= Configuration.resource.type.user [nil] then
     return
@@ -539,14 +549,14 @@ function Methods.user.delete (request, store)
     },
   })
   local user = request.authentication.user
-  store.emails [user.email   ] = nil
-  store.users  [user.username] = nil
+  store.email [user.email   ] = nil
+  store.user  [user.username] = nil
   local filter = Configuration.redis.pattern.project [nil] % {
     user    = user.username,
     project = "*",
   }
-  for name in Store.iterate (store.projects, filter) do
-    store.projects [name] = nil
+  for name in Store.filter (store.project, filter) do
+    store.project [name] = nil
   end
 end
 
@@ -567,7 +577,7 @@ function Methods.project.list (request, store)
     user = (request.prefix or "") .. "*",
   }
   local result = {}
-  for _, user in Store.iterate (store.users, filter) do
+  for _, user in Store.filter (store.user, filter) do
     result [#result+1] = user.username
   end
   return result
@@ -583,19 +593,19 @@ function Methods.project.create (request, store)
       is_private = Parameters.is_private,
     },
   })
-  local user = store.users [request.authentication.username]
+  local user = store.user [request.authentication.username]
   local name = Configuration.redis.pattern.project [nil] % {
     user    = user.username,
     project = request.projectname,
   }
-  local project = store.projects [name]
+  local project = store.project [name]
   if project then
     error {
       _    = i18n ["project:exist"],
       name = name,
     }
   end
-  store.projects [name] = {
+  store.project [name] = {
     type        = Configuration.resource.type.project [nil],
     username    = user.username,
     projectname = request.projectname,
@@ -612,21 +622,21 @@ function Methods.project.delete (request, store)
       project        = Parameters.project,
     },
   })
-  local project = store.projects [request.project.rawname]
+  local project = store.project [request.project.rawname]
   if not project then
     error {
       _    = i18n ["project:miss"],
       name = request.project.rawname,
     }
   end
-  local user    = store.users [request.authentication.username]
+  local user    = store.user [request.authentication.username]
   if project.username ~= user.username then
     error {
       _    = i18n ["project:forbidden"],
       name = project.projectname,
     }
   end
-  store.projects [request.project.rawname] = nil
+  store.project [request.project.rawname] = nil
 end
 
 return Methods

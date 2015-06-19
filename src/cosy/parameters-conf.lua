@@ -161,7 +161,9 @@ do
   }
   local checks = Internal.data.locale.check
   checks [Layer.size (checks)+1] = function (t)
-    local value = t.request [t.key]
+    local request = t.request
+    local key     = t.key
+    local value   = request [key]
     return  value:find "^%a%a$"
         or  value:find "^%a%a%-%a%a$"
         or  value:find "^%a%a%_%a%a$"
@@ -172,6 +174,28 @@ do
   end
 end
 
+-- Function
+-- --------
+
+do
+  Internal.data.iterator = {
+    __refines__ = {
+      this.data.string,
+    },
+  }
+  local checks = Internal.data.iterator.check
+  checks [Layer.size (checks)+1] = function (t)
+    local request = t.request
+    local key     = t.key
+    local value   = request [key]
+    value         = loadstring (value)
+    request [key] = value
+    return  type (value) == "function"
+        or  nil, {
+              _      = i18n ["check:iterator:function"],
+            }
+  end
+end
 
 -- User
 -- ----
@@ -224,7 +248,7 @@ do
     local request = t.request
     local key     = t.key
     local name    = request [key].name
-    local user    = store.users [name]
+    local user    = store.user [name]
     request [key] = user
     return  user
         or  nil, {
@@ -338,7 +362,7 @@ do
     local request = t.request
     local key     = t.key
     local value   = request [key]
-    local project = store.projects [value.rawname]
+    local project = store.project [value.rawname]
     local Methods = require "cosy.methods"
     return  project
        and  project.type == Methods.Type.project
@@ -548,7 +572,7 @@ do
     local request  = t.request
     local key      = t.key
     local username = request [key].username
-    local user     = store.users [username]
+    local user     = store.user [username]
     request [key].user = user
     return  user
        and  user.type   == Configuration.resource.type.user._
@@ -581,7 +605,7 @@ do
     local request  = t.request
     local key      = t.key
     local username = request [key].username
-    local user     = store.users [username]
+    local user     = store.user [username]
     request [key].user = user
     return  user
        and  user.type   == Configuration.resource.type.user     [nil]
