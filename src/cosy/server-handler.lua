@@ -21,7 +21,7 @@ local function call_method (method, parameters, try_only)
       return result
     end, function (e)
       if tostring (e):match "ERR MULTI" then
-        store.__redis:discard ()      
+        store.__redis:discard ()
       elseif type (e  ) == "table"
          and type (e._) == "table"
          and e._._key   == "redis:retry" then
