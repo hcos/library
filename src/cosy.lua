@@ -90,7 +90,10 @@ local command  = commands [_G.arg [1] or false]
 Cli:set_name (_G.arg [0] .. " " .. _G.arg [1])
 table.remove (_G.arg, 1)
 
-local ok, result = pcall (command)
+local ok, result = xpcall (command, function (e)
+  print (Value.expression (e))
+  print (debug.traceback ())
+end)
 if not ok then
   print (Value.expression (result))
   print (Colors ("%{white redbg}" .. i18n (result.error).message))

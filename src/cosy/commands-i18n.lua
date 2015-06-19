@@ -23,6 +23,9 @@ return {
   ["failure"] = {
     en = "failure",
   },
+  ["upload:failure"] = {
+    en = "failed to upload content (error {{{status}}})",
+  },
   ["daemon:stop"] = {
     en = "stop cosy daemon",
   },
@@ -73,5 +76,8 @@ return {
   },
   ["argument:password2"] = {
     en = "plase type the same password again",
+  },
+  ["argument:password:nomatch"] = {
+    en = "passwords are not the same",
   },
 }

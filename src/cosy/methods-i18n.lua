@@ -53,6 +53,9 @@ return {
   ["user:validate"] = {
     en = "validate email address",
   },
+  ["project:list"] = {
+    en = "list projects",
+  },
   ["project:create"] = {
     en = "create a project",
   },

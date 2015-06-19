@@ -3,7 +3,7 @@ return {
     en = "some parameters are invalid or missing",
   },
   ["check:no-check"] = {
-    en = "request argument {{{key}}} has not been checked",
+    en = "in request {{{request}}}, argument {{{key}}} has not been checked",
   },
   ["check:not-found"] = {
     en = "parameter {{{key}}} is missing",
@@ -101,6 +101,18 @@ return {
   ["password:checked"] = {
     en = "password",
   },
+  ["position"] = {
+    en = "position",
+  },
+  ["project"] = {
+    en = "project",
+  },
+  ["string"] = {
+    en = "string",
+  },
+  ["string:trimmed"] = {
+    en = "string",
+  },
   ["token:authentication"] = {
     en = "authentication token",
   },
@@ -110,7 +122,7 @@ return {
   ["tos"] = {
     en = "terms of service",
   },
-  ["tos-digest"] = {
+  ["tos:digest"] = {
     en = "terms of service digest",
   },
   ["user"] = {

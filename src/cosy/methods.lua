@@ -7,6 +7,7 @@ local I18n          = require "cosy.i18n"
 local Logger        = require "cosy.logger"
 local Parameters    = require "cosy.parameters"
 local Password      = require "cosy.password"
+local Redis         = require "cosy.redis"
 local Store         = require "cosy.store"
 local Time          = require "cosy.time"
 local Token         = require "cosy.token"
@@ -297,7 +298,7 @@ function Methods.user.update (request, store, try_only)
       organization = Parameters.organization,
       password     = Parameters.password.checked,
       position     = Parameters.position,
-      username     = Parameters.username,
+      username     = Parameters.user.name,
     },
   })
   local user = request.authentication.user
@@ -361,9 +362,12 @@ function Methods.user.update (request, store, try_only)
     }
   end
   if request.avatar then
+    local redis   = Redis ()
+    local content = redis:get (request.avatar)
+    redis:del (request.avatar)
     local filename = os.tmpname ()
     local file = io.open (filename, "w")
-    file:write (request.avatar.content)
+    file:write (content)
     file:close ()
     os.execute ([[
       convert {{{file}}} -resize {{{width}}}x{{{height}}} png:{{{file}}}
@@ -373,9 +377,8 @@ function Methods.user.update (request, store, try_only)
       width  = Configuration.data.avatar.width  [nil],
     })
     file = io.open (filename, "r")
-    request.avatar.content = file:read "*all"
+    user.avatar = file:read "*all"
     file:close ()
-    user.avatar = request.avatar
   end
   for _, key in ipairs { "name", "organization", "locale" } do
     if request [key] then

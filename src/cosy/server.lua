@@ -1,24 +1,71 @@
 package.path  = package.path:gsub ("'", "")
   .. ";/usr/share/lua/5.1/?.lua;/usr/share/lua/5.1/?/init.lua;"
 
-                      require "cosy.loader"
+local Loader        = require "cosy.loader"
 local Configuration = require "cosy.configuration"
 local Digest        = require "cosy.digest"
 local I18n          = require "cosy.i18n"
 local Logger        = require "cosy.logger"
 local Nginx         = require "cosy.nginx"
 local Random        = require "cosy.random"
+local Redis         = require "cosy.redis"
 local Scheduler     = require "cosy.scheduler"
 local Handler       = require "cosy.server-handler"
 local Token         = require "cosy.token"
 local Value         = require "cosy.value"
+local Layer         = require "layeredata"
 local Websocket     = require "websocket"
 local Ffi           = require "ffi"
+
+local App = Configuration / "app"
 
 local i18n   = I18n.load "cosy.server"
 i18n._locale = Configuration.locale [nil]
 
 local Server = {}
+
+local updater = Scheduler.addthread (function ()
+  while true do
+    local redis = Redis ()
+    -- http://stackoverflow.com/questions/4006324
+    local script = { [[
+      local n    = 1000
+      local keys = redis.call ("keys", ARGV[1])
+      for i=1, #keys, n do
+        redis.call ("del", unpack (keys, i, math.min (i+n-1, #keys)))
+      end
+    ]] }
+    for name, p in Layer.pairs (Configuration.dependencies) do
+      local url = p [nil]
+      if type (url) == "string" and url:match "^http" then
+        script [#script+1] = ([[
+          redis.call ("set", "foreign:{{{name}}}", "{{{source}}}")
+        ]]) % {
+          name   = name,
+          source = url,
+        }
+      end
+    end
+    script [#script+1] = [[
+      return true
+    ]]
+    script = table.concat (script)
+    redis:eval (script, 1, "foreign:*")
+    os.execute ([[
+      if [ -d {{{root}}}/cache ]
+      then
+        find {{{root}}}/cache -type f -delete
+      fi
+    ]] % {
+      root = Configuration.http.directory [nil],
+    })
+    Logger.debug {
+      _ = i18n ["updated"],
+    }
+    Nginx.update ()
+    Scheduler.sleep (-math.huge)
+  end
+end)
 
 function Server.start ()
   Server.passphrase = Digest (Random ())
@@ -27,7 +74,7 @@ function Server.start ()
   Scheduler.addserver = function (s, f)
     local ok, port = s:getsockname ()
     if ok then
-      Configuration.server.port = port
+      App.server.port = port
     end
     addserver (s, f)
   end
@@ -76,6 +123,12 @@ function Server.start ()
     file:close ()
     os.execute ([[ chmod 0600 {{{file}}} ]] % { file = pidfile })
   end
+  
+  
+  Loader.hotswap.on_change ["cosy:configuration"] = function ()
+    Scheduler.wakeup (updater)
+  end
+
   Scheduler.loop ()
 end
 

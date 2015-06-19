@@ -11,7 +11,7 @@ local i18n   = I18n.load "cosy.server"
 i18n._locale = Configuration.locale [nil]
 
 local function call_method (method, parameters, try_only)
-  for _ = 1, Configuration.redis.retry [nil] do
+  for _ = 1, Configuration.redis.retry [nil] or 1 do
     local err
     local ok, result = xpcall (function ()
       local store  = Store.new ()
@@ -22,10 +22,12 @@ local function call_method (method, parameters, try_only)
       return result
     end, function (e)
       err = e
-      Logger.debug {
-        _      = i18n ["server:exception"],
-        reason = Value.expression (e) .. " => " .. debug.traceback (),
-      }
+      if  not e._ or not e._._key then
+        Logger.debug {
+          _      = i18n ["server:exception"],
+          reason = Value.expression (e) .. " => " .. debug.traceback (),
+        }
+      end
     end)
     if ok then
       return result or true

@@ -2,7 +2,9 @@ local Configuration = require "cosy.configuration"
 local CSocket       = require "cosy.socket"
 local I18n          = require "cosy.i18n"
 local Logger        = require "cosy.logger"
+local Redis         = require "cosy.redis"
 local Scheduler     = require "cosy.scheduler"
+local Value         = require "cosy.value"
 local Socket        = require "socket"
 local Smtp          = require "socket.smtp"
 local Ssl           = require "ssl"
@@ -10,11 +12,12 @@ if not Ssl then
   Ssl = _G.ssl
 end
 
-Configuration.load "cosy.email"
+Configuration.load {
+  "cosy.email",
+}
 
 local i18n   = I18n.load "cosy.email"
 i18n._locale = Configuration.locale [nil]
-
 
 if _G.js then
   error "Not available"
@@ -30,8 +33,8 @@ local make_socket = {}
 function make_socket.sync ()
   local result = Socket.tcp ()
   result:settimeout (Configuration.smtp.timeout [nil])
-  result:setoption ("keepalive", true)
-  result:setoption ("reuseaddr", true)
+  result:setoption ("keepalive"  , true)
+  result:setoption ("reuseaddr"  , true)
   result:setoption ("tcp-nodelay", true)
   return result
 end
@@ -39,8 +42,8 @@ end
 function make_socket.async ()
   local result = CSocket ()
   result:settimeout (Configuration.smtp.timeout [nil])
-  result:setoption ("keepalive", true)
-  result:setoption ("reuseaddr", true)
+  result:setoption ("keepalive"  , true)
+  result:setoption ("reuseaddr"  , true)
   result:setoption ("tcp-nodelay", true)
   return result
 end
@@ -190,11 +193,13 @@ function Email.send (message)
   Scheduler.addthread (function ()
     local locale    = message.locale or Configuration.locale [nil]
     local si18n     = I18n.new (locale)
-    message.from    = si18n (message.from   ).message
-    message.to      = si18n (message.to     ).message
-    message.subject = si18n (message.subject).message
-    message.body    = si18n (message.body   ).message
-    Smtp.send {
+    local localized = si18n (message)
+    message.from    = localized.from   .message
+    message.to      = localized.to     .message
+    message.subject = localized.subject.message
+    message.body    = localized.body   .message
+    if not Email.ready
+    or not Smtp.send {
       from     = message.from:match (email_pattern),
       rcpt     = message.to  :match (email_pattern),
       source   = Smtp.message {
@@ -210,16 +215,22 @@ function Email.send (message)
       server   = Configuration.smtp.host [nil],
       port     = Configuration.smtp.port [nil],
       create   = Tcp [Configuration.smtp.method [nil]] (Configuration.smtp.protocol [nil], make_socket.async),
-    }
+    } then
+      local redis = Redis ()
+      redis:rpush (Configuration.redis.key.sending [nil], Value.expression (localized))
+    end
   end)
 end
 
 do
-  if not Email.discover () then
+  local ok, result = pcall (Email.discover)
+  if not ok or not result then
+    Email.ready = false
     Logger.warning {
       _ = i18n ["smtp:not-available"],
     }
   else
+    Email.ready = true
     Logger.info {
       _        = i18n ["smtp:available"],
       host     = Configuration.smtp.host     [nil],
