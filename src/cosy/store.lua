@@ -2,24 +2,35 @@ local Configuration = require "cosy.configuration"
 local Redis         = require "cosy.redis"
 local Value         = require "cosy.value"
 local Coromake      = require "coroutine.make"
+local Layer         = require "layeredata"
 
 local Store      = {}
 local Collection = {}
 local Document   = {}
 
 Store.Error     = setmetatable ({}, { __tostring = function () return "ERROR"   end })
-local PATTERN   = setmetatable ({}, { __tostring = function () return "PATTERN" end })
-local DATA      = setmetatable ({}, { __tostring = function () return "DATA"    end })
-local ROOT      = setmetatable ({}, { __tostring = function () return "ROOT"    end })
-local DIRTY     = setmetatable ({}, { __tostring = function () return "DIRTY"   end })
 
 function Store.new ()
-  return setmetatable ({}, Store)
+  return setmetatable ({
+    __redis       = Redis (),
+    __collections = {},
+  }, Store)
 end
 
 function Store.__index (store, key)
-  local collection = Collection.new (key)
-  rawset (store, key, collection)
+  local pattern = Configuration.resource [key].key [nil]
+  assert (pattern, key)
+  local layer = Layer.new {
+    name = key,
+    data = Configuration.resource [key].template,
+  }
+  local collection = setmetatable ({
+    __store   = store,
+    __pattern = pattern,
+    __data    = {},
+    __layer   = layer,
+  }, Collection)
+  store.__collections [key] = collection
   return collection
 end
 
@@ -28,39 +39,47 @@ function Store.__newindex ()
 end
 
 function Store.commit (store)
-  local client = Redis ()
+  local client = store.__redis
+  --print ("> multi", debug.traceback ())
   client:multi ()
-  for _, collection in pairs (store) do
-    local pattern = collection [PATTERN]
-    for key, document in pairs (collection [DATA]) do
-      if document [DIRTY] then
-        local name  = pattern % {
-          key = key,
-        }
-        local value = document [DATA]
-        if value == nil then
-          client:del (name)
-        else
-          client:set (name, Value.encode (value))
-          if type (value) == "table" and value.expire_at then
-            client:expireat (name, math.ceil (value.expire_at))
+  local ok, err = pcall (function ()
+    for _, collection in pairs (store.__collections) do 
+      local pattern = collection.__pattern
+      for key, document in pairs (collection.__data) do
+        if document.__dirty then
+          local name  = pattern % {
+            key = key,
+          }
+          local value = document.__data
+          if value == nil then
+            client:del (name)
           else
-            client:persist (name)
+            local expire_at = value.expire_at [nil]
+            value.__depends__ = nil
+            client:set (name, Value.encode (Layer.export (value)))
+            if expire_at then
+              client:expireat (name, math.ceil (expire_at))
+            else
+              client:persist (name)
+            end
           end
         end
       end
     end
-  end
-  if not client:exec () then
-    error (Store.Error)
+  end)
+  if ok then
+    client:execute ()
+  else
+    print (err)
+    client:discard ()
   end
 end
 
-function Store.iterate (collection, filter)
+function Store.filter (collection, filter)
   local coroutine = Coromake ()
+  local client    = collection.store.__redis
   return coroutine.wrap (function ()
-    local name   = collection [PATTERN] % { key = filter }
-    local client = Redis ()
+    local name   = collection.__pattern % { key = filter }
     local cursor = 0
     repeat
       local t = client:scan (cursor, {
@@ -70,59 +89,77 @@ function Store.iterate (collection, filter)
       cursor = t [1]
       local data = t [2]
       for i = 1, #data do
-        local key   = (collection [PATTERN] / data [i]).key
-        local value = collection [key]
+        local key   = (collection.__pattern / data [i]).key
+        local value = collection.__data [key]
         coroutine.yield (key, value)
       end
     until cursor == "0"
   end)
 end
 
-function Collection.new (key)
-  local pattern = Configuration.redis.key [key] [nil]
-  assert (pattern, key)
-  return setmetatable ({
-    [PATTERN] = pattern,
-    [DATA   ] = {},
-  }, Collection)
-end
-
 function Collection.__index (collection, key)
-  if not collection [DATA] [key] then
-    local name   = collection [PATTERN] % {
+  if not collection.__data [key] then
+    local store  = collection.__store
+    local client = store.__redis
+    local name   = collection.__pattern % {
       key = key,
     }
-    local client = Redis ()
     client:watch (name)
     local value  = client:get (name)
-    if value ~= nil then
-      value = Value.decode (value)
+    if value == nil then
+      return nil
     end
-    collection [DATA] [key] = {
-      [DIRTY] = false,
-      [DATA ] = value,
+    local layer = Layer.new {
+      name = key,
+      data = Value.decode (value),
+    }
+    layer.__depends__ = collection.__layer
+    collection.__data [key] = {
+      __store = store,
+      __dirty = false,
+      __data  = layer,
     }
   end
-  return Document.new (collection [DATA] [key])
+  return Document.new (collection.__data [key])
 end
 
 function Collection.__newindex (collection, key, value)
-  collection [DATA] [key] = {
-    [DIRTY] = true,
-    [DATA ] = value,
-  }
+  local store = collection.__store
+  if value == nil then
+    collection.__data [key] = {
+      __store = store,
+      __dirty = true,
+      __data  = nil,
+    }
+  else
+    local layer = Layer.new {
+      name = key,
+      data = value,
+    }
+    layer.__depends__ = collection.__layer
+    collection.__data [key] = {
+      __store = store,
+      __dirty = true,
+      __data  = layer,
+    }
+  end
 end
 
 function Collection.__pairs (collection)
-  return Store.iterate (collection, "*")
+  return Store.filter (collection, "*")
 end
 
 function Collection.__len (collection)
+  local store  = collection.__store
+  local client = store.__redis
   local i = 0
   repeat
     i = i+1
-    local value = collection [i]
-  until value == nil
+    local name   = collection.__pattern % {
+      key = i,
+    }
+    local exists = client:exists (name)
+  until not exists
   return i-1
 end
 
@@ -142,38 +179,33 @@ function Collection.__ipairs (collection)
 end
 
 function Document.new (root)
-  local result = root [DATA]
-  if type (result) ~= "table" then
-    return result
-  else
-    return setmetatable ({
-      [ROOT] = root,
-      [DATA] = result,
-    }, Document)
-  end
+  return setmetatable ({
+    __root = root,
+    __data = root.__data,
+  }, Document)
 end
 
 function Document.__index (document, key)
-  local result = document [DATA] [key]
-  if type (result) ~= "table" then
+  local result = document [key]
+  if getmetatable (result) ~= Layer then
     return result
   else
     return setmetatable ({
-      [ROOT] = document [ROOT],
-      [DATA] = result,
+      __root = document.__root,
+      __data = result,
     }, Document)
   end
 end
 
 function Document.__newindex (document, key, value)
-  document [DATA] [key  ] = value
-  document [ROOT] [DIRTY] = true
+  document.__data [key] = value
+  document.__root.__dirty = true
 end
 
 function Document.__pairs (document)
   local coroutine = Coromake ()
   return coroutine.wrap (function ()
-    for k in pairs (document [DATA]) do
+    for k in Layer.pairs (document.__data) do
       coroutine.yield (k, document [k])
     end
   end)
@@ -182,14 +214,14 @@ end
 function Document.__ipairs (document)
   local coroutine = Coromake ()
   return coroutine.wrap (function ()
-    for i = 1, #document do
+    for i = 1, Layer.size (document.__data) do
       coroutine.yield (i, document [i])
     end
   end)
 end
 
 function Document.__len (document)
-  return # document [DATA]
+  return Layer.size (document.__data)
 end
 
 return Store
