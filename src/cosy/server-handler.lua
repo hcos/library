@@ -13,8 +13,8 @@ i18n._locale = Configuration.locale [nil]
 local function call_method (method, parameters, try_only)
   for _ = 1, Configuration.redis.retry [nil] or 1 do
     local err
+    local store  = Store.new ()
     local ok, result = xpcall (function ()
-      local store  = Store.new ()
       local result = method (parameters, store, try_only)
       if not try_only then
         Store.commit (store)
@@ -22,12 +22,12 @@ local function call_method (method, parameters, try_only)
       return result
     end, function (e)
       err = e
-      if  not e._ or not e._._key then
+--      if  not e._ or not e._._key then
         Logger.debug {
           _      = i18n ["server:exception"],
           reason = Value.expression (e) .. " => " .. debug.traceback (),
         }
-      end
+--      end
     end)
     if ok then
       return result or true
