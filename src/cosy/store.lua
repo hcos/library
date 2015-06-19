@@ -42,7 +42,6 @@ end
 
 function Store.commit (store)
   local client = store.__redis
-  --print ("> multi", debug.traceback ())
   client:multi ()
   local ok, err = pcall (function ()
     for _, collection in pairs (store.__collections) do 
@@ -70,9 +69,8 @@ function Store.commit (store)
     end
   end)
   if ok then
-    client:execute ()
+    client:exec ()
   else
-    print (err)
     client:discard ()
   end
 end

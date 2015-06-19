@@ -21,13 +21,16 @@ local function call_method (method, parameters, try_only)
       end
       return result
     end, function (e)
+      if tostring (e):match "ERR MULTI" then
+        store.__redis:discard ()
+      end
       err = e
---      if  not e._ or not e._._key then
+      if  not e._ or not e._._key then
         Logger.debug {
           _      = i18n ["server:exception"],
           reason = Value.expression (e) .. " => " .. debug.traceback (),
         }
---      end
+      end
     end)
     if ok then
       return result or true
