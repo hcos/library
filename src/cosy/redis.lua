@@ -30,11 +30,11 @@ return function ()
         count = count+1
       end
     end
-    if count < Configuration.redis.pool_size [nil] then
+    if count < Configuration.redis.pool_size then
       local coroutine = require "coroutine.make" ()
-      local host      = Configuration.redis.interface [nil]
-      local port      = Configuration.redis.port      [nil]
-      local database  = Configuration.redis.database  [nil]
+      local host      = Configuration.redis.interface
+      local port      = Configuration.redis.port     
+      local database  = Configuration.redis.database 
       local socket    = Socket ()
       socket:connect (host, port)
       local client = Redis.connect {

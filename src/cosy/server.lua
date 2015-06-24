@@ -13,14 +13,14 @@ local Scheduler     = require "cosy.scheduler"
 local Handler       = require "cosy.server-handler"
 local Token         = require "cosy.token"
 local Value         = require "cosy.value"
+local App           = require "cosy.configuration-layers".app
 local Layer         = require "layeredata"
 local Websocket     = require "websocket"
 local Ffi           = require "ffi"
 
-local App = Configuration / "app"
 
 local i18n   = I18n.load "cosy.server"
-i18n._locale = Configuration.locale [nil]
+i18n._locale = Configuration.locale
 
 local Server = {}
 
@@ -36,7 +36,7 @@ local updater = Scheduler.addthread (function ()
       end
     ]] }
     for name, p in Layer.pairs (Configuration.dependencies) do
-      local url = p [nil]
+      local url = p
       if type (url) == "string" and url:match "^http" then
         script [#script+1] = ([[
           redis.call ("set", "foreign:{{{name}}}", "{{{source}}}")
@@ -57,7 +57,7 @@ local updater = Scheduler.addthread (function ()
         find {{{root}}}/cache -type f -delete
       fi
     ]] % {
-      root = Configuration.http.directory [nil],
+      root = Configuration.http.directory,
     })
     Logger.debug {
       _ = i18n ["updated"],
@@ -68,9 +68,10 @@ local updater = Scheduler.addthread (function ()
 end)
 
 function Server.start ()
-  Server.passphrase = Digest (Random ())
-  Server.token      = Token.administration (Server)
-  local addserver = Scheduler.addserver
+  App.server          = {}
+  Server.passphrase   = Digest (Random ())
+  Server.token        = Token.administration (Server)
+  local addserver     = Scheduler.addserver
   Scheduler.addserver = function (s, f)
     local ok, port = s:getsockname ()
     if ok then
@@ -79,10 +80,11 @@ function Server.start ()
     addserver (s, f)
   end
   Server.ws = Websocket.server.copas.listen {
-    interface = Configuration.server.interface [nil],
-    port      = Configuration.server.port      [nil],
+    interface = Configuration.server.interface,
+    port      = Configuration.server.port     ,
     protocols = {
       cosy = function (ws)
+        print (pcall (function ()
         while true do
           local message = ws:receive ()
           if not message then
@@ -91,33 +93,34 @@ function Server.start ()
           end
           ws:send (Handler (message))
         end
+        end))
       end
     }
   }
   Scheduler.addserver = addserver
   Logger.debug {
     _    = i18n ["websocket:listen"],
-    host = Configuration.server.interface [nil],
-    port = Configuration.server.port      [nil],
+    host = Configuration.server.interface,
+    port = Configuration.server.port     ,
   }
   do
     Nginx.stop  ()
     Nginx.start ()
   end
   do
-    local datafile = Configuration.server.data [nil]
+    local datafile = Configuration.server.data
     local file     = io.open (datafile, "w")
     file:write (Value.expression {
       token     = Server.token,
-      interface = Configuration.server.interface [nil],
-      port      = Configuration.server.port      [nil],
+      interface = Configuration.server.interface,
+      port      = Configuration.server.port     ,
     })
     file:close ()
     os.execute ([[ chmod 0600 {{{file}}} ]] % { file = datafile })
   end
   do
     Ffi.cdef [[ unsigned int getpid (); ]]
-    local pidfile = Configuration.server.pid [nil]
+    local pidfile = Configuration.server.pid
     local file    = io.open (pidfile, "w")
     file:write (Ffi.C.getpid ())
     file:close ()
@@ -133,11 +136,11 @@ function Server.start ()
 end
 
 function Server.stop ()
-  os.remove (Configuration.server.data [nil])
+  os.remove (Configuration.server.data)
   Scheduler.addthread (function ()
     Scheduler.sleep (1)
     Nginx.stop ()
-    os.remove (Configuration.server.pid  [nil])
+    os.remove (Configuration.server.pid )
     os.exit   (0)
   end)
 end

@@ -8,27 +8,25 @@ local Value         = require "cosy.value"
 Configuration.load "cosy.server"
 
 local i18n   = I18n.load "cosy.server"
-i18n._locale = Configuration.locale [nil]
+i18n._locale = Configuration.locale
 
 local function call_method (method, parameters, try_only)
-  for _ = 1, Configuration.redis.retry [nil] or 1 do
+  for _ = 1, Configuration.redis.retry or 1 do
     local store  = Store.new ()
+    local err
     local ok, result = xpcall (function ()
-      local result = method (parameters, store, try_only)
+      local r = method (parameters, store, try_only)
       if not try_only then
         Store.commit (store)
       end
-      return result
+      return r
     end, function (e)
       if tostring (e):match "ERR MULTI" then
         store.__redis:discard ()
       elseif type (e  ) == "table"
          and type (e._) == "table"
-         and e._._key   == "redis:retry" then
-        Logger.debug {
-          _      = i18n ["server:exception"],
-          reason = e,
-        }
+         and e._._key   ~= "redis:retry" then
+        err = e
       else
         Logger.debug {
           _      = i18n ["server:exception"],
@@ -38,6 +36,8 @@ local function call_method (method, parameters, try_only)
     end)
     if ok then
       return result or true
+    elseif err then
+      return nil, err
     end
   end
   return nil, {
