@@ -5,7 +5,11 @@ local Value         = require "cosy.value"
 local Coromake      = require "coroutine.make"
 local Layer         = require "layeredata"
 
-local i18n = I18n.load "store"
+Configuration.load {
+  "cosy.methods",
+}
+
+local i18n = I18n.load "cosy.store"
 
 local Store      = {}
 local Collection = {}
@@ -21,17 +25,19 @@ function Store.new ()
 end
 
 function Store.__index (store, key)
-  local pattern = Configuration.resource [key].key [nil]
+  local pattern  = Configuration.resource [key].key
+  local template = Configuration.resource [key].template
   assert (pattern, key)
-  local layer = Layer.new {
-    name = key,
-    data = Configuration.resource [key].template,
-  }
+  template = template and Layer.flatten (template) or {}
   local collection = setmetatable ({
-    __store   = store,
-    __pattern = pattern,
-    __data    = {},
-    __layer   = layer,
+    __store    = store,
+    __pattern  = pattern,
+    __data     = {},
+    __name     = key,
+    __template = Layer.new {
+      name = key,
+      data = template,
+    },
   }, Collection)
   store.__collections [key] = collection
   return collection
@@ -45,7 +51,7 @@ function Store.commit (store)
   local client = store.__redis
   client:multi ()
   local ok = pcall (function ()
-    for _, collection in pairs (store.__collections) do 
+    for _, collection in pairs (store.__collections) do
       local pattern = collection.__pattern
       for key, document in pairs (collection.__data) do
         if document.__dirty then
@@ -56,8 +62,8 @@ function Store.commit (store)
           if value == nil then
             client:del (name)
           else
-            local expire_at = value.expire_at [nil]
             value.__depends__ = nil
+            local expire_at = value.expire_at
             client:set (name, Value.encode (Layer.export (value)))
             if expire_at then
               client:expireat (name, math.ceil (expire_at))
@@ -78,6 +84,15 @@ function Store.commit (store)
   else
     client:discard ()
   end
+end
+
+function Store.exists (collection, key)
+  local store  = collection.__store
+  local client = store.__redis
+  local name   = collection.__pattern % {
+    key = key,
+  }
+  return client:exists (name)
 end
 
 function Store.filter (collection, filter)
@@ -118,7 +133,7 @@ function Collection.__index (collection, key)
       name = key,
       data = Value.decode (value),
     }
-    layer.__depends__ = collection.__layer
+    layer.__depends__ = { collection.__template }
     collection.__data [key] = {
       __store = store,
       __dirty = false,
@@ -134,6 +149,7 @@ function Collection.__newindex (collection, key, value)
     collection.__data [key] = {
       __store = store,
       __dirty = true,
+      __layer = nil,
       __data  = nil,
     }
   else
@@ -141,7 +157,9 @@ function Collection.__newindex (collection, key, value)
       name = key,
       data = value,
     }
-    layer.__depends__ = collection.__layer
+    if type (value) == "table" then
+      layer.__depends__ = { collection.__template }
+    end
     collection.__data [key] = {
       __store = store,
       __dirty = true,
@@ -191,7 +209,7 @@ function Document.new (root)
 end
 
 function Document.__index (document, key)
-  local result = document [key]
+  local result = document.__data [key]
   if getmetatable (result) ~= Layer then
     return result
   else
