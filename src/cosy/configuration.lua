@@ -1,30 +1,13 @@
-local Loader        = require "cosy.loader"
-local I18n          = require "cosy.i18n"
-local Logger        = require "cosy.logger"
-local Layer         = require "layeredata"
+local Loader = require "cosy.loader"
+local I18n   = require "cosy.i18n"
+local Logger = require "cosy.logger"
+local Layer  = require "layeredata"
+local layers = require "cosy.configuration-layers"
 
-local i18n       = I18n.load "cosy.configuration"
+local i18n   = I18n.load "cosy.configuration"
 
-local layers = {
-  default = Layer.new { name = "default", data = { locale = "en" } },
-  etc     = Layer.new { name = "etc"     },
-  home    = Layer.new { name = "home"    },
-  pwd     = Layer.new { name = "pwd"     },
-  app     = Layer.new { name = "app"    , data = {} },
-}
-
-layers.whole = Layer.new {
-  name = "whole",
-  data = {
-    __depends__ = {
-      layers.default,
-      layers.etc,
-      layers.home,
-      layers.pwd,
-      layers.app,
-    },
-  },
-}
+layers.default.locale    = "en"
+layers.default.__label__ = "configuration"
 
 local Configuration = {}
 
@@ -45,10 +28,6 @@ end
 
 function Metatable.__newindex (_, key, value)
   layers.whole [key] = value
-end
-
-function Metatable.__div (_, name)
-  return layers [name]
 end
 
 setmetatable (Configuration, Metatable)
@@ -77,14 +56,14 @@ if not _G.js then
       Logger.debug {
         _      = i18n ["use"],
         path   = name,
-        locale = Configuration.locale [nil] or "en",
+        locale = Configuration.locale or "en",
       }
       Layer.replacewith (layers [key], result)
     else
       Logger.warning {
         _      = i18n ["skip"],
         path   = name,
-        locale = Configuration.locale [nil] or "en",
+        locale = Configuration.locale or "en",
       }
     end
   end
