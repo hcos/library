@@ -2,75 +2,52 @@ local Configuration = require "cosy.configuration"
 local I18n          = require "cosy.i18n"
 local Store         = require "cosy.store"
 local Token         = require "cosy.token"
-local Internal      = Configuration / "default"
+local Default       = require "cosy.configuration-layers".default
 local Layer         = require "layeredata"
-local this          = Layer.placeholder
+local this          = Layer.reference "configuration"
 
-Configuration.load {
-  "cosy.methods",
-}
+Configuration.load "cosy.methods"
 
 local i18n   = I18n.load "cosy.parameters"
-i18n._locale = Configuration.locale [nil]
+i18n._locale = Configuration.locale
 
-local function check (store, value, data)
-  local request = {
-    key = value,
+do
+  Default.data = {
+    checks = {}
   }
-  for i = 1, Layer.size (data.check) do
-    local ok, reason = data.check [i] [nil] {
-      parameter = data,
-      request   = request,
-      key       = "key",
-      store     = store,
-    }
-    if not ok then
-      return nil, reason
-    end
-  end
-  return true
 end
 
--- Boolean
--- ------
-
-Internal.data.boolean = {}
 do
-  local checks = Internal.data.boolean.check
+  Default.data.boolean = {
+    __refines__ = {
+      this.data,
+    }
+  }
+  local checks = Default.data.boolean.checks
   checks [1] = function (t)
     local value = t.request [t.key]
     return  type (value) == "boolean"
         or  nil, {
-              _   = i18n ["check:is-table"],
+              _ = i18n ["check:is-boolean"],
             }
   end
 end
 
-Internal.data.is_private = {
-  __refines__ = {
-    this.data.boolean,
-  }
-}
-
--- Avatar
--- ------
-
 do
-  Internal.data.avatar = {
-    width  = 400,
-    height = 400,
+  Default.data.is_private = {
     __refines__ = {
-      this.data.string,
-    },
+      this.data.boolean,
+    }
   }
 end
 
--- Position
--- --------
-
 do
-  Internal.data.position = {}
-  local checks = Internal.data.position.check
+  Default.data.position = {
+    __refines__ = {
+      this.data,
+    },
+  }
+  local checks = Default.data.position.checks
   checks [1] = function (t)
     local request = t.request
     local key     = t.key
@@ -96,12 +73,16 @@ end
 
 -- String
 -- ------
+
 do
-  Internal.data.string = {
+  Default.data.string = {
+    __refines__ = {
+      this.data,
+    },
     min_size = 0,
     max_size = math.huge,
   }
-  local checks = Internal.data.string.check
+  local checks = Default.data.string.checks
   checks [1] = function (t)
     local request = t.request
     local key     = t.key
@@ -115,7 +96,7 @@ do
     local request = t.request
     local key     = t.key
     local value   = request [key]
-    local size    = t.parameter.min_size [nil]
+    local size    = t.parameter.min_size
     return  #value >= size
         or  nil, {
               _     = i18n ["check:min-size"],
@@ -126,7 +107,7 @@ do
     local request = t.request
     local key     = t.key
     local value   = request [key]
-    local size    = t.parameter.max_size [nil]
+    local size    = t.parameter.max_size
     return  #value <= size
         or  nil, {
               _     = i18n ["check:max-size"],
@@ -135,13 +116,26 @@ do
   end
 end
 
+-- Avatar
+-- ------
+
 do
-  Internal.data.string.trimmed = {
+  Default.data.avatar = {
+    width  = 400,
+    height = 400,
+    __refines__ = {
+      this.data.string,
+    },
+  }
+end
+
+do
+  Default.data.string.trimmed = {
     __refines__ = {
       this.data.string,
     }
   }
-  local checks = Internal.data.string.trimmed.check
+  local checks = Default.data.string.trimmed.checks
   checks [2] = function (t)
     local request = t.request
     local key     = t.key
@@ -149,17 +143,17 @@ do
     request [key] = value:trim ()
     return true
   end
-  checks [3] = Internal.data.string.check [2] [nil]
-  checks [4] = Internal.data.string.check [3] [nil]
+  checks [3] = Default.data.string.checks [2]
+  checks [4] = Default.data.string.checks [3]
 end
 
 do
-  Internal.data.locale = {
+  Default.data.locale = {
     __refines__ = {
       this.data.string.trimmed,
     }
   }
-  local checks = Internal.data.locale.check
+  local checks = Default.data.locale.checks
   checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
@@ -178,12 +172,12 @@ end
 -- --------
 
 do
-  Internal.data.iterator = {
+  Default.data.iterator = {
     __refines__ = {
       this.data.string,
     },
   }
-  local checks = Internal.data.iterator.check
+  local checks = Default.data.iterator.checks
   checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
@@ -200,7 +194,7 @@ end
 -- User
 -- ----
 do
-  Internal.data.user = {
+  Default.data.user = {
     __refines__ = {
       this.data.user.name,
     },
@@ -212,7 +206,7 @@ do
       }
     }
   }
-  local checks = Internal.data.user.name.check
+  local checks = Default.data.user.name.checks
   checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
@@ -226,60 +220,45 @@ do
 end
 
 do
-  local checks = Internal.data.user.check
-  checks [Layer.size (checks)+1] = function (t)
-    local request = t.request
-    local key     = t.key
-    local value   = request [key]
-    local name    = (Configuration.redis.pattern.user [nil] / value).user
-    if not name then
-      return nil, {
-        _   = i18n ["check:user"],
-        key = key,
-      }
-    end
-    request [key] = {
-      name = name
-    }
-    return true
-  end
+  local checks = Default.data.user.checks
   checks [Layer.size (checks)+1] = function (t)
     local store   = t.store
     local request = t.request
     local key     = t.key
-    local name    = request [key].name
-    local user    = store.user [name]
-    request [key] = user
-    return  user
+    local name    = request [key]
+    return  Store.exists (store.user, name)
         or  nil, {
               _    = i18n ["check:user:miss"],
               name = name,
             }
   end
   checks [Layer.size (checks)+1] = function (t)
+    local store   = t.store
     local request = t.request
     local key     = t.key
-    local user    = request [key]
-    return  user.type == Configuration.resource.type.user [nil]
+    local name    = request [key]
+    local user    = store.user [name]
+    request [key] = user
+    return  user.type == Configuration.resource.type.user
         or  nil, {
               _    = i18n ["check:user:not-user"],
-              name = user.username,
+              name = name,
             }
   end
 end
 
 do
-  Internal.data.user.active = {
+  Default.data.user.active = {
     __refines__ = {
       this.data.user,
     },
   }
-  local checks = Internal.data.user.active.check
+  local checks = Default.data.user.active.checks
   checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
     local user    = request [key]
-    return  user.status == Configuration.resource.status.active [nil]
+    return  user.status == Configuration.resource.status.active
         or  nil, {
               _    = i18n ["check:user:not-active"],
               name = user.username,
@@ -288,17 +267,17 @@ do
 end
 
 do
-  Internal.data.user.suspended = {
+  Default.data.user.suspended = {
     __refines__ = {
       this.data.user,
     },
   }
-  local checks = Internal.data.user.suspended.check
+  local checks = Default.data.user.suspended.checks
   checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
     local user    = request [key]
-    return  user.status == Configuration.resource.status.suspended [nil]
+    return  user.status== Configuration.resource.status.suspended
         or  nil, {
               _    = i18n ["check:user:not-suspended"],
               name = user.username,
@@ -309,7 +288,7 @@ end
 -- Project name
 -- ------------
 do
-  Internal.data.project = {
+  Default.data.project = {
     __refines__ = {
       this.data.project.name,
     },
@@ -321,7 +300,7 @@ do
       }
     }
   }
-  local checks = Internal.data.project.name.check
+  local checks = Default.data.project.name.checks
   checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
@@ -337,38 +316,29 @@ end
 -- Project
 -- -------
 do
-  local checks = Internal.data.project.check
+  local checks = Default.data.project.checks
   checks [Layer.size (checks)+1] = function (t)
+    local store   = t.store
     local request = t.request
     local key     = t.key
-    local value   = request [key]
-    local r       = Configuration.redis.pattern.project [nil] / value
-    if not check (r.user   , Configuration.data.username   )
-    or not check (r.project, Configuration.data.projectname)
-    then
-      return  nil, {
-                _ = i18n ["check:project"],
-              }
-    end
-    request [key] = {
-      rawname     = value,
-      username    = r.user,
-      projectname = r.project,
-    }
-    return true
-  end
-  checks [Layer.size (checks)+1] = function (t)
-    local store   = Store.new ()
-    local request = t.request
-    local key     = t.key
-    local value   = request [key]
-    local project = store.project [value.rawname]
-    local Methods = require "cosy.methods"
-    return  project
-       and  project.type == Methods.Type.project
+    local name    = request [key]
+    return  Store.exists (store.project, name)
         or  nil, {
               _    = i18n ["check:project:miss"],
-              name = value.rawname,
+              name = name,
+            }
+  end
+  checks [Layer.size (checks)+1] = function (t)
+    local store   = t.store
+    local request = t.request
+    local key     = t.key
+    local name    = request [key]
+    local project = store.project [name]
+    request [key] = project
+    return  project.type == Configuration.resource.type.project
+        or  nil, {
+              _    = i18n ["check:project:not-project"],
+              name = name,
             }
   end
 end
@@ -376,7 +346,7 @@ end
 -- Password
 -- --------
 do
-  Internal.data.password = {
+  Default.data.password = {
     min_size = 1,
     max_size = 128,
     __refines__ = {
@@ -386,7 +356,7 @@ do
 end
 
 do
-  Internal.data.password.checked = {
+  Default.data.password.checked = {
     __refines__ = {
       this.data.password,
     }
@@ -396,13 +366,13 @@ end
 -- Email
 -- -----
 do
-  Internal.data.email = {
+  Default.data.email = {
     max_size = 128,
     __refines__ = {
       this.data.string.trimmed,
     }
   }
-  local checks = Internal.data.email.check
+  local checks = Default.data.email.checks
   checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
@@ -419,7 +389,7 @@ end
 -- Name
 -- ----
 do
-  Internal.data.name = {
+  Default.data.name = {
     min_size = 1,
     max_size = 128,
     __refines__ = {
@@ -431,7 +401,7 @@ end
 -- Organization
 -- ------------
 do
-  Internal.data.organization = {
+  Default.data.organization = {
     min_size = 1,
     max_size = 128,
     __refines__ = {
@@ -443,7 +413,7 @@ end
 -- Description
 -- -----------
 do
-  Internal.data.description = {
+  Default.data.description = {
     min_size = 1,
     max_size = 4096,
     __refines__ = {
@@ -455,14 +425,19 @@ end
 -- Terms of Services Digest
 -- ------------------------
 do
-  Internal.data.tos.digest = {
+  Default.data.tos = {
+    __refines__ = {
+      this.data.string.trimmed,
+    },
+  }
+  Default.data.tos.digest = {
     __refines__ = {
       this.data.string.trimmed,
     },
     min_size = 64,
     max_size = 64,
   }
-  local checks = Internal.data.tos.digest.check
+  local checks = Default.data.tos.digest.checks
   checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
@@ -498,12 +473,12 @@ end
 -- Token
 -- -----
 do
-  Internal.data.token = {
+  Default.data.token = {
     __refines__ = {
       this.data.string.trimmed,
     },
   }
-  local checks = Internal.data.token.check
+  local checks = Default.data.token.checks
   checks [Layer.size (checks)+1] = function (t)
     local request    = t.request
     local key        = t.key
@@ -522,12 +497,12 @@ end
 -- Administration token
 -- --------------------
 do
-  Internal.data.token.administration = {
+  Default.data.token.administration = {
     __refines__ = {
       this.data.token,
     },
   }
-  local checks = Internal.data.token.administration.check
+  local checks = Default.data.token.administration.checks
   checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
@@ -552,12 +527,12 @@ end
 -- Validation token
 -- ----------------
 do
-  Internal.data.token.validation = {
+  Default.data.token.validation = {
     __refines__ = {
       this.data.token,
     },
   }
-  local checks = Internal.data.token.validation.check
+  local checks = Default.data.token.validation.checks
   checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
@@ -574,8 +549,8 @@ do
     local username = request [key].username
     local user     = store.user [username]
     request [key].user = user
-    return  user
-       and  user.type   == Configuration.resource.type.user._
+    return  nil
+       and  user.type == "user"
         or  nil, {
               _ = i18n ["check:token:invalid"],
             }
@@ -585,12 +560,12 @@ end
 -- Authentication Token
 -- --------------------
 do
-  Internal.data.token.authentication = {
+  Default.data.token.authentication = {
     __refines__ = {
       this.data.token,
     },
   }
-  local checks = Internal.data.token.authentication.check
+  local checks = Default.data.token.authentication.checks
   checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
@@ -608,8 +583,8 @@ do
     local user     = store.user [username]
     request [key].user = user
     return  user
-       and  user.type   == Configuration.resource.type.user     [nil]
-       and  user.status == Configuration.resource.status.active [nil]
+       and  user.type   == "user"
+       and  user.status == "active"
         or  nil, {
               _ = i18n ["check:token:invalid"],
             }

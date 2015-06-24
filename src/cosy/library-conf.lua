@@ -1,4 +1,5 @@
-local Configuration = require "cosy.configuration"
-local Internal      = Configuration / "default"
+local Default = require "cosy.configuration-layers".default
 
-Internal.library.timeout = 2 -- seconds
+Default.library = {
+  timeout = 2, -- seconds
+}

@@ -1,4 +1,5 @@
-local Configuration = require "cosy.configuration"
-local Internal      = Configuration / "default"
+local Default = require "cosy.configuration-layers".default
 
-Internal.token.algorithm = "HS512"
+Default.token = {
+  algorithm = "HS512",
+}
