@@ -36,17 +36,28 @@ function Daemon.start ()
       cosy = function (ws)
         while true do
           local message = ws:receive ()
+          Logger.debug {
+            _       = i18n ["daemon:request"],
+            message = message,
+          }
           if not message then
             ws:close ()
             return
-          elseif message == "daemon-stop" then
-            Daemon.stop ()
-            ws:send (Value.expression {
-              success = true,
-            })
-          else
-            ws:send (Handler (message))
           end
+          local response
+          if message == "daemon-stop" then
+            Daemon.stop ()
+            response = Value.expression {
+              success = true,
+            }
+          else
+            response = Handler (message)
+          end
+          Logger.debug {
+            _       = i18n ["daemon:response"],
+            message = message,
+          }
+          ws:send (response)
         end
       end
     }
