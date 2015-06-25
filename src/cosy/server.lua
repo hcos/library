@@ -96,11 +96,26 @@ function Server.sethostname ()
   }
 end
 
+function Server.setname ()
+  local name
+  local handle = io.popen "hostname"
+  name = handle:read "*l"
+  handle:close()
+  Default.server.name = name
+  Logger.info {
+    _    = i18n ["server:name"],
+    name = Default.server.name,
+  }
+end
+
 function Server.start ()
-  App.server          = {}
   if not Configuration.server.hostname then
     Server.sethostname ()
   end
+  if not Configuration.server.name then
+    Server.setname ()
+  end
+  App.server          = {}
   Server.passphrase   = Digest (Random ())
   Server.token        = Token.administration (Server)
   local addserver     = Scheduler.addserver
