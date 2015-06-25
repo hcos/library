@@ -25,8 +25,12 @@ function Store.new ()
 end
 
 function Store.__index (store, key)
-  local pattern  = Configuration.resource [key].key
-  local template = Configuration.resource [key].template
+  local resource = Configuration.resource [key]
+  if not resource then
+    return nil
+  end
+  local pattern  = resource.key
+  local template = resource.template
   assert (pattern, key)
   template = template and Layer.flatten (template) or {}
   local collection = setmetatable ({
