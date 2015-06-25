@@ -7,4 +7,6 @@ Default.server = {
   log       = os.getenv "HOME" .. "/.cosy/server.log",
   pid       = os.getenv "HOME" .. "/.cosy/server.pid",
   retry     = 5,
+  name      = nil,
+  hostname  = nil,
 }
