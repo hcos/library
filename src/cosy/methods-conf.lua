@@ -1,6 +1,4 @@
 local Default = require "cosy.configuration-layers".default
-local Layer   = require "layeredata"
-
 
 Default.expiration = {
   validation     =  1 * 3600, -- 1 hour
@@ -22,7 +20,8 @@ Default.resource = {
     key = "token:{{{key}}}",
   },
   user = {
-    key = "user:{{{key}}}",
+    key      = "user:{{{key}}}",
+    pattern  = "{{{user}}}",
     template = {
       _             = { access = "hidden"  },
       _avatar       = { access = "public"  },
@@ -43,6 +42,7 @@ Default.resource = {
     }
   },
   project = {
-    key = "project:{{{key}}}",
+    key     = "project:{{{key}}}",
+    pattern = "{{{user}}}/{{{project}}}",
   },
 }
