@@ -381,7 +381,7 @@ function Methods.user.update (request, store, try_only)
     user.avatar = file:read "*all"
     file:close ()
   end
-  for _, key in ipairs { "name", "organization", "locale" } do
+  for _, key in ipairs { "name", "homepage", "organization", "locale" } do
     if request [key] then
       user [key] = request [key]
     end
