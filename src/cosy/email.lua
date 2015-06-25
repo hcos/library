@@ -14,6 +14,7 @@ end
 
 Configuration.load {
   "cosy.email",
+  "cosy.server",
 }
 
 local i18n   = I18n.load "cosy.email"
@@ -131,8 +132,8 @@ function Tcp.STARTTLS (protocol, make)
 end
 
 function Email.discover ()
-  local domain        = Configuration.server.root  
-  local host          = Configuration.smtp.host    
+  local domain        = Configuration.server.hostname
+  local host          = Configuration.smtp.host
   local username      = Configuration.smtp.username
   local password      = Configuration.smtp.password
   local methods       = { Configuration.smtp.method }
