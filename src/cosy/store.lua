@@ -51,6 +51,26 @@ function Store.__newindex ()
   assert (false)
 end
 
+function Store.pairs (t)
+  if getmetatable (t) == Store then
+    assert (false)
+  elseif getmetatable (t) == Collection then
+    return Collection.__pairs (t)
+  elseif getmetatable (t) == Document then
+    return Document.__pairs (t)
+  end
+end
+
+function Store.ipairs (t)
+  if getmetatable (t) == Store then
+    assert (false)
+  elseif getmetatable (t) == Collection then
+    return Collection.__ipairs (t)
+  elseif getmetatable (t) == Document then
+    return Document.__ipairs (t)
+  end
+end
+
 function Store.commit (store)
   local client = store.__redis
   client:multi ()
