@@ -16,6 +16,7 @@ local Mime          = require "mime"
 Configuration.load {
   "cosy.methods",
   "cosy.parameters",
+  "cosy.server",
 }
 
 local i18n   = I18n.load "cosy.methods"
@@ -224,6 +225,7 @@ function Methods.user.send_validation (request, store, try_only)
     },
     body    = {
       _          = i18n ["user:update:body"],
+      host       = server.host,
       username   = user.username,
       token      = Token.validation (user),
     },

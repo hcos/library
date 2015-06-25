@@ -3,6 +3,7 @@ local Lfs           = require "lfs"
 local Internal      = Configuration / "default"
 
 Internal.server.interface = "127.0.0.1"
+Internal.server.host      = "127.0.0.1:8080"
 Internal.server.port      = 0 -- random port
 Internal.server.data      = os.getenv "HOME" .. "/.cosy/server.data"
 Internal.server.log       = os.getenv "HOME" .. "/.cosy/server.log"

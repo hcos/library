@@ -90,7 +90,7 @@ return {
     en = [=[[{{{servername}}}] Welcome, {{{username}}}!]=],
   },
   ["user:create:body"] = {
-    en = "{{{username}}}, we are happy to see you! Please validate your email address using token {{{token}}}.",
+    en = "{{{username}}}, we are happy to see you! Please click here to validate your email address <a href='http://{{{host}}}/?token={{{token}}}.",
   },
   ["user:update:from"] = {
     en = [["{{{name}}}" <{{{email}}}>]],
