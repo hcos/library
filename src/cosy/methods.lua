@@ -11,6 +11,7 @@ local Redis         = require "cosy.redis"
 local Store         = require "cosy.store"
 local Time          = require "cosy.time"
 local Token         = require "cosy.token"
+local Mime          = require "mime"
 
 Configuration.load {
   "cosy.methods",
@@ -386,7 +387,7 @@ function Methods.user.update (request, store, try_only)
     end
   end
   return {
-    avatar         = user.avatar,
+    avatar         = Mime.b64 (user.avatar),
     checked        = user.checked,
     email          = user.email,
     homepage       = user.homepage,
