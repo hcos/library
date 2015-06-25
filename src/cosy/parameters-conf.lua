@@ -239,7 +239,7 @@ do
     local name    = request [key]
     local user    = store.user [name]
     request [key] = user
-    return  user.type == Configuration.resource.type.user
+    return  user.type == "user"
         or  nil, {
               _    = i18n ["check:user:not-user"],
               name = name,
@@ -258,7 +258,7 @@ do
     local request = t.request
     local key     = t.key
     local user    = request [key]
-    return  user.status == Configuration.resource.status.active
+    return  user.status == "active"
         or  nil, {
               _    = i18n ["check:user:not-active"],
               name = user.username,
@@ -277,7 +277,7 @@ do
     local request = t.request
     local key     = t.key
     local user    = request [key]
-    return  user.status== Configuration.resource.status.suspended
+    return  user.status == "suspended"
         or  nil, {
               _    = i18n ["check:user:not-suspended"],
               name = user.username,
@@ -335,7 +335,7 @@ do
     local name    = request [key]
     local project = store.project [name]
     request [key] = project
-    return  project.type == Configuration.resource.type.project
+    return  project.type == "project"
         or  nil, {
               _    = i18n ["check:project:not-project"],
               name = name,
