@@ -14,6 +14,12 @@ return {
   ["server:response"] = {
     en = "< server: {{{message}}}",
   },
+  ["server:hostname"] = {
+    en = "hostname has been set to {{{hostname}}}",
+  },
+  ["server:name"] = {
+    en = "name has been set to {{{name}}}",
+  },
   ["websocket:listen"] = {
     en = "server websocket listening on {{{host}}}:{{{port}}}",
   },
