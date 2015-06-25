@@ -539,7 +539,7 @@ function Methods.user.delete (request, store)
   local user = request.authentication.user
   store.email [user.email   ] = nil
   store.user  [user.username] = nil
-  local filter = Configuration.redis.pattern.project % {
+  local filter = Configuration.resource.project.pattern % {
     user    = user.username,
     project = "*",
   }
@@ -582,7 +582,7 @@ function Methods.project.create (request, store)
     },
   })
   local user = store.user [request.authentication.username]
-  local name = Configuration.redis.pattern.project % {
+  local name = Configuration.resource.project.pattern % {
     user    = user.username,
     project = request.projectname,
   }
