@@ -8,6 +8,12 @@ return {
   ["server:exception"] = {
     en = "error: {{{reason}}}",
   },
+  ["server:request"] = {
+    en = "> server: {{{message}}}",
+  },
+  ["server:response"] = {
+    en = "< server: {{{message}}}",
+  },
   ["websocket:listen"] = {
     en = "server websocket listening on {{{host}}}:{{{port}}}",
   },

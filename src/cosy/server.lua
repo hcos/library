@@ -84,16 +84,23 @@ function Server.start ()
     port      = Configuration.server.port     ,
     protocols = {
       cosy = function (ws)
-        print (pcall (function ()
         while true do
           local message = ws:receive ()
+          Logger.debug {
+            _       = i18n ["server:request"],
+            message = message,
+          }
           if not message then
             ws:close ()
             return
           end
-          ws:send (Handler (message))
+          local response = Handler (message)
+          Logger.debug {
+            _       = i18n ["server:response"],
+            message = response,
+          }
+          ws:send (response)
         end
-        end))
       end
     }
   }
