@@ -8,13 +8,14 @@
     <div class="col-md-4"></div>
       <div class="col-md-4">
         <div class="box box-primary">
-        <p class="login-box-msg">User: <strong><span id="pusername"></span></strong></p>
-        <form action="../../index.html" method="post" enctype="multipart/form-data">
+          <div class="box-body">
+            <p class="login-box-msg">User: <strong><span id="pusername"></span></strong></p>
           <div class="box-body">
             <div class="form-group has-feedback" id="avatardiv">
-            <div id="pavatar" style="width:150px;height:150px;border:1px solid #000;text-align:center;margin:auto;">Your Picture</div>
+            <div id="pavatar" style="width:150px;height:150px;border:1px solid #000;text-align:center;margin:auto;"><img id="img" width="100%" alt="Your Picture"></div>
             <label>Upload</label>
           <input id="avatar" type="file" class="form-control"/>
+          </div>
           </div>
           <!--<div class="form-group has-feedback" id="userdiv">
             <input id="username" type="text" class="form-control" placeholder="Username"/>
@@ -33,20 +34,20 @@
           </div>
            <div class="form-group has-feedback" id="orgdiv">
              <label>Organization</label>
-            <input id="org" type="text" class="form-control" placeholder="organization"/>
+            <input id="organization" type="text" class="form-control" placeholder="organization"/>
           </div>
            <div class="form-group has-feedback" id="homediv">
              <label>Home Page</label>
-            <input id="home" type="text" class="form-control" placeholder="Home Page"/>
+            <input id="homepage" type="text" class="form-control" placeholder="Home Page"/>
           </div>
           <div class="form-group has-feedback" id="homediv">
-            <label>Language</label>
-              <select id="lang">
+            <label>Language</label><br>
+              <select id="locale">
               <option value="en">English</option>
               </select>
           </div>
           <div class="form-group has-feedback" id="homediv">
-            <label>Country</label>
+            <label>Country</label><br>
             
           <select id="country">
               <option value="AF">Afghanistan</option>
@@ -301,18 +302,18 @@
             </select>
           </div>
           <div class="form-group has-feedback" id="citydiv">
-            <label>City</label>
+            <label>City</label><br>
             <input id="city" type="text" class="form-control" placeholder="City"/>
             </div>
             </div>
             <div class="box-footer">
            <div class="form-group has-feedback" id="homediv">
-           <button type="submit" class="btn btn-primary btn-block btn-flat" id="update">Save</button>
+           <button type="submit" class="btn btn-primary" id="update">Save</button>
           </div>
           </div>
-         
-        </form>        
-
+            <div class="overlay" style="display:none;">
+            <i class="fa fa-refresh fa-spin"></i>
+          </div>
         </div><!-- /.form-box -->
 <div id="error" style="display:none;">
 <div class="alert alert-danger" role="alert">

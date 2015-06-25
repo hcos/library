@@ -1,6 +1,5 @@
 local loader    = require "cosy.loader"
 local mainregister
-local profile
 
 local function mainlogin ()
 local value   = require "cosy.value"
