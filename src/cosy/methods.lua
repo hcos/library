@@ -303,7 +303,7 @@ function Methods.user.update (request, store, try_only)
     },
   })
   local user = request.authentication.user
-  if request.username then
+  if request.username and request.username ~= user.username then
     if store.users [request.username] then
       error {
         _        = i18n ["username:exist"],
@@ -333,7 +333,7 @@ function Methods.user.update (request, store, try_only)
     user.username = request.username
     store.emails [user.email].username = request.username
   end
-  if request.email then
+  if request.email and user.email~= request.email then
     if store.emails [request.email] then
       error {
         _     = i18n ["email:exist"],
