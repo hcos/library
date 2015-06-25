@@ -651,6 +651,43 @@ Results ["server:tos"] = function (response)
          Colors ("%{yellow blackbg}" .. response.tos_digest))
 end
 
+Results ["server:filter"] = function (response)
+  local size = math.log10 (#response)+1
+  for i = 1, #response do
+    local key   = tostring (i)
+    local value = response [i]
+    local space = ""
+    for _ = #key, size do
+      space = space .. " "
+    end
+    if type (value) ~= "table" then
+      print (Colors ("%{black yellowbg}" .. space .. tostring (key) .. " / " .. tostring (#response)) ..
+             Colors ("%{reset}" .. " => ") ..
+             Colors ("%{yellow blackbg}" .. tostring (value)))
+    else
+      print (Colors ("%{black yellowbg}" .. space .. tostring (key) .. " / " .. tostring (#response)))
+      local max  = 0
+      local keys = {}
+      for k in pairs (response [i]) do
+        keys [#keys+1] = k
+        max = math.max (max, #k)
+      end
+      for j = 1, #keys do
+        local jkey   = keys [j]
+        local jvalue = response [i] [jkey]
+        local jspace = ""
+        for _ = #jkey, max+3 do
+          jspace = jspace .. " "
+        end
+        jspace = jspace .. " => "
+        print (Colors ("%{black yellowbg}  " .. tostring (jkey)) ..
+               Colors ("%{reset}" .. jspace) ..
+               Colors ("%{yellow blackbg}" .. tostring (jvalue)))
+      end
+    end
+  end
+end
+
 Prepares ["user:create"] = function (commands, args)
   commands.ws:send (Value.expression {
     server     = args.server,
