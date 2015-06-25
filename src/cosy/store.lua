@@ -97,7 +97,8 @@ end
 
 function Store.filter (collection, filter)
   local coroutine = Coromake ()
-  local client    = collection.store.__redis
+  local store     = collection.__store
+  local client    = store.__redis
   return coroutine.wrap (function ()
     local name   = collection.__pattern % { key = filter }
     local cursor = 0
