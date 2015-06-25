@@ -71,8 +71,11 @@ return {
   ["check:project"] = {
     en = "a project must be like username/projectname",
   },
+  ["check:iterator:bytecode"] = {
+    en = "an iterator cannot be bytecode",
+  },
   ["check:iterator:function"] = {
-    en = "an iterator must be a valid and dumpable Lua function",
+    en = "invalid Lua function: {{{reason}}}",
   },
   ["translation:failure"] = {
     "translation failed: {{{reason}}}",
@@ -91,6 +94,9 @@ return {
   },
   ["is-private"] = {
     en = "set as private",
+  },
+  ["iterator"] = {
+    en = "iterator function",
   },
   ["locale"] = {
     en = "locale for messages",

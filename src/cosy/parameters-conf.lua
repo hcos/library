@@ -182,11 +182,55 @@ do
     local request = t.request
     local key     = t.key
     local value   = request [key]
-    value         = loadstring (value)
-    request [key] = value
-    return  type (value) == "function"
+    -- http://lua-users.org/wiki/SandBoxes
+    local environment = {
+      assert   = assert,
+      error    = error,
+      pairs    = pairs,
+      ipairs   = ipairs,
+      next     = next,
+      pcall    = pcall,
+      select   = select,
+      tonumber = tonumber,
+      tostring = tostring,
+      type     = type,
+      unpack   = unpack,
+      xpcall   = xpcall,
+      string   = string,
+      table    = table,
+      math     = math,
+    }
+    if _VERSION == "Lua 5.1" then
+      if value:byte (1) == 27 then
+        return nil, {
+          _      = i18n ["check:iterator:bytecode"],
+        }
+      end
+      local f, err = loadstring (value)
+      if not f then
+        return nil, {
+          _      = i18n ["check:iterator:function"],
+          reason = err,
+        }
+      end
+      setfenv (f, environment)
+      request [key] = f
+    else
+      local f, err = load (value, nil, 't', environment)
+      if not f then
+        return nil, {
+          _      = i18n ["check:iterator:function"],
+          reason = err,
+        }
+      end
+      request [key] = f
+    end
+    local _, result = pcall (request [key])
+    request [key] = result
+    return  type (request [key]) == "function"
         or  nil, {
               _      = i18n ["check:iterator:function"],
+              reason = result,
             }
   end
 end

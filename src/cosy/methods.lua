@@ -1,5 +1,6 @@
 local Methods  = {}
 
+local Access        = require "cosy.access"
 local Configuration = require "cosy.configuration"
 local Digest        = require "cosy.digest"
 local Email         = require "cosy.email"
@@ -11,6 +12,7 @@ local Redis         = require "cosy.redis"
 local Store         = require "cosy.store"
 local Time          = require "cosy.time"
 local Token         = require "cosy.token"
+local Coromake      = require "coroutine.make"
 
 Configuration.load {
   "cosy.methods",
@@ -100,7 +102,6 @@ function Methods.server.tos (request, store)
   }
 end
 
---[==[
 function Methods.server.filter (request, store)
   Parameters.check (store, request, {
     required = {
@@ -108,9 +109,32 @@ function Methods.server.filter (request, store)
       iterator       = Parameters.iterator,
     },
   })
-  -- TODO: Implement using `cosy.access`.
+  local user = request.authentication.user
+  if user.reputation < Configuration.reputation.filter then
+    error {
+      _        = i18n ["server:filter:not-enough"],
+      owned    = user.reputation,
+      required = Configuration.reputation.filter,
+    }
+  end
+  local access    = Access.new (request.authentication, store)
+  local coroutine = Coromake ()
+  local co        = coroutine.create (request.iterator)
+  local results   = {}
+  while coroutine.status (co) ~= "dead" do
+    local ok, result = coroutine.resume (co, coroutine.yield, access)
+    if not ok then
+      error {
+        _      = i18n ["server:filter:error"],
+        reason = result,
+      }
+    end
+    if result ~= nil then
+      results [#results+1] = result
+    end
+  end
+  return results
 end
---]==]
 
 -- User
 -- ----
@@ -146,16 +170,16 @@ function Methods.user.create (request, store, try_only)
     request.locale = Configuration.locale
   end
   local user = {
-    type        = "user",
-    status      = "active",
-    username    = request.username,
-    email       = request.email,
     checked     = false,
-    password    = Password.hash (request.password),
-    locale      = request.locale,
-    tos_digest  = request.tos_digest,
-    reputation  = Configuration.reputation.at_creation,
+    email       = request.email,
     lastseen    = Time (),
+    locale      = request.locale,
+    password    = Password.hash (request.password),
+    tos_digest  = request.tos_digest,
+    reputation  = Configuration.reputation.initial,
+    status      = "active",
+    type        = "user",
+    username    = request.username,
   }
   store.user [request.username] = user
   if try_only then
@@ -576,12 +600,10 @@ function Methods.project.create (request, store)
     }
   end
   store.project [name] = {
+    permissions = {},
+    projectname = request.projectname,
     type        = "project",
     username    = user.username,
-    projectname = request.projectname,
-    access      = {
-      is_private = request.is_private,
-    },
   }
 end
 
