@@ -10,6 +10,19 @@ Configuration.load "cosy.server"
 local i18n   = I18n.load "cosy.server"
 i18n._locale = Configuration.locale
 
+local function deproxify (t)
+  if type (t) ~= "table" then
+    return t
+  else
+    local result = {}
+    for k, v in pairs (t) do
+      assert (type (k) ~= "table")
+      result [k] = deproxify (v)
+    end
+    return result
+  end
+end
+
 local function call_method (method, parameters, try_only)
   for _ = 1, Configuration.redis.retry or 1 do
     local store  = Store.new ()
@@ -35,7 +48,7 @@ local function call_method (method, parameters, try_only)
       end
     end)
     if ok then
-      return result or true
+      return deproxify (result) or true
     elseif err then
       return nil, err
     end
