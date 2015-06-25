@@ -553,24 +553,6 @@ end
 
 Methods.project = {}
 
-function Methods.project.list (request, store)
-  Parameters.check (request, {
-    optional = {
-      prefix = Parameters.prefix,
-      user   = Parameters.user,
-      locale = Parameters.locale,
-    },
-  })
-  local filter = Configuration.redis.pattern.project % {
-    user = (request.prefix or "") .. "*",
-  }
-  local result = {}
-  for _, user in Store.filter (store.user, filter) do
-    result [#result+1] = user.username
-  end
-  return result
-end
-
 function Methods.project.create (request, store)
   Parameters.check (request, {
     required = {
