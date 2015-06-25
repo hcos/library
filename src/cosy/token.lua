@@ -12,9 +12,9 @@ local Jwt           = require "luajwt"
 Configuration.load "cosy.token"
 
 local i18n   = I18n.load "cosy.token"
-i18n._locale = Configuration.locale [nil]
+i18n._locale = Configuration.locale
 
-if Configuration.token.secret [nil] == nil then
+if Configuration.token.secret == nil then
   error {
     _ = i18n ["token:no-secret"],
   }
@@ -23,8 +23,8 @@ end
 local Token = {}
 
 function Token.encode (token)
-  local secret        = Configuration.token.secret [nil]
-  local algorithm     = Configuration.token.algorithm [nil]
+  local secret        = Configuration.token.secret
+  local algorithm     = Configuration.token.algorithm
   local result, err   = Jwt.encode (token, secret, algorithm)
   if not result then
     error (err)
@@ -33,8 +33,8 @@ function Token.encode (token)
 end
 
 function Token.decode (s)
-  local key           = Configuration.token.secret [nil]
-  local algorithm     = Configuration.token.algorithm [nil]
+  local key           = Configuration.token.secret
+  local algorithm     = Configuration.token.algorithm
   local result, err   = Jwt.decode (s, key, algorithm)
   if not result then
     error (err)
@@ -51,8 +51,8 @@ function Token.administration (server)
     },
     iat      = now,
     nbf      = now - 1,
-    exp      = now + Configuration.expiration.administration [nil],
-    iss      = Configuration.server.name [nil],
+    exp      = now + Configuration.expiration.administration,
+    iss      = Configuration.server.name,
     aud      = nil,
     sub      = "cosy:administration",
     jti      = Digest (tostring (now + Random ())),
@@ -70,8 +70,8 @@ function Token.validation (data)
     },
     iat      = now,
     nbf      = now - 1,
-    exp      = now + Configuration.expiration.validation [nil],
-    iss      = Configuration.server.name [nil],
+    exp      = now + Configuration.expiration.validation,
+    iss      = Configuration.server.name,
     aud      = nil,
     sub      = "cosy:validation",
     jti      = Digest (tostring (now + Random ())),
@@ -89,8 +89,8 @@ function Token.authentication (data)
     },
     iat      = now,
     nbf      = now - 1,
-    exp      = now + Configuration.expiration.authentication [nil],
-    iss      = Configuration.server.name [nil],
+    exp      = now + Configuration.expiration.authentication,
+    iss      = Configuration.server.name,
     aud      = nil,
     sub      = "cosy:authentication",
     jti      = Digest (tostring (now + Random ())),

@@ -8,12 +8,6 @@ return {
   ["check:not-found"] = {
     en = "parameter {{{key}}} is missing",
   },
-  ["check:is-table"] = {
-    en = "{{{key}}} must be a table",
-  },
-  ["check:is-position"] = {
-    en = "{{{key}}} must contain a country, and city",
-  },
   ["check:user:miss"] = {
     en = "user {{{name}}} does not exist",
   },
@@ -35,8 +29,17 @@ return {
   ["check:is-avatar"] = {
     en = "a {{{key}}} must be a table with contents and source",
   },
+  ["check:is-boolean"] = {
+    en = "a {{{key}}} must be a boolean",
+  },
+  ["check:is-position"] = {
+    en = "{{{key}}} must contain a country, and city",
+  },
   ["check:is-string"] = {
     en = "a {{{key}}} must be a string",
+  },
+  ["check:is-table"] = {
+    en = "{{{key}}} must be a table",
   },
   ["check:min-size"] = {
     en = "a {{{key}}} must contain at least {{{count}}} characters",
@@ -68,6 +71,12 @@ return {
   ["check:project"] = {
     en = "a project must be like username/projectname",
   },
+  ["check:iterator:bytecode"] = {
+    en = "an iterator cannot be bytecode",
+  },
+  ["check:iterator:function"] = {
+    en = "invalid Lua function: {{{reason}}}",
+  },
   ["translation:failure"] = {
     "translation failed: {{{reason}}}",
   },
@@ -85,6 +94,9 @@ return {
   },
   ["is-private"] = {
     en = "set as private",
+  },
+  ["iterator"] = {
+    en = "iterator function",
   },
   ["locale"] = {
     en = "locale for messages",

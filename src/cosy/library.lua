@@ -10,7 +10,7 @@ local Coromake      = require "coroutine.make"
 Configuration.load "cosy.library"
 
 local i18n   = I18n.load "cosy.library"
-i18n._locale = Configuration.locale [nil]
+i18n._locale = Configuration.locale
 
 local Library   = {}
 local Client    = {}
@@ -36,7 +36,7 @@ function Client.connect (client)
   else
     local Websocket = require "websocket"
     client._ws = Websocket.client.ev {
-      timeout = Configuration.library.timeout [nil],
+      timeout = Configuration.library.timeout,
       loop    = Scheduler._loop,
     }
   end
@@ -105,13 +105,13 @@ Client.methods ["user:create"] = function (operation, parameters)
     data.username = parameters.username
     data.hashed   = parameters.password
     data.token    = result.response.authentication
-  end
-  local position, status = Loader.loadhttp "http://www.telize.com/geoip"
-  if status == 200 then
-    client.user.update {
-      authentication = data.token,
-      position       = Json.decode (position),
-    }
+    local position, status = Loader.loadhttp "http://www.telize.com/geoip"
+    if status == 200 then
+      client.user.update {
+        authentication = data.token,
+        position       = Json.decode (position),
+      }
+    end
   end
 end
 
@@ -202,7 +202,7 @@ function Operation.__call (operation, parameters, try_only)
       parameters = parameters,
       try_only   = try_only,
     })
-    Scheduler.sleep (Configuration.library.timeout [nil])
+    Scheduler.sleep (Configuration.library.timeout)
     result = client._results [identifier]
     client._waiting [identifier] = nil
     client._results [identifier] = nil

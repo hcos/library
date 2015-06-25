@@ -14,7 +14,7 @@ Configuration.load {
 }
 
 local i18n   = I18n.load "cosy.daemon"
-i18n._locale = Configuration.locale [nil]
+i18n._locale = Configuration.locale
 
 local Daemon = {}
 
@@ -30,23 +30,34 @@ function Daemon.start ()
     addserver (s, f)
   end
   Daemon.ws = Websocket.server.copas.listen {
-    interface = Configuration.daemon.interface [nil],
-    port      = Configuration.daemon.port [nil],
+    interface = Configuration.daemon.interface,
+    port      = Configuration.daemon.port,
     protocols = {
       cosy = function (ws)
         while true do
           local message = ws:receive ()
+          Logger.debug {
+            _       = i18n ["daemon:request"],
+            message = message,
+          }
           if not message then
             ws:close ()
             return
-          elseif message == "daemon-stop" then
-            Daemon.stop ()
-            ws:send (Value.expression {
-              success = true,
-            })
-          else
-            ws:send (Handler (message))
           end
+          local response
+          if message == "daemon-stop" then
+            Daemon.stop ()
+            response = Value.expression {
+              success = true,
+            }
+          else
+            response = Handler (message)
+          end
+          Logger.debug {
+            _       = i18n ["daemon:response"],
+            message = message,
+          }
+          ws:send (response)
         end
       end
     }
@@ -54,22 +65,22 @@ function Daemon.start ()
   Scheduler.addserver = addserver
   Logger.debug {
     _    = i18n ["websocket:listen"],
-    host = Configuration.daemon.interface [nil],
-    port = Configuration.daemon.port [nil],
+    host = Configuration.daemon.interface,
+    port = Configuration.daemon.port,
   }
   do
-    local daemonfile = Configuration.daemon.data [nil]
+    local daemonfile = Configuration.daemon.data
     local file       = io.open (daemonfile, "w")
     file:write (Value.expression {
-      interface = Configuration.daemon.interface [nil],
-      port      = Configuration.daemon.port [nil],
+      interface = Configuration.daemon.interface,
+      port      = Configuration.daemon.port,
     })
     file:close ()
     os.execute ([[ chmod 0600 {{{file}}} ]] % { file = daemonfile })
   end
   do
     Ffi.cdef [[ unsigned int getpid (); ]]
-    local pidfile = Configuration.daemon.pid [nil]
+    local pidfile = Configuration.daemon.pid
     local file    = io.open (pidfile, "w")
     file:write (Ffi.C.getpid ())
     file:close ()
@@ -79,10 +90,10 @@ function Daemon.start ()
 end
 
 function Daemon.stop ()
-  os.remove (Configuration.daemon.data [nil])
+  os.remove (Configuration.daemon.data)
   Scheduler.addthread (function ()
     Scheduler.sleep (1)
-    os.remove (Configuration.daemon.pid  [nil])
+    os.remove (Configuration.daemon.pid )
     os.exit   (0)
   end)
 end
