@@ -233,9 +233,9 @@ do
     Email.ready = true
     Logger.info {
       _        = i18n ["smtp:available"],
-      host     = Configuration.smtp.host    ,
-      port     = Configuration.smtp.port    ,
-      method   = Configuration.smtp.method  ,
+      host     = Configuration.smtp.host,
+      port     = Configuration.smtp.port,
+      method   = Configuration.smtp.method,
       protocol = Configuration.smtp.protocol,
     }
   end
