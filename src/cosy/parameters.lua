@@ -75,7 +75,7 @@ function Parameters.check (store, request, parameters)
           }
           checked [key] = true
           if not ok then
-            reason.parameter     = key
+            reason.key           = key
             reasons [#reasons+1] = reason
             break
           end
