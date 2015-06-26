@@ -75,7 +75,8 @@ end
 function Methods.server.information (request, store)
   Parameters.check (store, request, {})
   return {
-    name = Configuration.server.name,
+    name    = Configuration.server.name,
+    captcha = Configuration.recaptcha.public_key,
   }
 end
 
