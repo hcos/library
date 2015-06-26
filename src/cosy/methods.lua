@@ -75,7 +75,8 @@ end
 function Methods.server.information (request, store)
   Parameters.check (store, request, {})
   return {
-    name = Configuration.server.name,
+    name    = Configuration.server.name,
+    captcha = Configuration.recaptcha.public_key,
   }
 end
 
@@ -149,6 +150,8 @@ function Methods.user.create (request, store, try_only)
       email      = Parameters.email,
       tos_digest = Parameters.tos.digest,
       locale     = Parameters.locale,
+      ip         = Parameters.ip,
+      captcha    = Parameters.captcha,
     },
   })
   if store.email [request.email] then
@@ -162,6 +165,24 @@ function Methods.user.create (request, store, try_only)
       _        = i18n ["username:exist"],
       username = request.username,
     }
+  end
+  do
+    local Http = require "copas.http"
+    local Json = require "cosy.json"
+    local url  = "https://www.google.com/recaptcha/api/siteverify"
+    local body = "secret="    .. Configuration.recaptcha.private_key
+              .. "&response=" .. request.captcha
+              .. "&remoteip=" .. request.ip
+    local response, status = Http.request (url, body)
+    assert (status == 200)
+    response = Json.decode (response)
+    assert (response)
+    if not response.success then
+      error {
+        _        = i18n ["captcha:failure"],
+        username = request.username,
+      }
+    end
   end
   store.email [request.email] = {
     username  = request.username,

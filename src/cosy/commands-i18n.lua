@@ -59,6 +59,9 @@ return {
   ["option:server"]= {
     en = "server url"
   },
+  ["flag:captcha"] = {
+    en = "answer to captcha in web browser",
+  },
   ["flag:clean"] = {
     en = "clean database before run",
   },

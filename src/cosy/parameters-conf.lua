@@ -148,6 +148,58 @@ do
 end
 
 do
+  Default.data.ip = {
+    __refines__ = {
+      this.data.string.trimmed,
+    }
+  }
+  local checks = Default.data.ip.checks
+  -- http://stackoverflow.com/questions/10975935
+  local function check_ip (ip)
+    do
+      local chunks = { ip:match "(%d+)%.(%d+)%.(%d+)%.(%d+)" }
+      if #chunks == 4 then
+        for _, v in pairs (chunks) do
+          if tonumber(v) > 255 then
+            return false
+          end
+        end
+        return true
+      end
+    end
+    do
+      local chunks = { ip:match (("([a-fA-F0-9]*):"):rep (8):gsub (":$","$")) }
+      if #chunks == 8 then
+        for _, v in pairs (chunks) do
+          if #v > 0 and tonumber (v, 16) > 65535 then
+            return false
+          end
+        end
+        return true
+      end
+    end
+  end
+  checks [Layer.size (checks)+1] = function (t)
+    local request = t.request
+    local key     = t.key
+    local value   = request [key]
+    return  check_ip (value)
+        or  nil, {
+              _  = i18n ["check:ip:pattern"],
+              ip = value,
+            }
+  end
+end
+
+do
+  Default.data.captcha = {
+    __refines__ = {
+      this.data.string.trimmed,
+    }
+  }
+end
+
+do
   Default.data.locale = {
     __refines__ = {
       this.data.string.trimmed,
