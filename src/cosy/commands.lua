@@ -4,6 +4,8 @@ local Value         = require "cosy.value"
 local Cli           = require "cliargs"
 local Colors        = require "ansicolors"
 local Websocket     = require "websocket"
+local Copas         = require "copas.ev"
+Copas.make_default ()
 
 Configuration.load {
   "cosy",
@@ -140,6 +142,14 @@ function Options.set (part, name, oftype, description)
     local _ = false
   elseif oftype == "position" then
     local _ = false
+  elseif oftype == "ip" then
+    local _ = false
+  elseif oftype == "captcha" then
+    Cli:add_flag (
+      "--{{{name}}}" % { name = name },
+      i18n ["flag:captcha"] % {},
+      part == "required"
+    )
   elseif oftype == "boolean" then
     Cli:add_flag (
       "--{{{name}}}" % { name = name },
@@ -300,6 +310,8 @@ function Commands.__index (commands, key)
             end
           until passwords [1] == passwords [2]
           parameters [name] = passwords [1]
+        elseif t.type == "captcha" and args [name] then
+          Commands.captcha (args, parameters)
         elseif args [name] then
           if t.type == "token:authentication" then
             local _ = false
@@ -386,6 +398,47 @@ function Commands.__index (commands, key)
     end
     return result
   end
+end
+
+function Commands.captcha (args, parameters)
+  local info      = {}
+  local addserver = Copas.addserver
+  Copas.addserver = function (s, f)
+    info.socket = s
+    local ok, port = s:getsockname ()
+    if ok then
+      info.port = port
+    end
+    addserver (s, f)
+  end
+  Websocket.server.copas.listen {
+    port      = 0,
+    protocols = {
+      cosycli = function (ws)
+        while true do
+          local message = ws:receive ()
+          if message then
+            message = Value.decode (message)
+            parameters.captcha = message.response
+            Copas.removeserver (info.socket)
+          else
+            ws:close()
+            return
+          end
+        end
+      end
+    },
+  }
+  Copas.addserver = addserver
+  os.execute ([[
+    xdg-open {{{url}}} || open {{{url}}} &
+  ]] % {
+    url = "{{{server}}}/html/captchacli.html?port={{{port}}}" % {
+      server = args.server,
+      port   = info.port,
+    },
+  })
+  Copas.loop()
 end
 
 Commands ["daemon:stop"] = function (commands)
