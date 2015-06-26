@@ -1,7 +1,8 @@
-local Configuration = require "cosy.configuration"
-local Internal      = Configuration / "default"
+local Default = require "cosy.configuration-layers".default
 
-Internal.redis.interface = "127.0.0.1"
-Internal.redis.port      = 6379
-Internal.redis.database  = 0
-Internal.redis.pool_size = 5
+Default.redis = {
+  interface = "127.0.0.1",
+  port      = 6379,
+  database  = 0,
+  pool_size = 5,
+}

@@ -24,17 +24,17 @@ function I18n.load (t)
     local layer = Layer.new { name = name, data = require (name .. "-i18n") }
     depends [#depends+1] = layer
   end
-  local all = Layer.new { data = {
+  local all = Layer.new { name = "i18n", data = {
       __depends__ = depends,
     }
   }
   local store = setmetatable ({}, {
     __index = function (_, key)
       local path = all [key]
-      if Layer.exists (path) then
+      if path then
         local result = {}
         for k, p in Layer.pairs (path) do
-          result [k] = p [nil]
+          result [k] = p
         end
         return result
       end

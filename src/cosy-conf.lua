@@ -1,6 +1,7 @@
-local Configuration = require "cosy.configuration"
-local Internal      = Configuration / "default"
+local Default = require "cosy.configuration-layers".default
 
-Internal.cli.directory = os.getenv "HOME" .. "/.cosy"
-Internal.cli.locale    = (os.getenv "LANG" or "en"):match "[^%.]+":gsub ("_", "-")
-Internal.cli.server    = "http://cosyverif.org/"
+Default.cli = {
+  directory = os.getenv "HOME" .. "/.cosy",
+  locale    = (os.getenv "LANG" or "en"):match "[^%.]+":gsub ("_", "-"),
+  server    = "http://cosyverif.org/",
+}

@@ -17,7 +17,7 @@ function Protocol.new (metam)
     protocol:on_patch {
       code    = [[${target} = ${value}]] % {
         target = tostring (target),
-        value  = dump (value),
+--        value  = dump (value),
       },
       status  = "applied",
       target  = target,

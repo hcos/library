@@ -14,6 +14,15 @@ return {
   ["server:stop"] = {
     en = "stop the server",
   },
+  ["server:filter"] = {
+    en = "run an iterator on the server",
+  },
+  ["server:filter:not-enough"] = {
+    en = "filtering requires {{{required}}} reputation, but only {{{owned}}} is owned",
+  },
+  ["server:filter:error"] = {
+    en = "filtering has failed, because {{{reason}}}",
+  },
   ["user:create"] = {
     en = "create a user account on the server",
   },

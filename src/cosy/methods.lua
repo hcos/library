@@ -1,5 +1,6 @@
 local Methods  = {}
 
+local Access        = require "cosy.access"
 local Configuration = require "cosy.configuration"
 local Digest        = require "cosy.digest"
 local Email         = require "cosy.email"
@@ -11,7 +12,9 @@ local Redis         = require "cosy.redis"
 local Store         = require "cosy.store"
 local Time          = require "cosy.time"
 local Token         = require "cosy.token"
+local Coromake      = require "coroutine.make"
 local Mime          = require "mime"
+
 
 Configuration.load {
   "cosy.methods",
@@ -20,7 +23,7 @@ Configuration.load {
 }
 
 local i18n   = I18n.load "cosy.methods"
-i18n._locale = Configuration.locale [nil]
+i18n._locale = Configuration.locale
 
 -- Server
 -- ------
@@ -33,7 +36,7 @@ function Methods.server.list_methods (request, store)
       locale = Parameters.locale,
     },
   })
-  local locale = Configuration.locale [nil]
+  local locale = Configuration.locale
   if request.locale then
     locale = request.locale or locale
   end
@@ -75,7 +78,7 @@ end
 function Methods.server.information (request, store)
   Parameters.check (store, request, {})
   return {
-    name = Configuration.server.name [nil],
+    name = Configuration.server.name,
   }
 end
 
@@ -86,7 +89,7 @@ function Methods.server.tos (request, store)
       locale         = Parameters.locale,
     },
   })
-  local locale = Configuration.locale [nil]
+  local locale = Configuration.locale
   if request.locale then
     locale = request.locale or locale
   end
@@ -102,27 +105,44 @@ function Methods.server.tos (request, store)
   }
 end
 
+function Methods.server.filter (request, store)
+  Parameters.check (store, request, {
+    required = {
+      authentication = Parameters.token.authentication,
+      iterator       = Parameters.iterator,
+    },
+  })
+  local user = request.authentication.user
+  if user.reputation < Configuration.reputation.filter then
+    error {
+      _        = i18n ["server:filter:not-enough"],
+      owned    = user.reputation,
+      required = Configuration.reputation.filter,
+    }
+  end
+  local access    = Access.new (request.authentication, store)
+  local coroutine = Coromake ()
+  local co        = coroutine.create (request.iterator)
+  local results   = {}
+  while coroutine.status (co) ~= "dead" do
+    local ok, result = coroutine.resume (co, coroutine.yield, access)
+    if not ok then
+      error {
+        _      = i18n ["server:filter:error"],
+        reason = result,
+      }
+    end
+    if result ~= nil then
+      results [#results+1] = result
+    end
+  end
+  return results
+end
+
 -- User
 -- ----
 
 Methods.user = {}
-
-function Methods.user.list (request, store)
-  Parameters.check (store, request, {
-    optional = {
-      prefix = Parameters.string.trimmed,
-      locale = Parameters.locale,
-    },
-  })
-  local filter = Configuration.redis.pattern.user [nil] % {
-    user = (request.prefix or "") .. "*",
-  }
-  local result = {}
-  for _, user in Store.iterate (store.users, filter) do
-    result [#result+1] = user.username
-  end
-  return result
-end
 
 function Methods.user.create (request, store, try_only)
   Parameters.check (store, request, {
@@ -134,37 +154,37 @@ function Methods.user.create (request, store, try_only)
       locale     = Parameters.locale,
     },
   })
-  if store.emails [request.email] then
+  if store.email [request.email] then
     error {
       _     = i18n ["email:exist"],
       email = request.email,
     }
   end
-  if store.users [request.username] then
+  if store.user [request.username] then
     error {
       _        = i18n ["username:exist"],
       username = request.username,
     }
   end
-  store.emails [request.email] = {
+  store.email [request.email] = {
     username  = request.username,
   }
   if request.locale == nil then
-    request.locale = Configuration.locale [nil]
+    request.locale = Configuration.locale
   end
   local user = {
-    type        = Configuration.resource.type.user [nil],
-    status      = Configuration.resource.status.active [nil],
-    username    = request.username,
-    email       = request.email,
     checked     = false,
-    password    = Password.hash (request.password),
-    locale      = request.locale,
-    tos_digest  = request.tos_digest,
-    reputation  = Configuration.reputation.at_creation [nil],
+    email       = request.email,
     lastseen    = Time (),
+    locale      = request.locale,
+    password    = Password.hash (request.password),
+    tos_digest  = request.tos_digest,
+    reputation  = Configuration.reputation.initial,
+    status      = "active",
+    type        = "user",
+    username    = request.username,
   }
-  store.users [request.username] = user
+  store.user [request.username] = user
   if try_only then
     return true
   end
@@ -172,8 +192,8 @@ function Methods.user.create (request, store, try_only)
     locale  = user.locale,
     from    = {
       _     = i18n ["user:create:from"],
-      name  = Configuration.server.name  [nil],
-      email = Configuration.server.email [nil],
+      name  = Configuration.server.name ,
+      email = Configuration.server.email,
     },
     to      = {
       _     = i18n ["user:create:to"],
@@ -182,7 +202,7 @@ function Methods.user.create (request, store, try_only)
     },
     subject = {
       _          = i18n ["user:create:subject"],
-      servername = Configuration.server.name [nil],
+      servername = Configuration.server.name,
       username   = user.username,
     },
     body    = {
@@ -210,8 +230,8 @@ function Methods.user.send_validation (request, store, try_only)
     locale  = user.locale,
     from    = {
       _     = i18n ["user:update:from"],
-      name  = Configuration.server.name  [nil],
-      email = Configuration.server.email [nil],
+      name  = Configuration.server.name ,
+      email = Configuration.server.email,
     },
     to      = {
       _     = i18n ["user:update:to"],
@@ -220,7 +240,7 @@ function Methods.user.send_validation (request, store, try_only)
     },
     subject = {
       _          = i18n ["user:update:subject"],
-      servername = Configuration.server.name [nil],
+      servername = Configuration.server.name,
       username   = user.username,
     },
     body    = {
@@ -312,28 +332,28 @@ function Methods.user.update (request, store, try_only)
         username = request.username,
       }
     end
-    local filter = Configuration.redis.pattern.project [nil] % {
+    local filter = Configuration.redis.pattern.project % {
       user    = user.username,
       project = "*",
     }
-    for name, project in Store.iterate (store.projects, filter) do
-      local projectname = (Configuration.redis.pattern.project [nil] / name).project
+    for name, project in Store.filter (store.project, filter) do
+      local projectname = (Configuration.redis.pattern.project / name).project
       project.username = request.username
-      local old = Configuration.redis.pattern.project [nil] % {
+      local old = Configuration.redis.pattern.project % {
         user    = user.username,
         project = projectname,
       }
-      local new = Configuration.redis.pattern.project [nil] % {
+      local new = Configuration.redis.pattern.project % {
         user    = request.username,
         project = projectname,
       }
-      store.projects [old] = nil
-      store.projects [new] = project
+      store.project [old] = nil
+      store.project [new] = project
     end
-    store.users [user.username   ] = nil
-    store.users [request.username] = user
+    store.user [user.username   ] = nil
+    store.user [request.username] = user
     user.username = request.username
-    store.emails [user.email].username = request.username
+    store.email [user.email].username = request.username
   end
   if request.email and user.email~= request.email then
     if store.emails [request.email] then
@@ -342,8 +362,8 @@ function Methods.user.update (request, store, try_only)
         email = request.email,
       }
     end
-    store.emails [user.email   ] = nil
-    store.emails [request.email] = {
+    store.email [user.email   ] = nil
+    store.email [request.email] = {
       username  = user.username,
     }
     user.email   = request.email
@@ -358,10 +378,13 @@ function Methods.user.update (request, store, try_only)
   end
   if request.position then
     user.position = {
-      country   = request.position.country,
-      city      = request.position.city,
-      latitude  = request.position.latitude,
-      longitude = request.position.longitude,
+      country        = request.position.country,
+      city           = request.position.city,
+      latitude       = request.position.latitude,
+      longitude      = request.position.longitude,
+      continent_code = request.position.continent_code,
+      country_code   = request.position.country_code,
+      timezone       = request.position.timezone,
     }
   end
   if request.avatar then
@@ -376,8 +399,8 @@ function Methods.user.update (request, store, try_only)
       convert {{{file}}} -resize {{{width}}}x{{{height}}} png:{{{file}}}
     ]] % {
       file   = filename,
-      height = Configuration.data.avatar.height [nil],
-      width  = Configuration.data.avatar.width  [nil],
+      height = Configuration.data.avatar.height,
+      width  = Configuration.data.avatar.width ,
     })
     file = io.open (filename, "r")
     user.avatar = file:read "*all"
@@ -445,13 +468,13 @@ function Methods.user.reset (request, store, try_only)
       email = Parameters.email,
     },
   })
-  local email = store.emails [request.email]
+  local email = store.email [request.email]
   if not email then
     return
   end
-  local user = store.users [email.username]
+  local user = store.user [email.username]
   if not user
-  or user.type ~= Configuration.resource.type.user [nil] then
+  or user.type ~= "user" then
     return
   end
   user.password = ""
@@ -462,8 +485,8 @@ function Methods.user.reset (request, store, try_only)
     locale  = user.locale,
     from    = {
       _     = i18n ["user:reset:from"],
-      name  = Configuration.server.name  [nil],
-      email = Configuration.server.email [nil],
+      name  = Configuration.server.name ,
+      email = Configuration.server.email,
     },
     to      = {
       _     = i18n ["user:reset:to"],
@@ -472,7 +495,7 @@ function Methods.user.reset (request, store, try_only)
     },
     subject = {
       _          = i18n ["user:reset:subject"],
-      servername = Configuration.server.name [nil],
+      servername = Configuration.server.name,
       username   = user.username,
     },
     body    = {
@@ -497,7 +520,7 @@ function Methods.user.suspend (request, store)
     }
   end
   local user       = request.authentication.user
-  local reputation = Configuration.reputation.suspend [nil]
+  local reputation = Configuration.reputation.suspend
   if user.reputation < reputation then
     error {
       _        = i18n ["user:suspend:not-enough"],
@@ -506,7 +529,7 @@ function Methods.user.suspend (request, store)
     }
   end
   user.reputation = user.reputation - reputation
-  target.status   = Configuration.resource.status.suspended [nil]
+  target.status   = "suspended"
 end
 
 function Methods.user.release (request, store)
@@ -523,7 +546,7 @@ function Methods.user.release (request, store)
     }
   end
   local user       = request.authentication.user
-  local reputation = Configuration.reputation.release [nil]
+  local reputation = Configuration.reputation.release
   if user.reputation < reputation then
     error {
       _        = i18n ["user:suspend:not-enough"],
@@ -532,7 +555,7 @@ function Methods.user.release (request, store)
     }
   end
   user.reputation = user.reputation - reputation
-  target.status   = Configuration.resource.status.active [nil]
+  target.status   = "active"
 end
 
 function Methods.user.delete (request, store)
@@ -542,14 +565,14 @@ function Methods.user.delete (request, store)
     },
   })
   local user = request.authentication.user
-  store.emails [user.email   ] = nil
-  store.users  [user.username] = nil
-  local filter = Configuration.redis.pattern.project [nil] % {
+  store.email [user.email   ] = nil
+  store.user  [user.username] = nil
+  local filter = Configuration.resource.project.pattern % {
     user    = user.username,
     project = "*",
   }
-  for name in Store.iterate (store.projects, filter) do
-    store.projects [name] = nil
+  for name in Store.filter (store.project, filter) do
+    store.project [name] = nil
   end
 end
 
@@ -557,24 +580,6 @@ end
 -- -------
 
 Methods.project = {}
-
-function Methods.project.list (request, store)
-  Parameters.check (request, {
-    optional = {
-      prefix = Parameters.prefix,
-      user   = Parameters.user,
-      locale = Parameters.locale,
-    },
-  })
-  local filter = Configuration.redis.pattern.project [nil] % {
-    user = (request.prefix or "") .. "*",
-  }
-  local result = {}
-  for _, user in Store.iterate (store.users, filter) do
-    result [#result+1] = user.username
-  end
-  return result
-end
 
 function Methods.project.create (request, store)
   Parameters.check (request, {
@@ -586,25 +591,23 @@ function Methods.project.create (request, store)
       is_private = Parameters.is_private,
     },
   })
-  local user = store.users [request.authentication.username]
-  local name = Configuration.redis.pattern.project [nil] % {
+  local user = store.user [request.authentication.username]
+  local name = Configuration.resource.project.pattern % {
     user    = user.username,
     project = request.projectname,
   }
-  local project = store.projects [name]
+  local project = store.project [name]
   if project then
     error {
       _    = i18n ["project:exist"],
       name = name,
     }
   end
-  store.projects [name] = {
-    type        = Configuration.resource.type.project [nil],
-    username    = user.username,
+  store.project [name] = {
+    permissions = {},
     projectname = request.projectname,
-    access      = {
-      is_private = request.is_private,
-    },
+    type        = "project",
+    username    = user.username,
   }
 end
 
@@ -615,21 +618,21 @@ function Methods.project.delete (request, store)
       project        = Parameters.project,
     },
   })
-  local project = store.projects [request.project.rawname]
+  local project = store.project [request.project.rawname]
   if not project then
     error {
       _    = i18n ["project:miss"],
       name = request.project.rawname,
     }
   end
-  local user    = store.users [request.authentication.username]
+  local user    = store.user [request.authentication.username]
   if project.username ~= user.username then
     error {
       _    = i18n ["project:forbidden"],
       name = project.projectname,
     }
   end
-  store.projects [request.project.rawname] = nil
+  store.project [request.project.rawname] = nil
 end
 
 return Methods

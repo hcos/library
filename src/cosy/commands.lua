@@ -17,7 +17,7 @@ local i18n   = I18n.load {
   "cosy.commands",
   "cosy.daemon",
 }
-i18n._locale = Configuration.cli.locale [nil]
+i18n._locale = Configuration.cli.locale
 
 if _G.nocolor then
   Colors = function (s)
@@ -51,7 +51,7 @@ local function getpassword ()
   os.execute("stty sane") 
   if ok then 
     return pass
-  end 
+  end
 end
 
 local function show_status (result)
@@ -100,14 +100,14 @@ function Options.set (part, name, oftype, description)
       Cli:add_option (
         "-l, --locale=LOCALE",
         i18n ["option:locale"] % {},
-        Configuration.cli.locale [nil]
+        Configuration.cli.locale
       )
     end
   elseif part == "optional" and name == "server" then
     Cli:add_option (
       "-s, --server=SERVER",
       i18n ["option:server"] % {},
-      Configuration.cli.server [nil]
+      Configuration.cli.server
     )
   elseif part == "optional" and name == "debug" then
     Cli:add_flag (
@@ -172,7 +172,7 @@ function Commands.print_help (commands)
     server     = commands.server,
     operation  = "server:list-methods",
     parameters = {
-      locale = Configuration.locale.default [nil],
+      locale = Configuration.locale.default,
     }
   })
   local result = commands.ws:receive ()
@@ -225,7 +225,7 @@ function Commands.__index (commands, key)
           or _G.arg [i]:match "^--server=(.)"
   end
   if not server then
-    server = Configuration.cli.server [nil]
+    server = Configuration.cli.server
   end
   commands.server = server
   if not key then
@@ -415,10 +415,10 @@ Commands ["daemon:stop"] = function (commands)
         kill -9 $(cat {{{pid}}}) 2> /dev/null
       fi
     ]==] % {
-      pid = Configuration.daemon.pid [nil],
+      pid = Configuration.daemon.pid,
     })
-    os.remove (Configuration.daemon.data [nil])
-    os.remove (Configuration.daemon.pid  [nil])
+    os.remove (Configuration.daemon.data)
+    os.remove (Configuration.daemon.pid )
     result = i18n {
       success  = true,
       response = {
@@ -431,7 +431,7 @@ Commands ["daemon:stop"] = function (commands)
   local tries = 0
   repeat
     os.execute ([[sleep {{{time}}}]] % { time = 0.2 })
-    daemonpid = read (Configuration.daemon.pid [nil])
+    daemonpid = read (Configuration.daemon.pid)
     tries     = tries + 1
   until not daemonpid or tries == 10
   if daemonpid then
@@ -484,15 +484,15 @@ Commands ["server:start"] = function ()
   if args.clean then
     Configuration.load "cosy.redis"
     local Redis     = require "redis"
-    local host      = Configuration.redis.interface [nil]
-    local port      = Configuration.redis.port [nil]
-    local database  = Configuration.redis.database [nil]
+    local host      = Configuration.redis.interface
+    local port      = Configuration.redis.port
+    local database  = Configuration.redis.database
     local client    = Redis.connect (host, port)
     client:select (database)
     client:flushdb ()
     package.loaded ["redis"] = nil
   end
-  if io.open (Configuration.server.pid [nil], "r") then
+  if io.open (Configuration.server.pid, "r") then
     local result = {
       success = false,
       error   = i18n {
@@ -513,15 +513,15 @@ Commands ["server:start"] = function ()
     rm -f {{{pid}}} {{{log}}}
     luajit -e '_G.logfile = "{{{log}}}"; require "cosy.server" .start ()' &
   ]==] % {
-    pid = Configuration.server.pid [nil],
-    log = Configuration.server.log [nil],
+    pid = Configuration.server.pid,
+    log = Configuration.server.log,
   })
   local tries = 0
   local serverpid, nginxpid
   repeat
     os.execute ([[sleep {{{time}}}]] % { time = 0.5 })
-    serverpid = read (Configuration.server.pid [nil])
-    nginxpid  = read (Configuration.http  .pid [nil])
+    serverpid = read (Configuration.server.pid)
+    nginxpid  = read (Configuration.http  .pid)
     tries      = tries + 1
   until (serverpid and nginxpid) or tries == 0
   local result
@@ -545,7 +545,7 @@ Commands ["server:start"] = function ()
 end
 
 Commands ["server:stop"] = function (commands)
-  local serverdata = read (Configuration.server.data [nil])
+  local serverdata = read (Configuration.server.data)
   Options.set ("optional", "debug" )
   Options.set ("optional", "force" )
   Options.set ("optional", "server")
@@ -585,10 +585,10 @@ Commands ["server:stop"] = function (commands)
         kill -9 $(cat {{{pid}}}) 2> /dev/null
       fi
     ]==] % {
-      pid = Configuration.server.pid [nil],
+      pid = Configuration.server.pid,
     })
-    os.remove (Configuration.server.data [nil])
-    os.remove (Configuration.server.pid  [nil])
+    os.remove (Configuration.server.data)
+    os.remove (Configuration.server.pid )
     result = i18n {
       success  = true,
       response = {
@@ -601,7 +601,7 @@ Commands ["server:stop"] = function (commands)
   local tries = 0
   repeat
     os.execute ([[sleep {{{time}}}]] % { time = 0.2 })
-    serverpid = read (Configuration.server.pid [nil])
+    serverpid = read (Configuration.server.pid)
     tries     = tries + 1
   until not serverpid or tries == 10
   if serverpid then
@@ -649,6 +649,43 @@ Results ["server:tos"] = function (response)
   print (Colors ("%{black yellowbg}" .. "digest") ..
          Colors ("%{reset}" .. " => ") ..
          Colors ("%{yellow blackbg}" .. response.tos_digest))
+end
+
+Results ["server:filter"] = function (response)
+  local size = math.log10 (#response)+1
+  for i = 1, #response do
+    local key   = tostring (i)
+    local value = response [i]
+    local space = ""
+    for _ = #key, size do
+      space = space .. " "
+    end
+    if type (value) ~= "table" then
+      print (Colors ("%{black yellowbg}" .. space .. tostring (key) .. " / " .. tostring (#response)) ..
+             Colors ("%{reset}" .. " => ") ..
+             Colors ("%{yellow blackbg}" .. tostring (value)))
+    else
+      print (Colors ("%{black yellowbg}" .. space .. tostring (key) .. " / " .. tostring (#response)))
+      local max  = 0
+      local keys = {}
+      for k in pairs (response [i]) do
+        keys [#keys+1] = k
+        max = math.max (max, #k)
+      end
+      for j = 1, #keys do
+        local jkey   = keys [j]
+        local jvalue = response [i] [jkey]
+        local jspace = ""
+        for _ = #jkey, max+3 do
+          jspace = jspace .. " "
+        end
+        jspace = jspace .. " => "
+        print (Colors ("%{black yellowbg}  " .. tostring (jkey)) ..
+               Colors ("%{reset}" .. jspace) ..
+               Colors ("%{yellow blackbg}" .. tostring (jvalue)))
+      end
+    end
+  end
 end
 
 Prepares ["user:create"] = function (commands, args)

@@ -1,4 +1,5 @@
-local Configuration = require "cosy.configuration"
-local Internal      = Configuration / "default"
+local Default= require "cosy.configuration-layers".default
 
-Internal.data.password.time = 0.020
+Default.password = {
+  time = 0.020, -- 20 milliseconds
+}

@@ -8,7 +8,7 @@ Configuration.load {
 }
 
 local i18n   = I18n.load "cosy.nginx"
-i18n._locale = Configuration.locale [nil]
+i18n._locale = Configuration.locale
 
 local Nginx = {}
 
@@ -172,25 +172,25 @@ function Nginx.configure ()
       mkdir {{{uploads}}}
     fi
   ]] % {
-    directory = Configuration.http.directory [nil],
-    uploads   = Configuration.http.uploads   [nil],
+    directory = Configuration.http.directory,
+    uploads   = Configuration.http.uploads  ,
   })
   local configuration = configuration_template % {
-    host           = Configuration.http.interface   [nil],
-    port           = Configuration.http.port        [nil],
-    www            = Configuration.http.www         [nil],
-    uploads        = Configuration.http.uploads     [nil],
-    pidfile        = Configuration.http.pid         [nil],
-    name           = Configuration.server.name      [nil],
-    wshost         = Configuration.server.interface [nil],
-    wsport         = Configuration.server.port      [nil],
-    redis_host     = Configuration.redis.interface  [nil],
-    redis_port     = Configuration.redis.port       [nil],
-    redis_database = Configuration.redis.database   [nil],
+    host           = Configuration.http.interface  ,
+    port           = Configuration.http.port       ,
+    www            = Configuration.http.www        ,
+    uploads        = Configuration.http.uploads    ,
+    pidfile        = Configuration.http.pid        ,
+    name           = Configuration.server.name     ,
+    wshost         = Configuration.server.interface,
+    wsport         = Configuration.server.port     ,
+    redis_host     = Configuration.redis.interface ,
+    redis_port     = Configuration.redis.port      ,
+    redis_database = Configuration.redis.database  ,
     path           = package.path,
     resolver       = resolver,
   }
-  local file = io.open (Configuration.http.configuration [nil], "w")
+  local file = io.open (Configuration.http.configuration, "w")
   file:write (configuration)
   file:close ()
 end
@@ -199,16 +199,16 @@ function Nginx.start ()
   os.execute ([[
     rm -f {{{directory}}} && mkdir -p {{{directory}}}
   ]] % {
-    directory = Configuration.http.directory [nil],
+    directory = Configuration.http.directory,
   })
   Nginx.configure ()
   os.execute ([[
     {{{nginx}}} -p {{{directory}}} -c {{{configuration}}} 2>> {{{error}}}
   ]] % {
-    directory     = Configuration.http.directory     [nil],
-    nginx         = Configuration.http.nginx         [nil],
-    configuration = Configuration.http.configuration [nil],
-    error         = Configuration.http.error         [nil],
+    directory     = Configuration.http.directory    ,
+    nginx         = Configuration.http.nginx        ,
+    configuration = Configuration.http.configuration,
+    error         = Configuration.http.error        ,
   })
 end
 
@@ -218,12 +218,12 @@ function Nginx.stop ()
       kill -QUIT $(cat {{{pidfile}}})
     }
   ]] % {
-    pidfile = Configuration.http.pid [nil],
+    pidfile = Configuration.http.pid,
   })
   os.execute ([[
     rm -rf {{{directory}}}
   ]] % {
-    directory = Configuration.http.directory [nil],
+    directory = Configuration.http.directory,
   })
   Nginx.directory = nil
 end
@@ -235,7 +235,7 @@ function Nginx.update ()
       kill -HUP $(cat {{{pidfile}}})
     }
   ]] % {
-    pidfile = Configuration.http.pid [nil],
+    pidfile = Configuration.http.pid,
   })
 end
 

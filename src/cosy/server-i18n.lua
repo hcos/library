@@ -8,11 +8,17 @@ return {
   ["server:exception"] = {
     en = "error: {{{reason}}}",
   },
+  ["server:request"] = {
+    en = "> server: {{{message}}}",
+  },
+  ["server:response"] = {
+    en = "< server: {{{message}}}",
+  },
   ["websocket:listen"] = {
     en = "server websocket listening on {{{host}}}:{{{port}}}",
   },
-  ["redis:unreachable"] = {
-    en = "redis server in unreachable",
+  ["error:internal"] = {
+    en = "internal server error",
   },
   ["updated"] = {
     en = "configuration has been updated",

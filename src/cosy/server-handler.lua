@@ -8,21 +8,39 @@ local Value         = require "cosy.value"
 Configuration.load "cosy.server"
 
 local i18n   = I18n.load "cosy.server"
-i18n._locale = Configuration.locale [nil]
+i18n._locale = Configuration.locale
+
+local function deproxify (t)
+  if type (t) ~= "table" then
+    return t
+  else
+    local result = {}
+    for k, v in pairs (t) do
+      assert (type (k) ~= "table")
+      result [k] = deproxify (v)
+    end
+    return result
+  end
+end
 
 local function call_method (method, parameters, try_only)
-  for _ = 1, Configuration.redis.retry [nil] or 1 do
+  for _ = 1, Configuration.redis.retry or 1 do
+    local store  = Store.new ()
     local err
     local ok, result = xpcall (function ()
-      local store  = Store.new ()
-      local result = method (parameters, store, try_only)
+      local r = method (parameters, store, try_only)
       if not try_only then
         Store.commit (store)
       end
-      return result
+      return r
     end, function (e)
-      err = e
-      if  not e._ or not e._._key then
+      if tostring (e):match "ERR MULTI" then
+        store.__redis:discard ()
+      elseif type (e  ) == "table"
+         and type (e._) == "table"
+         and e._._key   ~= "redis:retry" then
+        err = e
+      else
         Logger.debug {
           _      = i18n ["server:exception"],
           reason = Value.expression (e) .. " => " .. debug.traceback (),
@@ -30,13 +48,13 @@ local function call_method (method, parameters, try_only)
       end
     end)
     if ok then
-      return result or true
-    elseif err ~= Store.Error then
+      return deproxify (result) or true
+    elseif err then
       return nil, err
     end
   end
   return nil, {
-    _ = i18n ["redis:unreachable"],
+    _ = i18n ["error:internal"],
   }
 end
 

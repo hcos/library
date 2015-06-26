@@ -7,7 +7,7 @@ local Layer         = require "layeredata"
 Configuration.load "cosy.parameters"
 
 local i18n   = I18n.load "cosy.parameters"
-i18n._locale = Configuration.locale [nil]
+i18n._locale = Configuration.locale
 
 local Parameters = setmetatable ({}, {
   __index = function (_, key)
@@ -22,7 +22,7 @@ function Parameters.check (store, request, parameters)
       required = {},
       optional = {},
     }
-    local locale = Configuration.locale.default [nil]
+    local locale = Configuration.locale.default
     if request.locale then
       locale = request.locale or locale
     end
@@ -66,8 +66,8 @@ function Parameters.check (store, request, parameters)
           key = key,
         }
       elseif value ~= nil then
-        for i = 1, Layer.size (parameter.check) do
-          local ok, reason = parameter.check [i] [nil] {
+        for i = 1, Layer.size (parameter.checks) do
+          local ok, reason = parameter.checks [i] {
             parameter = parameter,
             request   = request,
             key       = key,
@@ -75,7 +75,7 @@ function Parameters.check (store, request, parameters)
           }
           checked [key] = true
           if not ok then
-            reason.parameter     = key
+            reason.key           = key
             reasons [#reasons+1] = reason
             break
           end

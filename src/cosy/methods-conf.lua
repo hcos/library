@@ -1,25 +1,77 @@
 local Configuration = require "cosy.configuration"
-local Internal      = Configuration / "default"
+local Default       = require "cosy.configuration-layers".default
 
-Internal.redis.key.emails   = "email:{{{key}}}"
-Internal.redis.key.projects = "project:{{{key}}}"
-Internal.redis.key.tokens   = "token:{{{key}}}"
-Internal.redis.key.users    = "user:{{{key}}}"
+Default.expiration = {
+  validation     =  1 * 3600, -- 1 hour
+  authentication =  1 * 3600 ,-- 1 hour
+  administration =  99 * 365 * 24 * 3600, -- 99 years
+}
 
-Internal.redis.pattern.user     = "{{{user}}}"
-Internal.redis.pattern.project  = "{{{user}}}/{{{project}}}"
-Internal.redis.pattern.resource = "{{{user}}}/{{{project}}}/{{{resource}}}"
+Default.reputation = {
+  initial = 10,
+  suspend = 50,
+  release = 50,
+  filter  = 50,
+}
 
-Internal.expiration.validation     =  1 * 3600 -- 1 hour
-Internal.expiration.authentication =  1 * 3600 -- 1 hour
-Internal.expiration.administration =  99 * 365 * 24 * 3600 -- 99 years
+Default.permissions = {
+  read  = 1,
+  write = 2,
+  admin = 3,
+}
 
-Internal.reputation.at_creation = 10
-Internal.reputation.suspend     = 50
-Internal.reputation.release     = 50
+local Hidden = function ()
+  return false
+end
 
-Internal.resource.status.active    = "active"
-Internal.resource.status.suspended = "suspended"
+local Private = function (user, data, level)
+  return user.username == data.username
+      or (data.permissions and data.permissions [user.username] >= level)
+end
 
-Internal.resouce.type.user    = "user"
-Internal.resouce.type.project = "project"
+local Public = function (user, data, level)
+  if level == Configuration.permissions.read then
+    return true
+  end
+  return user.username == data.username
+      or (data.permissions and data.permissions [user.username] >= level)
+end
+
+Default.resource = {
+  email = {
+    key    = "email:{{{key}}}",
+    hidden = true,
+  },
+  token = {
+    key    = "token:{{{key}}}",
+    hidden = true,
+  },
+  user = {
+    key      = "user:{{{key}}}",
+    hidden   = false,
+    pattern  = "{{{user}}}",
+    template = {
+      access        = Public,
+      _avatar       = Public,
+      _checked      = Private,
+      _email        = Private,
+      _homepage     = Public,
+      _lastseen     = Private,
+      _locale       = Private,
+      _name         = Public,
+      _organization = Public,
+      _password     = Hidden,
+      _position     = Private,
+      _reputation   = Public,
+      _status       = Hidden,
+      _tos_digest   = Private,
+      _type         = Hidden,
+      _username     = Public,
+    },
+  },
+  project = {
+    key     = "project:{{{key}}}",
+    hidden  = false,
+    pattern = "{{{user}}}/{{{project}}}",
+  },
+}
