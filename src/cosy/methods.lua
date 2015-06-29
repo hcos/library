@@ -15,7 +15,6 @@ local Token         = require "cosy.token"
 local Coromake      = require "coroutine.make"
 local Mime          = require "mime"
 
-
 Configuration.load {
   "cosy.methods",
   "cosy.parameters",

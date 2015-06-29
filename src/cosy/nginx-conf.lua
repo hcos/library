@@ -7,7 +7,6 @@ if main:sub (1, 1) == "." then
   main = Lfs.currentdir () .. "/" .. main
 end
 
-
 Default.http = {
   nginx         = "nginx",
   interface     = "*",

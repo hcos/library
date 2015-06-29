@@ -14,6 +14,7 @@ local Handler       = require "cosy.server-handler"
 local Token         = require "cosy.token"
 local Value         = require "cosy.value"
 local App           = require "cosy.configuration-layers".app
+local Default       = require "cosy.configuration-layers".default
 local Layer         = require "layeredata"
 local Websocket     = require "websocket"
 local Ffi           = require "ffi"
@@ -67,7 +68,53 @@ local updater = Scheduler.addthread (function ()
   end
 end)
 
+function Server.sethostname ()
+  local hostname
+  local Http = require "socket.http"
+  local ip, status = Http.request "http://ip.telize.com/"
+  if status == 200 then
+    ip = ip:match "%S+"
+    local handle = io.popen ("host -T " .. ip)
+    hostname = handle:read "*l"
+    handle:close()
+    local results = {}
+    for r in hostname:gmatch "%S+" do
+      results [#results+1] = r
+    end
+    hostname = results [#results]
+    hostname = hostname:sub (1, #hostname-1)
+  end
+  if not hostname or hostname:match "%.home$" then
+    local handle = io.popen "hostname"
+    hostname = handle:read "*l"
+    handle:close()
+  end
+  Default.server.hostname = hostname
+  Logger.info {
+    _        = i18n ["server:hostname"],
+    hostname = Default.server.hostname,
+  }
+end
+
+function Server.setname ()
+  local name
+  local handle = io.popen "hostname"
+  name = handle:read "*l"
+  handle:close()
+  Default.server.name = name
+  Logger.info {
+    _    = i18n ["server:name"],
+    name = Default.server.name,
+  }
+end
+
 function Server.start ()
+  if not Configuration.server.hostname then
+    Server.sethostname ()
+  end
+  if not Configuration.server.name then
+    Server.setname ()
+  end
   App.server          = {}
   Server.passphrase   = Digest (Random ())
   Server.token        = Token.administration (Server)
@@ -81,7 +128,7 @@ function Server.start ()
   end
   Server.ws = Websocket.server.copas.listen {
     interface = Configuration.server.interface,
-    port      = Configuration.server.port     ,
+    port      = Configuration.server.port,
     protocols = {
       cosy = function (ws)
         while true do
@@ -108,7 +155,7 @@ function Server.start ()
   Logger.debug {
     _    = i18n ["websocket:listen"],
     host = Configuration.server.interface,
-    port = Configuration.server.port     ,
+    port = Configuration.server.port,
   }
   do
     Nginx.stop  ()
@@ -120,7 +167,7 @@ function Server.start ()
     file:write (Value.expression {
       token     = Server.token,
       interface = Configuration.server.interface,
-      port      = Configuration.server.port     ,
+      port      = Configuration.server.port,
     })
     file:close ()
     os.execute ([[ chmod 0600 {{{file}}} ]] % { file = datafile })
@@ -147,7 +194,7 @@ function Server.stop ()
   Scheduler.addthread (function ()
     Scheduler.sleep (1)
     Nginx.stop ()
-    os.remove (Configuration.server.pid )
+    os.remove (Configuration.server.pid)
     os.exit   (0)
   end)
 end
