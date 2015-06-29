@@ -50,14 +50,14 @@ http {
     root          "{{{www}}}";
 
     location / {
-      try_files $uri $uri/ $uri/index.html @foreigns;
+      try_files   $uri $uri/ $uri/index.html @foreigns;
     }
 
     location @foreigns {
       proxy_cache  foreign;
       expires      modified  1d;
       resolver     {{{resolver}}};
-      set $target "";
+      set $target  "";
       access_by_lua '
         local redis   = require "nginx.redis" :new ()
         local ok, err = redis:connect ("{{{redis_host}}}", {{{redis_port}}})

@@ -74,8 +74,8 @@ function Server.sethostname ()
   local ip, status = Http.request "http://ip.telize.com/"
   if status == 200 then
     ip = ip:match "%S+"
-    local handle = io.popen ("host -T " .. ip)
-    hostname = handle:read "*l"
+    local handle = io.popen ("host " .. ip)
+    hostname = handle:read "*all"
     handle:close()
     local results = {}
     for r in hostname:gmatch "%S+" do
@@ -86,10 +86,10 @@ function Server.sethostname ()
   end
   if not hostname or hostname:match "%.home$" then
     local handle = io.popen "hostname"
-    hostname = handle:read "*l"
+    hostname = handle:read "*all"
     handle:close()
   end
-  Default.server.hostname = hostname
+  Default.http.hostname = hostname
   Logger.info {
     _        = i18n ["server:hostname"],
     hostname = Default.server.hostname,
@@ -109,7 +109,7 @@ function Server.setname ()
 end
 
 function Server.start ()
-  if not Configuration.server.hostname then
+  if not Configuration.http.hostname then
     Server.sethostname ()
   end
   if not Configuration.server.name then

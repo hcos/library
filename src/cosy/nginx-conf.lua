@@ -9,6 +9,7 @@ end
 
 Default.http = {
   nginx         = "nginx",
+  hostname      = nil,
   interface     = "*",
   port          = 80,
   timeout       = 5,

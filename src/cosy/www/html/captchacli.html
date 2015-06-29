@@ -1,0 +1,49 @@
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>reCAPTCHA for Cosy Command Line</title>
+  </head>
+  <body>
+    <div   id="captcha"></div>
+    <input type="submit"
+           id="submit"/>
+    <script type="text/javascript"
+            lang="JavaScript"
+            src="/js/jquery.js">
+    </script>
+    <script type="text/javascript"
+            lang="JavaScript"
+            src="https://www.google.com/recaptcha/api.js?onload=onloadCallback&render=explicit">
+    </script>
+    <script type="text/javascript"
+            lang="JavaScript"
+            src="/js/lua.vm.js">
+    </script>
+    <script type="text/lua" lang="Lua" id="luascript">
+      local location = js.global.location
+      local loader   = require (location.origin .. "/lua/cosy.loader")
+      local function main ()
+        local library  = require "cosy.library"
+        local value    = require "cosy.value"
+        local client   = library.connect (location.origin)
+        local info     = client.server.information ()
+        local port     = location.search:match "port=(%d+)"
+        local params   = js.new (js.global.Object)
+        params.sitekey = info.captcha
+        local id       = js.global.grecaptcha:render ("captcha", params)
+        local wsurl    = "ws://127.0.0.1:" .. tostring (port) .. "/"
+        (js.global.document:getElementById "submit").onclick = function ()
+          local ws = js.new (js.global.WebSocket, wsurl, "cosycli")
+          ws.onopen = function ()
+            ws:send (value.expression {
+              response = js.global.grecaptcha:getResponse (id)
+            })
+            ws:close ()
+          end
+        end
+      end
+      local co = coroutine.create (main)
+      coroutine.resume (co)
+    </script>
+  </body>
+</html>

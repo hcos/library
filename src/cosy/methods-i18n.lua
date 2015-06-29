@@ -2,6 +2,9 @@ return {
   ["translation:failure"] = {
     "translation failed: {{{reason}}}",
   },
+  ["captcha:failure"] = {
+    "captcha verification failed",
+  },
   ["server:information"] = {
     en = "show information about the server",
   },

@@ -96,10 +96,14 @@ local mcoroutine = Coromake ()
 Client.methods = {}
 
 Client.methods ["user:create"] = function (operation, parameters)
+  local Http = require "socket.http"
+  local ip, ip_status = Http.request "http://www.telize.com/ip"
+  assert (ip_status == 200)
   local client = operation._client
   local data   = client._data
   data.token          = nil
   parameters.password = Digest (parameters.password)
+  parameters.ip       = ip:match "%S+"
   local result = mcoroutine.yield ()
   if result.success then
     data.username = parameters.username

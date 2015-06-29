@@ -8,5 +8,9 @@ Default.server = {
   pid       = os.getenv "HOME" .. "/.cosy/server.pid",
   retry     = 5,
   name      = nil,
-  hostname  = nil,
+}
+
+Default.recaptcha = {
+  public_key  = nil,
+  private_key = nil,
 }

@@ -26,6 +26,9 @@ return {
   ["check:project:miss"] = {
     en = "project {{{name}}} does not exist",
   },
+  ["check:ip:pattern"] = {
+    en = "IP address is not valid",
+  },
   ["check:is-avatar"] = {
     en = "a {{{key}}} must be a table with contents and source",
   },
