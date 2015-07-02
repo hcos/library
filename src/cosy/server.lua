@@ -19,7 +19,6 @@ local Layer         = require "layeredata"
 local Websocket     = require "websocket"
 local Ffi           = require "ffi"
 
-
 local i18n   = I18n.load "cosy.server"
 i18n._locale = Configuration.locale
 
@@ -41,6 +40,17 @@ local updater = Scheduler.addthread (function ()
       if type (url) == "string" and url:match "^http" then
         script [#script+1] = ([[
           redis.call ("set", "foreign:{{{name}}}", "{{{source}}}")
+        ]]) % {
+          name   = name,
+          source = url,
+        }
+      end
+    end
+    for name, p in Layer.pairs (Configuration.externals) do
+      local url = p
+      if type (url) == "string" and url:match "^http" then
+        script [#script+1] = ([[
+          redis.call ("set", "external:{{{name}}}", "{{{source}}}")
         ]]) % {
           name   = name,
           source = url,
@@ -180,8 +190,8 @@ function Server.start ()
     file:close ()
     os.execute ([[ chmod 0600 {{{file}}} ]] % { file = pidfile })
   end
-  
-  
+
+
   Loader.hotswap.on_change ["cosy:configuration"] = function ()
     Scheduler.wakeup (updater)
   end

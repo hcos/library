@@ -29,6 +29,9 @@ function Store.__index (store, key)
   if not resource then
     return nil
   end
+  if store.__collections [key] then
+    return store.__collections [key]
+  end
   local pattern  = resource.key
   local template = resource.template
   assert (pattern, key)
@@ -174,7 +177,6 @@ function Collection.__newindex (collection, key, value)
     collection.__data [key] = {
       __store = store,
       __dirty = true,
-      __layer = nil,
       __data  = nil,
     }
   else

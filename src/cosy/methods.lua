@@ -108,17 +108,21 @@ end
 function Methods.server.filter (request, store)
   Parameters.check (store, request, {
     required = {
-      authentication = Parameters.token.authentication,
       iterator       = Parameters.iterator,
     },
-  })
-  local user = request.authentication.user
-  if user.reputation < Configuration.reputation.filter then
-    error {
-      _        = i18n ["server:filter:not-enough"],
-      owned    = user.reputation,
-      required = Configuration.reputation.filter,
+    optional = {
+      authentication = Parameters.token.authentication,
     }
+  })
+  if request.authentication then
+    local user = request.authentication.user
+    if user.reputation < Configuration.reputation.filter then
+      error {
+        _        = i18n ["server:filter:not-enough"],
+        owned    = user.reputation,
+        required = Configuration.reputation.filter,
+      }
+    end
   end
   local access    = Access.new (request.authentication, store)
   local coroutine = Coromake ()
@@ -153,7 +157,10 @@ function Methods.user.create (request, store, try_only)
       tos_digest = Parameters.tos.digest,
       locale     = Parameters.locale,
       ip         = Parameters.ip,
-      captcha    = Parameters.captcha,
+    },
+    optional = {
+      captcha        = Parameters.captcha,
+      administration = Parameters.token.administration,
     },
   })
   if store.email [request.email] then
@@ -168,7 +175,7 @@ function Methods.user.create (request, store, try_only)
       username = request.username,
     }
   end
-  do
+  if request.captcha then
     local Http = require "copas.http"
     local Json = require "cosy.json"
     local url  = "https://www.google.com/recaptcha/api/siteverify"
@@ -185,6 +192,11 @@ function Methods.user.create (request, store, try_only)
         username = request.username,
       }
     end
+  elseif not request.administration then
+    error {
+      _        = i18n ["method:administration-only"],
+      username = request.username,
+    }
   end
   store.email [request.email] = {
     username  = request.username,
@@ -352,18 +364,18 @@ function Methods.user.update (request, store, try_only)
         username = request.username,
       }
     end
-    local filter = Configuration.redis.pattern.project % {
+    local filter = Configuration.resource.project.pattern % {
       user    = user.username,
       project = "*",
     }
     for name, project in Store.filter (store.project, filter) do
-      local projectname = (Configuration.redis.pattern.project / name).project
+      local projectname = (Configuration.resource.project.pattern / name).project
       project.username = request.username
-      local old = Configuration.redis.pattern.project % {
+      local old = Configuration.resource.project.pattern % {
         user    = user.username,
         project = projectname,
       }
-      local new = Configuration.redis.pattern.project % {
+      local new = Configuration.resource.project.pattern % {
         user    = request.username,
         project = projectname,
       }

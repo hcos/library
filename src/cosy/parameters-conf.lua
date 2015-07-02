@@ -307,7 +307,7 @@ do
     local request = t.request
     local key     = t.key
     local value   = request [key]
-    return  value:find "^%w[%w%-_]+$"
+    return  value:find "^%w[%w%-_]*$"
         or  nil, {
               _   = i18n ["check:alphanumeric"],
               key = key,
@@ -401,7 +401,7 @@ do
     local request = t.request
     local key     = t.key
     local value   = request [key]
-    return  value:find "^%w[%w%-_]+$"
+    return  value:find "^%w[%w%-_]*$"
         or  nil, {
               _   = i18n ["check:alphanumeric"],
               key = key,

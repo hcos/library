@@ -41,17 +41,17 @@ end
 local function getpassword ()
   local stty_ret = os.execute ("stty -echo 2>/dev/null")
   if stty_ret ~= 0 then
-    io.write("\027[08m") -- ANSI 'hidden' text attribute 
-  end 
+    io.write("\027[08m") -- ANSI 'hidden' text attribute
+  end
   local ok, pass = pcall (io.read, "*l")
   if stty_ret == 0 then
     os.execute("stty sane")
-  else 
+  else
     io.write("\027[00m")
-  end 
+  end
   io.write("\n")
-  os.execute("stty sane") 
-  if ok then 
+  os.execute("stty sane")
+  if ok then
     return pass
   end
 end
@@ -132,6 +132,13 @@ function Options.set (part, name, oftype, description)
       "--{{{name}}}" % { name = name },
       i18n ["flag:password"] % {},
       part == "required"
+    )
+  elseif oftype == "token:administration" then
+    local serverdata = read (Configuration.server.data)
+    Cli:add_option (
+      "--{{{name}}}=TOKEN" % { name = name },
+      description,
+      serverdata and serverdata.token or nil
     )
   elseif oftype == "token:authentication" then
     Cli:add_option (

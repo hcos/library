@@ -128,6 +128,9 @@ return {
   ["string:trimmed"] = {
     en = "string",
   },
+  ["token:administration"] = {
+    en = "administration token",
+  },
   ["token:authentication"] = {
     en = "authentication token",
   },
