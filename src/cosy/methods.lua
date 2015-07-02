@@ -361,18 +361,18 @@ function Methods.user.update (request, store, try_only)
         username = request.username,
       }
     end
-    local filter = Configuration.redis.pattern.project % {
+    local filter = Configuration.resource.project.pattern % {
       user    = user.username,
       project = "*",
     }
     for name, project in Store.filter (store.project, filter) do
-      local projectname = (Configuration.redis.pattern.project / name).project
+      local projectname = (Configuration.resource.project.pattern / name).project
       project.username = request.username
-      local old = Configuration.redis.pattern.project % {
+      local old = Configuration.resource.project.pattern % {
         user    = user.username,
         project = projectname,
       }
-      local new = Configuration.redis.pattern.project % {
+      local new = Configuration.resource.project.pattern % {
         user    = request.username,
         project = projectname,
       }
