@@ -13,31 +13,25 @@ local profile = function  ()
     authentication = token
     }
   if result then
-  print ( value.expression (result))
   js.global.document:getElementById("pusername").innerHTML = result.username
   js.global.document:getElementById("email").value = result.email
-  
-  for _, key in ipairs { "name", "organization", "homepage", "locale" } do
-    if result [key] then
-    print(key)
-      js.global.document:getElementById(key).value  = result [key]
+    for _, key in ipairs { "name", "organization", "homepage", "locale" } do
+      if result [key] then
+        js.global.document:getElementById(key).value  = result [key]
+      end
     end
-  end
-  
-  if (result.avatar) then
-    js.global.document:getElementById("img").src = 'data:image/png;base64,'..result.avatar
-  end
+    if (result.avatar) then
+      js.global.document:getElementById("img").src = 'data:image/png;base64,'..result.avatar
+    end
 
-  if result.position.city then
-    js.global.document:getElementById("city").value = result.position.city
-  end
-  if result.position.country then
-    js.global.document:getElementById("country").value = result.position.country
-  end
-  
-  else 
+    if result.position.city then
+      js.global.document:getElementById("city").value = result.position.city
+    end
+    if result.position.country_code then
+      js.global.document:getElementById("country").value = result.position.country_code
+    end
+  else
     print ( value.expression (err))
-
   end
   js.global.document:getElementById("update").onclick = function()
     window:jQuery('#error'):hide()
@@ -57,11 +51,9 @@ local profile = function  ()
       fr:readAsDataURL(files[0]);
     end
   end
-
               
   local ok = true
   while ok do
-   print ( value.expression ("aaa"))
     local event = coroutine.yield ()
     if event == "update" then
    
@@ -79,18 +71,19 @@ local profile = function  ()
       updatedata.email  = js.global.document:getElementById("email").value
       for _, key in ipairs { "name", "organization", "homepage", "locale" } do
         if js.global.document:getElementById(key).value  ~= "" then
-          updatedata[key] = js.global.document:getElementById(key).value
+          updatedata [key] = js.global.document:getElementById(key).value
         end
       end
+      local el = js.global.document:getElementById("country")
+      local country = el.options[el.selectedIndex].text
       updatedata.position = {
             city = js.global.document:getElementById("city").value,
-            country =  js.global.document:getElementById("country").value,
+            country_code =  js.global.document:getElementById("country").value,
+            country =  country  ,
             latitude  = "",
             longitude = "",
             }
       local file = js.global.document:getElementById('avatar').files[0]
-        
-
       if file ~= nil then  
         local xmlHttpRequest = js.new(window.XMLHttpRequest)
         xmlHttpRequest:open("POST", '/upload', false)
@@ -104,9 +97,7 @@ local profile = function  ()
         xmlHttpRequest:setRequestHeader("Content-Type", file.type)
         xmlHttpRequest:send(file)
       end
-
       local result, err = client.user.update (updatedata)
-
       window:jQuery('.overlay'):hide()
       if result then
         window:jQuery('#success #message'):html("User Profile Updated")
@@ -139,7 +130,6 @@ local profile = function  ()
     end
   end
 end
-
 
 local co = coroutine.create (profile)
 coroutine.resume (co)
