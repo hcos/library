@@ -34,7 +34,7 @@ function Access.__index (self, key)
   if subdata.hidden then
     return nil
   elseif subaccess then
-    if subaccess (user, data, Configuration.permissions.read) then
+    if not subaccess (user, data, Configuration.permissions.read) then
       return nil
     end
   elseif subdata.access then
