@@ -133,6 +133,13 @@ function Options.set (part, name, oftype, description)
       i18n ["flag:password"] % {},
       part == "required"
     )
+  elseif oftype == "token:administration" then
+    local serverdata = read (Configuration.server.data)
+    Cli:add_option (
+      "--{{{name}}}=TOKEN" % { name = name },
+      description,
+      serverdata and serverdata.token or nil
+    )
   elseif oftype == "token:authentication" then
     Cli:add_option (
       "--{{{name}}}=TOKEN" % { name = name },
