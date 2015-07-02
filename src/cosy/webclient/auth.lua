@@ -59,6 +59,12 @@ mainregister = function ()
 local value   = require "cosy.value"
   local co = coroutine.running ()
   js.global.document:getElementById("content-wrapper").innerHTML = loader.loadhttp ( "/html/register.html")
+  local info     = client.server.information ()
+  js.global.document:getElementById("captchrender").innerHTML = "<div class='g-recaptcha' data-sitekey='{{{public}}}'></div>" % {
+    public = info.captcha,
+  }
+  local script = loader.loadhttp "/js/recaptcha/api.js"
+  window.jQuery:globalEval (script)
   js.global.document:getElementById("register").onclick = function()
     window:jQuery('#error'):hide()
     window:jQuery('.overlay'):show()
