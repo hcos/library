@@ -155,7 +155,10 @@ function Methods.user.create (request, store, try_only)
       tos_digest = Parameters.tos.digest,
       locale     = Parameters.locale,
       ip         = Parameters.ip,
-      captcha    = Parameters.captcha,
+    },
+    optional = {
+      captcha        = Parameters.captcha,
+      administration = Parameters.token.administration,
     },
   })
   if store.email [request.email] then
@@ -170,7 +173,7 @@ function Methods.user.create (request, store, try_only)
       username = request.username,
     }
   end
-  do
+  if request.captcha then
     local Http = require "copas.http"
     local Json = require "cosy.json"
     local url  = "https://www.google.com/recaptcha/api/siteverify"
@@ -187,6 +190,11 @@ function Methods.user.create (request, store, try_only)
         username = request.username,
       }
     end
+  elseif not request.administration then
+    error {
+      _        = i18n ["method:administration-only"],
+      username = request.username,
+    }
   end
   store.email [request.email] = {
     username  = request.username,

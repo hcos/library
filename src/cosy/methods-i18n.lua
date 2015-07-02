@@ -5,6 +5,9 @@ return {
   ["captcha:failure"] = {
     "captcha verification failed",
   },
+  ["method:administration-only"] = {
+    "method is reserved to server administrator",
+  },
   ["server:information"] = {
     en = "show information about the server",
   },
