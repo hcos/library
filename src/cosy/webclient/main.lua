@@ -1,6 +1,27 @@
 local location = js.global.location
 loader    = require (location.origin .. "/lua/cosy.loader")
 
+local function screen (authentication)
+  local result,err = client.server.filter({
+  authentication = authentication,
+  iterator = "return function (yield, store)\
+    for k in pairs (store.user) do\
+      yield (store.user [k].username)\
+    end\
+  end"
+  })
+  local iframe = js.global.document:getElementById("map").contentWindow
+  for key,value in pairs(result) do
+    local result, err = client.user.information  {
+      user = value
+    }
+    if result.position.latitude and result.position.longitude then
+      iframe.cluster (nil,result.position.latitude,result.position.longitude)
+    end
+  end
+  iframe.groupcluster ()
+end
+
 local function main()
   local lib      = require "cosy.library"
   client   = lib.connect (js.global.location.origin) 
@@ -15,8 +36,14 @@ local function main()
   if result and user == result.username and token ~= js.null then
     connected = true
   end
-  
+  js.global.document:getElementById("content-wrapper").innerHTML = loader.loadhttp ( "/html/main.html")
+  js.global.document:getElementById("logo").onclick = function()
+      js.global.document:getElementById("content-wrapper").innerHTML = loader.loadhttp ( "/html/main.html")
+      screen (token)
+      return false
+    end
   if connected then
+  screen (token)
     js.global.document:getElementById("navbar-login").innerHTML = loader.loadhttp ( "/html/logoutnavbar.html")
     js.global.document:getElementById("user-in").innerHTML = user
     local result, err = client.user.update {
@@ -58,7 +85,7 @@ local function main()
       return false
     end
   end
-  
+
 end
 
 local co = coroutine.create (main)
