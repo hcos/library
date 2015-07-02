@@ -423,7 +423,7 @@ function Methods.user.update (request, store, try_only)
       width  = Configuration.data.avatar.width ,
     })
     file = io.open (filename, "r")
-    user.avatar = file:read "*all"
+    user.avatar = Mime.b64 (file:read "*all")
     file:close ()
   end
   for _, key in ipairs { "name", "homepage", "organization", "locale" } do
@@ -432,7 +432,7 @@ function Methods.user.update (request, store, try_only)
     end
   end
   return {
-    avatar         = Mime.b64 (user.avatar),
+    avatar         = user.avatar,
     checked        = user.checked,
     email          = user.email,
     homepage       = user.homepage,
