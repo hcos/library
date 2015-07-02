@@ -27,3 +27,8 @@ Default.dependencies = {
   ["/js/sjcl.js"  ] = "http://bitwiseshiftleft.github.io/sjcl/sjcl.js",
   ["/js/jquery.js"] = "http://code.jquery.com/jquery-2.1.4.min.js",
 }
+
+Default.externals = {
+  ["/ext/ip"   ] = "http://www.telize.com/ip",
+  ["/ext/geoip"] = "http://www.telize.com/geoip",
+}

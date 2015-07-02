@@ -50,6 +50,7 @@ http {
     root          "{{{www}}}";
 
     location / {
+      add_header  Access-Control-Allow-Origin *;
       try_files   $uri $uri/ $uri/index.html @foreigns;
     }
 
@@ -67,6 +68,26 @@ http {
         end
         redis:select ({{{redis_database}}})
         local target = redis:get ("foreign:" .. ngx.var.uri)
+        if not target or target == ngx.null then
+          return ngx.exit (404)
+        end
+        ngx.var.target = target
+      ';
+      proxy_pass $target;
+    }
+
+    location /ext {
+      resolver     {{{resolver}}};
+      set $target  "";
+      access_by_lua '
+        local redis   = require "nginx.redis" :new ()
+        local ok, err = redis:connect ("{{{redis_host}}}", {{{redis_port}}})
+        if not ok then
+          ngx.log (ngx.ERR, "failed to connect to redis: ", err)
+          return ngx.exit (500)
+        end
+        redis:select ({{{redis_database}}})
+        local target = redis:get ("external:" .. ngx.var.uri)
         if not target or target == ngx.null then
           return ngx.exit (404)
         end
