@@ -96,8 +96,11 @@ local mcoroutine = Coromake ()
 Client.methods = {}
 
 Client.methods ["user:create"] = function (operation, parameters)
-  local client = operation._client
-  local data   = client._data
+  local client  = operation._client
+  local data    = client._data
+  data.username = nil
+  data.hashed   = nil
+  data.token    = nil
   local ip, ip_status = Loader.loadhttp (data.url .. "/ext/ip")
   assert (ip_status == 200)
   data.token          = nil
