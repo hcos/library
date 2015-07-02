@@ -27,8 +27,6 @@ local value   = require "cosy.value"
         user  = user,
         password   = pass,
       }
-      js.global.console:log (result)
-
       if result then
         window:jQuery('#success #message'):html("User authentificated")
         window:jQuery('#success'):show()
@@ -57,20 +55,15 @@ local value   = require "cosy.value"
   end
 end
 
-mainregister = function  ()
+mainregister = function ()
 local value   = require "cosy.value"
   local co = coroutine.running ()
   js.global.document:getElementById("content-wrapper").innerHTML = loader.loadhttp ( "/html/register.html")
   js.global.document:getElementById("register").onclick = function()
-    window:jQuery('#userdiv'):removeClass("has-error")
     window:jQuery('#error'):hide()
-    window:jQuery('#usererror'):hide()
-    window:jQuery('#emaildiv'):removeClass("has-error")
-    window:jQuery('#error'):hide()
-    window:jQuery('#emailerror'):hide()
-    window:jQuery('#passdiv'):removeClass("has-error")
-    window:jQuery('#error'):hide()
-    window:jQuery('#passerror'):hide()
+    window:jQuery('.overlay'):show()
+    window:jQuery('.has-error'):removeClass("has-error")
+    window:jQuery("span[id*='error']"):hide()
     local pass = js.global.document:getElementById("pass").value
     local passret = js.global.document:getElementById("repass").value
     if pass ~= passret then
@@ -99,7 +92,6 @@ local value   = require "cosy.value"
       end
   end
 
- -- connect ()
   local ok = true
   while ok do
     local event = coroutine.yield ()
@@ -107,45 +99,43 @@ local value   = require "cosy.value"
       local user  = js.global.document:getElementById("username").value
       local pass  = js.global.document:getElementById("pass").value
       local email  = js.global.document:getElementById("email").value
+      local captcha  = js.global.document:getElementById("g-recaptcha-response").value
       local tostext  = client.server.tos ()
-    
+      local ip, status = loader.loadhttp "/ip"
       local result, err = client.user.create {
       username   = user,
       password   = pass,
       email      = email ,
+      captcha    = captcha,
+      ip         = ip,
       tos_digest = tostext.tos_digest:upper (),
       locale     = "en",
       }
-
+     window:jQuery('.overlay'):hide()
      if result then
         window:jQuery('#success #message'):html("User Created")
         window:jQuery('#success'):show()
+        window:jQuery('#register'):hide()
       else
         window:jQuery('#error #message'):html(err.message)
         window:jQuery('#error'):show()
         if err.reasons then
           for i = 1, #err.reasons do
             local reason = err.reasons [i]
-            if reason.parameter == "username" then
-              window:jQuery('#usererror'):html(reason.message)
-              window:jQuery('#usererror'):show()
-              window:jQuery('#userdiv'):addClass("has-error")
-            elseif reason.parameter == "email" then
-              window:jQuery('#emailerror'):html(reason.message)
-              window:jQuery('#emailerror'):show()
-              window:jQuery('#emaildiv'):addClass("has-error")
+            if reason.key then
+              window:jQuery('#'.. reason.key ..'error'):html(reason.message)
+              window:jQuery('#'.. reason.key ..'error'):show()
+              window:jQuery('#'.. reason.key ..'div'):addClass("has-error")
             end
           end
         end
       end
-      --print ("user", value.expression (err))
     elseif event == "loadlogin" then
       ok = false
 	  mainlogin()
     elseif event == "tos" then
       print ("user", event)
       local tostext  = client.server.tos ()
-     -- js.global.document:getElementById("modal-body").innerHTML = tostext.tos  
       window:jQuery('#modal-body'):html(tostext.tos:gsub("\n","<br>"))
       window:jQuery("#terms"):modal()
     end
