@@ -106,17 +106,21 @@ end
 function Methods.server.filter (request, store)
   Parameters.check (store, request, {
     required = {
-      authentication = Parameters.token.authentication,
       iterator       = Parameters.iterator,
     },
-  })
-  local user = request.authentication.user
-  if user.reputation < Configuration.reputation.filter then
-    error {
-      _        = i18n ["server:filter:not-enough"],
-      owned    = user.reputation,
-      required = Configuration.reputation.filter,
+    optional = {
+      authentication = Parameters.token.authentication,
     }
+  })
+  if request.authentication then
+    local user = request.authentication.user
+    if user.reputation < Configuration.reputation.filter then
+      error {
+        _        = i18n ["server:filter:not-enough"],
+        owned    = user.reputation,
+        required = Configuration.reputation.filter,
+      }
+    end
   end
   local access    = Access.new (request.authentication, store)
   local coroutine = Coromake ()

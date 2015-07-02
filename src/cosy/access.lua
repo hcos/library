@@ -14,7 +14,7 @@ local Hidden = setmetatable ({}, {
 function Access.new (authentication, store)
   local result = setmetatable ({}, Access)
   Hidden [result] = {
-    user   = authentication.user,
+    user   = authentication and authentication.user or false,
     data   = store,
   }
   return result
