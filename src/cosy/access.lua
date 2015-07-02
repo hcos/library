@@ -80,5 +80,4 @@ function Access.__ipairs (access)
   end)
 end
 
-
 return Access
