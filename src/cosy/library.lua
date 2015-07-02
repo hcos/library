@@ -49,7 +49,7 @@ function Client.connect (client)
     Scheduler.wakeup (client._co)
   end
   client._ws.onmessage  = function (_, event)
-    local message 
+    local message
     if _G.js then
       message = event.data
     else
@@ -96,11 +96,10 @@ local mcoroutine = Coromake ()
 Client.methods = {}
 
 Client.methods ["user:create"] = function (operation, parameters)
-  local Http = require "socket.http"
-  local ip, ip_status = Http.request "http://www.telize.com/ip"
-  assert (ip_status == 200)
   local client = operation._client
   local data   = client._data
+  local ip, ip_status = Loader.loadhttp (data.url .. "/ext/ip")
+  assert (ip_status == 200)
   data.token          = nil
   parameters.password = Digest (parameters.password)
   parameters.ip       = ip:match "%S+"
@@ -109,7 +108,7 @@ Client.methods ["user:create"] = function (operation, parameters)
     data.username = parameters.username
     data.hashed   = parameters.password
     data.token    = result.response.authentication
-    local position, status = Loader.loadhttp "http://www.telize.com/geoip"
+    local position, status = Loader.loadhttp (data.url .. "/ext/geoip")
     if status == 200 then
       client.user.update {
         authentication = data.token,
@@ -281,6 +280,7 @@ function Library.client (t)
     _waiting = {},
     _data    = {},
   }, Client)
+  client._data.url      = t.url      or false
   client._data.host     = t.host     or false
   client._data.port     = t.port     or 80
   client._data.username = t.username or false
@@ -302,6 +302,7 @@ if _G.js then
     local parser   = _G.window.document:createElement "a";
     parser.href    = url;
     return Library.client {
+      url      = url,
       host     = parser.hostname,
       port     = parser.port,
       username = parser.username,
@@ -313,6 +314,7 @@ else
   function Library.connect (url)
     local parsed = Url.parse (url)
     return Library.client {
+      url      = url,
       host     = parsed.host,
       port     = parsed.port,
       username = parsed.user,

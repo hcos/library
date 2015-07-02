@@ -14,7 +14,7 @@ local Hidden = setmetatable ({}, {
 function Access.new (authentication, store)
   local result = setmetatable ({}, Access)
   Hidden [result] = {
-    user   = authentication.user,
+    user   = authentication and authentication.user or false,
     data   = store,
   }
   return result
@@ -34,7 +34,7 @@ function Access.__index (self, key)
   if subdata.hidden then
     return nil
   elseif subaccess then
-    if subaccess (user, data, Configuration.permissions.read) then
+    if not subaccess (user, data, Configuration.permissions.read) then
       return nil
     end
   elseif subdata.access then
@@ -79,6 +79,5 @@ function Access.__ipairs (access)
     end
   end)
 end
-
 
 return Access

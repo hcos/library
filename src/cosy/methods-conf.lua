@@ -25,7 +25,8 @@ local Hidden = function ()
 end
 
 local Private = function (user, data, level)
-  return user.username == data.username
+  return user
+     and user.username == data.username
       or (data.permissions and data.permissions [user.username] >= level)
 end
 
@@ -33,7 +34,8 @@ local Public = function (user, data, level)
   if level == Configuration.permissions.read then
     return true
   end
-  return user.username == data.username
+  return user
+     and user.username == data.username
       or (data.permissions and data.permissions [user.username] >= level)
 end
 
@@ -61,7 +63,7 @@ Default.resource = {
       _name         = Public,
       _organization = Public,
       _password     = Hidden,
-      _position     = Private,
+      _position     = Public,
       _reputation   = Public,
       _status       = Hidden,
       _tos_digest   = Private,

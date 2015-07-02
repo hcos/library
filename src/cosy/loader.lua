@@ -15,44 +15,13 @@ end
 if _G.js then
   package.loaded ["cosy.loader"] = loader
   loader.loadhttp = function (url)
-    local co, sync = coroutine.running ()
-    if not sync then
-      local level = 1
-      repeat
-        local info = debug.getinfo (level, "Sn")
-        if info and info.what == "C" then
-          sync = true
-          break
-        end
-        level = level + 1
-      until not info
-    end
     local request = _G.js.new (_G.window.XMLHttpRequest)
-    request:open ("GET", url, not sync)
-    local result, err
-    request.onreadystatechange = function (event)
-      if request.readyState == 4 then
-        if request.status == 200 then
-          result = request.responseText
-        else
-          err    = event.status
-        end
-        if not sync then
-          coroutine.resume (co)
-        end
-      end
-    end
-    if sync then
-      _G.window.console:log ("XMLHttpRequest is used in synchronous mode for: " .. url)
-      request:send (nil)
+    request:open ("GET", url, false)
+    request:send (nil)
+    if request.status == 200 then
+      return request.responseText, request.status
     else
-      request:send (nil)
-      coroutine.yield ()
-    end
-    if result then
-      return result, request.status
-    else
-      error (err)
+      return nil , request.status
     end
   end
   table.insert (package.searchers, 2, function (name)
@@ -90,9 +59,10 @@ do
     return loader.hotswap.require (name)
   end
 
-  _G.coroutine = require "coroutine.make" ()
-
   require "cosy.string"
+
+  local Coromake = require "coroutine.make"
+  _G.coroutine   = Coromake ()
 end
 
 return loader
