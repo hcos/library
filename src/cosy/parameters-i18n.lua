@@ -8,6 +8,9 @@ return {
   ["check:not-found"] = {
     en = "parameter {{{key}}} is missing",
   },
+  ["check:user:pattern"] = {
+    en = "user {{{name}}} does not follow pattern {{{pattern}}}"
+  },
   ["check:user:miss"] = {
     en = "user {{{name}}} does not exist",
   },
@@ -22,6 +25,9 @@ return {
   },
   ["check:user:suspended"] = {
     en = "user {{{name}}} is suspended",
+  },
+  ["check:project:pattern"] = {
+    en = "project {{{name}}} does not follow pattern {{{pattern}}}"
   },
   ["check:project:miss"] = {
     en = "project {{{name}}} does not exist",

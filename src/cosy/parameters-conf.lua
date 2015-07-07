@@ -318,10 +318,26 @@ end
 do
   local checks = Default.data.user.checks
   checks [Layer.size (checks)+1] = function (t)
-    local store   = t.store
     local request = t.request
     local key     = t.key
     local name    = request [key]
+    local values  = Configuration.resource.user.pattern / name
+    if not values then
+      return nil, {
+        _       = i18n ["check:user:pattern"],
+        name    = name,
+        pattern = Configuration.resource.user.pattern,
+      }
+    end
+    request [key] = values
+    return true
+  end
+  checks [Layer.size (checks)+1] = function (t)
+    local store   = t.store
+    local request = t.request
+    local key     = t.key
+    local value   = request [key]
+    local name    = Configuration.resource.user.pattern % value
     return  Store.exists (store.user, name)
         or  nil, {
               _    = i18n ["check:user:miss"],
@@ -332,7 +348,8 @@ do
     local store   = t.store
     local request = t.request
     local key     = t.key
-    local name    = request [key]
+    local value   = request [key]
+    local name    = Configuration.resource.user.pattern % value
     local user    = store.user [name]
     request [key] = user
     return  user.type == "user"
@@ -414,10 +431,26 @@ end
 do
   local checks = Default.data.project.checks
   checks [Layer.size (checks)+1] = function (t)
-    local store   = t.store
     local request = t.request
     local key     = t.key
     local name    = request [key]
+    local values  = Configuration.resource.project.pattern / name
+    if not values then
+      return nil, {
+        _       = i18n ["check:project:pattern"],
+        name    = name,
+        pattern = Configuration.resource.project.pattern,
+      }
+    end
+    request [key] = values
+    return true
+  end
+  checks [Layer.size (checks)+1] = function (t)
+    local store   = t.store
+    local request = t.request
+    local key     = t.key
+    local value   = request [key]
+    local name    = Configuration.resource.project.pattern % value
     return  Store.exists (store.project, name)
         or  nil, {
               _    = i18n ["check:project:miss"],
@@ -428,7 +461,8 @@ do
     local store   = t.store
     local request = t.request
     local key     = t.key
-    local name    = request [key]
+    local value   = request [key]
+    local name    = Configuration.resource.user.pattern % value
     local project = store.project [name]
     request [key] = project
     return  project.type == "project"
