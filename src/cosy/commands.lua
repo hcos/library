@@ -582,7 +582,7 @@ Commands ["server:start"] = function ()
     os.execute ([[sleep {{{time}}}]] % { time = 0.5 })
     serverpid = read (Configuration.server.pid)
     nginxpid  = read (Configuration.http  .pid)
-    tries      = tries + 1
+    tries     = tries + 1
   until (serverpid and nginxpid) or tries == 0
   local result
   if serverpid and nginxpid then
