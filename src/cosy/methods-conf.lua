@@ -11,7 +11,6 @@ Default.reputation = {
   initial = 10,
   suspend = 50,
   release = 50,
-  filter  = 50,
 }
 
 Default.permissions = {
@@ -41,12 +40,14 @@ end
 
 Default.resource = {
   email = {
-    key    = "email:{{{key}}}",
-    hidden = true,
+    key     = "email:{{{key}}}",
+    hidden  = true,
+    pattern = "{{{email}}}",
   },
   token = {
     key    = "token:{{{key}}}",
     hidden = true,
+    pattern = "{{{token}}}",
   },
   user = {
     key      = "user:{{{key}}}",
