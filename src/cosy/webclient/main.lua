@@ -1,22 +1,19 @@
 local location = js.global.location
 loader    = require (location.origin .. "/lua/cosy.loader")
-
-local function screen (authentication)
-  local result,err = client.server.filter({
-  authentication = authentication,
+client    =  {}
+local function screen ()
+local value   = require "cosy.value"
+ local result,err = client.server.filter({
   iterator = "return function (yield, store)\
     for k in pairs (store.user) do\
-      yield (store.user [k].username)\
+      yield {lat = store.user [k].position.latitude , lng = store.user [k].position.longitude}\
     end\
   end"
   })
   local iframe = js.global.document:getElementById("map").contentWindow
   for key,value in pairs(result) do
-    local result, err = client.user.information  {
-      user = value
-    }
-    if result.position.latitude and result.position.longitude then
-      iframe.cluster (nil,result.position.latitude,result.position.longitude)
+    if value.lat and value.lng then
+      iframe.cluster (nil,value.lat,value.lng)
     end
   end
   iframe.groupcluster ()
@@ -37,13 +34,7 @@ local function main()
     connected = true
   end
   js.global.document:getElementById("content-wrapper").innerHTML = loader.loadhttp ( "/html/main.html")
-  js.global.document:getElementById("logo").onclick = function()
-      js.global.document:getElementById("content-wrapper").innerHTML = loader.loadhttp ( "/html/main.html")
-      screen (token)
-      return false
-    end
   if connected then
-  screen (token)
     js.global.document:getElementById("navbar-login").innerHTML = loader.loadhttp ( "/html/logoutnavbar.html")
     js.global.document:getElementById("user-in").innerHTML = user
     local result, err = client.user.update {
@@ -85,7 +76,15 @@ local function main()
       return false
     end
   end
-
+  local map = js.global.document:getElementById("map")
+  if map.contentWindow.cluster == nil then
+      map.onload = function ()
+      local co = coroutine.create (screen)
+      coroutine.resume (co)
+   end
+  else
+    screen()
+  end
 end
 
 local co = coroutine.create (main)
