@@ -1,9 +1,11 @@
+local js = _G.js
+local window = _G.window
 local loader    = require "cosy.loader"
 local mainregister
 
 local function mainlogin ()
-local value   = require "cosy.value"
   local co = coroutine.running ()
+  local client = _G.client
   js.global.document:getElementById("content-wrapper").innerHTML = loader.loadhttp ( "/html/login.html")
   js.global.document:getElementById("signin").onclick = function()
     window:jQuery('#userdiv'):removeClass("has-error")
@@ -56,8 +58,8 @@ local value   = require "cosy.value"
 end
 
 mainregister = function ()
-local value   = require "cosy.value"
   local co = coroutine.running ()
+  local client = _G.client
   js.global.document:getElementById("content-wrapper").innerHTML = loader.loadhttp ( "/html/register.html")
   local info     = client.server.information ()
   js.global.document:getElementById("captchrender").innerHTML = "<div class='g-recaptcha' data-sitekey='{{{public}}}'></div>" % {
@@ -78,7 +80,7 @@ local value   = require "cosy.value"
       window:jQuery('#passdiv'):addClass("has-error")
       return false
     end
-     
+
      coroutine.resume(co,"register")
      return false
    end
@@ -107,7 +109,7 @@ local value   = require "cosy.value"
       local email  = js.global.document:getElementById("email").value
       local captcha  = js.global.document:getElementById("g-recaptcha-response").value
       local tostext  = client.server.tos ()
-      local ip, status = loader.loadhttp "/ip"
+      local ip = loader.loadhttp "/ip"
       local result, err = client.user.create {
       username   = user,
       password   = pass,

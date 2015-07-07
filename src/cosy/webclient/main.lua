@@ -1,43 +1,50 @@
+local js = _G.js
 local location = js.global.location
-loader    = require (location.origin .. "/lua/cosy.loader")
-client    =  {}
+local loader  = require (location.origin .. "/lua/cosy.loader")
+_G.client = {}
 local function screen ()
-local value   = require "cosy.value"
- local result,err = client.server.filter({
+local result,err = _G.client.server.filter({
   iterator = "return function (yield, store)\
     for k in pairs (store.user) do\
       yield {lat = store.user [k].position.latitude , lng = store.user [k].position.longitude}\
     end\
   end"
   })
+  if result then
   local iframe = js.global.document:getElementById("map").contentWindow
-  for key,value in pairs(result) do
-    if value.lat and value.lng then
-      iframe.cluster (nil,value.lat,value.lng)
+    for _,value in pairs(result) do
+      if value.lat and value.lng then
+        iframe.cluster (nil,value.lat,value.lng)
+      end
     end
+    iframe.groupcluster ()
+  else
+    print(err.message)
   end
-  iframe.groupcluster ()
 end
 
 local function main()
   local lib      = require "cosy.library"
-  client   = lib.connect (js.global.location.origin) 
+  _G.client   = lib.connect (js.global.location.origin)
   local storage = js.global.sessionStorage
   local token = storage:getItem("cosytoken")
-  local user = storage:getItem("cosyuser") 
-  local connected = false  
-  local result, err = client.user.is_authentified  {
+  local user = storage:getItem("cosyuser")
+  local connected = false
+  local connection, err = _G.client.user.is_authentified  {
       authentication = token
     }
-    
-  if result and user == result.username and token ~= js.null then
-    connected = true
+  if connection then
+    if user == connection.username and token ~= js.null then
+      connected = true
+    end
+  else
+    print(err.message)
   end
   js.global.document:getElementById("content-wrapper").innerHTML = loader.loadhttp ( "/html/main.html")
   if connected then
     js.global.document:getElementById("navbar-login").innerHTML = loader.loadhttp ( "/html/logoutnavbar.html")
     js.global.document:getElementById("user-in").innerHTML = user
-    local result, err = client.user.update {
+    local result = _G.client.user.update {
       authentication = token
     }
     if result.name then
@@ -59,20 +66,20 @@ local function main()
       storage:removeItem("cosyuser")
       js.global.location.href = "/"
       return false
-    end  
+    end
     js.global.document:getElementById("profile-button").onclick = function()
-      require ("cosy.webclient.profile")  
+      require ("cosy.webclient.profile")
       return false
-    end    
+    end
   else
-    local auth = require ("cosy.webclient.auth") 
+    local auth = require ("cosy.webclient.auth")
     js.global.document:getElementById("navbar-login").innerHTML = loader.loadhttp ( "/html/loginnavbar.html")
     js.global.document:getElementById("login-button").onclick = function()
       coroutine.wrap(auth.login) ()
       return false
     end
     js.global.document:getElementById("signup-button").onclick = function()
-      coroutine.wrap(auth.register) ()  
+      coroutine.wrap(auth.register) ()
       return false
     end
   end
