@@ -167,10 +167,12 @@ function Server.start ()
     host = Configuration.server.interface,
     port = Configuration.server.port,
   }
+
   do
     Nginx.stop  ()
     Nginx.start ()
   end
+
   do
     local datafile = Configuration.server.data
     local file     = io.open (datafile, "w")
@@ -182,6 +184,7 @@ function Server.start ()
     file:close ()
     os.execute ([[ chmod 0600 {{{file}}} ]] % { file = datafile })
   end
+
   do
     Ffi.cdef [[ unsigned int getpid (); ]]
     local pidfile = Configuration.server.pid
@@ -190,7 +193,6 @@ function Server.start ()
     file:close ()
     os.execute ([[ chmod 0600 {{{file}}} ]] % { file = pidfile })
   end
-
 
   Loader.hotswap.on_change ["cosy:configuration"] = function ()
     Scheduler.wakeup (updater)
