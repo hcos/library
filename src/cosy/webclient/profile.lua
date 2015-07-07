@@ -1,12 +1,14 @@
+local js = _G.js
+local window = _G.window
 local location = js.global.location
 local loader    = require (location.origin .. "/lua/cosy.loader")
 
 local profile = function  ()
+  local client = _G.client
   local value   = require "cosy.value"
   local co = coroutine.running ()
   local storage = js.global.sessionStorage
   local token = storage:getItem("cosytoken")
-  local username = storage:getItem("cosyuser")
   js.global.document:getElementById("content-wrapper").innerHTML = loader.loadhttp ( "/html/profile.html")
 
   local result, err = client.user.update {
@@ -45,18 +47,18 @@ local profile = function  ()
     local files = tgt.files
     if js.global.FileReader and files and #files > 0 then
       local fr = js.new(js.global.FileReader);
-      fr.onload = function () 
+      fr.onload = function ()
         js.global.document:getElementById("img").src = fr.result;
       end
       fr:readAsDataURL(files[0]);
     end
   end
-              
+
   local ok = true
   while ok do
     local event = coroutine.yield ()
     if event == "update" then
-   
+
       local updatedata = {
         authentication = token,
         avatar         = nil,
@@ -67,7 +69,6 @@ local profile = function  ()
         locale         = nil,
         position       = nil,
       }
-      local value   = require "cosy.value"
       updatedata.email  = js.global.document:getElementById("email").value
       for _, key in ipairs { "name", "organization", "homepage", "locale" } do
         if js.global.document:getElementById(key).value  ~= "" then
@@ -84,10 +85,10 @@ local profile = function  ()
             longitude = "",
             }
       local file = js.global.document:getElementById('avatar').files[0]
-      if file ~= nil then  
+      if file ~= nil then
         local xmlHttpRequest = js.new(window.XMLHttpRequest)
         xmlHttpRequest:open("POST", '/upload', false)
-        xmlHttpRequest.onreadystatechange = function (event)
+        xmlHttpRequest.onreadystatechange = function ()
           if xmlHttpRequest.readyState == 4 then
             if xmlHttpRequest.status == 200 then
               updatedata.avatar = xmlHttpRequest:getResponseHeader("Cosy-Avatar")
@@ -97,7 +98,7 @@ local profile = function  ()
         xmlHttpRequest:setRequestHeader("Content-Type", file.type)
         xmlHttpRequest:send(file)
       end
-      local result, err = client.user.update (updatedata)
+      result, err = client.user.update (updatedata)
       window:jQuery('.overlay'):hide()
       if result then
         window:jQuery('#success #message'):html("User Profile Updated")
