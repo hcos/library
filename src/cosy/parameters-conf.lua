@@ -540,6 +540,18 @@ do
   }
 end
 
+-- Homepage
+-- ------------
+do
+  Default.data.homepage = {
+    min_size = 1,
+    max_size = 128,
+    __refines__ = {
+      this.data.string.trimmed,
+    }
+  }
+end
+
 -- Description
 -- -----------
 do

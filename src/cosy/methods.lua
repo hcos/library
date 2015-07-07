@@ -13,10 +13,12 @@ local Store         = require "cosy.store"
 local Time          = require "cosy.time"
 local Token         = require "cosy.token"
 local Coromake      = require "coroutine.make"
+local Mime          = require "mime"
 
 Configuration.load {
   "cosy.methods",
   "cosy.parameters",
+  "cosy.server",
 }
 
 local i18n   = I18n.load "cosy.methods"
@@ -271,6 +273,7 @@ function Methods.user.send_validation (request, store, try_only)
     },
     body    = {
       _          = i18n ["user:update:body"],
+      host       = Configuration.http.hostname,
       username   = user.username,
       token      = Token.validation (user),
     },
@@ -350,7 +353,7 @@ function Methods.user.update (request, store, try_only)
     },
   })
   local user = request.authentication.user
-  if request.username then
+  if request.username and request.username ~= user.username then
     local olduser = Configuration.resource.user.pattern % {
       user = user.username,
     }
@@ -386,7 +389,7 @@ function Methods.user.update (request, store, try_only)
     user.username = request.username
     store.email [user.email].username = request.username
   end
-  if request.email then
+  if request.email and user.email~= request.email then
     local oldemail = Configuration.resource.email.pattern % {
       email = user.email,
     }
@@ -440,10 +443,10 @@ function Methods.user.update (request, store, try_only)
       width  = Configuration.data.avatar.width ,
     })
     file = io.open (filename, "r")
-    user.avatar = file:read "*all"
+    user.avatar = Mime.b64 (file:read "*all")
     file:close ()
   end
-  for _, key in ipairs { "name", "organization", "locale" } do
+  for _, key in ipairs { "name", "homepage", "organization", "locale" } do
     if request [key] then
       user [key] = request [key]
     end
