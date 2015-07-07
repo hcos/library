@@ -112,16 +112,6 @@ function Methods.server.filter (request, store)
       authentication = Parameters.token.authentication,
     }
   })
-  if request.authentication then
-    local user = request.authentication.user
-    if user.reputation < Configuration.reputation.filter then
-      error {
-        _        = i18n ["server:filter:not-enough"],
-        owned    = user.reputation,
-        required = Configuration.reputation.filter,
-      }
-    end
-  end
   local access    = Access.new (request.authentication, store)
   local coroutine = Coromake ()
   local co        = coroutine.create (request.iterator)
@@ -161,13 +151,19 @@ function Methods.user.create (request, store, try_only)
       administration = Parameters.token.administration,
     },
   })
-  if store.email [request.email] then
+  local userkey = Configuration.resource.user.pattern % {
+    user = request.username,
+  }
+  local emailkey = Configuration.resource.email.pattern % {
+    email = request.email,
+  }
+  if store.email [emailkey] then
     error {
       _     = i18n ["email:exist"],
       email = request.email,
     }
   end
-  if store.user [request.username] then
+  if store.user [userkey] then
     error {
       _        = i18n ["username:exist"],
       username = request.username,
@@ -196,7 +192,7 @@ function Methods.user.create (request, store, try_only)
       username = request.username,
     }
   end
-  store.email [request.email] = {
+  store.email [emailkey] = {
     username  = request.username,
   }
   if request.locale == nil then
@@ -214,7 +210,7 @@ function Methods.user.create (request, store, try_only)
     type        = "user",
     username    = request.username,
   }
-  store.user [request.username] = user
+  store.user [userkey] = user
   if try_only then
     return true
   end
@@ -355,7 +351,13 @@ function Methods.user.update (request, store, try_only)
   })
   local user = request.authentication.user
   if request.username then
-    if store.user [request.username] then
+    local olduser = Configuration.resource.user.pattern % {
+      user = user.username,
+    }
+    local newuser = Configuration.resource.user.pattern % {
+      user = request.username,
+    }
+    if store.user [newuser] then
       error {
         _        = i18n ["username:exist"],
         username = request.username,
@@ -379,20 +381,26 @@ function Methods.user.update (request, store, try_only)
       store.project [old] = nil
       store.project [new] = project
     end
-    store.user [user.username   ] = nil
-    store.user [request.username] = user
+    store.user [olduser] = nil
+    store.user [newuser] = user
     user.username = request.username
     store.email [user.email].username = request.username
   end
   if request.email then
-    if store.email [request.email] then
+    local oldemail = Configuration.resource.email.pattern % {
+      email = user.email,
+    }
+    local newemail = Configuration.resource.email.pattern % {
+      email = request.email,
+    }
+    if store.email [newemail] then
       error {
         _     = i18n ["email:exist"],
         email = request.email,
       }
     end
-    store.email [user.email   ] = nil
-    store.email [request.email] = {
+    store.email [oldemail] = nil
+    store.email [newemail] = {
       username  = user.username,
     }
     user.email   = request.email
@@ -497,11 +505,17 @@ function Methods.user.reset (request, store, try_only)
       email = Parameters.email,
     },
   })
-  local email = store.email [request.email]
+  local emailkey = Configuration.resource.email.pattern % {
+    email = request.email,
+  }
+  local email = store.email [emailkey]
   if not email then
     return
   end
-  local user = store.user [email.username]
+  local userkey = Configuration.resource.user.pattern % {
+    user = email.user,
+  }
+  local user = store.user [userkey]
   if not user
   or user.type ~= "user" then
     return
@@ -594,8 +608,14 @@ function Methods.user.delete (request, store)
     },
   })
   local user = request.authentication.user
-  store.email [user.email   ] = nil
-  store.user  [user.username] = nil
+  local userkey = Configuration.resource.user.pattern % {
+    user = user.username,
+  }
+  local emailkey = Configuration.resource.user.pattern % {
+    email = user.email,
+  }
+  store.email [emailkey] = nil
+  store.user  [userkey ] = nil
   local filter = Configuration.resource.project.pattern % {
     user    = user.username,
     project = "*",
@@ -620,7 +640,7 @@ function Methods.project.create (request, store)
       is_private = Parameters.is_private,
     },
   })
-  local user = store.user [request.authentication.username]
+  local user = request.authentication.user
   local name = Configuration.resource.project.pattern % {
     user    = user.username,
     project = request.projectname,
@@ -647,21 +667,25 @@ function Methods.project.delete (request, store)
       project        = Parameters.project,
     },
   })
-  local project = store.project [request.project.rawname]
+  local project = request.project
   if not project then
     error {
       _    = i18n ["project:miss"],
       name = request.project.rawname,
     }
   end
-  local user    = store.user [request.authentication.username]
+  local user = request.authentication.user
   if project.username ~= user.username then
     error {
       _    = i18n ["project:forbidden"],
       name = project.projectname,
     }
   end
-  store.project [request.project.rawname] = nil
+  local projectkey = Configuration.resource.project.pattern % {
+    user    = user.username,
+    project = project.projectname,
+  }
+  store.project [projectkey] = nil
 end
 
 return Methods
