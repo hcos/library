@@ -45,8 +45,8 @@ Default.resource = {
     pattern = "{{{email}}}",
   },
   token = {
-    key    = "token:{{{key}}}",
-    hidden = true,
+    key     = "token:{{{key}}}",
+    hidden  = true,
     pattern = "{{{token}}}",
   },
   user = {
