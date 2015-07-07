@@ -152,7 +152,28 @@ Client.methods ["user:update"] = function (operation, parameters)
   if parameters.password then
     parameters.password = Digest (parameters.password)
   end
-  local result = mcoroutine.yield ()
+  if parameters.position and parameters.position.longitude == "" and parameters.position.latitude == "" then
+  local co = coroutine.wrap(function() -- FIXME
+    local url = "http://maps.googleapis.com/maps/api/geocode/json?address={{{country}}},{{{city}}}" % {
+      country = parameters.position.country,
+     city = parameters.position.city,
+    }
+    local response, status = Loader.loadhttp (url)
+    if status == 200 then
+      local coordinate = Json.decode (response)
+      position = parameters.position
+      position.latitude  = coordinate.results [1].geometry.location.lat
+      position.longitude = coordinate.results [1].geometry.location.lng
+      client.user.update ({
+      authentication = parameters.authentication,
+      position = position,
+      })
+    end
+    end)
+  co ()
+  else
+    local result = mcoroutine.yield ()
+  end
   if result.success and parameters.username then
     data.username = result.response.username
     data.token    = result.response.authentication
