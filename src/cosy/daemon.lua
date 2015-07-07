@@ -5,6 +5,7 @@ local Handler       = require "cosy.daemon-handler"
 local Logger        = require "cosy.logger"
 local Value         = require "cosy.value"
 local Scheduler     = require "cosy.scheduler"
+local App           = require "cosy.configuration-layers".app
 local Ffi           = require "ffi"
 local Websocket     = require "websocket"
 
@@ -22,10 +23,11 @@ Daemon.libraries = {}
 
 function Daemon.start ()
   local addserver = Scheduler.addserver
+  App.daemon = {}
   Scheduler.addserver = function (s, f)
     local ok, port = s:getsockname ()
     if ok then
-      Configuration.daemon.port = port
+      App.daemon.port = port
     end
     addserver (s, f)
   end
