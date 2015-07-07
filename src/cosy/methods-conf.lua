@@ -49,6 +49,11 @@ Default.resource = {
     hidden  = true,
     pattern = "{{{token}}}",
   },
+  tag = {
+    key     = "tag:{{{key}}}",
+    hidden  = false,
+    pattern = "{{{tag}}}",
+  },
   user = {
     key      = "user:{{{key}}}",
     hidden   = false,
