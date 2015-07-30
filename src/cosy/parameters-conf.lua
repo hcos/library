@@ -4,7 +4,7 @@ local Store         = require "cosy.store"
 local Token         = require "cosy.token"
 local Default       = require "cosy.configuration-layers".default
 local Layer         = require "layeredata"
-local this          = Layer.reference "configuration"
+local this          = Layer.reference (false)
 
 Configuration.load "cosy.methods"
 
@@ -658,8 +658,7 @@ do
     local request = t.request
     local key     = t.key
     local value   = request [key]
-    local Server  = require "cosy.server"
-    return  value.passphrase == Server.passphrase
+    return  value.passphrase == Configuration.server.passphrase
         or  nil, {
               _ = i18n ["check:token:invalid"],
             }

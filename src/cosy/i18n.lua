@@ -25,7 +25,7 @@ function I18n.load (t)
     depends [#depends+1] = layer
   end
   local all = Layer.new { name = "i18n", data = {
-      __depends__ = depends,
+      __refines__ = depends,
     }
   }
   local store = setmetatable ({}, {
