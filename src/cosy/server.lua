@@ -125,11 +125,11 @@ function Server.start ()
   if not Configuration.server.name then
     Server.setname ()
   end
-  App.server          = {}
-  Server.passphrase   = Digest (Random ())
-  Server.token        = Token.administration (Server)
-  local addserver     = Scheduler.addserver
-  Scheduler.addserver = function (s, f)
+  App.server            = {}
+  App.server.passphrase = Digest (Random ())
+  App.server.token      = Token.administration ()
+  local addserver       = Scheduler.addserver
+  Scheduler.addserver   = function (s, f)
     local ok, port = s:getsockname ()
     if ok then
       App.server.port = port
@@ -177,7 +177,7 @@ function Server.start ()
     local datafile = Configuration.server.data
     local file     = io.open (datafile, "w")
     file:write (Value.expression {
-      token     = Server.token,
+      token     = Configuration.server.token,
       interface = Configuration.server.interface,
       port      = Configuration.server.port,
     })
