@@ -1,6 +1,5 @@
 local Methods  = {}
 
-local Access        = require "cosy.access"
 local Configuration = require "cosy.configuration"
 local Digest        = require "cosy.digest"
 local Email         = require "cosy.email"
@@ -114,12 +113,11 @@ function Methods.server.filter (request, store)
       authentication = Parameters.token.authentication,
     }
   })
-  local access    = Access.new (request.authentication, store)
   local coroutine = Coromake ()
   local co        = coroutine.create (request.iterator)
   local results   = {}
   while coroutine.status (co) ~= "dead" do
-    local ok, result = coroutine.resume (co, coroutine.yield, access)
+    local ok, result = coroutine.resume (co, coroutine.yield, store)
     if not ok then
       error {
         _      = i18n ["server:filter:error"],
