@@ -749,16 +749,18 @@ Results ["server:filter"] = function (response)
 end
 
 Prepares ["user:create"] = function (commands, args)
-  commands.ws:send (Value.expression {
-    server     = args.server,
-    operation  = "server:tos",
-    parameters = {
-      locale = args.locale,
-    },
-  })
-  local tosresult = Value.decode (commands.ws:receive ())
-  if tosresult.success then
-    args.tos_digest = tosresult.response.tos_digest
+  if not args.tos_digest then
+    commands.ws:send (Value.expression {
+      server     = args.server,
+      operation  = "server:tos",
+      parameters = {
+        locale = args.locale,
+      },
+    })
+    local tosresult = Value.decode (commands.ws:receive ())
+    if tosresult.success then
+      args.tos_digest = tosresult.response.tos_digest
+    end
   end
 end
 
