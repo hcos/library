@@ -67,7 +67,7 @@ http {
           return ngx.exit (500)
         end
         redis:select ({{{redis_database}}})
-        local target = redis:get ("foreign:" .. ngx.var.uri)
+        local target = redis:get ("/foreign/" .. ngx.var.uri)
         if not target or target == ngx.null then
           return ngx.exit (404)
         end
@@ -87,7 +87,7 @@ http {
           return ngx.exit (500)
         end
         redis:select ({{{redis_database}}})
-        local target = redis:get ("external:" .. ngx.var.uri)
+        local target = redis:get ("/external/" .. ngx.var.uri)
         if not target or target == ngx.null then
           return ngx.exit (404)
         end
