@@ -9,7 +9,7 @@ local layers = {
   whole   = Layer.new { name = "whole"   },
 }
 
-layers.whole.__depends__ = {
+layers.whole.__refines__ = {
   layers.default,
   layers.etc,
   layers.home,
