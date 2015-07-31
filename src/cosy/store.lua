@@ -172,18 +172,6 @@ function Document.__add (document, key)
   return result
 end
 
-function Document.__sub (document, pattern)
-  assert (getmetatable (document) == Document.__metatable)
-  document = assert (Hidden [document]).root
-  for doc in document / pattern do
-    doc = assert (Hidden [doc])
-    doc.data   = nil
-    doc.dirty  = true
-    doc.loaded = true
-  end
-  return true
-end
-
 function View.new (store)
   assert (getmetatable (store) == Store.__metatable)
   local result = setmetatable ({}, View)
@@ -191,6 +179,27 @@ function View.new (store)
     access   = true,
     store    = store,
     token    = false,
+  }
+  Hidden [result].root = Hidden [result]
+  return result
+end
+
+function View.from_key (view, key)
+  assert (getmetatable (view) == View.__metatable)
+  assert (type (key) == "string")
+  view              = assert (Hidden [view])
+  local store       = assert (Hidden [view.store])
+  local document    = store.documents [key]
+  if not document then
+    return nil
+  end
+  local result      = setmetatable ({}, View)
+  Hidden [result]   = {
+    access   = view.access,
+    document = document,
+    root     = view.root,
+    store    = view.store,
+    token    = view.token,
   }
   Hidden [result].root = Hidden [result]
   return result
@@ -215,7 +224,7 @@ function View.__unm (view)
   assert (getmetatable (view) == View.__metatable)
   local document = assert (Hidden [view]).document
   local data     = assert (Hidden [document]).data
-  return data ~= false or data ~= nil
+  return data ~= false and data ~= nil
 end
 
 function View.__index (view, key)
@@ -262,6 +271,7 @@ end
 
 function View.__add (view, key)
   assert (getmetatable (view) == View.__metatable)
+  assert (type (key) == "string")
   local rawview = assert (Hidden [view])
   local document
   if rawview.document then
@@ -286,21 +296,26 @@ end
 
 function View.__sub (view, pattern)
   assert (getmetatable (view) == View.__metatable)
-  local document = assert (Hidden [view]).document
-  assert (document - pattern)
+  for _, document in (view / pattern) () do
+    document = assert (Hidden [document]).document
+    document = assert (Hidden [document])
+    document.data   = nil
+    document.dirty  = true
+    document.loaded = true
+  end
   return view
 end
 
 function View.__call (view)
   assert (getmetatable (view) == View.__metatable)
-  view            = assert (Hidden [view])
-  local document  = assert (Hidden [view.document])
-  local store     = assert (Hidden [view.store])
+  local rawview   = assert (Hidden [view])
+  local document  = assert (Hidden [rawview.document])
+  local store     = assert (Hidden [rawview.store])
   local coroutine = Coromake ()
   return coroutine.wrap (function ()
     for key, doc in pairs (store.documents) do
       if key:match (document.key) and Hidden [doc].data ~= nil then
-        coroutine.yield (key, doc)
+        coroutine.yield (key, View.from_key (view, key))
       end
     end
     local cursor = 0
@@ -315,15 +330,42 @@ function View.__call (view)
       for i = 1, #r [2] do
         local key = r [2] [i]
         if key:match (document.key) then
-          coroutine.yield (r [2] [i], Document.new {
-            store    = view.store,
-            resource = document.resource,
-            key      = r [2] [i],
-          })
+          coroutine.yield (key, View.from_key (view, key))
         end
       end
     until cursor == "0"
   end)
+end
+
+function View.__pairs (view)
+  assert (getmetatable (view) == View.__metatable)
+  view            = assert (Hidden [view])
+  local document  = assert (Hidden [view.document])
+  local coroutine = Coromake ()
+  return coroutine.wrap (function ()
+    for k in pairs (document.data) do
+      coroutine.yield (k, view.document [k])
+    end
+  end)
+end
+
+function View.__ipairs (view)
+  assert (getmetatable (view) == View.__metatable)
+  view            = assert (Hidden [view])
+  local document  = assert (Hidden [view.document])
+  local coroutine = Coromake ()
+  return coroutine.wrap (function ()
+    for i = 1, #document.data do
+      coroutine.yield (i, view.document [i])
+    end
+  end)
+end
+
+function View.__len (view)
+  assert (getmetatable (view) == View.__metatable)
+  view            = assert (Hidden [view])
+  local document  = assert (Hidden [view.document])
+  return #document.data
 end
 
 function View.__tostring (view)
@@ -357,4 +399,15 @@ return {
     assert (getmetatable (view) == View.__metatable)
     return Store.commit (Hidden [view].store)
   end,
+  exists = function (view)
+    assert (view == nil or getmetatable (view) == View.__metatable)
+    if view == nil then
+      return false
+    else
+      return -view
+    end
+  end,
+  pairs  = View.__pairs,
+  ipairs = View.__ipairs,
+  size   = View.__len,
 }
