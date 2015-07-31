@@ -357,7 +357,7 @@ function Methods.user.update (request, store, try_only)
       newuser [k] = v
     end
     newuser.username = newusername
-    for _, oldproject in (olduser / ".*") () do
+    for _, oldproject in olduser / ".*" do
       local newproject = newuser + oldproject.projectname
       for k, v in Store.pairs (oldproject) do
         newproject [k] = v

@@ -296,7 +296,7 @@ end
 
 function View.__sub (view, pattern)
   assert (getmetatable (view) == View.__metatable)
-  for _, document in (view / pattern) () do
+  for _, document in view / pattern do
     document = assert (Hidden [document]).document
     document = assert (Hidden [document])
     document.data   = nil
@@ -309,32 +309,36 @@ end
 function View.__call (view)
   assert (getmetatable (view) == View.__metatable)
   local rawview   = assert (Hidden [view])
-  local document  = assert (Hidden [rawview.document])
-  local store     = assert (Hidden [rawview.store])
-  local coroutine = Coromake ()
-  return coroutine.wrap (function ()
-    for key, doc in pairs (store.documents) do
-      if key:match (document.key) and Hidden [doc].data ~= nil then
-        coroutine.yield (key, View.from_key (view, key))
-      end
-    end
-    local cursor = 0
-    repeat
-      local r = store.redis:scan (cursor, {
-        match = is_pattern (document.key)
-            and document.key:match "^(/.-/).*$" .. "*"
-             or document.key,
-        count = 100,
-      })
-      cursor = r [1]
-      for i = 1, #r [2] do
-        local key = r [2] [i]
-        if key:match (document.key) then
+  if not rawview.iterator then
+    local document  = assert (Hidden [rawview.document])
+    local store     = assert (Hidden [rawview.store])
+    local coroutine = Coromake ()
+    rawview.iterator = coroutine.wrap (function ()
+      for key, doc in pairs (store.documents) do
+        if key:match (document.key) and Hidden [doc].data ~= nil then
           coroutine.yield (key, View.from_key (view, key))
         end
       end
-    until cursor == "0"
-  end)
+      local cursor = 0
+      repeat
+        local r = store.redis:scan (cursor, {
+          match = is_pattern (document.key)
+              and document.key:match "^(/.-/).*$" .. "*"
+               or document.key,
+          count = 100,
+        })
+        cursor = r [1]
+        for i = 1, #r [2] do
+          local key = r [2] [i]
+          if key:match (document.key) then
+            coroutine.yield (key, View.from_key (view, key))
+          end
+        end
+      until cursor == "0"
+      rawview.iterator = false
+    end)
+  end
+  return rawview.iterator ()
 end
 
 function View.__pairs (view)
