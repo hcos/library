@@ -151,19 +151,13 @@ function Methods.user.create (request, store, try_only)
       administration = Parameters.token.administration,
     },
   })
-  local userkey = Configuration.resource.user.pattern % {
-    user = request.username,
-  }
-  local emailkey = Configuration.resource.email.pattern % {
-    email = request.email,
-  }
-  if store.email [emailkey] then
+  if Store.exists (store / "email" / request.email) then
     error {
       _     = i18n ["email:exist"],
       email = request.email,
     }
   end
-  if store.user [userkey] then
+  if Store.exists (store / "data" / request.username) then
     error {
       _        = i18n ["username:exist"],
       username = request.username,
@@ -192,25 +186,22 @@ function Methods.user.create (request, store, try_only)
       username = request.username,
     }
   end
-  store.email [emailkey] = {
-    username  = request.username,
-  }
+  local email = store / "email" + request.email
+  email.username = request.username
   if request.locale == nil then
     request.locale = Configuration.locale
   end
-  local user = {
-    checked     = false,
-    email       = request.email,
-    lastseen    = Time (),
-    locale      = request.locale,
-    password    = Password.hash (request.password),
-    tos_digest  = request.tos_digest,
-    reputation  = Configuration.reputation.initial,
-    status      = "active",
-    type        = "user",
-    username    = request.username,
-  }
-  store.user [userkey] = user
+  local user = store / "data" + request.username
+  user.checked     = false
+  user.email       = request.email
+  user.lastseen    = Time ()
+  user.locale      = request.locale
+  user.password    = Password.hash (request.password)
+  user.tos_digest  = request.tos_digest
+  user.reputation  = Configuration.reputation.initial
+  user.status      = "active"
+  user.type        = "user"
+  user.username    = request.username
   if try_only then
     return true
   end
@@ -352,60 +343,45 @@ function Methods.user.update (request, store, try_only)
   })
   local user = request.authentication.user
   if request.username and request.username ~= user.username then
-    local olduser = Configuration.resource.user.pattern % {
-      user = user.username,
-    }
-    local newuser = Configuration.resource.user.pattern % {
-      user = request.username,
-    }
-    if store.user [newuser] then
+    local olduser     = request.authentication.user
+    local oldusername = olduser.username
+    local newusername = request.username
+    if Store.exists (store / "data" / newusername) then
       error {
         _        = i18n ["username:exist"],
-        username = request.username,
+        username = newusername,
       }
     end
-    local filter = Configuration.resource.project.pattern % {
-      user    = user.username,
-      project = "*",
-    }
-    for name, project in Store.filter (store.project, filter) do
-      local projectname = (Configuration.resource.project.pattern / name).project
-      project.username = request.username
-      local old = Configuration.resource.project.pattern % {
-        user    = user.username,
-        project = projectname,
-      }
-      local new = Configuration.resource.project.pattern % {
-        user    = request.username,
-        project = projectname,
-      }
-      store.project [old] = nil
-      store.project [new] = project
+    local newuser    = store / "data" + newusername
+    for k, v in Store.pairs (olduser) do
+      newuser [k] = v
     end
-    store.user [olduser] = nil
-    store.user [newuser] = user
-    user.username = request.username
-    store.email [user.email].username = request.username
+    newuser.username = newusername
+    for _, oldproject in (olduser / ".*") () do
+      local newproject = newuser + oldproject.projectname
+      for k, v in Store.pairs (oldproject) do
+        newproject [k] = v
+      end
+      newproject.username = newusername
+      local _ = olduser - oldproject.projectname
+    end
+    local email    = store / "email" / olduser.email
+    email.username = newusername
+    local _        = store / "data"  - oldusername
+    user = newuser
   end
-  if request.email and user.email~= request.email then
-    local oldemail = Configuration.resource.email.pattern % {
-      email = user.email,
-    }
-    local newemail = Configuration.resource.email.pattern % {
-      email = request.email,
-    }
-    if store.email [newemail] then
+  if request.email and user.email ~= request.email then
+    if Store.exists (store / "email" / request.email) then
       error {
         _     = i18n ["email:exist"],
         email = request.email,
       }
     end
-    store.email [oldemail] = nil
-    store.email [newemail] = {
-      username  = user.username,
-    }
-    user.email   = request.email
-    user.checked = false
+    local _           = store / "email" - user.email
+    local newemail    = store / "email" + user.email
+    newemail.username = user.username
+    user.email        = request.email
+    user.checked      = false
     Methods.user.send_validation ({
       authentication = Token.authentication (user),
       try_only       = try_only,
@@ -506,19 +482,12 @@ function Methods.user.reset (request, store, try_only)
       email = Parameters.email,
     },
   })
-  local emailkey = Configuration.resource.email.pattern % {
-    email = request.email,
-  }
-  local email = store.email [emailkey]
-  if not email then
+  local email = store / "email" / request.email
+  if not Store.exists (email) then
     return
   end
-  local userkey = Configuration.resource.user.pattern % {
-    user = email.user,
-  }
-  local user = store.user [userkey]
-  if not user
-  or user.type ~= "user" then
+  local user = store / "data" / email.username
+  if not Store.exists (user) or user.type ~= "user" then
     return
   end
   user.password = ""
@@ -609,21 +578,9 @@ function Methods.user.delete (request, store)
     },
   })
   local user = request.authentication.user
-  local userkey = Configuration.resource.user.pattern % {
-    user = user.username,
-  }
-  local emailkey = Configuration.resource.user.pattern % {
-    email = user.email,
-  }
-  store.email [emailkey] = nil
-  store.user  [userkey ] = nil
-  local filter = Configuration.resource.project.pattern % {
-    user    = user.username,
-    project = "*",
-  }
-  for name in Store.filter (store.project, filter) do
-    store.project [name] = nil
-  end
+  local _ = store / "data"  / user.username - ".*"
+  local _ = store / "data"  / user.username
+  local _ = store / "email" / user.email
 end
 
 -- Project
@@ -642,23 +599,18 @@ function Methods.project.create (request, store)
     },
   })
   local user = request.authentication.user
-  local name = Configuration.resource.project.pattern % {
-    user    = user.username,
-    project = request.projectname,
-  }
-  local project = store.project [name]
-  if project then
+  local project = store / "data" / user.username / request.projectname
+  if not Store.exists (project) then
     error {
       _    = i18n ["project:exist"],
-      name = name,
+      name = request.projectname,
     }
   end
-  store.project [name] = {
-    permissions = {},
-    projectname = request.projectname,
-    type        = "project",
-    username    = user.username,
-  }
+  project = store / "data" / user.username + request.projectname
+  project.permissions = {}
+  project.projectname = request.projectname
+  project.type        = "project"
+  project.username    = user.username
 end
 
 function Methods.project.delete (request, store)
@@ -669,7 +621,7 @@ function Methods.project.delete (request, store)
     },
   })
   local project = request.project
-  if not project then
+  if not Store.exists (project) then
     error {
       _    = i18n ["project:miss"],
       name = request.project.rawname,
@@ -682,11 +634,7 @@ function Methods.project.delete (request, store)
       name = project.projectname,
     }
   end
-  local projectkey = Configuration.resource.project.pattern % {
-    user    = user.username,
-    project = project.projectname,
-  }
-  store.project [projectkey] = nil
+  local _ = store / "data" / project.username - project.projectname
 end
 
 return Methods

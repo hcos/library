@@ -14,11 +14,19 @@ Default.reputation = {
 
 Default.resource = {
   email = {
+    ["/"] = {},
   },
   token = {
+    ["/"] = {},
   },
   tag   = {
+    ["/"] = {},
   },
   data  = {
+    ["/"] = {
+      ["/"] = {
+
+      },
+    },
   },
 }
