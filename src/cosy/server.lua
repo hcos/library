@@ -11,6 +11,7 @@ local Random        = require "cosy.random"
 local Redis         = require "cosy.redis"
 local Scheduler     = require "cosy.scheduler"
 local Handler       = require "cosy.server-handler"
+local Store         = require "cosy.store"
 local Token         = require "cosy.token"
 local Value         = require "cosy.value"
 local App           = require "cosy.configuration-layers".app
@@ -23,6 +24,10 @@ local i18n   = I18n.load "cosy.server"
 i18n._locale = Configuration.locale
 
 local Server = {}
+
+Scheduler.addthread (function ()
+  Store.initialize ()
+end)
 
 local updater = Scheduler.addthread (function ()
   while true do
@@ -39,7 +44,7 @@ local updater = Scheduler.addthread (function ()
       local url = p
       if type (url) == "string" and url:match "^http" then
         script [#script+1] = ([[
-          redis.call ("set", "foreign:{{{name}}}", "{{{source}}}")
+          redis.call ("set", "/foreign/{{{name}}}", "{{{source}}}")
         ]]) % {
           name   = name,
           source = url,
@@ -50,7 +55,7 @@ local updater = Scheduler.addthread (function ()
       local url = p
       if type (url) == "string" and url:match "^http" then
         script [#script+1] = ([[
-          redis.call ("set", "external:{{{name}}}", "{{{source}}}")
+          redis.call ("set", "/external/{{{name}}}", "{{{source}}}")
         ]]) % {
           name   = name,
           source = url,
@@ -61,7 +66,7 @@ local updater = Scheduler.addthread (function ()
       return true
     ]]
     script = table.concat (script)
-    redis:eval (script, 1, "foreign:*")
+    redis:eval (script, 1, "/foreign/*")
     os.execute ([[
       if [ -d {{{root}}}/cache ]
       then
@@ -125,11 +130,11 @@ function Server.start ()
   if not Configuration.server.name then
     Server.setname ()
   end
-  App.server          = {}
-  Server.passphrase   = Digest (Random ())
-  Server.token        = Token.administration (Server)
-  local addserver     = Scheduler.addserver
-  Scheduler.addserver = function (s, f)
+  App.server            = {}
+  App.server.passphrase = Digest (Random ())
+  App.server.token      = Token.administration ()
+  local addserver       = Scheduler.addserver
+  Scheduler.addserver   = function (s, f)
     local ok, port = s:getsockname ()
     if ok then
       App.server.port = port
@@ -177,7 +182,7 @@ function Server.start ()
     local datafile = Configuration.server.data
     local file     = io.open (datafile, "w")
     file:write (Value.expression {
-      token     = Server.token,
+      token     = Configuration.server.token,
       interface = Configuration.server.interface,
       port      = Configuration.server.port,
     })

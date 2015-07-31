@@ -218,7 +218,7 @@ function Email.send (message)
       create   = Tcp [Configuration.smtp.method] (Configuration.smtp.protocol, make_socket.async),
     } then
       local redis = Redis ()
-      redis:rpush (Configuration.smtp.key, Value.expression (localized))
+      redis:rpush (Configuration.smtp.redis_key, Value.expression (localized))
     end
   end)
 end

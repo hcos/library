@@ -26,6 +26,7 @@ end
 local function call_method (method, parameters, try_only)
   for _ = 1, Configuration.redis.retry or 1 do
     local store  = Store.new ()
+    store = Store.specialize (store, Configuration.server.token)
     local err
     local ok, result = xpcall (function ()
       local r = method (parameters, store, try_only)

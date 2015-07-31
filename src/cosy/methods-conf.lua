@@ -1,5 +1,4 @@
-local Configuration = require "cosy.configuration"
-local Default       = require "cosy.configuration-layers".default
+local Default = require "cosy.configuration-layers".default
 
 Default.expiration = {
   validation     =  1 * 3600, -- 1 hour
@@ -13,73 +12,21 @@ Default.reputation = {
   release = 50,
 }
 
-Default.permissions = {
-  read  = 1,
-  write = 2,
-  admin = 3,
-}
-
-local Hidden = function ()
-  return false
-end
-
-local Private = function (user, data, level)
-  return user
-     and user.username == data.username
-      or (data.permissions and data.permissions [user.username] >= level)
-end
-
-local Public = function (user, data, level)
-  if level == Configuration.permissions.read then
-    return true
-  end
-  return user
-     and user.username == data.username
-      or (data.permissions and data.permissions [user.username] >= level)
-end
-
 Default.resource = {
   email = {
-    key     = "email:{{{key}}}",
-    hidden  = true,
-    pattern = "{{{email}}}",
+    ["/"] = {},
   },
   token = {
-    key     = "token:{{{key}}}",
-    hidden  = true,
-    pattern = "{{{token}}}",
+    ["/"] = {},
   },
-  tag = {
-    key     = "tag:{{{key}}}",
-    hidden  = false,
-    pattern = "{{{tag}}}",
+  tag   = {
+    ["/"] = {},
   },
-  user = {
-    key      = "user:{{{key}}}",
-    hidden   = false,
-    pattern  = "{{{user}}}",
-    template = {
-      access        = Public,
-      _avatar       = Public,
-      _checked      = Private,
-      _email        = Private,
-      _homepage     = Public,
-      _lastseen     = Private,
-      _locale       = Private,
-      _name         = Public,
-      _organization = Public,
-      _password     = Hidden,
-      _position     = Public,
-      _reputation   = Public,
-      _status       = Hidden,
-      _tos_digest   = Private,
-      _type         = Hidden,
-      _username     = Public,
+  data  = {
+    ["/"] = {
+      ["/"] = {
+
+      },
     },
-  },
-  project = {
-    key     = "project:{{{key}}}",
-    hidden  = false,
-    pattern = "{{{user}}}/{{{project}}}",
   },
 }

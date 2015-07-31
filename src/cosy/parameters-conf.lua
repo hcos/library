@@ -4,7 +4,7 @@ local Store         = require "cosy.store"
 local Token         = require "cosy.token"
 local Default       = require "cosy.configuration-layers".default
 local Layer         = require "layeredata"
-local this          = Layer.reference "configuration"
+local this          = Layer.reference (false)
 
 Configuration.load "cosy.methods"
 
@@ -318,30 +318,14 @@ end
 do
   local checks = Default.data.user.checks
   checks [Layer.size (checks)+1] = function (t)
-    local request = t.request
-    local key     = t.key
-    local name    = request [key]
-    local values  = Configuration.resource.user.pattern / name
-    if not values then
-      return nil, {
-        _       = i18n ["check:user:pattern"],
-        name    = name,
-        pattern = Configuration.resource.user.pattern,
-      }
-    end
-    request [key] = values
-    return true
-  end
-  checks [Layer.size (checks)+1] = function (t)
     local store   = t.store
     local request = t.request
     local key     = t.key
     local value   = request [key]
-    local name    = Configuration.resource.user.pattern % value
-    return  Store.exists (store.user, name)
+    return  Store.exists (store / "data" / value)
         or  nil, {
               _    = i18n ["check:user:miss"],
-              name = name,
+              name = value,
             }
   end
   checks [Layer.size (checks)+1] = function (t)
@@ -349,13 +333,12 @@ do
     local request = t.request
     local key     = t.key
     local value   = request [key]
-    local name    = Configuration.resource.user.pattern % value
-    local user    = store.user [name]
+    local user    = store / "data" / value
     request [key] = user
     return  user.type == "user"
         or  nil, {
               _    = i18n ["check:user:not-user"],
-              name = name,
+              name = value,
             }
   end
 end
@@ -431,30 +414,20 @@ end
 do
   local checks = Default.data.project.checks
   checks [Layer.size (checks)+1] = function (t)
-    local request = t.request
-    local key     = t.key
-    local name    = request [key]
-    local values  = Configuration.resource.project.pattern / name
-    if not values then
-      return nil, {
-        _       = i18n ["check:project:pattern"],
-        name    = name,
-        pattern = Configuration.resource.project.pattern,
-      }
-    end
-    request [key] = values
-    return true
-  end
-  checks [Layer.size (checks)+1] = function (t)
     local store   = t.store
     local request = t.request
     local key     = t.key
     local value   = request [key]
-    local name    = Configuration.resource.project.pattern % value
-    return  Store.exists (store.project, name)
+    local values  = {}
+    for v in value:gmatch "[^/]+" do
+      values [#values+1] = v
+    end
+    return  #values == 2
+       and  Store.exists (store / "data" / values [1])
+       and  Store.exists (store / "data" / values [1] / values [2])
         or  nil, {
               _    = i18n ["check:project:miss"],
-              name = name,
+              name = value,
             }
   end
   checks [Layer.size (checks)+1] = function (t)
@@ -462,13 +435,16 @@ do
     local request = t.request
     local key     = t.key
     local value   = request [key]
-    local name    = Configuration.resource.user.pattern % value
-    local project = store.project [name]
+    local values  = {}
+    for v in value:gmatch "[^/]+" do
+      values [#values+1] = v
+    end
+    local project = store / "data" / values [1] / values [2]
     request [key] = project
     return  project.type == "project"
         or  nil, {
               _    = i18n ["check:project:not-project"],
-              name = name,
+              name = value,
             }
   end
 end
@@ -658,8 +634,7 @@ do
     local request = t.request
     local key     = t.key
     local value   = request [key]
-    local Server  = require "cosy.server"
-    return  value.passphrase == Server.passphrase
+    return  value.passphrase == Configuration.server.passphrase
         or  nil, {
               _ = i18n ["check:token:invalid"],
             }
@@ -689,7 +664,7 @@ do
     local request  = t.request
     local key      = t.key
     local username = request [key].username
-    local user     = store.user [username]
+    local user     = store / "data" / username
     request [key].user = user
     return  nil
        and  user.type == "user"
@@ -722,7 +697,7 @@ do
     local request  = t.request
     local key      = t.key
     local username = request [key].username
-    local user     = store.user [username]
+    local user     = store / "data" / username
     request [key].user = user
     return  user
        and  user.type   == "user"

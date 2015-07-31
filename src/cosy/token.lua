@@ -39,12 +39,12 @@ function Token.decode (s)
   return result
 end
 
-function Token.administration (server)
+function Token.administration ()
   local now    = Time ()
   local result = {
     contents = {
       type       = "administration",
-      passphrase = server.passphrase,
+      passphrase = Configuration.server.passphrase,
     },
     iat      = now,
     nbf      = now - 1,
