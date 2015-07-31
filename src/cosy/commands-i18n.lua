@@ -75,10 +75,10 @@ return {
     en = "update password",
   },
   ["argument:password1"] = {
-    en = "plase type your password",
+    en = "please type your password",
   },
   ["argument:password2"] = {
-    en = "plase type the same password again",
+    en = "please type the same password again",
   },
   ["argument:password:nomatch"] = {
     en = "passwords are not the same",
