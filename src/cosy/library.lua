@@ -253,15 +253,26 @@ function Operation.__call (operation, parameters, try_only)
   if result.success then
     return result.response or true
   end
+  if  operator == "user:authenticate" then
+    return nil, result.error
+  end
   if  result.error
-  and result.error._ == "check:error"
-  and #result.error.reasons == 1
-  and result.error.reasons [1].parameter == "authentication"
-  and data.username
-  and data.hashed
+  and (  result.error._ == "user:authenticate:failure"
+      or  result.error._ == "check:error"
+      and result.error.reasons
+      and #result.error.reasons == 1
+      and result.error.reasons [1].key == "authentication"
+      )
   then
-    local r = client.user.authenticate {}
-    if not r then
+    if data.username and data.hashed then
+      local r = client.user.authenticate {}
+      if not r then
+        data.username             = nil
+        data.hashed               = nil
+        data.token                = nil
+        parameters.authentication = nil
+      end
+    else
       data.username             = nil
       data.hashed               = nil
       data.token                = nil
