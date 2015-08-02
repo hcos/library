@@ -14,6 +14,7 @@ local function deproxify (t)
   if type (t) ~= "table" then
     return t
   else
+    t = Store.export (t)
     local result = {}
     for k, v in pairs (t) do
       assert (type (k) ~= "table")

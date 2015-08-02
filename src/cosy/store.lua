@@ -229,9 +229,20 @@ end
 
 function View.__index (view, key)
   assert (getmetatable (view) == View.__metatable)
-  view = assert (Hidden [view])
-  local document = assert (view.document)
-  return document [key]
+  view            = assert (Hidden [view])
+  local value     = assert (view.document) [key]
+  if type (value) ~= "table" then
+    return value
+  end
+  local result    = setmetatable ({}, View)
+  Hidden [result] = {
+    access   = view.access,
+    document = value,
+    root     = view.root,
+    store    = view.store,
+    token    = view.token,
+  }
+  return result
 end
 
 function View.__newindex (view, key, value)
@@ -267,6 +278,19 @@ function View.__div (view, pattern)
   }
   Hidden [result].root = Hidden [result]
   return result
+end
+
+function View.export (view)
+  assert (getmetatable (view) == View.__metatable)
+  view = assert (Hidden [view])
+  local document
+  if view.document then
+    document = assert (view.document)
+  else
+    document = assert (view.store   )
+  end
+  local rawdocument = assert (Hidden [document])
+  return rawdocument.data
 end
 
 function View.__add (view, key)
@@ -409,6 +433,13 @@ return {
       return false
     else
       return -view
+    end
+  end,
+  export = function (view)
+    if getmetatable (view) == View.__metatable then
+      return View.export (view)
+    else
+      return view
     end
   end,
   pairs  = View.__pairs,

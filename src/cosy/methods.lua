@@ -377,9 +377,10 @@ function Methods.user.update (request, store, try_only)
         email = request.email,
       }
     end
+    local oldemail    = store / "email" / user.email
+    local newemail    = store / "email" + request.email
+    newemail.username = oldemail.username
     local _           = store / "email" - user.email
-    local newemail    = store / "email" + user.email
-    newemail.username = user.username
     user.email        = request.email
     user.checked      = false
     Methods.user.send_validation ({
