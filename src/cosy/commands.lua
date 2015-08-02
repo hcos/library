@@ -758,9 +758,8 @@ Prepares ["user:create"] = function (commands, args)
       },
     })
     local tosresult = Value.decode (commands.ws:receive ())
-    if tosresult.success then
-      args.tos_digest = tosresult.response.tos_digest
-    end
+    assert (tosresult.success)
+    args.tos_digest = tosresult.response.tos_digest
   end
 end
 
