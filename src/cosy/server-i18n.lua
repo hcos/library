@@ -9,10 +9,10 @@ return {
     en = "error: {{{reason}}}",
   },
   ["server:request"] = {
-    en = "> server: {{{message}}}",
+    en = "> server: {{{request}}}",
   },
   ["server:response"] = {
-    en = "< server: {{{message}}}",
+    en = "< server: {{{request}}} {{{response}}}",
   },
   ["server:hostname"] = {
     en = "hostname has been set to {{{hostname}}}",

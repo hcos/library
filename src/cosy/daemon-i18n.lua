@@ -1,9 +1,9 @@
 return {
   ["daemon:request"] = {
-    en = "> daemon: {{{message}}}",
+    en = "> daemon: {{{request}}}",
   },
   ["daemon:response"] = {
-    en = "< daemon: {{{message}}}",
+    en = "< daemon: {{{request}}} {{{response}}}",
   },
   ["server:unreachable"] = {
     en = "cosy server is unreachable",

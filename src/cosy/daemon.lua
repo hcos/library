@@ -40,26 +40,28 @@ function Daemon.start ()
           local message = ws:receive ()
           Logger.debug {
             _       = i18n ["daemon:request"],
-            message = message,
+            request = message,
           }
           if not message then
             ws:close ()
             return
           end
-          local response
           if message == "daemon-stop" then
             Daemon.stop ()
-            response = Value.expression {
+            ws:send (Value.expression {
               success = true,
-            }
+            })
           else
-            response = Handler (message)
+            Scheduler.addthread (function ()
+              local response = Handler (message)
+              Logger.debug {
+                _        = i18n ["daemon:response"],
+                request  = message,
+                response = response,
+              }
+              ws:send (response)
+            end)
           end
-          Logger.debug {
-            _       = i18n ["daemon:response"],
-            message = message,
-          }
-          ws:send (response)
         end
       end
     }
