@@ -18,6 +18,7 @@ Configuration.load {
   "cosy.methods",
   "cosy.parameters",
   "cosy.server",
+  "cosy.token",
 }
 
 local i18n   = I18n.load "cosy.methods"
