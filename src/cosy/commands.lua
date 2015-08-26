@@ -570,11 +570,12 @@ Commands ["server:start"] = function ()
     then
       kill -9 $(cat {{{pid}}}) 2> /dev/null
     fi
-    rm -f {{{pid}}} {{{log}}}
+    rm -f {{{pid}}} {{{log}}} {{{data}}}
     luajit -e '_G.logfile = "{{{log}}}"; require "cosy.server" .start ()' &
   ]==] % {
-    pid = Configuration.server.pid,
-    log = Configuration.server.log,
+    pid  = Configuration.server.pid,
+    log  = Configuration.server.log,
+    data = Configuration.server.data,
   })
   local tries = 0
   local serverpid, nginxpid

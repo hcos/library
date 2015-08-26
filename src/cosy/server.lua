@@ -177,7 +177,6 @@ function Server.start ()
   }
 
   do
-    Nginx.stop  ()
     Nginx.start ()
   end
 
@@ -214,8 +213,13 @@ function Server.stop ()
   Scheduler.addthread (function ()
     Scheduler.sleep (1)
     Nginx.stop ()
-    os.remove (Configuration.server.pid)
-    os.exit   (0)
+    os.execute ([[
+      rm -rf {{{pid}}} {{{data}}}
+    ]] % {
+      pid  = Configuration.server.pid,
+      data = Configuration.server.data,
+    })
+    os.exit (0)
   end)
 end
 

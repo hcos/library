@@ -217,17 +217,13 @@ function Nginx.configure ()
 end
 
 function Nginx.start ()
-  os.execute ([[
-    rm -f {{{directory}}} && mkdir -p {{{directory}}}
-  ]] % {
-    directory = Configuration.http.directory,
-  })
+  Nginx.stop      ()
   Nginx.configure ()
   os.execute ([[
     {{{nginx}}} -p {{{directory}}} -c {{{configuration}}} 2>> {{{error}}}
   ]] % {
-    directory     = Configuration.http.directory    ,
     nginx         = Configuration.http.nginx        ,
+    directory     = Configuration.http.directory    ,
     configuration = Configuration.http.configuration,
     error         = Configuration.http.error        ,
   })
@@ -242,9 +238,12 @@ function Nginx.stop ()
     pidfile = Configuration.http.pid,
   })
   os.execute ([[
-    rm -rf {{{directory}}}
+    rm -rf {{{directory}}} {{{pid}}} {{{error}}} {{{configuration}}}
   ]] % {
-    directory = Configuration.http.directory,
+    pid           = Configuration.http.pid,
+    configuration = Configuration.http.configuration,
+    error         = Configuration.http.error,
+    directory     = Configuration.http.directory,
   })
   Nginx.directory = nil
 end

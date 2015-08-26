@@ -39,13 +39,26 @@ function Token.decode (s)
   return result
 end
 
+function Token.iteration ()
+  local now    = Time ()
+  local result = {
+    iat      = now,
+    nbf      = now - 1,
+    exp      = now + Configuration.expiration.administration,
+    iss      = Configuration.server.name,
+    aud      = nil,
+    sub      = "cosy:iteration",
+    jti      = Digest (tostring (now + Random ())),
+    contents = {
+      type = "iteration",
+    },
+  }
+  return Token.encode (result)
+end
+
 function Token.administration ()
   local now    = Time ()
   local result = {
-    contents = {
-      type       = "administration",
-      passphrase = Configuration.server.passphrase,
-    },
     iat      = now,
     nbf      = now - 1,
     exp      = now + Configuration.expiration.administration,
@@ -53,6 +66,10 @@ function Token.administration ()
     aud      = nil,
     sub      = "cosy:administration",
     jti      = Digest (tostring (now + Random ())),
+    contents = {
+      type       = "administration",
+      passphrase = Configuration.server.passphrase,
+    },
   }
   return Token.encode (result)
 end
@@ -60,11 +77,6 @@ end
 function Token.validation (data)
   local now    = Time ()
   local result = {
-    contents = {
-      type     = "validation",
-      username = data.username,
-      email    = data.email,
-    },
     iat      = now,
     nbf      = now - 1,
     exp      = now + Configuration.expiration.validation,
@@ -72,6 +84,11 @@ function Token.validation (data)
     aud      = nil,
     sub      = "cosy:validation",
     jti      = Digest (tostring (now + Random ())),
+    contents = {
+      type     = "validation",
+      username = data.username,
+      email    = data.email,
+    },
   }
   return Token.encode (result)
 end
@@ -79,11 +96,6 @@ end
 function Token.authentication (data)
   local now    = Time ()
   local result = {
-    contents = {
-      type     = "authentication",
-      username = data.username,
-      locale   = data.locale,
-    },
     iat      = now,
     nbf      = now - 1,
     exp      = now + Configuration.expiration.authentication,
@@ -91,6 +103,11 @@ function Token.authentication (data)
     aud      = nil,
     sub      = "cosy:authentication",
     jti      = Digest (tostring (now + Random ())),
+    contents = {
+      type     = "authentication",
+      username = data.username,
+      locale   = data.locale,
+    },
   }
   return Token.encode (result)
 end
