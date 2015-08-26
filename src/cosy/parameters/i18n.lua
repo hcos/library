@@ -92,6 +92,9 @@ return {
   ["avatar"] = {
     en = "avatar file or URL",
   },
+  ["captcha"] = {
+    en = "captcha",
+  },
   ["description"] = {
     en = "description",
   },
@@ -100,6 +103,9 @@ return {
   },
   ["homepage"] = {
     en = "homepage URL",
+  },
+  ["ip"] = {
+    en = "IP address",
   },
   ["is-private"] = {
     en = "set as private",

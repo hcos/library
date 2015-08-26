@@ -145,10 +145,10 @@ function Methods.user.create (request, store, try_only)
       email      = Parameters.email,
       tos_digest = Parameters.tos.digest,
       locale     = Parameters.locale,
-      ip         = Parameters.ip,
     },
     optional = {
       captcha        = Parameters.captcha,
+      ip             = Parameters.ip,
       administration = Parameters.token.administration,
     },
   })

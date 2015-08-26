@@ -21,7 +21,7 @@ function I18n.load (t)
   end
   local depends = {}
   for _, name in ipairs (t) do
-    local layer = Layer.new { name = name, data = require (name .. "-i18n") }
+    local layer = Layer.new { name = name, data = require (name .. ".i18n") }
     depends [#depends+1] = layer
   end
   local all = Layer.new { name = "i18n", data = {

@@ -1,11 +1,11 @@
                       require "cosy.loader"
 local Configuration = require "cosy.configuration"
 local I18n          = require "cosy.i18n"
-local Handler       = require "cosy.daemon-handler"
+local Handler       = require "cosy.daemon.handler"
 local Logger        = require "cosy.logger"
 local Value         = require "cosy.value"
 local Scheduler     = require "cosy.scheduler"
-local App           = require "cosy.configuration-layers".app
+local App           = require "cosy.configuration.layers".app
 local Ffi           = require "ffi"
 local Websocket     = require "websocket"
 
@@ -36,22 +36,18 @@ function Daemon.start ()
     port      = Configuration.daemon.port,
     protocols = {
       cosy = function (ws)
-        while true do
+        while ws.state == "OPEN" do
           local message = ws:receive ()
           Logger.debug {
             _       = i18n ["daemon:request"],
             request = message,
           }
-          if not message then
-            ws:close ()
-            return
-          end
           if message == "daemon-stop" then
             Daemon.stop ()
             ws:send (Value.expression {
               success = true,
             })
-          else
+          elseif message then
             Scheduler.addthread (function ()
               local response = Handler (message)
               Logger.debug {
