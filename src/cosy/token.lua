@@ -44,7 +44,7 @@ function Token.iteration ()
   local result = {
     iat      = now,
     nbf      = now - 1,
-    exp      = now + Configuration.expiration.administration,
+    exp      = now + Configuration.expiration.iteration,
     iss      = Configuration.server.name,
     aud      = nil,
     sub      = "cosy:iteration",
