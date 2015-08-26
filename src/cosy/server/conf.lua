@@ -1,4 +1,4 @@
-local Default = require "cosy.configuration-layers".default
+local Default = require "cosy.configuration.layers".default
 
 Default.server = {
   interface = "127.0.0.1",

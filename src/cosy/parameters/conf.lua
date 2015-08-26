@@ -2,7 +2,7 @@ local Configuration = require "cosy.configuration"
 local I18n          = require "cosy.i18n"
 local Store         = require "cosy.store"
 local Token         = require "cosy.token"
-local Default       = require "cosy.configuration-layers".default
+local Default       = require "cosy.configuration.layers".default
 local Layer         = require "layeredata"
 local this          = Layer.reference (false)
 

@@ -1,5 +1,3 @@
-#! /usr/bin/env luajit
-
 local Loader        = require "cosy.loader"
       Loader.nolog  = true
 local Configuration = require "cosy.configuration"
@@ -11,12 +9,12 @@ local Colors        = require "ansicolors"
 local Websocket     = require "websocket"
 
 Configuration.load {
-  "cosy",
+  "cosy.cli",
   "cosy.daemon",
 }
 
 local i18n   = I18n.load {
-  "cosy",
+  "cosy.cli",
   "cosy.commands",
   "cosy.daemon",
 }
@@ -48,7 +46,7 @@ if _G.nocolor then
 end
 
 local ws = Websocket.client.sync {
-  timeout = 5,
+  timeout = 10,
 }
 if not daemondata
 or not ws:connect ("ws://{{{interface}}}:{{{port}}}/ws" % {

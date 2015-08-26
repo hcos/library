@@ -8,14 +8,14 @@ local Copas         = require "copas.ev"
 Copas.make_default ()
 
 Configuration.load {
-  "cosy",
+  "cosy.cli",
   "cosy.daemon",
   "cosy.nginx",
   "cosy.server",
 }
 
 local i18n   = I18n.load {
-  "cosy",
+  "cosy.cli",
   "cosy.commands",
   "cosy.daemon",
 }

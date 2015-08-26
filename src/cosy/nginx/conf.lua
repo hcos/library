@@ -1,5 +1,5 @@
 local Lfs     = require "lfs"
-local Default = require "cosy.configuration-layers".default
+local Default = require "cosy.configuration.layers".default
 
 -- Compute www path:
 local main = package.searchpath ("cosy.nginx", package.path)

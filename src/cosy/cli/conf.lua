@@ -1,4 +1,4 @@
-local Default = require "cosy.configuration-layers".default
+local Default = require "cosy.configuration.layers".default
 
 Default.cli = {
   directory = os.getenv "HOME" .. "/.cosy",

@@ -2,7 +2,7 @@ local Loader = require "cosy.loader"
 local I18n   = require "cosy.i18n"
 local Logger = require "cosy.logger"
 local Layer  = require "layeredata"
-local layers = require "cosy.configuration-layers"
+local layers = require "cosy.configuration.layers"
 
 local i18n   = I18n.load "cosy.configuration"
 
@@ -16,7 +16,7 @@ function Configuration.load (t)
     t = { t }
   end
   for _, name in ipairs (t) do
-    require (name .. "-conf")
+    require (name .. ".conf")
   end
 end
 

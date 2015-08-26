@@ -7,7 +7,7 @@ local Digest        = require "cosy.digest"
 local Random        = require "cosy.random"
 local Time          = require "cosy.time"
 local Jwt           = require "luajwt"
-local App           = require "cosy.configuration-layers".app
+local App           = require "cosy.configuration.layers".app
 
 Configuration.load "cosy.token"
 

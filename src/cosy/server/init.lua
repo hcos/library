@@ -10,12 +10,12 @@ local Nginx         = require "cosy.nginx"
 local Random        = require "cosy.random"
 local Redis         = require "cosy.redis"
 local Scheduler     = require "cosy.scheduler"
-local Handler       = require "cosy.server-handler"
+local Handler       = require "cosy.server.handler"
 local Store         = require "cosy.store"
 local Token         = require "cosy.token"
 local Value         = require "cosy.value"
-local App           = require "cosy.configuration-layers".app
-local Default       = require "cosy.configuration-layers".default
+local App           = require "cosy.configuration.layers".app
+local Default       = require "cosy.configuration.layers".default
 local Layer         = require "layeredata"
 local Websocket     = require "websocket"
 local Ffi           = require "ffi"
@@ -146,25 +146,23 @@ function Server.start ()
     port      = Configuration.server.port,
     protocols = {
       cosy = function (ws)
-        while true do
+        while ws.state == "OPEN" do
           local message = ws:receive ()
           Logger.debug {
             _       = i18n ["server:request"],
             request = message,
           }
-          if not message then
-            ws:close ()
-            return
+          if message then
+            Scheduler.addthread (function ()
+              local response = Handler (message, ws)
+              Logger.debug {
+                _        = i18n ["server:response"],
+                request  = message,
+                response = response,
+              }
+              ws:send (response)
+            end)
           end
-          Scheduler.addthread (function ()
-            local response = Handler (message, ws)
-            Logger.debug {
-              _        = i18n ["server:response"],
-              request  = message,
-              response = response,
-            }
-            ws:send (response)
-          end)
         end
       end
     }
