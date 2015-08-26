@@ -1,7 +1,7 @@
-local version = tonumber (_VERSION:match "Lua%s*(%d%.%d)")
-if version < 5.1
-or (version == 5.1 and type (_G.jit) ~= "table") then
-  error "Cosy requires Luajit >= 2 or Lua >= 5.2 to run."
+if not package.searchpath
+or #setmetatable ({}, { __len = function () return 1 end }) ~= 1
+then
+  error "Cosy requires Lua >= 5.2 or Luajit with 5.2 compatibility to run."
 end
 
 local Loader = {}
