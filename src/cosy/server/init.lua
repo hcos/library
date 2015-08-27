@@ -12,7 +12,6 @@ local Random        = require "cosy.random"
 local Redis         = require "cosy.redis"
 local Scheduler     = require "cosy.scheduler"
 local Store         = require "cosy.store"
-local Value         = require "cosy.value"
 local Token         = require "cosy.token"
 local Value         = require "cosy.value"
 local App           = require "cosy.configuration.layers".app
@@ -205,8 +204,18 @@ function Server.start ()
     port      = Configuration.server.port,
     protocols = {
       cosy = function (ws)
+        local message
+        local function send (t)
+          local response = Value.expression (t)
+          Logger.debug {
+            _        = i18n ["server:response"],
+            request  = message,
+            response = response,
+          }
+          ws:send (response)
+        end
         while ws.state == "OPEN" do
-          local message = ws:receive ()
+          message = ws:receive ()
           Logger.debug {
             _       = i18n ["server:request"],
             request = message,
@@ -216,68 +225,59 @@ function Server.start ()
               local result, err
               local decoded, request = pcall (Value.decode, message)
               if not decoded or type (request) ~= "table" then
-                result = Value.expression (i18n {
+                return send (i18n {
                   success = false,
                   error   = {
                     _ = i18n ["message:invalid"],
                   },
                 })
               end
-              if not result then
-                local identifier      = request.identifier
-                local operation       = request.operation
-                local parameters      = request.parameters or {}
-                local try_only        = request.try_only
-                local parameters_only = false
-                local method          = Methods
-                if operation:sub (-1) == "?" then
-                  operation       = operation:sub (1, #operation-1)
-                  parameters_only = true
-                end
-                for name in operation:gmatch "[^:]+" do
-                  if method ~= nil then
-                    name = name:gsub ("-", "_")
-                    method = method [name]
-                  end
-                end
-                if not method then
-                  return Value.expression (i18n {
-                    identifier = identifier,
-                    success    = false,
-                    error      = {
-                      _         = i18n ["server:no-operation"],
-                      operation = request.operation,
-                    },
-                  })
-                end
-                if parameters_only then
-                  result      = Server.call_parameters (method, parameters)
-                else
-                  result, err = Server.call_method (method, parameters, try_only)
-                end
-                if type (result) == "function" then
-                  -- TODO
-                elseif result then
-                  result = i18n {
-                    identifier = identifier,
-                    success    = true,
-                    response   = result,
-                  }
-                else
-                  result = i18n {
-                    identifier = identifier,
-                    success    = false,
-                    error      = err,
-                  }
+              local identifier      = request.identifier
+              local operation       = request.operation
+              local parameters      = request.parameters or {}
+              local try_only        = request.try_only
+              local parameters_only = false
+              local method          = Methods
+              if operation:sub (-1) == "?" then
+                operation       = operation:sub (1, #operation-1)
+                parameters_only = true
+              end
+              for name in operation:gmatch "[^:]+" do
+                if method ~= nil then
+                  name = name:gsub ("-", "_")
+                  method = method [name]
                 end
               end
-              local response = Value.expression (result)
-              Logger.debug {
-                _        = i18n ["server:response"],
-                request  = message,
-                response = response,
-              }
-              ws:send (response)
+              if not method then
+                return send (i18n {
+                  identifier = identifier,
+                  success    = false,
+                  error      = {
+                    _         = i18n ["server:no-operation"],
+                    operation = request.operation,
+                  },
+                })
+              end
+              if parameters_only then
+                result      = Server.call_parameters (method, parameters)
+              else
+                result, err = Server.call_method (method, parameters, try_only)
+              end
+              if type (result) == "function" then
+                -- TODO
+              elseif result then
+                return send (i18n {
+                  identifier = identifier,
+                  success    = true,
+                  response   = result,
+                })
+              else
+                return send (i18n {
+                  identifier = identifier,
+                  success    = false,
+                  error      = err,
+                })
+              end
             end)
           end
         end

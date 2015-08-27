@@ -39,22 +39,32 @@ function Daemon.start ()
     port      = Configuration.daemon.port,
     protocols = {
       cosy = function (ws)
+        local message
+        local function send (t)
+          local response = Value.expression (t)
+          Logger.debug {
+            _        = i18n ["daemon:response"],
+            request  = message,
+            response = response,
+          }
+          ws:send (response)
+        end
         while ws.state == "OPEN" do
-          local message = ws:receive ()
+          message = ws:receive ()
           Logger.debug {
             _       = i18n ["daemon:request"],
             request = message,
           }
           if message == "daemon-stop" then
             Daemon.stop ()
-            ws:send (Value.expression {
+            return send {
               success = true,
-            })
+            }
           elseif message then
             Scheduler.addthread (function ()
               local decoded, request = pcall (Value.decode, message)
               if not decoded or type (request) ~= "table" then
-                return Value.expression (i18n {
+                return send (i18n {
                   success = false,
                   error   = i18n {
                     _ = i18n ["message:invalid"] % {},
@@ -66,7 +76,7 @@ function Daemon.start ()
               if not lib then
                 lib = Library.connect (server)
                 if not lib then
-                  return Value.expression (i18n {
+                  return send (i18n {
                     success = false,
                     error   = {
                       _ = i18n ["server:unreachable"] % {},
@@ -78,23 +88,16 @@ function Daemon.start ()
               local method = lib [request.operation]
               local result, err = method (request.parameters, request.try_only)
               if result then
-                result = {
+                return send {
                   success  = true,
                   response = result,
                 }
               else
-                result = {
+                return send {
                   success = false,
                   error   = err,
                 }
               end
-              local response = Value.expression (result)
-              Logger.debug {
-                _        = i18n ["daemon:response"],
-                request  = message,
-                response = response,
-              }
-              ws:send (response)
             end)
           end
         end
