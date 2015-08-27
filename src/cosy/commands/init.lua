@@ -729,11 +729,12 @@ Results ["server:filter"] = function (_, ws)
     end
     value = value.response
     if type (value) ~= "table" then
-      print (Colors ("%{black yellowbg}" .. space .. tostring (key)) ..
+      print (Colors ("%{black yellowbg} " .. tostring (key)) ..
              Colors ("%{reset}" .. " => ") ..
              Colors ("%{yellow blackbg}" .. tostring (value)))
     else
-      print (Colors ("%{black cyanbg} " .. tostring (key) .. " "))
+      print (Colors ("%{black cyanbg} " .. tostring (key) .. " ") ..
+             Colors ("%{reset}" .. " => "))
       local max  = 0
       local keys = {}
       for k in pairs (value) do
