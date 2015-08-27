@@ -66,7 +66,7 @@ function Parameters.check (store, request, parameters)
           key = key,
         }
       elseif value ~= nil then
-        for i = 1, Layer.size (parameter.checks) do
+        for i = 1, parameter.checks and Layer.size (parameter.checks) or 0 do
           local ok, reason = parameter.checks [i] {
             parameter = parameter,
             request   = request,
