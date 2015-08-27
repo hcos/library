@@ -264,7 +264,34 @@ function Server.start ()
                 result, err = Server.call_method (method, parameters, try_only)
               end
               if type (result) == "function" then
-                -- TODO
+                send (i18n {
+                  identifier = identifier,
+                  success    = true,
+                  iterator   = true,
+                })
+                repeat
+                  local subresult, suberr = result ()
+                  if subresult then
+                    send (i18n {
+                      identifier = identifier,
+                      success    = true,
+                      response   = subresult,
+                    })
+                  elseif suberr then
+                    send (i18n {
+                      identifier = identifier,
+                      success    = false,
+                      finished   = true,
+                      error      = suberr,
+                    })
+                  else
+                    send (i18n {
+                      identifier = identifier,
+                      success    = true,
+                      finished   = true,
+                    })
+                  end
+                until subresult == nil or suberr
               elseif result then
                 return send (i18n {
                   identifier = identifier,

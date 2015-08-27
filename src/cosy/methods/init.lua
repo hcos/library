@@ -116,20 +116,20 @@ function Methods.server.filter (request, store)
   })
   local coroutine = Coromake ()
   local co        = coroutine.create (request.iterator)
-  local results   = {}
-  while coroutine.status (co) ~= "dead" do
+  return function ()
+    if coroutine.status (co) ~= "suspended" then
+      return
+    end
     local ok, result = coroutine.resume (co, coroutine.yield, store)
-    if not ok then
-      error {
+    if ok then
+      return result
+    else
+      return nil, {
         _      = i18n ["server:filter:error"],
         reason = result,
       }
     end
-    if result ~= nil then
-      results [#results+1] = result
-    end
   end
-  return results
 end
 
 -- User

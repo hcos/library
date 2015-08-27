@@ -87,15 +87,33 @@ function Daemon.start ()
               end
               local method = lib [request.operation]
               local result, err = method (request.parameters, request.try_only)
-              if result then
-                return send {
-                  success  = true,
-                  response = result,
-                }
-              else
+              if result == nil then
                 return send {
                   success = false,
                   error   = err,
+                }
+              elseif type (result) == "function" then
+                send {
+                  success  = true,
+                  iterator = true,
+                }
+                local ok, ierr = pcall (function ()
+                  for subresult in result do
+                    send {
+                      success  = true,
+                      response = subresult,
+                    }
+                  end
+                end)
+                return send {
+                  success  = ok,
+                  finished = true,
+                  error    = ierr,
+                }
+              else
+                return send {
+                  success  = true,
+                  response = result,
                 }
               end
             end)
@@ -135,7 +153,7 @@ function Daemon.stop ()
   os.remove (Configuration.daemon.data)
   Scheduler.addthread (function ()
     Scheduler.sleep (1)
-    os.remove (Configuration.daemon.pid )
+    os.remove (Configuration.daemon.pid)
     os.exit   (0)
   end)
 end

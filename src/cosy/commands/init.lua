@@ -395,10 +395,10 @@ function Commands.__index (commands, key)
     result = commands.ws:receive ()
     result = Value.decode (result)
     show_status (result)
-    if  result.success
+    if result.success
     and type (result.response) == "table"
     and Results [key] then
-      Results [key] (result.response)
+      Results [key] (result.response, commands.ws)
     end
     if args.debug then
       print (Colors ("%{white yellowbg}" .. Value.expression (result)))
@@ -712,30 +712,42 @@ Results ["server:tos"] = function (response)
          Colors ("%{yellow blackbg}" .. response.tos_digest))
 end
 
-Results ["server:filter"] = function (response)
-  local size = math.log10 (#response)+1
-  for i = 1, #response do
-    local key   = tostring (i)
-    local value = response [i]
+Results ["server:filter"] = function (_, ws)
+  local size = 10
+  for i = 1, math.huge do
+    local response = ws:receive ()
+    if response == nil then
+      break
+    end
+    local key      = tostring (i)
+    local value    = Value.decode (response)
     local space = ""
-    for _ = #key, size do
+    for _ = #key, math.max (#key, size) do
       space = space .. " "
     end
+    if value.error then
+      print (Colors ("%{black redbg}" .. i18n ["failure"] % {}),
+             Colors ("%{red blackbg}" .. (value.error.message ~= nil and tostring (value.error.message) or "")))
+    end
+    if value.finished then
+      break
+    end
+    value = value.response
     if type (value) ~= "table" then
-      print (Colors ("%{black yellowbg}" .. space .. tostring (key) .. " / " .. tostring (#response)) ..
+      print (Colors ("%{black yellowbg}" .. space .. tostring (key)) ..
              Colors ("%{reset}" .. " => ") ..
              Colors ("%{yellow blackbg}" .. tostring (value)))
-    else
-      print (Colors ("%{black yellowbg}" .. space .. tostring (key) .. " / " .. tostring (#response)))
+    elseif value.response then
+      print (Colors ("%{black yellowbg}" .. space .. tostring (key)))
       local max  = 0
       local keys = {}
-      for k in pairs (response [i]) do
+      for k in pairs (value) do
         keys [#keys+1] = k
         max = math.max (max, #k)
       end
       for j = 1, #keys do
         local jkey   = keys [j]
-        local jvalue = response [i] [jkey]
+        local jvalue = value [jkey]
         local jspace = ""
         for _ = #jkey, max+3 do
           jspace = jspace .. " "
