@@ -166,12 +166,14 @@ function Operation.__call (operation, parameters, try_only, no_redo)
           if subresult == nil then
             Scheduler.sleep (Configuration.library.timeout)
           else
+            if subresult.finished then
+              client._waiting [identifier] = nil
+              client._results [identifier] = nil
+            end
             coroutine.yield (subresult)
             table.remove (results, 1)
           end
-        until subresult and subresult.response == nil
-        client._waiting [identifier] = nil
-        client._results [identifier] = nil
+        until subresult and subresult.finished
       end)
     else
       result = results [1]
