@@ -713,7 +713,6 @@ Results ["server:tos"] = function (response)
 end
 
 Results ["server:filter"] = function (_, ws)
-  local size = 10
   for i = 1, math.huge do
     local response = ws:receive ()
     if response == nil then
@@ -721,10 +720,6 @@ Results ["server:filter"] = function (_, ws)
     end
     local key      = tostring (i)
     local value    = Value.decode (response)
-    local space = ""
-    for _ = #key, math.max (#key, size) do
-      space = space .. " "
-    end
     if value.error then
       print (Colors ("%{black redbg}" .. i18n ["failure"] % {}),
              Colors ("%{red blackbg}" .. (value.error.message ~= nil and tostring (value.error.message) or "")))
@@ -737,8 +732,8 @@ Results ["server:filter"] = function (_, ws)
       print (Colors ("%{black yellowbg}" .. space .. tostring (key)) ..
              Colors ("%{reset}" .. " => ") ..
              Colors ("%{yellow blackbg}" .. tostring (value)))
-    elseif value.response then
-      print (Colors ("%{black yellowbg}" .. space .. tostring (key)))
+    else
+      print (Colors ("%{black cyanbg} " .. tostring (key) .. " "))
       local max  = 0
       local keys = {}
       for k in pairs (value) do
