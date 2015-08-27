@@ -337,9 +337,13 @@ function View.__call (view)
     local document  = assert (Hidden [rawview.document])
     local store     = assert (Hidden [rawview.store])
     local coroutine = Coromake ()
+    local seen      = {}
     rawview.iterator = coroutine.wrap (function ()
       for key, doc in pairs (store.documents) do
-        if key:match (document.key) and Hidden [doc].data ~= nil then
+        if  key:match (document.key)
+        and Hidden [doc].data ~= nil
+        and not seen [key] then
+          seen [key] = true
           coroutine.yield (key, View.from_key (view, key))
         end
       end
@@ -354,7 +358,9 @@ function View.__call (view)
         cursor = r [1]
         for i = 1, #r [2] do
           local key = r [2] [i]
-          if key:match (document.key) then
+          if  key:match (document.key)
+          and not seen [key] then
+            seen [key] = true
             coroutine.yield (key, View.from_key (view, key))
           end
         end
