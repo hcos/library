@@ -180,28 +180,30 @@ function View.new (store)
     store    = store,
     token    = false,
   }
-  Hidden [result].root = Hidden [result]
+  Hidden [result].root = result
   return result
 end
 
 function View.from_key (view, key)
   assert (getmetatable (view) == View.__metatable)
   assert (type (key) == "string")
-  view              = assert (Hidden [view])
-  local store       = assert (Hidden [view.store])
+  local rawview     = assert (Hidden [view])
+  local store       = assert (Hidden [rawview.store])
   local document    = store.documents [key]
   if not document then
-    return nil
+    document = rawview.root
+    for sub in key:gmatch "[^/]+" do
+      document = document / sub
+    end
   end
   local result      = setmetatable ({}, View)
   Hidden [result]   = {
-    access   = view.access,
+    access   = rawview.access,
     document = document,
-    root     = view.root,
-    store    = view.store,
-    token    = view.token,
+    root     = rawview.root,
+    store    = rawview.store,
+    token    = rawview.token,
   }
-  Hidden [result].root = Hidden [result]
   return result
 end
 
@@ -276,7 +278,6 @@ function View.__div (view, pattern)
     store    = view.store,
     token    = view.token,
   }
-  Hidden [result].root = Hidden [result]
   return result
 end
 
@@ -311,10 +312,10 @@ function View.__add (view, key)
   Hidden [result] = {
     access   = rawview.access,
     document = document,
+    root     = rawview.root,
     store    = rawview.store,
     token    = rawview.token,
   }
-  Hidden [result].root = Hidden [result]
   return result
 end
 
