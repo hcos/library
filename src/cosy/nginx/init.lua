@@ -93,7 +93,7 @@ http {
         end
         ngx.var.target = target
       ';
-      proxy_pass $target;
+      proxy_pass $target$is_args$args;
     }
 
     location /lua {

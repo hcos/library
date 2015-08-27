@@ -291,12 +291,14 @@ Client.methods ["user:update"] = function (operation, parameters)
   if parameters.password then
     parameters.password = Digest (parameters.password)
   end
-  if parameters.position and parameters.position.longitude == "" and parameters.position.latitude == "" then
+  if  parameters.position
+  and parameters.position.longitude == ""
+  and parameters.position.latitude  == "" then
     -- FIXME: should not be wrapped
     coroutine.wrap (function ()
-      local url = "http://maps.googleapis.com/maps/api/geocode/json?address={{{country}}},{{{city}}}" % {
+      local url = data.url .. "/ext/maps?address={{{country}}},{{{city}}}" % {
         country = parameters.position.country,
-        city = parameters.position.city,
+        city    = parameters.position.city,
       }
       local response, status = Loader.loadhttp (url)
       if status == 200 then
