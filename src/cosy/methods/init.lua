@@ -345,7 +345,7 @@ function Methods.user.update (request, store, try_only)
   })
   local user = request.authentication.user
   if request.username and request.username ~= user.username then
-    local olduser     = user.user
+    local olduser     = user
     local oldusername = olduser.username
     local newusername = request.username
     if Store.exists (store / "data" / newusername) then
@@ -386,8 +386,8 @@ function Methods.user.update (request, store, try_only)
     user.email        = request.email
     user.checked      = false
     Methods.user.send_validation ({
-      user     = Token.authentication (user),
-      try_only = try_only,
+      authentication = Token.authentication (user),
+      try_only       = try_only,
     }, store)
   end
   if request.password then
