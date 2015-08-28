@@ -581,7 +581,6 @@ function Methods.user.delete (request, store)
     },
   })
   local user = request.authentication.user
-  print ("delete", user.username, user.email)
   local _ = store / "email" - Mime.b64 (user.email)
   local _ = store / "data"  / user.username - "/.*"
   local _ = store / "data"  - user.username
