@@ -38,6 +38,10 @@ echo "Failing at authenticating user alinard:"
 cat ${passwords} | ./cosy.lua user:authenticate alinard
 echo "Authenticating user alban:"
 cat ${passwords} | ./cosy.lua user:authenticate alban
+echo "Creating project"
+./cosy.lua project:create dd
+echo "Delete project"
+./cosy.lua project:delete alban/dd
 echo "Deleting user alban:"
 ./cosy.lua user:delete
 
