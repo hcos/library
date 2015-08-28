@@ -236,21 +236,22 @@ do
     local value   = request [key]
     -- http://lua-users.org/wiki/SandBoxes
     local environment = {
-      assert   = assert,
-      error    = error,
-      pairs    = pairs,
-      ipairs   = ipairs,
-      next     = next,
-      pcall    = pcall,
-      select   = select,
-      tonumber = tonumber,
-      tostring = tostring,
-      type     = type,
-      unpack   = unpack,
-      xpcall   = xpcall,
-      string   = string,
-      table    = table,
-      math     = math,
+      assert    = assert,
+      coroutine = coroutine,
+      error     = error,
+      ipairs    = ipairs,
+      math      = math,
+      next      = next,
+      pairs     = pairs,
+      pcall     = pcall,
+      select    = select,
+      string    = string,
+      table     = table,
+      tonumber  = tonumber,
+      tostring  = tostring,
+      type      = type,
+      unpack    = unpack,
+      xpcall    = xpcall,
     }
     -- FIXME: insecure, we should not load bytecode functions!
     if load then
