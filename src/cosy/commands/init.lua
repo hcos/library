@@ -739,13 +739,13 @@ Results ["server:filter"] = function (_, ws)
       local keys = {}
       for k in pairs (value) do
         keys [#keys+1] = k
-        max = math.max (max, #k)
+        max = math.max (max, #tostring (k))
       end
       for j = 1, #keys do
         local jkey   = keys [j]
         local jvalue = value [jkey]
         local jspace = ""
-        for _ = #jkey, max+3 do
+        for _ = #tostring (jkey), max+3 do
           jspace = jspace .. " "
         end
         jspace = jspace .. " => "
