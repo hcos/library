@@ -184,7 +184,7 @@ function Operation.__call (operation, parameters, try_only, no_redo)
         Client.coroutine.resume (wrapperco, result)
       end
       if result.iterator then
-        local iterator   = result.iterator
+        local iterator = result.iterator
         result, err = function ()
           local r
           threadof (function ()

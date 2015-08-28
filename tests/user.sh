@@ -21,28 +21,31 @@ cat ${passwords} | ./cosy.lua user:create alban.linard@gmail.com alinard
 echo "Failing at creating user alban:"
 cat ${passwords} | ./cosy.lua user:create alban.linard@gmail.com alban
 echo "Creating user alban:"
-cat ${passwords} | ./cosy.lua user:create alban.linard@lsv.ens-cachan.fr alban
+cat ${passwords} | ./cosy.lua user:create jiahua.xu16@gmail.com jiahua
 echo "Authenticating user alinard:"
 cat ${passwords} | ./cosy.lua user:authenticate alinard
 echo "Authenticating user alban:"
-cat ${passwords} | ./cosy.lua user:information alban
+cat ${passwords} | ./cosy.lua user:authenticate jiahua
 echo "Updating user alban:"
-./cosy.lua user:update --name="Alban Linard"
+./cosy.lua user:update --name="Alban Linard" --username=alban --email=alban.linard@lsv.ens-cachan.fr
 echo "Sending validation again:"
 ./cosy.lua user:send-validation
 echo "Showing user alban:"
 ./cosy.lua user:information alban
-echo "Deleting user alinard:"
+
+exit 1
+
+echo "Deleting user alban:"
 ./cosy.lua user:delete
-echo "Failing at authenticating user alinard:"
-cat ${passwords} | ./cosy.lua user:authenticate alinard
-echo "Authenticating user alban:"
+echo "Failing at authenticating user alban:"
 cat ${passwords} | ./cosy.lua user:authenticate alban
+echo "Authenticating user alinard:"
+cat ${passwords} | ./cosy.lua user:authenticate alinard
 echo "Creating project"
 ./cosy.lua project:create dd
 echo "Delete project"
-./cosy.lua project:delete alban/dd
-echo "Deleting user alban:"
+./cosy.lua project:delete alinard/dd
+echo "Deleting user alinard:"
 ./cosy.lua user:delete
 
 rm ${passwords}
