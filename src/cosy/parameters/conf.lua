@@ -379,12 +379,13 @@ do
   end
 end
 
--- Project name
--- ------------
+-- Project
+-- -------
 do
   Default.data.project = {
+    min_size = 1,
     __refines__ = {
-      this.data.project.name,
+      this.data.string.trimmed,
     },
     name = {
       min_size = 1,
@@ -394,6 +395,9 @@ do
       }
     }
   }
+  Default.data.project.max_size = Default.data.user.name.max_size
+                                + Default.data.project.name.max_size
+                                + 1
   local checks = Default.data.project.name.checks
   checks [Layer.size (checks)+1] = function (t)
     local request = t.request
@@ -407,8 +411,6 @@ do
   end
 end
 
--- Project
--- -------
 do
   local checks = Default.data.project.checks
   checks [Layer.size (checks)+1] = function (t)
@@ -436,6 +438,11 @@ do
     local values  = {}
     for v in value:gmatch "[^/]+" do
       values [#values+1] = v
+    end
+    if #values ~= 2 then
+      return nil, {
+        _    = i18n ["check:project:format"],
+      }
     end
     local project = store / "data" / values [1] / values [2]
     request [key] = project

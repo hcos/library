@@ -32,6 +32,12 @@ return {
   ["check:project:miss"] = {
     en = "project {{{name}}} does not exist",
   },
+  ["check:project:format"] = {
+    en = "a project must be like username/projectname",
+  },
+  ["check:project:not-project"] = {
+    en = "resource {{{name}}} is not a project",
+  },
   ["check:ip:pattern"] = {
     en = "IP address is not valid",
   },
@@ -76,9 +82,6 @@ return {
   },
   ["check:user"] = {
     en = "a {{{key}}} must be like username",
-  },
-  ["check:project"] = {
-    en = "a project must be like username/projectname",
   },
   ["check:iterator:bytecode"] = {
     en = "an iterator cannot be bytecode",

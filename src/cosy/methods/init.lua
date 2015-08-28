@@ -94,7 +94,7 @@ function Methods.server.tos (request, store)
     locale = request.locale or locale
   end
   if request.authentication then
-    locale = request.authentication.locale or locale
+    locale = request.authentication.user.locale or locale
   end
   local tos = i18n ["terms-of-service"] % {
     locale = locale,
@@ -108,7 +108,7 @@ end
 function Methods.server.filter (request, store)
   Parameters.check (store, request, {
     required = {
-      iterator       = Parameters.iterator,
+      iterator = Parameters.iterator,
     },
     optional = {
       authentication = Parameters.token.authentication,
@@ -273,11 +273,10 @@ end
 function Methods.user.validate (request, store)
   Parameters.check (store, request, {
     required = {
-      validation = Parameters.token.validation,
+      authentication = Parameters.token.authentication,
     },
   })
-  local user = request.validation.user
-  user.checked = true
+  request.authentication.user.checked = true
 end
 
 function Methods.user.authenticate (request, store)
@@ -314,14 +313,16 @@ function Methods.user.authenticate (request, store)
   }
 end
 
-function Methods.user.is_authentified (request, store)
+function Methods.user.authentified_as (request, store)
   Parameters.check (store, request, {
-    required = {
+    optional = {
       authentication = Parameters.token.authentication,
     },
   })
   return {
-    username = request.authentication.username,
+    username = request.authentication
+           and request.authentication.user.username
+            or nil,
   }
 end
 
@@ -344,7 +345,7 @@ function Methods.user.update (request, store, try_only)
   })
   local user = request.authentication.user
   if request.username and request.username ~= user.username then
-    local olduser     = request.authentication.user
+    local olduser     = user.user
     local oldusername = olduser.username
     local newusername = request.username
     if Store.exists (store / "data" / newusername) then
@@ -353,7 +354,7 @@ function Methods.user.update (request, store, try_only)
         username = newusername,
       }
     end
-    local newuser    = store / "data" + newusername
+    local newuser = store / "data" + newusername
     for k, v in Store.pairs (olduser) do
       newuser [k] = v
     end
@@ -385,8 +386,8 @@ function Methods.user.update (request, store, try_only)
     user.email        = request.email
     user.checked      = false
     Methods.user.send_validation ({
-      authentication = Token.authentication (user),
-      try_only       = try_only,
+      user     = Token.authentication (user),
+      try_only = try_only,
     }, store)
   end
   if request.password then
@@ -466,16 +467,16 @@ function Methods.user.recover (request, store, try_only)
       password   = Parameters.password.checked,
     },
   })
-  local user = request.validation.user
+  local user  = request.validation.user
+  local token = Token.authentication (user)
   Methods.user.update ({
-    authentication = Token.authentication (user),
-    password       = request.password,
-    try_only       = try_only,
-  }, store)
-  return Methods.user.authenticate ({
-    username = user.username,
+    user     = token,
     password = request.password,
+    try_only = try_only,
   }, store)
+  return {
+    authentication = token,
+  }
 end
 
 function Methods.user.reset (request, store, try_only)
@@ -528,49 +529,49 @@ function Methods.user.suspend (request, store)
       user           = Parameters.user.active,
     },
   })
-  local target = request.user
-  if request.user.username == request.authentication.username then
+  local origin = request.authentication.user
+  local user   = request.user
+  if origin.username == user.username then
     error {
       _ = i18n ["user:suspend:self"],
     }
   end
-  local user       = request.authentication.user
   local reputation = Configuration.reputation.suspend
-  if user.reputation < reputation then
+  if origin.reputation < reputation then
     error {
       _        = i18n ["user:suspend:not-enough"],
-      owned    = user.reputation,
+      owned    = origin.reputation,
       required = reputation
     }
   end
-  user.reputation = user.reputation - reputation
-  target.status   = "suspended"
+  origin.reputation = origin.reputation - reputation
+  user.status       = "suspended"
 end
 
 function Methods.user.release (request, store)
   Parameters.check (store, request, {
     required = {
-      user           = Parameters.user.suspended,
       authentication = Parameters.token.authentication,
+      user           = Parameters.user.suspended,
     },
   })
-  local target = request.user
-  if request.user.username == request.authentication.username then
+  local origin = request.authentication.user
+  local user   = request.user
+  if origin.username == user.username then
     error {
       _ = i18n ["user:release:self"],
     }
   end
-  local user       = request.authentication.user
   local reputation = Configuration.reputation.release
-  if user.reputation < reputation then
+  if origin.reputation < reputation then
     error {
       _        = i18n ["user:suspend:not-enough"],
-      owned    = user.reputation,
+      owned    = origin.reputation,
       required = reputation
     }
   end
-  user.reputation = user.reputation - reputation
-  target.status   = "active"
+  origin.reputation = origin.reputation - reputation
+  user.status       = "active"
 end
 
 function Methods.user.delete (request, store)
@@ -591,24 +592,24 @@ end
 Methods.project = {}
 
 function Methods.project.create (request, store)
-  Parameters.check (request, {
+  Parameters.check (store, request, {
     required = {
       authentication = Parameters.token.authentication,
-      projectname    = Parameters.projectname,
+      projectname    = Parameters.project.name,
     },
     optional = {
       is_private = Parameters.is_private,
     },
   })
-  local user = request.authentication.user
-  local project = store / "data" / user.username / request.projectname
-  if not Store.exists (project) then
+  local user    = request.authentication.user
+  local project = user / request.projectname
+  if Store.exists (project) then
     error {
       _    = i18n ["project:exist"],
       name = request.projectname,
     }
   end
-  project = store / "data" / user.username + request.projectname
+  project             = user + request.projectname
   project.permissions = {}
   project.projectname = request.projectname
   project.type        = "project"
@@ -616,7 +617,7 @@ function Methods.project.create (request, store)
 end
 
 function Methods.project.delete (request, store)
-  Parameters.check (request, {
+  Parameters.check (store, request, {
     required = {
       authentication = Parameters.token.authentication,
       project        = Parameters.project,
@@ -636,7 +637,7 @@ function Methods.project.delete (request, store)
       name = project.projectname,
     }
   end
-  local _ = store / "data" / project.username - project.projectname
+  local _ = user - project.projectname
 end
 
 return Methods
