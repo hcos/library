@@ -152,7 +152,7 @@ function Methods.user.create (request, store, try_only)
       administration = Parameters.token.administration,
     },
   })
-  if Store.exists (store / "email" / request.email) then
+  if Store.exists (store / "email" / Mime.b64 (request.email)) then
     error {
       _     = i18n ["email:exist"],
       email = request.email,
@@ -187,7 +187,7 @@ function Methods.user.create (request, store, try_only)
       username = request.username,
     }
   end
-  local email = store / "email" + request.email
+  local email = store / "email" + Mime.b64 (request.email)
   email.username = request.username
   if request.locale == nil then
     request.locale = Configuration.locale
@@ -367,22 +367,22 @@ function Methods.user.update (request, store, try_only)
       newproject.username = newusername
       local _ = olduser - oldproject.projectname
     end
-    local email    = store / "email" / olduser.email
+    local email    = store / "email" / Mime.b64 (olduser.email)
     email.username = newusername
     local _        = store / "data"  - oldusername
     user = newuser
   end
   if request.email and user.email ~= request.email then
-    if Store.exists (store / "email" / request.email) then
+    if Store.exists (store / "email" / Mime.b64 (request.email)) then
       error {
         _     = i18n ["email:exist"],
         email = request.email,
       }
     end
-    local oldemail    = store / "email" / user.email
-    local newemail    = store / "email" + request.email
+    local oldemail    = store / "email" / Mime.b64 (user.email)
+    local newemail    = store / "email" + Mime.b64 (request.email)
     newemail.username = oldemail.username
-    local _           = store / "email" - user.email
+    local _           = store / "email" - Mime.b64 (user.email)
     user.email        = request.email
     user.checked      = false
     Methods.user.send_validation ({
@@ -485,7 +485,7 @@ function Methods.user.reset (request, store, try_only)
       email = Parameters.email,
     },
   })
-  local email = store / "email" / request.email
+  local email = store / "email" / Mime.b64 (request.email)
   if not Store.exists (email) then
     return
   end
@@ -581,8 +581,9 @@ function Methods.user.delete (request, store)
     },
   })
   local user = request.authentication.user
-  local _ = store / "data"  / user.username - ".*"
-  local _ = store / "email" - user.email
+  print ("delete", user.username, user.email)
+  local _ = store / "email" - Mime.b64 (user.email)
+  local _ = store / "data"  / user.username - "/.*"
   local _ = store / "data"  - user.username
 end
 
