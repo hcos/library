@@ -129,7 +129,7 @@ function Operation.__call (operation, parameters, try_only, no_redo)
   -- Call special cases:
   local result, err
   threadof (function ()
-    if data.token and parameters and not parameters.token then
+    if data.token and parameters and not parameters.authentication then
       parameters.authentication = data.token
     end
     local identifier = #client._waiting + 1
@@ -263,7 +263,7 @@ end
 Client.methods ["user:authenticate"] = function (operation, parameters)
   local client = operation._client
   local data   = client._data
-  data.token          = nil
+  data.token   = nil
   parameters.user = parameters.user or data.username
   if parameters.password then
     parameters.password = Digest (parameters.password)
@@ -327,9 +327,7 @@ end
 
 Client.methods ["user:recover"] = Client.methods ["user:update"]
 
-Client.methods ["server:filter"] = function (operation, parameters)
-  local client = operation._client
-  local data   = client._data
+Client.methods ["server:filter"] = function (_, parameters)
   if type (parameters.iterator) == "function" then
     parameters.iterator = string.dump (parameters.iterator)
   end
