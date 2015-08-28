@@ -180,10 +180,10 @@ function Operation.__call (operation, parameters, try_only, no_redo)
       client._waiting [identifier] = nil
       client._results [identifier] = nil
     end
-    if wrapperco and not try_only then
-      Client.coroutine.resume (wrapperco, result)
-    end
     if result.success then
+      if wrapperco and not try_only then
+        Client.coroutine.resume (wrapperco, result)
+      end
       if result.iterator then
         local iterator   = result.iterator
         result, err = function ()
