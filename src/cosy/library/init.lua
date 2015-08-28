@@ -133,11 +133,10 @@ function Operation.__call (operation, parameters, try_only, no_redo)
       parameters.authentication = data.token
     end
     local identifier = #client._waiting + 1
-    local co         = coroutine.running ()
     local operator   = table.concat (operation._keys, ":")
     local wrapper    = Client.methods [operator]
     local wrapperco  = wrapper and Client.coroutine.create (wrapper) or nil
-    client._waiting [identifier] = co
+    client._waiting [identifier] = Scheduler.running ()
     client._results [identifier] = {}
     if wrapperco then
       Client.coroutine.resume (wrapperco, operation, parameters, try_only)
@@ -189,7 +188,7 @@ function Operation.__call (operation, parameters, try_only, no_redo)
         result, err = function ()
           local r
           threadof (function ()
-            client._waiting [identifier] = coroutine.running ()
+            client._waiting [identifier] = Scheduler.running ()
             r = iterator ()
           end)
           if r.success then
