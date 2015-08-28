@@ -325,6 +325,15 @@ end
 
 Client.methods ["user:recover"] = Client.methods ["user:update"]
 
+Client.methods ["server:filter"] = function (operation, parameters)
+  local client = operation._client
+  local data   = client._data
+  if type (parameters.iterator) == "function" then
+    parameters.iterator = string.dump (parameters.iterator)
+  end
+  Client.coroutine.yield ()
+end
+
 function Library.client (t)
   local client = setmetatable ({
     _status  = false,

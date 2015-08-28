@@ -252,12 +252,17 @@ do
       table    = table,
       math     = math,
     }
-    if _VERSION == "Lua 5.1" then
-      if value:byte (1) == 27 then
+    -- FIXME: insecure, we should not load bytecode functions!
+    if load then
+      local f, err = load (value, nil, 'bt', environment)
+      if not f then
         return nil, {
-          _      = i18n ["check:iterator:bytecode"],
+          _      = i18n ["check:iterator:function"],
+          reason = err,
         }
       end
+      request [key] = f
+    else
       local f, err = loadstring (value)
       if not f then
         return nil, {
@@ -267,22 +272,15 @@ do
       end
       setfenv (f, environment)
       request [key] = f
-    else
-      local f, err = load (value, nil, 't', environment)
-      if not f then
-        return nil, {
-          _      = i18n ["check:iterator:function"],
-          reason = err,
-        }
-      end
-      request [key] = f
     end
-    local _, result = pcall (request [key])
-    request [key] = result
+    if value:byte (1) ~= 27 then
+      local _, result = pcall (request [key])
+      request [key] = result
+    end
     return  type (request [key]) == "function"
         or  nil, {
               _      = i18n ["check:iterator:function"],
-              reason = result,
+              reason = request [key],
             }
   end
 end
