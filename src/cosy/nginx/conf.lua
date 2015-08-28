@@ -18,7 +18,7 @@ Default.http = {
   error         = os.getenv "HOME" .. "/.cosy/nginx.log",
   directory     = os.getenv "HOME" .. "/.cosy/nginx/",
   uploads       = os.getenv "HOME" .. "/.cosy/nginx/uploads",
-  www           = main:gsub ("cosy/nginx.lua", "cosy/www/"),
+  www           = main:gsub ("cosy/nginx.*", "cosy/www/"),
 }
 
 Default.dependencies = {
