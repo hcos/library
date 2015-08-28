@@ -281,7 +281,9 @@ end
 Client.methods ["user:delete"] = function (operation)
   local client = operation._client
   local data   = client._data
-  data.token   = nil
+  data.username = nil
+  data.hashed   = nil
+  data.token    = nil
   Client.coroutine.yield ()
 end
 

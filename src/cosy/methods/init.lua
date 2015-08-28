@@ -581,8 +581,8 @@ function Methods.user.delete (request, store)
   })
   local user = request.authentication.user
   local _ = store / "data"  / user.username - ".*"
-  local _ = store / "data"  / user.username
-  local _ = store / "email" / user.email
+  local _ = store / "email" - user.email
+  local _ = store / "data"  - user.username
 end
 
 -- Project
