@@ -8,10 +8,12 @@ local Logger        = require "cosy.logger"
 local Parameters    = require "cosy.parameters"
 local Password      = require "cosy.password"
 local Redis         = require "cosy.redis"
+local Scheduler     = require "cosy.scheduler"
 local Store         = require "cosy.store"
 local Time          = require "cosy.time"
 local Token         = require "cosy.token"
-local Coromake      = require "coroutine.make"
+local Value         = require "cosy.value"
+local Websocket     = require "websocket"
 local Mime          = require "mime"
 
 Configuration.load {
@@ -106,6 +108,10 @@ function Methods.server.tos (request, store)
 end
 
 function Methods.server.filter (request, store)
+  local back_request = {}
+  for k, v in pairs (request) do
+    back_request [k] = v
+  end
   Parameters.check (store, request, {
     required = {
       iterator = Parameters.iterator,
@@ -114,21 +120,56 @@ function Methods.server.filter (request, store)
       authentication = Parameters.token.authentication,
     }
   })
-  local coroutine = Coromake ()
-  local co        = coroutine.create (request.iterator)
+  local server_socket, server_port
+  local running       = Scheduler.running ()
+  local results       = {}
+  local addserver     = Scheduler.addserver
+  Scheduler.addserver = function (s, f)
+    local _, port = assert (s:getsockname ())
+    server_socket = s
+    server_port   = port
+    addserver (s, f)
+  end
+  Websocket.server.copas.listen {
+    interface = Configuration.server.interface,
+    port      = 0,
+    protocols = {
+      ["cosyfilter"] = function (ws)
+        ws:send (Value.expression (back_request))
+        while ws.state == "OPEN" do
+          local message = ws:receive ()
+          if message then
+            local value = Value.decode (message)
+            results [#results+1] = value
+            Scheduler.wakeup (running)
+          end
+        end
+        Scheduler.removeserver (server_socket)
+      end
+    }
+  }
+  Scheduler.addserver = addserver
+  os.execute ("{{{command}}} {{{port}}} &" % {
+    command = package.searchpath ("cosy.methods.filter", package.path),
+    port    = server_port,
+  })
   return function ()
-    if coroutine.status (co) ~= "suspended" then
-      return
-    end
-    local ok, result = coroutine.resume (co, coroutine.yield, store)
-    if ok then
-      return result
-    else
-      return nil, {
-        _      = i18n ["server:filter:error"],
-        reason = result,
-      }
-    end
+    repeat
+      local result = results [1]
+      if result then
+        table.remove (results, 1)
+        if result.success then
+          return result.response
+        else
+          return nil, {
+            _      = i18n ["server:filter:error"],
+            reason = result.error,
+          }
+        end
+      else
+        Scheduler.sleep (Configuration.filter.timeout)
+      end
+    until result and result.finished
   end
 end
 
