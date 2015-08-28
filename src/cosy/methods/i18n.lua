@@ -41,8 +41,8 @@ return {
   ["user:information"] = {
     en = "show user information",
   },
-  ["user:is-authentified"] = {
-    en = "checks if a user is authentified",
+  ["user:authentified-as"] = {
+    en = "shows identified username",
   },
   ["user:list"] = {
     en = "list all users",
