@@ -26,9 +26,6 @@ return {
   ["check:user:suspended"] = {
     en = "user {{{name}}} is suspended",
   },
-  ["check:project:pattern"] = {
-    en = "project {{{name}}} does not follow pattern {{{pattern}}}"
-  },
   ["check:project:miss"] = {
     en = "project {{{name}}} does not exist",
   },
@@ -37,6 +34,15 @@ return {
   },
   ["check:project:not-project"] = {
     en = "resource {{{name}}} is not a project",
+  },
+  ["check:resource:miss"] = {
+    en = "resource {{{name}}} does not exist",
+  },
+  ["check:resource:format"] = {
+    en = "a resource must be like username/projectname/resourcename",
+  },
+  ["check:resource:not-resource"] = {
+    en = "resource {{{name}}} is not a resource",
   },
   ["check:ip:pattern"] = {
     en = "IP address is not valid",

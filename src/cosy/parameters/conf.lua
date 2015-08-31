@@ -396,7 +396,7 @@ do
       }
     }
   }
-  Default.data.project.max_size = Default.data.user.name.max_size
+  Default.data.project.max_size = Default.data.user   .name.max_size
                                 + Default.data.project.name.max_size
                                 + 1
   local checks = Default.data.project.name.checks
@@ -450,6 +450,83 @@ do
     return  project.type == "project"
         or  nil, {
               _    = i18n ["check:project:not-project"],
+              name = value,
+            }
+  end
+end
+
+-- Resource
+-- --------
+do
+  Default.data.resource = {
+    min_size = 1,
+    __refines__ = {
+      this.data.string.trimmed,
+    },
+    name = {
+      min_size = 1,
+      max_size = 32,
+      __refines__ = {
+        this.data.string.trimmed,
+      }
+    }
+  }
+  Default.data.resource.max_size = Default.data.user    .name.max_size
+                                 + Default.data.project .name.max_size
+                                 + Default.data.resource.name.max_size
+                                 + 1
+  local checks = Default.data.resource.name.checks
+  checks [Layer.size (checks)+1] = function (t)
+    local request = t.request
+    local key     = t.key
+    local value   = request [key]
+    return  value:find "^%w[%w%-_]*$"
+        or  nil, {
+              _   = i18n ["check:alphanumeric"],
+              key = key,
+            }
+  end
+end
+
+do
+  local checks = Default.data.resource.checks
+  checks [Layer.size (checks)+1] = function (t)
+    local store   = t.store
+    local request = t.request
+    local key     = t.key
+    local value   = request [key]
+    local values  = {}
+    for v in value:gmatch "[^/]+" do
+      values [#values+1] = v
+    end
+    return  #values == 3
+       and  Store.exists (store / "data" / values [1])
+       and  Store.exists (store / "data" / values [1] / values [2])
+       and  Store.exists (store / "data" / values [1] / values [2] / values [3])
+        or  nil, {
+              _    = i18n ["check:resource:miss"],
+              name = value,
+            }
+  end
+  checks [Layer.size (checks)+1] = function (t)
+    local store   = t.store
+    local request = t.request
+    local key     = t.key
+    local value   = request [key]
+    local values  = {}
+    for v in value:gmatch "[^/]+" do
+      values [#values+1] = v
+    end
+    if #values ~= 3 then
+      return nil, {
+        _    = i18n ["check:resource:format"],
+      }
+    end
+    local resource = store / "data" / values [1] / values [2] / values [3]
+    request [key] = resource
+    return  resource.type == "resource"
+        or  nil, {
+              _    = i18n ["check:resource:not-resource"],
               name = value,
             }
   end
