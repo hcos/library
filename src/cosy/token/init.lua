@@ -39,23 +39,6 @@ function Token.decode (s)
   return result
 end
 
-function Token.iteration ()
-  local now    = Time ()
-  local result = {
-    iat      = now,
-    nbf      = now - 1,
-    exp      = now + Configuration.expiration.iteration,
-    iss      = Configuration.server.name,
-    aud      = nil,
-    sub      = "cosy:iteration",
-    jti      = Digest (tostring (now + Random ())),
-    contents = {
-      type = "iteration",
-    },
-  }
-  return Token.encode (result)
-end
-
 function Token.administration ()
   local now    = Time ()
   local result = {
