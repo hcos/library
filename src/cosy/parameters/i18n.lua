@@ -8,13 +8,13 @@ return {
   ["check:not-found"] = {
     en = "parameter {{{key}}} is missing",
   },
-  ["check:user:pattern"] = {
-    en = "user {{{name}}} does not follow pattern {{{pattern}}}"
+  ["check:resource:format"] = {
+    en = "resource part {{{name}}} is not a valid identifier",
   },
-  ["check:user:miss"] = {
-    en = "user {{{name}}} does not exist",
+  ["check:resource:miss"] = {
+    en = "resource {{{name}}} does not exist",
   },
-  ["check:user:not-user"] = {
+  ["check:resource:not-user"] = {
     en = "resource {{{name}}} is not a user",
   },
   ["check:user:not-active"] = {
@@ -26,22 +26,25 @@ return {
   ["check:user:suspended"] = {
     en = "user {{{name}}} is suspended",
   },
-  ["check:project:miss"] = {
-    en = "project {{{name}}} does not exist",
-  },
-  ["check:project:format"] = {
-    en = "a project must be like username/projectname",
-  },
-  ["check:project:not-project"] = {
+  ["check:resource:not-project"] = {
     en = "resource {{{name}}} is not a project",
   },
-  ["check:resource:miss"] = {
-    en = "resource {{{name}}} does not exist",
-  },
-  ["check:resource:format"] = {
-    en = "a resource must be like username/projectname/resourcename",
-  },
   ["check:resource:not-resource"] = {
+    en = "resource {{{name}}} is not a resource",
+  },
+  ["check:resource:not-formalism"] = {
+    en = "resource {{{name}}} is not a resource",
+  },
+  ["check:resource:not-model"] = {
+    en = "resource {{{name}}} is not a resource",
+  },
+  ["check:resource:not-service"] = {
+    en = "resource {{{name}}} is not a resource",
+  },
+  ["check:resource:not-execution"] = {
+    en = "resource {{{name}}} is not a resource",
+  },
+  ["check:resource:not-scenario"] = {
     en = "resource {{{name}}} is not a resource",
   },
   ["check:ip:pattern"] = {
