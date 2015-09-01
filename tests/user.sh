@@ -32,9 +32,6 @@ echo "Sending validation again:"
 ./cosy.lua user:send-validation
 echo "Showing user alban:"
 ./cosy.lua user:information alban
-
-exit 1
-
 echo "Deleting user alban:"
 ./cosy.lua user:delete
 echo "Failing at authenticating user alban:"
@@ -43,7 +40,7 @@ echo "Authenticating user alinard:"
 cat ${passwords} | ./cosy.lua user:authenticate alinard
 echo "Creating project"
 ./cosy.lua project:create dd
-echo "Delete project"
+echo "Deleting project"
 ./cosy.lua project:delete alinard/dd
 echo "Deleting user alinard:"
 ./cosy.lua user:delete
