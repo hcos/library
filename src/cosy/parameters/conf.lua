@@ -295,7 +295,7 @@ do
     __refines__ = {
       this.data.string.trimmed,
     },
-    name = {
+    identifier = {
       min_size = 1,
       max_size = 32,
       __refines__ = {
@@ -303,7 +303,7 @@ do
       }
     }
   }
-  local checks = Default.data.resource.name.checks
+  local checks = Default.data.resource.identifier.checks
   checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
@@ -414,103 +414,32 @@ do
     local value   = request [key]
     return  request [key].type == "project"
         or  nil, {
-              _    = i18n ["check:resource:not-project"],
+              _    = i18n ["check:resource:not-type"],
               name = value,
+              type = "project",
             }
   end
 end
 
-do
-  Default.data.formalism = {
-    __refines__ = {
-      this.data.resource,
-    },
-  }
-  local checks = Default.data.formalism.checks
-  checks [Layer.size (checks)+1] = function (t)
-    local request = t.request
-    local key     = t.key
-    local value   = request [key]
-    return  request [key].type == "formalism"
-        or  nil, {
-              _    = i18n ["check:resource:not-formalism"],
-              name = value,
-            }
-  end
-end
+for i = 1, Layer.size (Configuration.resource.project ["/"]) do
+  local data = Configuration.resource.project ["/"] [i]
+  local id   = data.__keys [#data.__keys]
 
-do
-  Default.data.model = {
+  Default.data [id] = {
     __refines__ = {
       this.data.resource,
     },
   }
-  local checks = Default.data.model.checks
+  local checks = Default.data [id].checks
   checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
     local value   = request [key]
-    return  request [key].type == "model"
+    return  request [key].type == id
         or  nil, {
-              _    = i18n ["check:resource:not-model"],
+              _    = i18n ["check:resource:not-type"],
               name = value,
-            }
-  end
-end
-
-do
-  Default.data.service = {
-    __refines__ = {
-      this.data.resource,
-    },
-  }
-  local checks = Default.data.service.checks
-  checks [Layer.size (checks)+1] = function (t)
-    local request = t.request
-    local key     = t.key
-    local value   = request [key]
-    return  request [key].type == "service"
-        or  nil, {
-              _    = i18n ["check:resource:not-service"],
-              name = value,
-            }
-  end
-end
-
-do
-  Default.data.execution = {
-    __refines__ = {
-      this.data.resource,
-    },
-  }
-  local checks = Default.data.execution.checks
-  checks [Layer.size (checks)+1] = function (t)
-    local request = t.request
-    local key     = t.key
-    local value   = request [key]
-    return  request [key].type == "execution"
-        or  nil, {
-              _    = i18n ["check:resource:not-execution"],
-              name = value,
-            }
-  end
-end
-
-do
-  Default.data.scenario = {
-    __refines__ = {
-      this.data.resource,
-    },
-  }
-  local checks = Default.data.scenario.checks
-  checks [Layer.size (checks)+1] = function (t)
-    local request = t.request
-    local key     = t.key
-    local value   = request [key]
-    return  request [key].type == "scenario"
-        or  nil, {
-              _    = i18n ["check:resource:not-scenario"],
-              name = value,
+              type = id,
             }
   end
 end
