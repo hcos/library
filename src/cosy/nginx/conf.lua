@@ -39,9 +39,6 @@ Default.dependencies = {
   ["/fonts/glyphicons-halflings-regular.woff"] = "https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.4/fonts/glyphicons-halflings-regular.woff",
   ["/fonts/glyphicons-halflings-regular.ttf"] = "https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.4/fonts/glyphicons-halflings-regular.ttf",
   ["/ip"] = "http://www.telize.com/ip",
-}
-
-Default.externals = {
   ["/ext/ip"   ] = "http://www.telize.com/ip",
   ["/ext/geoip"] = "http://www.telize.com/geoip",
   ["/ext/maps" ] = "http://maps.googleapis.com/maps/api/geocode/json",

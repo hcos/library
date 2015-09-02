@@ -30,6 +30,7 @@ http {
   proxy_temp_path       proxy;
   proxy_cache_path      cache   keys_zone=foreign:10m;
   lua_package_path      "{{{path}}}";
+  lua_package_cpath     "{{{cpath}}}";
 
   include /etc/nginx/mime.types;
 
@@ -60,6 +61,9 @@ http {
       resolver     {{{resolver}}};
       set $target  "";
       access_by_lua '
+        local encode  = require "cosy.store.key".encode
+        local decode  = require "cosy.store.key".decode
+        local value   = require "cosy.value"
         local redis   = require "nginx.redis" :new ()
         local ok, err = redis:connect ("{{{redis_host}}}", {{{redis_port}}})
         if not ok then
@@ -67,31 +71,12 @@ http {
           return ngx.exit (500)
         end
         redis:select ({{{redis_database}}})
-        local target = redis:get ("/foreign/" .. ngx.var.uri)
+        local path = encode ("foreign") .. "/" .. encode (ngx.var.uri)
+        local target = redis:get (path)
         if not target or target == ngx.null then
           return ngx.exit (404)
         end
-        ngx.var.target = target
-      ';
-      proxy_pass $target;
-    }
-
-    location /ext {
-      resolver     {{{resolver}}};
-      set $target  "";
-      access_by_lua '
-        local redis   = require "nginx.redis" :new ()
-        local ok, err = redis:connect ("{{{redis_host}}}", {{{redis_port}}})
-        if not ok then
-          ngx.log (ngx.ERR, "failed to connect to redis: ", err)
-          return ngx.exit (500)
-        end
-        redis:select ({{{redis_database}}})
-        local target = redis:get ("/external/" .. ngx.var.uri)
-        if not target or target == ngx.null then
-          return ngx.exit (404)
-        end
-        ngx.var.target = target
+        ngx.var.target = value.decode (target).url
       ';
       proxy_pass $target$is_args$args;
     }
@@ -209,6 +194,7 @@ function Nginx.configure ()
     redis_port     = Configuration.redis.port      ,
     redis_database = Configuration.redis.database  ,
     path           = package.path,
+    cpath          = package.cpath,
     resolver       = resolver,
   }
   local file = io.open (Configuration.http.configuration, "w")
