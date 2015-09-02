@@ -1,4 +1,9 @@
-return {
+local Configuration = require "cosy.configuration"
+local Layer         = require "layeredata"
+
+Configuration.load "cosy.methods"
+
+local result = {
   ["translation:failure"] = {
     "translation failed: {{{reason}}}",
   },
@@ -152,10 +157,26 @@ return {
   ["user:suspend:not-enough"] = {
     en = "suspending a user requires {{{required}}} reputation, but only {{{owned}}} is owned",
   },
-  ["project:exist"] = {
-    en = "project {{{name}}} exists already",
+  ["resource:exist"] = {
+    en = "resource {{{name}}} exists already",
   },
-  ["project:forbidden"] = {
-    en = "restricted to project owner",
+  ["resource:miss"] = {
+    en = "resource {{{name}}} does not exist",
+  },
+  ["resource:forbidden"] = {
+    en = "restricted to resource owner",
   },
 }
+
+for i = 1, Layer.size (Configuration.resource.project ["/"]) do
+  local data = Configuration.resource.project ["/"] [i]
+  local id   = data.__keys [#data.__keys]
+  result [id .. ":create"] = {
+    en = "create a " .. id,
+  }
+  result [id .. ":delete"] = {
+    en = "delete a " .. id,
+  }
+end
+
+return result
