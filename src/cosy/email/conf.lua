@@ -8,5 +8,5 @@ Default.smtp = {
   port      = nil,
   method    = nil,
   protocol  = nil,
-  redis_key = "sending",
+  redis_key = require "cosy.store.key".encode "sending",
 }
