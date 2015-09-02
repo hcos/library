@@ -9,7 +9,6 @@ local Logger        = require "cosy.logger"
 local Methods       = require "cosy.methods"
 local Nginx         = require "cosy.nginx"
 local Random        = require "cosy.random"
-local Redis         = require "cosy.redis"
 local Scheduler     = require "cosy.scheduler"
 local Store         = require "cosy.store"
 local Token         = require "cosy.token"
@@ -33,42 +32,25 @@ end)
 
 local updater = Scheduler.addthread (function ()
   while true do
-    local redis = Redis ()
-    -- http://stackoverflow.com/questions/4006324
-    local script = { [[
-      local n    = 1000
-      local keys = redis.call ("keys", ARGV[1])
-      for i=1, #keys, n do
-        redis.call ("del", unpack (keys, i, math.min (i+n-1, #keys)))
+    local store = Store.new ()
+    if store / "foreign" == nil then
+      local _ = store + "foreign"
+    end
+    local foreigns  = store * "foreign"
+    for path in Store.pairs (foreigns) do
+      if not Configuration.dependencies [path [#path]] then
+        local _ = foreigns - path [#path]
       end
-    ]] }
+    end
     for name, p in Layer.pairs (Configuration.dependencies) do
       local url = p
       if type (url) == "string" and url:match "^http" then
-        script [#script+1] = ([[
-          redis.call ("set", "/foreign/{{{name}}}", "{{{source}}}")
-        ]]) % {
-          name   = name,
-          source = url,
-        }
+        local foreign = foreigns + name
+        foreign.name = name
+        foreign.url  = url
       end
     end
-    for name, p in Layer.pairs (Configuration.externals) do
-      local url = p
-      if type (url) == "string" and url:match "^http" then
-        script [#script+1] = ([[
-          redis.call ("set", "/external/{{{name}}}", "{{{source}}}")
-        ]]) % {
-          name   = name,
-          source = url,
-        }
-      end
-    end
-    script [#script+1] = [[
-      return true
-    ]]
-    script = table.concat (script)
-    redis:eval (script, 1, "/foreign/*")
+    Store.commit (store)
     os.execute ([[
       if [ -d {{{root}}}/cache ]
       then
