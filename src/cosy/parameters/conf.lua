@@ -377,7 +377,7 @@ do
     return  user.status == "active"
         or  nil, {
               _    = i18n ["check:user:not-active"],
-              name = user.username,
+              name = user.identifier,
             }
   end
 end
@@ -396,7 +396,7 @@ do
     return  user.status == "suspended"
         or  nil, {
               _    = i18n ["check:user:not-suspended"],
-              name = user.username,
+              name = user.identifier,
             }
   end
 end
@@ -655,11 +655,11 @@ do
             }
   end
   checks [Layer.size (checks)+1] = function (t)
-    local store    = t.store
-    local request  = t.request
-    local key      = t.key
-    local username = request [key].username
-    local user     = store / "data" / username
+    local store      = t.store
+    local request    = t.request
+    local key        = t.key
+    local identifier = request [key].identifier
+    local user       = store / "data" / identifier
     request [key].user = user
     return  nil
        and  user.type == "user"
@@ -688,11 +688,11 @@ do
             }
   end
   checks [Layer.size (checks)+1] = function (t)
-    local store    = t.store
-    local request  = t.request
-    local key      = t.key
-    local username = request [key].username
-    local user     = store / "data" / username
+    local store      = t.store
+    local request    = t.request
+    local key        = t.key
+    local identifier = request [key].identifier
+    local user       = store / "data" / identifier
     request [key].user = user
     return  user
        and  user.type   == "user"
