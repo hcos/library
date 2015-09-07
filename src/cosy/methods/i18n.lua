@@ -47,7 +47,7 @@ local result = {
     en = "show user information",
   },
   ["user:authentified-as"] = {
-    en = "shows identified username",
+    en = "shows identified user",
   },
   ["user:list"] = {
     en = "list all users",
@@ -88,11 +88,11 @@ local result = {
   ["terms-of-service"] = {
     en = [[I agree to give my soul to CosyVerif.]],
   },
-  ["username:miss"] = {
-    en = "username {{{username}}} does not exist",
+  ["identifier:miss"] = {
+    en = "identifier {{{identifier}}} does not exist",
   },
-  ["username:exist"] = {
-    en = "username {{{username}}} exists already",
+  ["identifier:exist"] = {
+    en = "identifier {{{identifier}}} exists already",
   },
   ["email:exist"] = {
     en = "email {{{email}}} is already bound to an account",
@@ -107,10 +107,10 @@ local result = {
     en = [["{{{name}}}" <{{{email}}}>]],
   },
   ["user:create:subject"] = {
-    en = [=[[{{{servername}}}] Welcome, {{{username}}}!]=],
+    en = [=[[{{{servername}}}] Welcome, {{{identifier}}}!]=],
   },
   ["user:create:body"] = {
-    en = "{{{username}}}, we are happy to see you! Please click here to validate your email address <a href='http://{{{host}}}/?token={{{token}}}.",
+    en = "{{{identifier}}}, we are happy to see you! Please click here to validate your email address <a href='http://{{{host}}}/?token={{{token}}}.",
   },
   ["user:update:from"] = {
     en = [["{{{name}}}" <{{{email}}}>]],
@@ -119,10 +119,10 @@ local result = {
     en = [["{{{name}}}" <{{{email}}}>]],
   },
   ["user:update:subject"] = {
-    en = [=[[{{{servername}}}] Update, {{{username}}}!]=],
+    en = [=[[{{{servername}}}] Update, {{{identifier}}}!]=],
   },
   ["user:update:body"] = {
-    en = "{{{username}}}, please validate your email address using token {{{token}}}.",
+    en = "{{{identifier}}}, please validate your email address using token {{{token}}}.",
   },
   ["user:reset:from"] = {
     en = [["{{{name}}}" <{{{email}}}>]],
@@ -131,25 +131,25 @@ local result = {
     en = [["{{{name}}}" <{{{email}}}>]],
   },
   ["user:reset:subject"] = {
-    en = [=[[{{{servername}}}] Welcome back, {{{username}}}!]=],
+    en = [=[[{{{servername}}}] Welcome back, {{{identifier}}}!]=],
   },
   ["user:reset:body"] = {
-    en = "{{{username}}}, your validation token is <{{{validation}}}>.",
+    en = "{{{identifier}}}, your validation token is <{{{validation}}}>.",
   },
   ["user:reset:retry"] = {
     en = "reset failed, please try again later",
   },
   ["user:suspend:not-user"] = {
-    en = "account {{{username}}} is not a user",
+    en = "account {{{identifier}}} is not a user",
   },
   ["user:suspend:self"] = {
     en = "are you mad?",
   },
   ["user:release:not-user"] = {
-    en = "account {{{username}}} is not a user",
+    en = "account {{{identifier}}} is not a user",
   },
   ["user:suspend:not-suspended"] = {
-    en = "account {{{username}}} is not suspended",
+    en = "account {{{identifier}}} is not suspended",
   },
   ["user:release:self"] = {
     en = "nice try ;-)"
@@ -173,6 +173,9 @@ for i = 1, Layer.size (Configuration.resource.project ["/"]) do
   local id   = data.__keys [#data.__keys]
   result [id .. ":create"] = {
     en = "create a " .. id,
+  }
+  result [id .. ":copy"] = {
+    en = "copy a " .. id,
   }
   result [id .. ":delete"] = {
     en = "delete a " .. id,

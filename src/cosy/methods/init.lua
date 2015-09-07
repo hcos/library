@@ -182,7 +182,7 @@ Methods.user = {}
 function Methods.user.create (request, store, try_only)
   Parameters.check (store, request, {
     required = {
-      username   = Parameters.resource.identifier,
+      identifier = Parameters.resource.identifier,
       password   = Parameters.password.checked,
       email      = Parameters.email,
       tos_digest = Parameters.tos.digest,
@@ -200,10 +200,10 @@ function Methods.user.create (request, store, try_only)
       email = request.email,
     }
   end
-  if Store.exists (store / "data" / request.username) then
+  if Store.exists (store / "data" / request.identifier) then
     error {
-      _        = i18n ["username:exist"],
-      username = request.username,
+      _        = i18n ["identifier:exist"],
+      identifier = request.identifier,
     }
   end
   if request.captcha then
@@ -219,24 +219,25 @@ function Methods.user.create (request, store, try_only)
     assert (response)
     if not response.success then
       error {
-        _        = i18n ["captcha:failure"],
-        username = request.username,
+        _          = i18n ["captcha:failure"],
+        identifier = request.identifier,
       }
     end
   elseif not request.administration then
     error {
-      _        = i18n ["method:administration-only"],
-      username = request.username,
+      _          = i18n ["method:administration-only"],
+      identifier = request.identifier,
     }
   end
   local email = store / "email" + request.email
-  email.username = request.username
+  email.identifier = request.identifier
   if request.locale == nil then
     request.locale = Configuration.locale
   end
-  local user = store / "data" + request.username
+  local user = store / "data" + request.identifier
   user.checked     = false
   user.email       = request.email
+  user.identifier  = request.identifier
   user.lastseen    = Time ()
   user.locale      = request.locale
   user.password    = Password.hash (request.password)
@@ -244,7 +245,6 @@ function Methods.user.create (request, store, try_only)
   user.reputation  = Configuration.reputation.initial
   user.status      = "active"
   user.type        = "user"
-  user.username    = request.username
   if try_only then
     return true
   end
@@ -257,17 +257,17 @@ function Methods.user.create (request, store, try_only)
     },
     to      = {
       _     = i18n ["user:create:to"],
-      name  = user.username,
+      name  = user.identifier,
       email = user.email,
     },
     subject = {
       _          = i18n ["user:create:subject"],
       servername = Configuration.server.name,
-      username   = user.username,
+      identifier = user.identifier,
     },
     body    = {
       _          = i18n ["user:create:body"],
-      username   = user.username,
+      identifier = user.identifier,
       token      = Token.validation (user),
     },
   }
@@ -295,18 +295,18 @@ function Methods.user.send_validation (request, store, try_only)
     },
     to      = {
       _     = i18n ["user:update:to"],
-      name  = user.username,
+      name  = user.identifier,
       email = user.email,
     },
     subject = {
       _          = i18n ["user:update:subject"],
       servername = Configuration.server.name,
-      username   = user.username,
+      identifier = user.identifier,
     },
     body    = {
       _          = i18n ["user:update:body"],
       host       = Configuration.http.hostname,
-      username   = user.username,
+      identifier = user.identifier,
       token      = Token.validation (user),
     },
   }
@@ -362,9 +362,9 @@ function Methods.user.authentified_as (request, store)
     },
   })
   return {
-    username = request.authentication
-           and request.authentication.user.username
-            or nil,
+    identifier = request.authentication
+             and request.authentication.user.identifier
+              or nil,
   }
 end
 
@@ -382,39 +382,9 @@ function Methods.user.update (request, store, try_only)
       organization = Parameters.organization,
       password     = Parameters.password.checked,
       position     = Parameters.position,
-      username     = Parameters.resource.identifier,
     },
   })
   local user = request.authentication.user
-  if request.username and request.username ~= user.username then
-    local olduser     = user
-    local oldusername = olduser.username
-    local newusername = request.username
-    if Store.exists (store / "data" / newusername) then
-      error {
-        _        = i18n ["username:exist"],
-        username = newusername,
-      }
-    end
-    local newuser = store / "data" + newusername
-    for k, v in Store.pairs (olduser) do
-      newuser [k] = v
-    end
-    newuser.username = newusername
-    for _, oldproject in olduser * ".*" do
-      -- FIXME
-      local newproject = newuser + oldproject.projectname
-      for k, v in Store.pairs (oldproject) do
-        newproject [k] = v
-      end
-      newproject.username = newusername
-      local _ = olduser - oldproject.projectname
-    end
-    local email    = store / "email" / olduser.email
-    email.username = newusername
-    local _        = store / "data"  - oldusername
-    user = newuser
-  end
   if request.email and user.email ~= request.email then
     if Store.exists (store / "email" / request.email) then
       error {
@@ -422,12 +392,12 @@ function Methods.user.update (request, store, try_only)
         email = request.email,
       }
     end
-    local oldemail    = store / "email" / user.email
-    local newemail    = store / "email" + request.email
-    newemail.username = oldemail.username
-    local _           = store / "email" - user.email
-    user.email        = request.email
-    user.checked      = false
+    local oldemail      = store / "email" / user.email
+    local newemail      = store / "email" + request.email
+    newemail.identifier = oldemail.identifier
+    local _             = store / "email" - user.email
+    user.email          = request.email
+    user.checked        = false
     Methods.user.send_validation ({
       authentication = Token.authentication (user),
       try_only       = try_only,
@@ -481,7 +451,7 @@ function Methods.user.update (request, store, try_only)
     name           = user.name,
     organization   = user.organization,
     position       = user.position,
-    username       = user.username,
+    identifier     = user.identifier,
     authentication = Token.authentication (user)
   }
 end
@@ -499,7 +469,7 @@ function Methods.user.information (request, store)
     name         = user.name,
     organization = user.organization,
     position     = user.position,
-    username     = user.username,
+    identifier   = user.identifier,
   }
 end
 
@@ -532,7 +502,7 @@ function Methods.user.reset (request, store, try_only)
   if not Store.exists (email) then
     return
   end
-  local user = store / "data" / email.username
+  local user = store / "data" / email.identifier
   if not Store.exists (user) or user.type ~= "user" then
     return
   end
@@ -549,17 +519,17 @@ function Methods.user.reset (request, store, try_only)
     },
     to      = {
       _     = i18n ["user:reset:to"],
-      name  = user.username,
+      name  = user.identifier,
       email = user.email,
     },
     subject = {
       _          = i18n ["user:reset:subject"],
       servername = Configuration.server.name,
-      username   = user.username,
+      identifier = user.identifier,
     },
     body    = {
       _          = i18n ["user:reset:body"],
-      username   = user.username,
+      identifier = user.identifier,
       validation = Token.validation (user),
     },
   }
@@ -574,7 +544,7 @@ function Methods.user.suspend (request, store)
   })
   local origin = request.authentication.user
   local user   = request.user
-  if origin.username == user.username then
+  if origin.identifier == user.identifier then
     error {
       _ = i18n ["user:suspend:self"],
     }
@@ -600,7 +570,7 @@ function Methods.user.release (request, store)
   })
   local origin = request.authentication.user
   local user   = request.user
-  if origin.username == user.username then
+  if origin.identifier == user.identifier then
     error {
       _ = i18n ["user:release:self"],
     }
@@ -626,8 +596,8 @@ function Methods.user.delete (request, store)
   local user = request.authentication.user
   local _ = store / "email" - user.email
   -- FIXME
-  -- local _ = store / "data"  / user.username - "/.*"
-  local _ = store / "data"  - user.username
+  -- local _ = store / "data"  / user.identifier - "/.*"
+  local _ = store / "data"  - user.identifier
 end
 
 -- Project
@@ -639,25 +609,24 @@ function Methods.project.create (request, store)
   Parameters.check (store, request, {
     required = {
       authentication = Parameters.token.authentication,
-      projectname    = Parameters.resource.identifier,
+      identifier     = Parameters.resource.identifier,
     },
     optional = {
       is_private = Parameters.is_private,
     },
   })
   local user    = request.authentication.user
-  local project = user / request.projectname
+  local project = user / request.identifier
   if Store.exists (project) then
     error {
       _    = i18n ["resource:exist"],
-      name = request.projectname,
+      name = request.identifier,
     }
   end
-  project             = user + request.projectname
+  project             = user + request.identifier
   project.permissions = {}
-  project.projectname = request.projectname
+  project.identifier  = request.identifier
   project.type        = "project"
-  project.username    = user.username
 end
 
 function Methods.project.delete (request, store)
@@ -675,13 +644,12 @@ function Methods.project.delete (request, store)
     }
   end
   local user = request.authentication.user
-  if project.username ~= user.username then
+  if not user - project then
     error {
       _    = i18n ["resource:forbidden"],
-      name = project.projectname,
+      name = tostring (project),
     }
   end
-  local _ = user - project.projectname
 end
 
 for i = 1, Layer.size (Configuration.resource.project ["/"]) do
@@ -701,6 +669,38 @@ for i = 1, Layer.size (Configuration.resource.project ["/"]) do
     })
     local user    = request.authentication.user
     local project = request.project
+    if project.username ~= user.username then
+      error {
+        _    = i18n ["resource:forbidden"],
+        name = request.name,
+      }
+    end
+    local resource = project / request.name
+    if Store.exists (resource) then
+      error {
+        _    = i18n ["resource:exist"],
+        name = request.name,
+      }
+    end
+    resource             = request.project + request.name
+    resource.id          = request.name
+    resource.type        = id
+    resource.username    = user.username
+    resource.projectname = project.projectname
+  end
+
+  function methods.copy (request, store)
+    Parameters.check (store, request, {
+      required = {
+        authentication = Parameters.token.authentication,
+        [id]           = Parameters.resource [id],
+        project        = Parameters.project,
+        name           = Parameters.resource.identifier,
+      },
+    })
+    local user     = request.authentication.user
+    local resource = request [id]
+    local project  = request.project
     if project.username ~= user.username then
       error {
         _    = i18n ["resource:forbidden"],
