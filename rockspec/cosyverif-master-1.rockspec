@@ -17,7 +17,6 @@ dependencies = {
   "ansicolors >= 1",
   "bcrypt >= 2",
   "bit32 >= 5",
-  "cjson >= 2",
   "copas-ev >= 0",
   "coronest >= 0",
   "dkjson >= 2.5",

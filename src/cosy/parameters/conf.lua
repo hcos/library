@@ -236,21 +236,22 @@ do
     local value   = request [key]
     -- http://lua-users.org/wiki/SandBoxes
     local environment = {
-      assert   = assert,
-      error    = error,
-      pairs    = pairs,
-      ipairs   = ipairs,
-      next     = next,
-      pcall    = pcall,
-      select   = select,
-      tonumber = tonumber,
-      tostring = tostring,
-      type     = type,
-      unpack   = unpack,
-      xpcall   = xpcall,
-      string   = string,
-      table    = table,
-      math     = math,
+      assert    = assert,
+      coroutine = coroutine,
+      error     = error,
+      ipairs    = ipairs,
+      math      = math,
+      next      = next,
+      pairs     = pairs,
+      pcall     = pcall,
+      select    = select,
+      string    = string,
+      table     = table,
+      tonumber  = tonumber,
+      tostring  = tostring,
+      type      = type,
+      unpack    = unpack,
+      xpcall    = xpcall,
     }
     -- FIXME: insecure, we should not load bytecode functions!
     if load then
@@ -285,12 +286,14 @@ do
   end
 end
 
--- User
+-- Resource
 -- ----
 do
-  Default.data.user = {
+  Default.data.resource = {
+    min_size = 1,
+    max_size = math.huge,
     __refines__ = {
-      this.data.user.name,
+      this.data.string.trimmed,
     },
     name = {
       min_size = 1,
@@ -300,7 +303,7 @@ do
       }
     }
   }
-  local checks = Default.data.user.name.checks
+  local checks = Default.data.resource.name.checks
   checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
@@ -314,28 +317,47 @@ do
 end
 
 do
+  local checks = Default.data.resource.checks
+  checks [Layer.size (checks)+1] = function (t)
+    local store   = t.store
+    local request = t.request
+    local key     = t.key
+    local value   = request [key]
+    local data    = store / "data"
+    for v in value:gmatch "[^/]+" do
+      if not v:match "^%w[%w%-_]*$" then
+        return  nil, {
+          _    = i18n ["check:resource:format"],
+          name = v,
+        }
+      end
+      data = data / v
+      if not Store.exists (data) then
+        return  nil, {
+          _    = i18n ["check:resource:miss"],
+          name = value,
+        }
+      end
+    end
+    request [key] = data
+    return true
+  end
+end
+
+do
+  Default.data.user = {
+    __refines__ = {
+      this.data.resource,
+    },
+  }
   local checks = Default.data.user.checks
   checks [Layer.size (checks)+1] = function (t)
-    local store   = t.store
     local request = t.request
     local key     = t.key
     local value   = request [key]
-    return  Store.exists (store / "data" / value)
+    return request [key].type == "user"
         or  nil, {
-              _    = i18n ["check:user:miss"],
-              name = value,
-            }
-  end
-  checks [Layer.size (checks)+1] = function (t)
-    local store   = t.store
-    local request = t.request
-    local key     = t.key
-    local value   = request [key]
-    local user    = store / "data" / value
-    request [key] = user
-    return  user.type == "user"
-        or  nil, {
-              _    = i18n ["check:user:not-user"],
+              _    = i18n ["check:resource:not-user"],
               name = value,
             }
   end
@@ -379,76 +401,115 @@ do
   end
 end
 
--- Project
--- -------
 do
   Default.data.project = {
-    min_size = 1,
     __refines__ = {
-      this.data.string.trimmed,
+      this.data.resource,
     },
-    name = {
-      min_size = 1,
-      max_size = 32,
-      __refines__ = {
-        this.data.string.trimmed,
-      }
-    }
   }
-  Default.data.project.max_size = Default.data.user.name.max_size
-                                + Default.data.project.name.max_size
-                                + 1
-  local checks = Default.data.project.name.checks
+  local checks = Default.data.project.checks
   checks [Layer.size (checks)+1] = function (t)
     local request = t.request
     local key     = t.key
     local value   = request [key]
-    return  value:find "^%w[%w%-_]*$"
+    return  request [key].type == "project"
         or  nil, {
-              _   = i18n ["check:alphanumeric"],
-              key = key,
+              _    = i18n ["check:resource:not-project"],
+              name = value,
             }
   end
 end
 
 do
-  local checks = Default.data.project.checks
+  Default.data.formalism = {
+    __refines__ = {
+      this.data.resource,
+    },
+  }
+  local checks = Default.data.formalism.checks
   checks [Layer.size (checks)+1] = function (t)
-    local store   = t.store
     local request = t.request
     local key     = t.key
     local value   = request [key]
-    local values  = {}
-    for v in value:gmatch "[^/]+" do
-      values [#values+1] = v
-    end
-    return  #values == 2
-       and  Store.exists (store / "data" / values [1])
-       and  Store.exists (store / "data" / values [1] / values [2])
+    return  request [key].type == "formalism"
         or  nil, {
-              _    = i18n ["check:project:miss"],
+              _    = i18n ["check:resource:not-formalism"],
               name = value,
             }
   end
+end
+
+do
+  Default.data.model = {
+    __refines__ = {
+      this.data.resource,
+    },
+  }
+  local checks = Default.data.model.checks
   checks [Layer.size (checks)+1] = function (t)
-    local store   = t.store
     local request = t.request
     local key     = t.key
     local value   = request [key]
-    local values  = {}
-    for v in value:gmatch "[^/]+" do
-      values [#values+1] = v
-    end
-    if #values ~= 2 then
-      return nil, {
-        _    = i18n ["check:project:format"],
-      }
-    end
-    local project = store / "data" / values [1] / values [2]
-    request [key] = project
-    return  project.type == "project"
+    return  request [key].type == "model"
         or  nil, {
-              _    = i18n ["check:project:not-project"],
+              _    = i18n ["check:resource:not-model"],
+              name = value,
+            }
+  end
+end
+
+do
+  Default.data.service = {
+    __refines__ = {
+      this.data.resource,
+    },
+  }
+  local checks = Default.data.service.checks
+  checks [Layer.size (checks)+1] = function (t)
+    local request = t.request
+    local key     = t.key
+    local value   = request [key]
+    return  request [key].type == "service"
+        or  nil, {
+              _    = i18n ["check:resource:not-service"],
+              name = value,
+            }
+  end
+end
+
+do
+  Default.data.execution = {
+    __refines__ = {
+      this.data.resource,
+    },
+  }
+  local checks = Default.data.execution.checks
+  checks [Layer.size (checks)+1] = function (t)
+    local request = t.request
+    local key     = t.key
+    local value   = request [key]
+    return  request [key].type == "execution"
+        or  nil, {
+              _    = i18n ["check:resource:not-execution"],
+              name = value,
+            }
+  end
+end
+
+do
+  Default.data.scenario = {
+    __refines__ = {
+      this.data.resource,
+    },
+  }
+  local checks = Default.data.scenario.checks
+  checks [Layer.size (checks)+1] = function (t)
+    local request = t.request
+    local key     = t.key
+    local value   = request [key]
+    return  request [key].type == "scenario"
+        or  nil, {
+              _    = i18n ["check:resource:not-scenario"],
               name = value,
             }
   end
