@@ -379,7 +379,6 @@ end
 function View.__call (view)
   assert (getmetatable (view) == View.__metatable)
   local rawview = assert (Hidden [view])
-  assert (rawview.iterator)
   if type (rawview.ifunction) ~= "function" then
     local document  = assert (Hidden [rawview.document])
     local store     = assert (Hidden [rawview.store])
