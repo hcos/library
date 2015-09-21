@@ -168,9 +168,7 @@ local result = {
   },
 }
 
-for i = 1, Layer.size (Configuration.resource.project ["/"]) do
-  local data = Configuration.resource.project ["/"] [i]
-  local id   = data.__keys [#data.__keys]
+for id, data in Layer.pairs (Configuration.resource.project ["/"]) do
   result [id .. ":create"] = {
     en = "create a " .. id,
   }

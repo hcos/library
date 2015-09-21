@@ -595,8 +595,6 @@ function Methods.user.delete (request, store)
   })
   local user = request.authentication.user
   local _ = store / "email" - user.email
-  -- FIXME
-  -- local _ = store / "data"  / user.identifier - "/.*"
   local _ = store / "data"  - user.identifier
 end
 
@@ -652,9 +650,7 @@ function Methods.project.delete (request, store)
   end
 end
 
-for i = 1, Layer.size (Configuration.resource.project ["/"]) do
-  local data = Configuration.resource.project ["/"] [i]
-  local id   = data.__keys [#data.__keys]
+for id, data in Layer.pairs (Configuration.resource.project ["/"]) do
 
   Methods [id] = {}
   local methods = Methods [id]
@@ -699,7 +695,6 @@ for i = 1, Layer.size (Configuration.resource.project ["/"]) do
       },
     })
     local user     = request.authentication.user
-    local resource = request [id]
     local project  = request.project
     if project.username ~= user.username then
       error {

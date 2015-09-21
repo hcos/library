@@ -13,10 +13,10 @@ Default.reputation = {
 
 Default.resource = {
   ["/"] = {
-    ref.resource.email,
-    ref.resource.token,
-    ref.resource.tag,
-    ref.resource.data,
+    email = ref.resource.email,
+    token = ref.resource.token,
+    tag   = ref.resource.tag,
+    data  = ref.resource.data,
   },
   email = {
     ["/"] = {},
@@ -39,11 +39,11 @@ Default.resource = {
   },
   project = {
     ["/"] = {
-      ref.resource.formalism,
-      ref.resource.model,
-      ref.resource.service,
-      ref.resource.execution,
-      ref.resource.scenario,
+      formalism = ref.resource.formalism,
+      model     = ref.resource.model,
+      service   = ref.resource.service,
+      execution = ref.resource.execution,
+      scenario  = ref.resource.scenario,
     },
   },
   formalism = {
