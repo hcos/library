@@ -362,10 +362,11 @@ function View.__add (view, key)
   return result
 end
 
-function View.__sub (view, pattern)
+function View.__sub (view, x)
   assert (getmetatable (view) == View.__metatable)
-  for _, document in view / pattern do
-    print ("remove", document)
+  assert (type (x) == "string")
+  for _, document in view * x do
+    local _ = document - ".*"
     document = assert (Hidden [document]).document
     document = assert (Hidden [document])
     document.data   = nil
