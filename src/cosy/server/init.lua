@@ -18,6 +18,8 @@ local Default       = require "cosy.configuration.layers".default
 local Layer         = require "layeredata"
 local Websocket     = require "websocket"
 local Ffi           = require "ffi"
+local GeoCity       = require 'geoip.city'
+local GeoDB
 
 Configuration.load "cosy.server"
 
@@ -25,6 +27,20 @@ local i18n   = I18n.load "cosy.server"
 i18n._locale = Configuration.locale
 
 local Server = {}
+
+Scheduler.addthread (function ()
+  if not io.open (Configuration.server.geodata, "r") then
+    local geodata, status = Loader.loadhttp "http://geolite.maxmind.com/download/geoip/database/GeoLiteCity.dat.gz"
+    assert (status == 200)
+    local file = io.open (Configuration.server.geodata .. ".gz", "w")
+    file:write (geodata)
+    file:close ()
+    os.execute ([[gunzip {{{file}}}]] % {
+      file = Configuration.server.geodata .. ".gz",
+    })
+  end
+  GeoDB = assert (GeoCity.open (Configuration.server.geodata))
+end)
 
 Scheduler.addthread (function ()
   Store.initialize ()
@@ -186,6 +202,7 @@ function Server.start ()
     port      = Configuration.server.port,
     protocols = {
       cosy = function (ws)
+        local geo = GeoDB:query_by_addr (ws.ip)
         local message
         local function send (t)
           local response = Value.expression (t)
@@ -214,6 +231,9 @@ function Server.start ()
                   },
                 })
               end
+              request.ip            = ws.ip
+              request.port          = ws.port
+              request.position      = geo
               local identifier      = request.identifier
               local operation       = request.operation
               local parameters      = request.parameters or {}

@@ -6,6 +6,7 @@ Default.server = {
   data      = os.getenv "HOME" .. "/.cosy/server.data",
   log       = os.getenv "HOME" .. "/.cosy/server.log",
   pid       = os.getenv "HOME" .. "/.cosy/server.pid",
+  geodata   = os.getenv "HOME" .. "/.cosy/geodata.dat",
   retry     = 5,
   name      = nil,
 }
