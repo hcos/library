@@ -29,12 +29,12 @@ Default.resource = {
   },
   data = {
     ["/"] = {
-      ref.resource.user,
+      user = ref.resource.user,
     },
   },
   user = {
     ["/"] = {
-      ref.resource.project,
+      project = ref.resource.project,
     },
   },
   project = {
