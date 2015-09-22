@@ -91,7 +91,7 @@ function Document.new (t)
   for i = 1, #t.keys do
     keys [i] = encode (t.keys [i])
   end
-  local key = table.concat (keys, "/")
+  local key   = table.concat (keys, "/")
   local store = assert (Hidden [t.store])
   if store.documents [key] then
     return store.documents [key]
@@ -108,8 +108,8 @@ function Document.new (t)
     keys      = t.keys,
     store     = t.store,
   }
-  Hidden [document].root  = document
-  store.documents [key] = document
+  Hidden [document].root = document
+  store.documents [key]  = document
   return document
 end
 
