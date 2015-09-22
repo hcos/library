@@ -650,7 +650,7 @@ function Methods.project.delete (request, store)
   end
 end
 
-for id, data in Layer.pairs (Configuration.resource.project ["/"]) do
+for id in Layer.pairs (Configuration.resource.project ["/"]) do
 
   Methods [id] = {}
   local methods = Methods [id]

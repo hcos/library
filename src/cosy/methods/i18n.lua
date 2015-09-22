@@ -168,7 +168,7 @@ local result = {
   },
 }
 
-for id, data in Layer.pairs (Configuration.resource.project ["/"]) do
+for id in Layer.pairs (Configuration.resource.project ["/"]) do
   local a = "a"
   if id:match "^[aeiou]" then
     a = "an"
