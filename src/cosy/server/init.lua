@@ -300,6 +300,17 @@ function Server.start ()
     port = Configuration.server.port,
   }
 
+  Scheduler.addthread (function ()
+    local store = Store.new ()
+    store = Store.specialize (store, Configuration.server.token)
+    for key in Layer.pairs (Configuration.resource ["/"]) do
+      if not Store.exists (store / key) then
+        local _ = store + key
+      end
+    end
+    Store.commit (store)
+  end)
+
   do
     Nginx.start ()
   end
