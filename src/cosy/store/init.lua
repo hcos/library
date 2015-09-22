@@ -350,6 +350,7 @@ function View.__add (view, key)
   end
   local rawdoc    = assert (Hidden [document])
   rawdoc.data     = {}
+  rawdoc.dirty    = true
   local result    = setmetatable ({}, View)
   Hidden [result] = {
     access   = rawview.access,
