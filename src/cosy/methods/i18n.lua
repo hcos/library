@@ -169,14 +169,19 @@ local result = {
 }
 
 for id, data in Layer.pairs (Configuration.resource.project ["/"]) do
+  local a = "a"
+  if id:match "^[aeiou]" then
+    a = "an"
+  end
+  a = a .. " "
   result [id .. ":create"] = {
-    en = "create a " .. id,
+    en = "create " .. a .. id,
   }
   result [id .. ":copy"] = {
-    en = "copy a " .. id,
+    en = "copy " .. a .. id,
   }
   result [id .. ":delete"] = {
-    en = "delete a " .. id,
+    en = "delete " .. a .. id,
   }
 end
 
