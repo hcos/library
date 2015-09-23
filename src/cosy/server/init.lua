@@ -30,7 +30,7 @@ local Server = {}
 
 Scheduler.addthread (function ()
   if not io.open (Configuration.server.geodata, "r") then
-    local geodata, status = Loader.loadhttp "http://geolite.maxmind.com/download/geoip/database/GeoLiteCity.dat.gz"
+    local geodata, status = Loader.loadhttp (Configuration.geodb.dataset)
     assert (status == 200)
     local file = io.open (Configuration.server.geodata .. ".gz", "w")
     file:write (geodata)
@@ -203,6 +203,8 @@ function Server.start ()
     protocols = {
       cosy = function (ws)
         local geo = GeoDB:query_by_addr (ws.ip)
+                 or Layer.export (Layer.flatten (Configuration.geodb.position))
+        geo.country = geo.country_name
         local message
         local function send (t)
           local response = Value.expression (t)
@@ -231,15 +233,20 @@ function Server.start ()
                   },
                 })
               end
-              request.ip            = ws.ip
-              request.port          = ws.port
-              request.position      = geo
               local identifier      = request.identifier
               local operation       = request.operation
-              local parameters      = request.parameters or {}
+              if not request.parameters then
+                request.parameters = {}
+              end
+              local parameters      = request.parameters
               local try_only        = request.try_only
               local parameters_only = false
               local method          = Methods
+              parameters.ip         = ws.ip
+              parameters.port       = ws.port
+              parameters.position   = parameters.position == true
+                                  and geo
+                                   or parameters.position
               if operation:sub (-1) == "?" then
                 operation       = operation:sub (1, #operation-1)
                 parameters_only = true

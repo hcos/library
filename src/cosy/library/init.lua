@@ -93,8 +93,8 @@ function Client.connect (client)
     end)
   end
   if  client._status == "opened"
-  and data.username and data.username ~= ""
-  and data.password and data.password ~= "" then
+  and data.identifier and data.identifier ~= ""
+  and data.password   and data.password   ~= "" then
     client.user.authenticate {}
   end
 end
@@ -210,11 +210,11 @@ function Operation.__call (operation, parameters, try_only, no_redo)
         and result.error.reasons [1].key == "authentication"
         )
     then
-      if (data.username and data.hashed and not client.user.authenticate {})
-      or not data.username
+      if (data.identifier and data.hashed and not client.user.authenticate {})
+      or not data.identifier
       or not data.hashed
       then
-        data.username             = nil
+        data.identifier           = nil
         data.hashed               = nil
         data.token                = nil
         parameters.authentication = nil
@@ -234,28 +234,22 @@ end
 Client.methods = {}
 
 Client.methods ["user:create"] = function (operation, parameters)
-  local client  = operation._client
-  local data    = client._data
-  data.username = nil
-  data.hashed   = nil
-  data.token    = nil
-  local ip, ip_status = Loader.loadhttp (data.url .. "/ext/ip")
-  assert (ip_status == 200)
+  local client        = operation._client
+  local data          = client._data
+  data.identifier     = nil
+  data.hashed         = nil
+  data.token          = nil
   data.token          = nil
   parameters.password = Digest (parameters.password)
-  parameters.ip       = ip:match "%S+"
-  local result = Client.coroutine.yield ()
+  local result        = Client.coroutine.yield ()
   if result.success then
-    data.username = parameters.username
-    data.hashed   = parameters.password
-    data.token    = result.response.authentication
-    local position, status = Loader.loadhttp (data.url .. "/ext/geoip")
-    if status == 200 then
-      client.user.update {
-        authentication = data.token,
-        position       = Json.decode (position),
-      }
-    end
+    data.identifier = parameters.identifier
+    data.hashed     = parameters.password
+    data.token      = result.response.authentication
+    client.user.update {
+      authentication = data.token,
+      position       = true,
+    }
   end
 end
 
@@ -263,7 +257,7 @@ Client.methods ["user:authenticate"] = function (operation, parameters)
   local client = operation._client
   local data   = client._data
   data.token   = nil
-  parameters.user = parameters.user or data.username
+  parameters.user = parameters.user or data.identifier
   if parameters.password then
     parameters.password = Digest (parameters.password)
   elseif data.hashed then
@@ -271,18 +265,18 @@ Client.methods ["user:authenticate"] = function (operation, parameters)
   end
   local result = Client.coroutine.yield ()
   if result.success then
-    data.username = parameters.user
-    data.hashed   = parameters.password
-    data.token    = result.response.authentication
+    data.identifier = parameters.user
+    data.hashed     = parameters.password
+    data.token      = result.response.authentication
   end
 end
 
 Client.methods ["user:delete"] = function (operation)
-  local client = operation._client
-  local data   = client._data
-  data.username = nil
-  data.hashed   = nil
-  data.token    = nil
+  local client    = operation._client
+  local data      = client._data
+  data.identifier = nil
+  data.hashed     = nil
+  data.token      = nil
   Client.coroutine.yield ()
 end
 
@@ -292,7 +286,7 @@ Client.methods ["user:update"] = function (operation, parameters)
   if parameters.password then
     parameters.password = Digest (parameters.password)
   end
-  if  parameters.position
+  if  type (parameters.position) == "table"
   and parameters.position.longitude == ""
   and parameters.position.latitude  == "" then
     -- FIXME: should not be wrapped
@@ -303,22 +297,14 @@ Client.methods ["user:update"] = function (operation, parameters)
       }
       local response, status = Loader.loadhttp (url)
       if status == 200 then
-        local coordinate = Json.decode (response)
-        local position = parameters.position
+        local coordinate   = Json.decode (response)
+        local position     = parameters.position
         position.latitude  = coordinate.results [1].geometry.location.lat
         position.longitude = coordinate.results [1].geometry.location.lng
-        client.user.update {
-          authentication = parameters.authentication,
-          position = position,
-        }
       end
     end) ()
   end
   local result = Client.coroutine.yield ()
-  if result.success and parameters.username then
-    data.username = result.response.username
-    data.token    = result.response.authentication
-  end
   if result.success and parameters.password then
     data.hashed = parameters.password
   end
@@ -342,13 +328,13 @@ function Library.client (t)
     _waiting = {},
     _data    = {},
   }, Client)
-  client._data.url      = t.url      or false
-  client._data.host     = t.host     or false
-  client._data.port     = t.port     or 80
-  client._data.username = t.username or false
-  client._data.password = t.password or false
-  client._data.hashed   = false
-  client._data.token    = false
+  client._data.url        = t.url        or false
+  client._data.host       = t.host       or false
+  client._data.port       = t.port       or 80
+  client._data.identifier = t.identifier or false
+  client._data.password   = t.password   or false
+  client._data.hashed     = false
+  client._data.token      = false
   Client.connect (client)
   if client._status == "opened" then
     return client
@@ -364,11 +350,11 @@ if _G.js then
     local parser   = _G.window.document:createElement "a";
     parser.href    = url;
     return Library.client {
-      url      = url,
-      host     = parser.hostname,
-      port     = parser.port,
-      username = parser.username,
-      password = parser.password,
+      url        = url,
+      host       = parser.hostname,
+      port       = parser.port,
+      identifier = parser.username,
+      password   = parser.password,
     }
   end
 else
@@ -376,11 +362,11 @@ else
   function Library.connect (url)
     local parsed = Url.parse (url)
     return Library.client {
-      url      = url,
-      host     = parsed.host,
-      port     = parsed.port,
-      username = parsed.user,
-      password = parsed.password,
+      url        = url,
+      host       = parsed.host,
+      port       = parsed.port,
+      identifier = parsed.user,
+      password   = parsed.password,
     }
   end
 end
