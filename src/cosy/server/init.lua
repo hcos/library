@@ -202,7 +202,9 @@ function Server.start ()
     port      = Configuration.server.port,
     protocols = {
       cosy = function (ws)
-        local geo = GeoDB:query_by_addr (ws.ip)
+        ws.ip, ws.port = ws.sock:getpeername ()
+        local geo = GeoDB
+                and GeoDB:query_by_addr (ws.ip)
                  or Layer.export (Layer.flatten (Configuration.geodb.position))
         geo.country = geo.country_name
         local message
