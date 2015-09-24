@@ -26,26 +26,8 @@ return {
   ["check:user:suspended"] = {
     en = "user {{{name}}} is suspended",
   },
-  ["check:resource:not-project"] = {
-    en = "resource {{{name}}} is not a project",
-  },
-  ["check:resource:not-resource"] = {
-    en = "resource {{{name}}} is not a resource",
-  },
-  ["check:resource:not-formalism"] = {
-    en = "resource {{{name}}} is not a resource",
-  },
-  ["check:resource:not-model"] = {
-    en = "resource {{{name}}} is not a resource",
-  },
-  ["check:resource:not-service"] = {
-    en = "resource {{{name}}} is not a resource",
-  },
-  ["check:resource:not-execution"] = {
-    en = "resource {{{name}}} is not a resource",
-  },
-  ["check:resource:not-scenario"] = {
-    en = "resource {{{name}}} is not a resource",
+  ["check:resource:not-type"] = {
+    en = "resource {{{name}}} is not a {{{type}}}",
   },
   ["check:ip:pattern"] = {
     en = "IP address is not valid",
@@ -145,6 +127,9 @@ return {
   },
   ["project"] = {
     en = "project",
+  },
+  ["resource:identifier"] = {
+    en = "identifier",
   },
   ["string"] = {
     en = "string",

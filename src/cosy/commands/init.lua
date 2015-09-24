@@ -148,7 +148,10 @@ function Options.set (part, name, oftype, description)
   elseif oftype == "tos:digest" then
     local _ = false
   elseif oftype == "position" then
-    local _ = false
+    Cli:add_option (
+      "--{{{name}}}=auto or Country/City" % { name = name },
+      description
+    )
   elseif oftype == "ip" then
     local _ = false
   elseif oftype == "captcha" then
@@ -317,6 +320,12 @@ function Commands.__index (commands, key)
             end
           until passwords [1] == passwords [2]
           parameters [name] = passwords [1]
+        elseif t.type == "position" and args [name] then
+          if args [name] == "auto" then
+            parameters [name] = true
+          else
+            parameters [name] = args [name] / "{{{Country}}}/{{{City}}}"
+          end
         elseif t.type == "captcha" and args [name] then
           Commands.captcha (args, parameters)
         elseif args [name] then

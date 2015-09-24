@@ -68,9 +68,9 @@ function Token.validation (data)
     sub      = "cosy:validation",
     jti      = Digest (tostring (now + Random ())),
     contents = {
-      type     = "validation",
-      username = data.username,
-      email    = data.email,
+      type       = "validation",
+      identifier = data.identifier,
+      email      = data.email,
     },
   }
   return Token.encode (result)
@@ -87,9 +87,9 @@ function Token.authentication (data)
     sub      = "cosy:authentication",
     jti      = Digest (tostring (now + Random ())),
     contents = {
-      type     = "authentication",
-      username = data.username,
-      locale   = data.locale,
+      type       = "authentication",
+      identifier = data.identifier,
+      locale     = data.locale,
     },
   }
   return Token.encode (result)
