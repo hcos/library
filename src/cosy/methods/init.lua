@@ -642,7 +642,7 @@ function Methods.project.delete (request, store)
     }
   end
   local user = request.authentication.user
-  if not user - project then
+  if not (user - project) then
     error {
       _    = i18n ["resource:forbidden"],
       name = tostring (project),
