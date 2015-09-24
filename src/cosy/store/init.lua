@@ -209,6 +209,7 @@ function View.from_key (view, key, iterator)
     for sub in key:gmatch "[^/]+" do
       document = document / decode (sub)
     end
+    document = Hidden [document].document
   end
   local result    = setmetatable ({}, View)
   Hidden [result] = {
@@ -365,14 +366,40 @@ end
 
 function View.__sub (view, x)
   assert (getmetatable (view) == View.__metatable)
-  assert (type (x) == "string")
-  for _, document in view * x do
-    local _ = document - ".*"
-    document = assert (Hidden [document]).document
-    document = assert (Hidden [document])
-    document.data   = nil
-    document.dirty  = true
-    document.loaded = true
+  if type (x) == "string" then
+    for _, document in view * x do
+      local _ = document - ".*"
+      document = assert (Hidden [document]).document
+      document = assert (Hidden [document])
+      document.data   = nil
+      document.dirty  = true
+      document.loaded = true
+    end
+  elseif getmetatable (x) == View.__metatable then
+    for _, lhs in view do
+      local lhsd = assert (Hidden [lhs ]).document
+      local lhsk = assert (Hidden [lhsd]).keys
+      for _, rhs in x do
+        local rhsd = assert (Hidden [rhs ]).document
+        local rhsk = assert (Hidden [rhsd]).keys
+        local suppress = true
+        for i = 1, #lhsk do
+          if lhsk [i] ~= rhsk [i] then
+            suppress = false
+            break
+          end
+        end
+        if suppress then
+          local current = lhs
+          for i = #lhsk+1, #rhsk-1 do
+            current = current / rhsk [i]
+          end
+          local _ = current - rhsk [#rhsk]
+        end
+      end
+    end
+  else
+    assert (false)
   end
   return view
 end
@@ -387,7 +414,7 @@ function View.__call (view)
     local seen      = {}
     local function match (key)
       local extracted = {}
-      for skey in key:gmatch "[^/]*" do
+      for skey in key:gmatch "[^/]+" do
         extracted [#extracted+1] = decode (skey)
       end
       if #extracted == #document.keys then
@@ -401,9 +428,10 @@ function View.__call (view)
         if  matched
         and not seen [key] then
           seen [key] = true
-          local doc = View.from_key (view, key)
-          if Hidden [doc].data ~= nil then
-            coroutine.yield (extracted, doc)
+          local v = View.from_key (view, key)
+          local d = Hidden [v].document
+          if Hidden [d].data ~= nil then
+            coroutine.yield (extracted, v)
           end
         end
       end
