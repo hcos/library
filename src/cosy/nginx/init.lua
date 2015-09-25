@@ -83,6 +83,8 @@ http {
 
     location /lua {
       default_type  application/lua;
+      add_header    Cache-Control no-cache;
+      expires       1s;
       root          /;
       set $target   "";
       access_by_lua '
