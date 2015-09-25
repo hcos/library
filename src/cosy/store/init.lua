@@ -431,7 +431,7 @@ function View.__call (view)
           local v = View.from_key (view, key)
           local d = Hidden [v].document
           if Hidden [d].data ~= nil then
-            coroutine.yield (extracted, v)
+            coroutine.yield (v)
           end
         end
       end
