@@ -465,32 +465,32 @@ end
 
 function View.__pairs (view)
   assert (getmetatable (view) == View.__metatable)
-  view            = assert (Hidden [view])
-  local document  = assert (Hidden [view.document])
+  local document  = assert (Hidden [view].document)
+  document        = assert (Hidden [document])
   local coroutine = Coromake ()
   return coroutine.wrap (function ()
     for k in pairs (document.data) do
-      coroutine.yield (k, view.document [k])
+      coroutine.yield (k, view [k])
     end
   end)
 end
 
 function View.__ipairs (view)
   assert (getmetatable (view) == View.__metatable)
-  view            = assert (Hidden [view])
-  local document  = assert (Hidden [view.document])
+  local document  = assert (Hidden [view].document)
+  document        = assert (Hidden [document])
   local coroutine = Coromake ()
   return coroutine.wrap (function ()
     for i = 1, #document.data do
-      coroutine.yield (i, view.document [i])
+      coroutine.yield (i, view [i])
     end
   end)
 end
 
 function View.__len (view)
   assert (getmetatable (view) == View.__metatable)
-  view            = assert (Hidden [view])
-  local document  = assert (Hidden [view.document])
+  view           = assert (Hidden [view])
+  local document = assert (Hidden [view.document])
   return #document.data
 end
 
