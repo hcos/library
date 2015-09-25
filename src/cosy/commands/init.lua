@@ -760,7 +760,7 @@ Results ["server:filter"] = function (_, ws)
         jspace = jspace .. " => "
         print (Colors ("%{black yellowbg}  " .. tostring (jkey)) ..
                Colors ("%{reset}" .. jspace) ..
-               Colors ("%{yellow blackbg}" .. tostring (jvalue)))
+               Colors ("%{yellow blackbg}" .. Value.expression (jvalue)))
       end
     end
   end
