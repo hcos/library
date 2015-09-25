@@ -150,9 +150,9 @@ function Methods.server.filter (request, store)
     }
   }
   Scheduler.addserver = addserver
-  os.execute ("{{{command}}} {{{port}}} &" % {
-    command = package.searchpath ("cosy.methods.filter", package.path),
-    port    = server_port,
+  os.execute ([[luajit -e '_G.logfile = "{{{log}}}"; _G.port = {{{port}}}; require "cosy.methods.filter"' &]] % {
+    port = server_port,
+    log  = Configuration.server.log,
   })
   return function ()
     repeat
