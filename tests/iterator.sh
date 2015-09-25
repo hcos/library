@@ -8,7 +8,7 @@
     end
   end'
 ./cosy.lua server:filter 'return function (store)
-    for user in store / "data" * "alinard" do
-      coroutine.yield (user)
+    for project in store / "data" * ".*" * ".*" do
+      coroutine.yield (project)
     end
   end'
