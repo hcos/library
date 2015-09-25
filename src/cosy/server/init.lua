@@ -84,27 +84,14 @@ local updater = Scheduler.addthread (function ()
 end)
 
 function Server.sethostname ()
-  local hostname
-  local Http = require "socket.http"
-  local ip, status = Http.request "http://ip.telize.com/"
-  if status == 200 then
-    ip = ip:match "%S+"
-    local handle = io.popen ("host " .. ip)
-    hostname = handle:read "*all"
-    handle:close()
-    local results = {}
-    for r in hostname:gmatch "%S+" do
-      results [#results+1] = r
-    end
-    hostname = results [#results]
-    hostname = hostname:sub (1, #hostname-1)
+  local handle = io.popen "hostnamectl"
+  local result = handle:read "*all"
+  handle:close()
+  local results = {}
+  for key, value in result:gmatch "%s*([^:]+):%s*(%S+)%s*[\r\n]+" do
+    results [key] = value
   end
-  if not hostname or hostname:match "%.home$" then
-    local handle = io.popen "hostname"
-    hostname = handle:read "*all"
-    handle:close()
-  end
-  Default.http.hostname = hostname
+  Default.http.hostname = results ["Static hostname"]
   Logger.info {
     _        = i18n ["server:hostname"],
     hostname = Default.server.hostname,
