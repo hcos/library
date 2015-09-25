@@ -22,6 +22,9 @@ if _G.js then
   end
   function Loader.scheduler.loop ()
   end
+  function Loader.scheduler.running ()
+    return coroutine.running ()
+  end
 end
 
 return Loader.scheduler
