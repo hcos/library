@@ -116,7 +116,7 @@ http {
           luarocks install --local --force --only-deps cosyverif
           for rock in $(luarocks list --outdated --porcelain | cut -f 1)
           do
-          luarocks install --local --force ${rock}
+            luarocks install --local --force ${rock}
           done
           rm --force $0
         ]==]
