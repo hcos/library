@@ -1,6 +1,6 @@
 #! /bin/bash
 
-prefix=/usr/
+prefix=${1:-/usr/local/}
 
 binary=${prefix}/bin/cosy
 rockstree=${prefix}/share/cosy
