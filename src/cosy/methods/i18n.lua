@@ -5,13 +5,13 @@ Configuration.load "cosy.methods"
 
 local result = {
   ["translation:failure"] = {
-    "translation failed: {{{reason}}}",
+    en = "translation failed: {{{reason}}}",
   },
   ["captcha:failure"] = {
-    "captcha verification failed",
+    en = "captcha verification failed",
   },
   ["method:administration-only"] = {
-    "method is reserved to server administrator",
+    en = "method is reserved to server administrator",
   },
   ["server:information"] = {
     en = "show information about the server",
