@@ -33,15 +33,8 @@ end
 
 setmetatable (Configuration, Metatable)
 
--- Compute prefix:
-local main = package.searchpath ("cosy.configuration", package.path)
-if main:sub (1, 1) == "." then
-  main = Lfs.currentdir () .. "/" .. main
-end
-local prefix = main:gsub ("/share/lua/5.1/cosy/configuration/.*", "/etc")
-
 local files = {
-  etc  = prefix .. "/cosy.conf",
+  etc  = os.getenv "COSY_PREFIX" .. "/etc/cosy.conf",
   home = os.getenv "HOME" .. "/.cosy/cosy.conf",
   pwd  = os.getenv "PWD"  .. "/cosy.conf",
 }
