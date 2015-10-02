@@ -3,6 +3,7 @@ local I18n   = require "cosy.i18n"
 local Logger = require "cosy.logger"
 local Layer  = require "layeredata"
 local layers = require "cosy.configuration.layers"
+local Lfs    = require "lfs"
 
 local i18n   = I18n.load "cosy.configuration"
 
@@ -32,8 +33,15 @@ end
 
 setmetatable (Configuration, Metatable)
 
+-- Compute prefix:
+local main = package.searchpath ("cosy.configuration", package.path)
+if main:sub (1, 1) == "." then
+  main = Lfs.currentdir () .. "/" .. main
+end
+local prefix = main:gsub ("/share/lua/5.1/cosy/configuration/.*", "/etc")
+
 local files = {
-  etc  = "/etc/cosy.conf",
+  etc  = prefix .. "/cosy.conf",
   home = os.getenv "HOME" .. "/.cosy/cosy.conf",
   pwd  = os.getenv "PWD"  .. "/cosy.conf",
 }
