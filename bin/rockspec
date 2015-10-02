@@ -99,6 +99,7 @@ local options = {
   nocode   = true,
   nohuge   = true,
 }
+lfs.mkdir "rockspec"
 local file = io.open ("rockspec/cosyverif-master-1.rockspec", "w")
 for _, key in ipairs {
   "package",
