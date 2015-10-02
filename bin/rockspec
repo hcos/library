@@ -12,11 +12,11 @@ local rockspec = {
   },
 
   description = {
-    summary     = "CosyVerif Library",
+    summary     = "CosyVerif",
     detailed    = [[]],
     homepage    = "http://www.cosyverif.org/",
     license     = "MIT/X11",
-    maintainer  = "Alban Linard <alban.linard@lsv.ens-cachan.fr>",
+    maintainer  = "Alban Linard <alban@linard.fr>",
   },
 
   dependencies = {
