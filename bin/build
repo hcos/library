@@ -1,0 +1,108 @@
+#! /bin/bash
+
+prefix=/usr/
+
+binary=${prefix}/bin/cosy
+rockstree=${prefix}/share/cosy
+currentwd=$(pwd)
+tempwd=$(mktemp -d)
+
+# Install dependencies:
+function install_dependencies ()
+{
+  sudo apt-get install git make gcc diffutils patch \
+                       libev-dev libssl-dev libgeoip-dev \
+                       nginx-extras lua-nginx-redis redis-server
+}
+
+# Install LuaJIT with 5.2 compatibility:
+function install_luajit ()
+{
+  wget http://luajit.org/download/LuaJIT-2.0.4.tar.gz
+  tar  xf LuaJIT-2.0.4.tar.gz
+  cd   LuaJIT-2.0.4
+  cat > luajit.patch <<EOL
+diff -rupN LuaJIT-2.0.4.back/Makefile LuaJIT-2.0.4/Makefile
+--- LuaJIT-2.0.4.back/Makefile	2015-10-02 17:19:16.774268017 +0200
++++ LuaJIT-2.0.4/Makefile	2015-10-02 17:11:14.533865635 +0200
+@@ -24,7 +24,7 @@ ABIVER=  5.1
+ # Change the installation path as needed. This automatically adjusts
+ # the paths in src/luaconf.h, too. Note: PREFIX must be an absolute path!
+ #
+-export PREFIX= /usr/local
++export PREFIX= ${rockstree}
+ export MULTILIB= lib
+ ##############################################################################
+
+diff -rupN LuaJIT-2.0.4.back/src/Makefile LuaJIT-2.0.4/src/Makefile
+--- LuaJIT-2.0.4.back/src/Makefile	2015-10-02 17:19:06.294172164 +0200
++++ LuaJIT-2.0.4/src/Makefile	2015-10-02 17:18:50.882031189 +0200
+@@ -100,7 +100,7 @@ XCFLAGS=
+ # enabled by default. Some other features that *might* break some existing
+ # code (e.g. __pairs or os.execute() return values) can be enabled here.
+ # Note: this does not provide full compatibility with Lua 5.2 at this time.
+-#XCFLAGS+= -DLUAJIT_ENABLE_LUA52COMPAT
++XCFLAGS+= -DLUAJIT_ENABLE_LUA52COMPAT
+ #
+ # Disable the JIT compiler, i.e. turn LuaJIT into a pure interpreter.
+ #XCFLAGS+= -DLUAJIT_DISABLE_JIT
+EOL
+  patch -p1 -i luajit.patch
+  make
+  make install
+  cd   ..
+}
+
+function install_luarocks ()
+{
+  wget http://luarocks.org/releases/luarocks-2.2.2.tar.gz
+  tar  xf luarocks-2.2.2.tar.gz
+  cd   luarocks-2.2.2
+  ./configure --prefix=${rockstree} \
+              --with-lua=${rockstree} \
+              --lua-suffix="jit" \
+              --with-lua-include=${rockstree}/include/luajit-2.0/ \
+              --with-lua-lib=${rockstree}/lib/
+  make bootstrap
+  cd   ..
+}
+
+# Install cosyverif:
+function install_cosyverif ()
+{
+  git clone https://github.com/saucisson/lua-websockets.git
+  git clone https://github.com/nrk/redis-lua.git
+  git clone https://github.com/CosyVerif/library.git
+  ${rockstree}/bin/luarocks install --tree=${rockstree} cosyverif
+  rm -rf ${rockstree}/share/lua/5.1/redis*
+  cp     ${tempwd}/redis-lua/src/redis.lua          ${rockstree}/share/lua/5.1/
+  rm -rf ${rockstree}/share/lua/5.1/websocket*
+  cp     ${tempwd}/lua-websockets/src/websocket.lua ${rockstree}/share/lua/5.1/
+  cp -r  ${tempwd}/lua-websockets/src/websocket     ${rockstree}/share/lua/5.1/
+  rm -rf ${rockstree}/share/lua/5.1/cosy*
+  cp -r  ${tempwd}/library/src/cosy                 ${rockstree}/share/lua/5.1/
+}
+
+function install_main ()
+{
+  cat > ${binary} <<EOL
+#! /bin/sh
+
+export PATH=${rockstree}/bin:$PATH
+export LUA_PATH="${rockstree}/share/lua/5.1/?.lua;${rockstree}/share/lua/5.1/?/init.lua"
+export LUA_CPATH="${rockstree}/lib/lua/5.1/?.so"
+${rockstree}/bin/luajit ${rockstree}/share/lua/5.1/cosy/cli/init.lua $*
+EOL
+  chmod a+x ${binary}
+}
+
+mkdir -p ${prefix}
+mkdir -p ${prefix}/bin
+cd ${tempwd}
+install_dependencies
+install_luajit
+install_luarocks
+install_cosyverif
+install_main
+cd ${currentwd}
+rm -rf ${tempwd}
