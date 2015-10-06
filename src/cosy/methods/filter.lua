@@ -21,11 +21,12 @@ Scheduler.addthread (function ()
   local request = client:receive ()
   request       = Value.decode (request)
   local store   = Store.new ()
+  local view    = Store.toview (store)
   if request.authentication then
-    store = Store.specialize (store, request.authentication)
+    view = view % request.authentication
   end
   request.authentication = nil
-  Parameters.check (store, request, {
+  Parameters.check (view, request, {
     required = {
       iterator = Parameters.iterator,
     },
@@ -35,7 +36,7 @@ Scheduler.addthread (function ()
     if type (t) ~= "table" then
       return t
     else
-      local it = getmetatable (t) == getmetatable (store)
+      local it = getmetatable (t) == getmetatable (view)
              and Store.pairs
               or pairs
       local r = {}
@@ -46,7 +47,7 @@ Scheduler.addthread (function ()
     end
   end
   repeat
-    local ok, result = coroutine.resume (iterator, store)
+    local ok, result = coroutine.resume (iterator, view)
     result = sanitize (result)
     client:send (Value.expression {
       success  = ok,
