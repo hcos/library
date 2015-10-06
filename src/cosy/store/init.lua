@@ -392,4 +392,49 @@ function View.__sub (view, x)
   return - (view / x)
 end
 
+function View.__eq (lhs, rhs)
+  assert (getmetatable (lhs) == View.__metatable)
+  assert (getmetatable (rhs) == View.__metatable)
+  local rawlhs = assert (Hidden [lhs])
+  local rawrhs = assert (Hidden [rhs])
+  if #rawlhs.document ~= #rawrhs.document then
+    return false
+  end
+  assert (#rawlhs.field == 0)
+  assert (#rawrhs.field == 0)
+  for i = 1, #rawlhs.document do
+    if rawlhs.document [i].key        ~= rawrhs.document [i].key
+    or rawlhs.document [i].is_pattern ~= rawrhs.document [i].is_pattern
+    then
+      return false
+    end
+  end
+  return true
+end
+
+function View.__lt (lhs, rhs)
+  assert (getmetatable (lhs) == View.__metatable)
+  assert (getmetatable (rhs) == View.__metatable)
+  local rawlhs = assert (Hidden [lhs])
+  local rawrhs = assert (Hidden [rhs])
+  if #rawlhs.document >= #rawrhs.document then
+    return false
+  end
+  assert (#rawlhs.field == 0)
+  assert (#rawrhs.field == 0)
+  for i = 1, #rawlhs.document do
+    if rawlhs.document [i].key        ~= rawrhs.document [i].key
+    or rawlhs.document [i].is_pattern ~= rawrhs.document [i].is_pattern
+    then
+      return false
+    end
+  end
+  return true
+end
+
+function View.__le (lhs, rhs)
+  return lhs <  rhs
+      or lhs == rhs
+end
+
 return Store
