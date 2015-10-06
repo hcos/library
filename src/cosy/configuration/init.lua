@@ -34,7 +34,7 @@ end
 setmetatable (Configuration, Metatable)
 
 local files = {
-  etc  = os.getenv "COSY_PREFIX" .. "/etc/cosy.conf",
+  etc  = (os.getenv "COSY_PREFIX" or "") .. "/etc/cosy.conf",
   home = os.getenv "HOME" .. "/.cosy/cosy.conf",
   pwd  = os.getenv "PWD"  .. "/cosy.conf",
 }
