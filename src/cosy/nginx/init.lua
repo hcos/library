@@ -1,3 +1,4 @@
+local Loader        = require "cosy.loader"
 local Configuration = require "cosy.configuration"
 local I18n          = require "cosy.i18n"
 local Logger        = require "cosy.logger"
@@ -52,33 +53,7 @@ http {
 
     location / {
       add_header  Access-Control-Allow-Origin *;
-      try_files   $uri $uri/ $uri/index.html @foreigns;
-    }
-
-    location @foreigns {
-      proxy_cache  foreign;
-      expires      modified  1d;
-      resolver     {{{resolver}}};
-      set $target  "";
-      access_by_lua '
-        local encode  = require "cosy.store.key".encode
-        local decode  = require "cosy.store.key".decode
-        local value   = require "cosy.value"
-        local redis   = require "nginx.redis" :new ()
-        local ok, err = redis:connect ("{{{redis_host}}}", {{{redis_port}}})
-        if not ok then
-          ngx.log (ngx.ERR, "failed to connect to redis: ", err)
-          return ngx.exit (500)
-        end
-        redis:select ({{{redis_database}}})
-        local path = encode ("foreign") .. "/" .. encode (ngx.var.uri)
-        local target = redis:get (path)
-        if not target or target == ngx.null then
-          return ngx.exit (404)
-        end
-        ngx.var.target = value.decode (target).url
-      ';
-      proxy_pass $target$is_args$args;
+      try_files   $uri $uri/ $uri/index.html;
     }
 
     location /lua {
@@ -145,6 +120,7 @@ http {
       ';
     }
 
+{{{redirects}}}
   }
 }
 ]]
@@ -181,6 +157,24 @@ function Nginx.configure ()
     directory = Configuration.http.directory,
     uploads   = Configuration.http.uploads  ,
   })
+  local locations = {}
+  for url, remote in pairs (Configuration.dependencies) do
+    if type (remote) == "string" and remote:match "^http" then
+      locations [#locations+1] = [==[
+    location {{{url}}} {
+      proxy_cache foreign;
+      expires     modified  1d;
+      resolver    {{{resolver}}};
+      set         $target   "{{{remote}}}";
+      proxy_pass  $target$is_args$args;
+    }
+        ]==] % {
+          url      = url,
+          remote   = remote,
+          resolver = resolver,
+        }
+    end
+  end
   local configuration = configuration_template % {
     host           = Configuration.http.interface  ,
     port           = Configuration.http.port       ,
@@ -195,7 +189,7 @@ function Nginx.configure ()
     redis_database = Configuration.redis.database  ,
     path           = package.path,
     cpath          = package.cpath,
-    resolver       = resolver,
+    redirects      = table.concat (locations, "\n"),
   }
   local file = io.open (Configuration.http.configuration, "w")
   file:write (configuration)
@@ -243,6 +237,10 @@ function Nginx.update ()
   ]] % {
     pidfile = Configuration.http.pid,
   })
+end
+
+Loader.hotswap.on_change ["cosy:configuration"] = function ()
+  Nginx.update ()
 end
 
 return Nginx
