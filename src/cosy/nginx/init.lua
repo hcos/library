@@ -53,7 +53,7 @@ http {
 
     location / {
       add_header  Access-Control-Allow-Origin *;
-      try_files   $uri $uri/ $uri/index.html;
+      index       index.html;
     }
 
     location /lua {
