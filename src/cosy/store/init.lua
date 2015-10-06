@@ -248,7 +248,7 @@ end
 function View.field (view)
   assert (getmetatable (view) == View.__metatable)
   local rawview  = assert (Hidden [view])
-  local document = rawview.store.documents [rawview.document]
+  local document = View.document (view)
   assert (document ~= nil and document.data ~= nil)
   local value    = document.data
   for i = 1, #rawview.field do
