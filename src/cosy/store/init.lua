@@ -12,7 +12,7 @@ local Store     = { __metatable = "store"     }
 local View      = { __metatable = "view"      }
 local Documents = { __metatable = "documents" }
 
-local unpack = table.unpack or unpack
+local unpack    = table.unpack or unpack
 
 function Documents.new (store)
   return setmetatable ({
