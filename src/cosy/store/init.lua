@@ -274,6 +274,9 @@ end
 
 function View.__newindex (view, key, value)
   assert (getmetatable (view) == View.__metatable)
+  local document = View.document (view)
+  assert (document ~= nil and document.data ~= nil)
+  document.dirty = true
   local field = View.field (view)
   if type (value) == "table" then
     local subview = view [key]
