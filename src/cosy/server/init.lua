@@ -53,7 +53,7 @@ function Server.sethostname ()
   Default.http.hostname = results ["Static hostname"]
   Logger.info {
     _        = i18n ["server:hostname"],
-    hostname = Default.server.hostname,
+    hostname = Configuration.http.hostname,
   }
 end
 
