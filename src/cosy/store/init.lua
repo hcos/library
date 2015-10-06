@@ -71,13 +71,16 @@ function Documents.filter (documents, t)
     end
     local parts = {}
     for part in key:gmatch "[^/]+" do
-      parts [#parts+1] = decode (part)
+      parts [#parts+1] = {
+        is_pattern = false,
+        key        = decode (part),
+      }
     end
     if #t ~= #parts then
       return false
     end
     for i = 1, #t do
-      local found = parts [i]:find (t [i].key, 1, not t [i].is_pattern)
+      local found = parts [i].key:find (t [i].key, 1, not t [i].is_pattern)
       if not found then
         return false
       end
@@ -178,10 +181,11 @@ function View.new (store)
   assert (getmetatable (store) == Store.__metatable)
   local result = setmetatable ({}, View)
   Hidden [result] = {
-    store    = store,
-    token    = false,
-    document = {},
-    field    = {},
+    store       = store,
+    token       = false,
+    is_iterator = false,
+    document    = {},
+    field       = {},
   }
   return result
 end
@@ -191,10 +195,11 @@ function View.copy (view)
   local rawview   = assert (Hidden [view])
   local result    = setmetatable ({}, View)
   Hidden [result] = {
-    store    = rawview.store,
-    token    = rawview.token,
-    document = { unpack (rawview.document) },
-    field    = { unpack (rawview.field   ) },
+    store       = rawview.store,
+    token       = rawview.token,
+    is_iterator = rawview.is_iterator,
+    document    = { unpack (rawview.document) },
+    field       = { unpack (rawview.field   ) },
   }
   return result
 end
@@ -210,28 +215,26 @@ end
 function View.document (view)
   assert (getmetatable (view) == View.__metatable)
   local rawview = assert (Hidden [view])
-  assert (#rawview.field == 0)
   return rawview.store.documents [rawview.document]
-end
-
-function View.subdocument (view, key, is_pattern)
-  assert (getmetatable (view) == View.__metatable)
-  assert (type (key) == "string")
-  local document    = View.document (view)
-  assert (document ~= nil and document.data ~= nil)
-  local result    = View.copy (view)
-  local rawresult = assert (Hidden [result])
-  rawresult.document [#rawresult.document+1] = {
-    is_pattern = is_pattern,
-    key        = key,
-  }
-  return result
 end
 
 function View.__div (view, key)
   assert (getmetatable (view) == View.__metatable)
   assert (type (key) == "string")
-  local result   = View.subdocument (view, key, false)
+  local rawview = assert (Hidden [view])
+  if not rawview.is_iterator then
+    local document = View.document (view)
+    assert (document ~= nil and document.data ~= nil)
+  end
+  local result    = View.copy (view)
+  local rawresult = assert (Hidden [result])
+  rawresult.document [#rawresult.document+1] = {
+    is_pattern = false,
+    key        = key,
+  }
+  if rawresult.is_iterator then
+    return result
+  end
   local document = View.document (result)
   if document == nil or document.data == nil then
     return nil
@@ -242,7 +245,19 @@ end
 function View.__mul (view, key)
   assert (getmetatable (view) == View.__metatable)
   assert (type (key) == "string")
-  return View.subdocument (view, key, true)
+  local rawview = assert (Hidden [view])
+  if not rawview.is_iterator then
+    local document  = View.document (view)
+    assert (document ~= nil and document.data ~= nil)
+  end
+  local result    = View.copy (view)
+  local rawresult = assert (Hidden [result])
+  rawresult.is_iterator = true
+  rawresult.document [#rawresult.document+1] = {
+    is_pattern = true,
+    key        = key,
+  }
+  return result
 end
 
 function View.field (view)
@@ -264,12 +279,11 @@ function View.__index (view, key)
   local field = View.field (view) [key]
   if type (field) ~= "table" then
     return field
-  else
-    local result    = View.copy (view)
-    local rawresult = assert (Hidden [view])
-    rawresult.field [#rawresult.field+1] = key
-    return result
   end
+  local result    = View.copy (view)
+  local rawresult = assert (Hidden [result])
+  rawresult.field [#rawresult.field+1] = key
+  return result
 end
 
 function View.__newindex (view, key, value)
@@ -291,22 +305,20 @@ end
 
 function View.__call (view)
   assert (getmetatable (view) == View.__metatable)
-  local coroutine = Coromake ()
-  return coroutine.wrap (function ()
-    local rawview = assert (Hidden [view])
-    for t in Documents.filter (rawview.store.documents, rawview.document) do
-      local result       = View.copy (view)
-      local rawresult    = assert (Hidden [result])
-      for i = 1, #t do
-        t [i] = {
-          is_pattern = false,
-          key        = t [i],
-        }
+  local rawview = assert (Hidden [view])
+  assert (#rawview.field == 0)
+  if not rawview.iterator then
+    local coroutine = Coromake ()
+    rawview.iterator = coroutine.wrap (function ()
+      for t in Documents.filter (rawview.store.documents, rawview.document) do
+        local result    = View.copy (view)
+        local rawresult = assert (Hidden [result])
+        rawresult.document = t
+        coroutine.yield (result)
       end
-      rawresult.document = t
-      coroutine.yield (result)
-    end
-  end)
+    end)
+  end
+  return rawview.iterator ()
 end
 
 function View.__pairs (view)
@@ -379,7 +391,7 @@ end
 
 function View.__unm (view)
   assert (getmetatable (view) == View.__metatable)
-  for subdocument in (view * ".*") () do
+  for subdocument in view * ".*" do
     local _ = - subdocument
   end
   local rawview = assert (Hidden [view])
