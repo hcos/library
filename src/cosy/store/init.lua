@@ -127,8 +127,7 @@ end
 
 Store.__index = Store
 
-function Store.__newindex (...)
-  print (...)
+function Store.__newindex ()
   assert (false)
 end
 
