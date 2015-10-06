@@ -379,6 +379,9 @@ end
 
 function View.__unm (view)
   assert (getmetatable (view) == View.__metatable)
+  for subdocument in (view * ".*") () do
+    local _ = - subdocument
+  end
   local rawview = assert (Hidden [view])
   for _, document in Documents.filter (rawview.store.documents, rawview.document) do
     document.data  = nil
