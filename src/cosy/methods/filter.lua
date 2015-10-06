@@ -36,11 +36,8 @@ Scheduler.addthread (function ()
     if type (t) ~= "table" then
       return t
     else
-      local it = getmetatable (t) == getmetatable (view)
-             and Store.pairs
-              or pairs
       local r = {}
-      for k, v in it (t) do
+      for k, v in pairs (t) do
         r [sanitize (k)] = sanitize (v)
       end
       return r
