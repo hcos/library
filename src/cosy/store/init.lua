@@ -1,11 +1,11 @@
-local I18n          = require "cosy.i18n"
-local Redis         = require "cosy.redis"
-local Value         = require "cosy.value"
-local encode        = require "cosy.store.key".encode
-local decode        = require "cosy.store.key".decode
-local Coromake      = require "coroutine.make"
+local I18n      = require "cosy.i18n"
+local Redis     = require "cosy.redis"
+local Value     = require "cosy.value"
+local encode    = require "cosy.store.key".encode
+local decode    = require "cosy.store.key".decode
+local Coromake  = require "coroutine.make"
 
-local i18n = I18n.load "cosy.store"
+local i18n      = I18n.load "cosy.store"
 
 local Hidden    = setmetatable ({}, { __mode = "k" })
 local Store     = { __metatable = "store"     }
