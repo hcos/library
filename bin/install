@@ -89,6 +89,7 @@ function install_main ()
   cat > ${binary} <<EOL
 #! /bin/sh
 
+export PATH="${prefix}/local/cosy/bin:${PATH}"
 export LUA_PATH="${rockstree}/share/lua/5.1/?.lua;${rockstree}/share/lua/5.1/?/init.lua"
 export LUA_CPATH="${rockstree}/lib/lua/5.1/?.so"
 export COSY_PREFIX="${prefix}"
