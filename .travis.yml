@@ -27,7 +27,7 @@ cache:
 before_install:
   - > if [ ! -d $HOME/local ]
       then
-        bash bin/install $HOME
+        ./bin/install $HOME
       fi
 
 install:
