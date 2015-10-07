@@ -3,24 +3,10 @@ lein:
   - lein2
 
 install:
-  - > apt-get install -y \
-        diffutils \
-        gcc \
-        git \
-        make \
-        patch \
-        unzip \
-        wget \
-        libev-dev \
-        libgeoip-dev \
-        libssl-dev \
-        nginx-extras \
-        lua-nginx-redis \
-        redis-server
-  - > if [ ! -d $HOME/local ]
-      then
-        ./bin/install $HOME
-      fi
+  - apt-get install -y diffutils gcc git make patch unzip wget
+  - apt-get install -y libev-dev libgeoip-dev libssl-dev
+  - apt-get install -y nginx-extras lua-nginx-redis redis-server
+  - ./bin/install $HOME
 
 script:
   - ./bin/make-check
