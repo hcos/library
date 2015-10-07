@@ -1,13 +1,18 @@
 # Directories created by scripts:
 doc/
 coverage/
-coverage.txt
+rockspec/
 
-src/dkjson.lua
-src/ee5_base64.lua
-src/profiler.*
+# Coverage stuff:
+coverage.txt
+luacov.*
+
+# Profiling stuff:
+ProFi.lua
+
+# User configuration:
+src/cosy.conf
 
 # All swap files:
 *.swp
 *~
-
