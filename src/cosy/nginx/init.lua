@@ -33,8 +33,6 @@ http {
   lua_package_path      "{{{path}}}";
   lua_package_cpath     "{{{cpath}}}";
 
-  include /etc/nginx/mime.types;
-
   gzip              on;
   gzip_min_length   0;
   gzip_types        *;
@@ -49,17 +47,38 @@ http {
     include       /etc/nginx/mime.types;
     default_type  application/octet-stream;
     access_log    access.log;
-    root          "{{{www}}}";
 
     location / {
       add_header  Access-Control-Allow-Origin *;
+      root        www;
       index       index.html;
+    }
+
+    location /upload {
+      limit_except                POST { deny all; }
+      client_body_in_file_only    on;
+      client_body_temp_path       uploads/;
+      client_body_buffer_size     128K;
+      client_max_body_size        10240K;
+      proxy_pass_request_headers  on;
+      proxy_set_header            X-File $request_body_file;
+      proxy_set_body              off;
+      proxy_redirect              off;
+      proxy_pass                  http://localhost:{{{port}}}/uploaded;
+    }
+
+    location /uploaded {
+      content_by_lua '
+        local file = ngx.var.http_x_file
+        local id   = file:match "./uploads/(.*)"
+        ngx.say (id)
+      ';
     }
 
     location /lua {
       default_type  application/lua;
       root          /;
-      set $target   "";
+      set           $target   "";
       access_by_lua '
         local name = ngx.var.uri:match "/lua/(.*)"
         local filename = package.searchpath (name, "{{{path}}}")
@@ -95,28 +114,6 @@ http {
         ]==]
         file:close ()
         os.execute ("bash " .. temporary .. " &")
-      ';
-    }
-
-    location /upload {
-      limit_except               POST { deny all; }
-      client_body_temp_path      uploads/;
-      client_body_buffer_size    128K;
-      client_max_body_size       10240K;
-      content_by_lua '
-        ngx.req.read_body ()
-        local redis   = require "nginx.redis" :new ()
-        local ok, err = redis:connect ("{{{redis_host}}}", {{{redis_port}}})
-        if not ok then
-          ngx.log (ngx.ERR, "failed to connect to redis: ", err)
-          return ngx.exit (500)
-        end
-        redis:select ({{{redis_database}}})
-        local id = redis:incr "#upload"
-        local key = "upload:" .. tostring (id)
-        redis:set (key, ngx.req.get_body_data ())
-        redis:expire (key, 300)
-        ngx.header ["Cosy-Avatar"] = key
       ';
     }
 
