@@ -1,30 +1,48 @@
 language: erlang
+sudo: false
 
-env:
-  - LUAROCKS_VERSION="2.1.2"
+addons:
+  apt:
+    packages:
+    - diffutils
+    - gcc
+    - git
+    - make
+    - patch
+    - unzip
+    - wget
+    - libev-dev
+    - libgeoip-dev
+    - libssl-dev
+    - nginx-extras
+    - lua-nginx-redis
+    - redis-server
 
-branches:
-  only:
-    - master
+cache:
+  directories:
+  - $HOME/bin
+  - $HOME/etc
+  - $HOME/local
 
 before_install:
-  - sudo apt-get install lua luarocks
-  - sudo luarocks install busted
-  - sudo luarocks install fakeredis
-  - sudo luarocks install luabitop
-  - sudo luarocks install luacov
-  - sudo luarocks install luacov-coveralls
-  - sudo lua ./bin/dependencies
+  - > if [ ! -d $HOME/local ]
+      then
+        bash bin/install $HOME
+      fi
 
+install:
+before_script:
 script:
   - ./bin/make-check
 
 after_success:
-  - luacov-coveralls --rot src/
+after_failure:
+after_script:
 
 notifications:
   recipients:
-    - alban.linard@lsv.ens-cachan.fr
+    - alban@linard.fr
+    - leprieur@lipn.univ-paris13.fr
   email:
     on_success: change
     on_failure: always
