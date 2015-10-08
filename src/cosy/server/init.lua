@@ -42,47 +42,6 @@ Scheduler.addthread (function ()
   GeoDB = assert (GeoCity.open (Configuration.server.geodata))
 end)
 
-Scheduler.addthread (function ()
-  Store.initialize ()
-end)
-
-local updater = Scheduler.addthread (function ()
-  while true do
-    local store = Store.new ()
-    if store / "foreign" == nil then
-      local _ = store + "foreign"
-    end
-    local foreigns  = store * "foreign"
-    for path in Store.pairs (foreigns) do
-      if not Configuration.dependencies [path [#path]] then
-        local _ = foreigns - path [#path]
-      end
-    end
-    for name, p in Layer.pairs (Configuration.dependencies) do
-      local url = p
-      if type (url) == "string" and url:match "^http" then
-        local foreign = foreigns + name
-        foreign.name = name
-        foreign.url  = url
-      end
-    end
-    Store.commit (store)
-    os.execute ([[
-      if [ -d {{{root}}}/cache ]
-      then
-        find {{{root}}}/cache -type f -delete
-      fi
-    ]] % {
-      root = Configuration.http.directory,
-    })
-    Logger.debug {
-      _ = i18n ["updated"],
-    }
-    Nginx.update ()
-    Scheduler.sleep (-math.huge)
-  end
-end)
-
 function Server.sethostname ()
   local handle = io.popen "hostnamectl"
   local result = handle:read "*all"
@@ -94,7 +53,7 @@ function Server.sethostname ()
   Default.http.hostname = results ["Static hostname"]
   Logger.info {
     _        = i18n ["server:hostname"],
-    hostname = Default.server.hostname,
+    hostname = Configuration.http.hostname,
   }
 end
 
@@ -114,7 +73,6 @@ local function deproxify (t)
   if type (t) ~= "table" then
     return t
   else
-    t = Store.export (t)
     local result = {}
     for k, v in pairs (t) do
       assert (type (k) ~= "table")
@@ -126,11 +84,12 @@ end
 
 function Server.call_method (method, parameters, try_only)
   for _ = 1, Configuration.redis.retry or 1 do
-    local store  = Store.new ()
-    store = Store.specialize (store, Configuration.server.token)
+    local store = Store.new ()
+    local view  = Store.toview (store)
+    view = view % Configuration.server.token
     local err
     local ok, result = xpcall (function ()
-      local r = method (parameters, store, try_only)
+      local r = method (parameters, view, try_only)
       if not try_only then
         Store.commit (store)
       end
@@ -318,10 +277,11 @@ function Server.start ()
 
   Scheduler.addthread (function ()
     local store = Store.new ()
-    store = Store.specialize (store, Configuration.server.token)
-    for key in Layer.pairs (Configuration.resource ["/"]) do
-      if not Store.exists (store / key) then
-        local _ = store + key
+    local view  = Store.toview (store)
+    view = view % Configuration.server.token
+    for key in pairs (Configuration.resource ["/"]) do
+      if view / key == nil then
+        local _ = view + key
       end
     end
     Store.commit (store)
@@ -350,10 +310,6 @@ function Server.start ()
     file:write (Ffi.C.getpid ())
     file:close ()
     os.execute ([[ chmod 0600 {{{file}}} ]] % { file = pidfile })
-  end
-
-  Loader.hotswap.on_change ["cosy:configuration"] = function ()
-    Scheduler.wakeup (updater)
   end
 
   Scheduler.loop ()

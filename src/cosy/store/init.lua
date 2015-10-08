@@ -1,46 +1,150 @@
-local Configuration = require "cosy.configuration"
-local I18n          = require "cosy.i18n"
-local Redis         = require "cosy.redis"
-local Value         = require "cosy.value"
-local encode        = require "cosy.store.key".encode
-local decode        = require "cosy.store.key".decode
-local Layer         = require "layeredata"
-local Coromake      = require "coroutine.make"
+local I18n      = require "cosy.i18n"
+local Redis     = require "cosy.redis"
+local Value     = require "cosy.value"
+local encode    = require "cosy.store.key".encode
+local decode    = require "cosy.store.key".decode
+local Coromake  = require "coroutine.make"
 
-Configuration.load {
-  "cosy.methods",
-}
+local i18n      = I18n.load "cosy.store"
 
-local i18n = I18n.load "cosy.store"
+local Hidden    = setmetatable ({}, { __mode = "k" })
+local Store     = { __metatable = "store"     }
+local View      = { __metatable = "view"      }
+local Documents = { __metatable = "documents" }
 
-local Hidden   = setmetatable ({}, { __mode = "k" })
-local Store    = { __metatable = "Store"    }
-local Document = { __metatable = "Document" }
-local View     = { __metatable = "View"     }
+local unpack    = table.unpack or unpack
 
-local function is_pattern (s)
-  return s:find "[*+-?%%%[%]]" ~= nil
+function Documents.new (store)
+  return setmetatable ({
+    store  = store,
+    loaded = {
+      [true] = {
+        data  = false,
+        dirty = false,
+      }
+    },
+  }, Documents)
+end
+
+function Documents.__index (documents, t)
+  assert (getmetatable (documents) == Documents.__metatable)
+  assert (type (t) == "table" or type (t) == "string")
+  if #t == 0 then
+    return documents.loaded [true]
+  end
+  local key = t
+  if type (t) == "table" then
+    local keys = {}
+    for i = 1, #t do
+      if t [i].is_pattern then
+        return nil, "pattern"
+      end
+      keys [i] = encode (t [i].key)
+    end
+    key = table.concat (keys, "/")
+  end
+  local found = documents.loaded [key]
+  if found then
+    return found
+  end
+  local store = documents.store
+  store.redis:watch (key)
+  local data = store.redis:get (key)
+  if data then
+    data = Value.decode (data)
+  end
+  documents.loaded [key] = {
+    data  = data,
+    dirty = false,
+  }
+  return documents.loaded [key]
+end
+
+function Documents.filter (documents, t)
+  assert (getmetatable (documents) == Documents.__metatable)
+  assert (type (t) == "table")
+  local coroutine = Coromake ()
+  local seen      = {}
+  local function match (key)
+    if type (key) ~= "string" then
+      return false
+    end
+    local parts = {}
+    for part in key:gmatch "[^/]+" do
+      parts [#parts+1] = {
+        is_pattern = false,
+        key        = decode (part),
+      }
+    end
+    if #t ~= #parts then
+      return false
+    end
+    for i = 1, #t do
+      local found = parts [i].key:find (t [i].key, 1, not t [i].is_pattern)
+      if not found then
+        return false
+      end
+    end
+    return parts
+  end
+  return coroutine.wrap (function ()
+    for key, document in pairs (documents.loaded) do
+      local parts = match (key)
+      if parts and not seen [key] then
+        seen [key] = true
+        coroutine.yield (parts, document)
+      end
+    end
+    local pattern = {}
+    for i = 1, #t do
+      pattern [i] = t [i].is_pattern
+                and "*"
+                 or encode (t [i].key)
+    end
+    pattern = table.concat (pattern, "/")
+    local cursor = 0
+    repeat
+      local r = documents.store.redis:scan (cursor, {
+        match = pattern,
+        count = 100,
+      })
+      cursor = r [1]
+      for i = 1, #r [2] do
+        local key   = r [2] [i]
+        local parts = match (key)
+        if parts and not seen [key] then
+          seen [key] = true
+          coroutine.yield (parts, documents [parts])
+        end
+      end
+    until cursor == "0"
+  end)
+end
+
+function Documents.__newindex ()
+  assert (false)
+end
+
+Store.__index = Store
+
+function Store.__newindex ()
+  assert (false)
 end
 
 function Store.new ()
-  local client = Redis ()
-  client:unwatch ()
-  local result    = setmetatable ({}, Store)
-  Hidden [result] = {
-    documents = {},
-    redis     = client,
-  }
-  return result
+  local result     = {}
+  result.redis     = Redis ()
+  result.documents = Documents.new (result)
+  result.redis:unwatch ()
+  return setmetatable (result, Store)
 end
 
 function Store.commit (store)
   assert (getmetatable (store) == Store.__metatable)
-  store = assert (Hidden [store])
   store.redis:multi ()
   local ok = pcall (function ()
-    for key, document in pairs (store.documents) do
-      document = assert (Hidden [document])
-      if document.dirty then
+    for key, document in pairs (store.documents.loaded) do
+      if key ~= true and document.dirty then
         if document.data == nil then
           store.redis:del (key)
         else
@@ -61,486 +165,290 @@ function Store.commit (store)
   end
 end
 
-function Store.__div (store, namespace)
+function Store.cancel (store)
   assert (getmetatable (store) == Store.__metatable)
-  assert (type (namespace) == "string")
-  return Document.new {
-    store    = store,
-    keys     = { namespace },
-  }
+  store.redis:multi ()
+  store.redis:discard ()
 end
 
-function Store.__index ()
-  assert (false)
-end
-
-function Store.__newindex ()
-  assert (false)
-end
-
-function Store.__tostring (store)
+function Store.toview (store)
   assert (getmetatable (store) == Store.__metatable)
-  return "/"
-end
-
-function Document.new (t)
-  assert (type (t) == "table")
-  assert (getmetatable (t.store) == Store.__metatable)
-  assert (type (t.keys) == "table")
-  local keys = {}
-  for i = 1, #t.keys do
-    keys [i] = encode (t.keys [i])
-  end
-  local key   = table.concat (keys, "/")
-  local store = assert (Hidden [t.store])
-  if store.documents [key] then
-    return store.documents [key]
-  end
-  store.redis:watch (key)
-  local data = store.redis:get (key)
-  if data then
-    data = Value.decode (data)
-  end
-  local document = setmetatable ({}, Document)
-  Hidden [document] = {
-    data      = data,
-    dirty     = false,
-    keys      = t.keys,
-    store     = t.store,
-  }
-  Hidden [document].root = document
-  store.documents [key]  = document
-  return document
-end
-
-function Document.__index (document, key)
-  assert (getmetatable (document) == Document.__metatable)
-  document = assert (Hidden [document])
-  assert (type (document.data) == "table")
-  local value = document.data [key]
-  if type (value) == "table" then
-    local result    = setmetatable ({}, Document)
-    Hidden [result] = {
-      data = value,
-      root = document.root,
-    }
-    return result
-  else
-    return value
-  end
-end
-
-function Document.__newindex (document, key, value)
-  assert (getmetatable (document) == Document.__metatable)
-  document = assert (Hidden [document])
-  if getmetatable (value) == Document.__metatable then
-    value = assert (Hidden [value]).data
-  end
-  assert (type (document.data) == "table")
-  document.data [key] = value
-  local root = assert (Hidden [document.root])
-  root.dirty = true
-end
-
-function Document.__div (document, pattern)
-  assert (getmetatable (document) == Document.__metatable)
-  assert (type (pattern) == "string")
-  document = assert (Hidden [document])
-  document = assert (Hidden [document.root])
-  local keys = {}
-  for i = 1, #document.keys do
-    keys [i] = document.keys [i]
-  end
-  keys [#keys+1] = pattern
-  return Document.new {
-    keys  = keys,
-    store = document.store,
-  }
-end
-
-function Document.__tostring (document)
-  assert (getmetatable (document) == Document.__metatable)
-  document = assert (Hidden [document])
-  document = assert (Hidden [document.root])
-  return table.concat (document.keys, "/")
-end
-
-function Document.__add (document, key)
-  assert (getmetatable (document) == Document.__metatable)
-  document = assert (Hidden [document])
-  document = assert (Hidden [document.root])
-  local keys = {}
-  for i = 1, #document.keys do
-    keys [i] = document.keys [i]
-  end
-  keys [#keys+1] = key
-  local result = Document.new {
-    keys  = keys,
-    store = document.store,
-  }
-  document        = assert (Hidden [result])
-  document.data   = {}
-  document.dirty  = true
-  document.loaded = true
-  return result
+  return View.new (store)
 end
 
 function View.new (store)
   assert (getmetatable (store) == Store.__metatable)
   local result = setmetatable ({}, View)
   Hidden [result] = {
-    access   = true,
-    iterator = false,
-    store    = store,
-    token    = false,
+    store       = store,
+    token       = false,
+    is_iterator = false,
+    document    = {},
+    field       = {},
   }
-  Hidden [result].root = result
   return result
 end
 
-function View.from_key (view, key, iterator)
+function View.copy (view)
   assert (getmetatable (view) == View.__metatable)
-  assert (type (key) == "string")
-  local rawview  = assert (Hidden [view])
-  local store    = assert (Hidden [rawview.store])
-  local document = store.documents [key]
-  if not document then
-    document = rawview.root
-    for sub in key:gmatch "[^/]+" do
-      document = document / decode (sub)
-    end
-    document = Hidden [document].document
-  end
+  local rawview   = assert (Hidden [view])
   local result    = setmetatable ({}, View)
   Hidden [result] = {
-    access   = rawview.access,
-    document = document,
-    iterator = iterator,
-    root     = rawview.root,
-    store    = rawview.store,
-    token    = rawview.token,
+    store       = rawview.store,
+    token       = rawview.token,
+    is_iterator = rawview.is_iterator,
+    document    = { unpack (rawview.document) },
+    field       = { unpack (rawview.field   ) },
   }
   return result
 end
 
-function View.specialize (view, token)
+function View.__mod (view, token)
   assert (getmetatable (view) == View.__metatable)
-  view = assert (Hidden [view])
-  local result = setmetatable ({}, View)
-  Hidden [result] = {
-    access   = type (token) == "table"
-           and token.type == "administration"
-            or false,
-    document = view.document,
-    iterator = view.iterator,
-    root     = view.root,
-    store    = view.store,
-    token    = token,
+  local result = View.copy (view)
+  local raw    = assert (Hidden [result])
+  raw.token    = token
+  return result
+end
+
+function View.document (view)
+  assert (getmetatable (view) == View.__metatable)
+  local rawview = assert (Hidden [view])
+  return rawview.store.documents [rawview.document]
+end
+
+function View.__div (view, key)
+  assert (getmetatable (view) == View.__metatable)
+  assert (type (key) == "string")
+  local rawview = assert (Hidden [view])
+  if not rawview.is_iterator then
+    local document = View.document (view)
+    assert (document ~= nil and document.data ~= nil)
+  end
+  local result    = View.copy (view)
+  local rawresult = assert (Hidden [result])
+  rawresult.document [#rawresult.document+1] = {
+    is_pattern = false,
+    key        = key,
+  }
+  if rawresult.is_iterator then
+    return result
+  end
+  local document = View.document (result)
+  if document == nil or document.data == nil then
+    return nil
+  end
+  return result
+end
+
+function View.__mul (view, key)
+  assert (getmetatable (view) == View.__metatable)
+  assert (type (key) == "string")
+  local rawview = assert (Hidden [view])
+  if not rawview.is_iterator then
+    local document  = View.document (view)
+    assert (document ~= nil and document.data ~= nil)
+  end
+  local result    = View.copy (view)
+  local rawresult = assert (Hidden [result])
+  rawresult.is_iterator = true
+  rawresult.document [#rawresult.document+1] = {
+    is_pattern = true,
+    key        = key,
   }
   return result
 end
 
-function View.__unm (view)
+function View.field (view)
   assert (getmetatable (view) == View.__metatable)
-  local document = assert (Hidden [view]).document
-  local data     = assert (Hidden [document]).data
-  return data ~= false and data ~= nil
+  local rawview  = assert (Hidden [view])
+  local document = View.document (view)
+  assert (document ~= nil and document.data ~= nil)
+  local value    = document.data
+  for i = 1, #rawview.field do
+    assert (type (value) == "table")
+    value = value [rawview.field [i]]
+    assert (type (value) == "table")
+  end
+  return value
 end
 
 function View.__index (view, key)
   assert (getmetatable (view) == View.__metatable)
-  view            = assert (Hidden [view])
-  local value     = assert (view.document) [key]
-  if type (value) ~= "table" then
-    return value
+  local field = View.field (view) [key]
+  if type (field) ~= "table" then
+    return field
   end
-  local result    = setmetatable ({}, View)
-  Hidden [result] = {
-    access   = view.access,
-    document = value,
-    iterator = view.iterator,
-    root     = view.root,
-    store    = view.store,
-    token    = view.token,
-  }
+  local result    = View.copy (view)
+  local rawresult = assert (Hidden [result])
+  rawresult.field [#rawresult.field+1] = key
   return result
 end
 
 function View.__newindex (view, key, value)
   assert (getmetatable (view) == View.__metatable)
-  view = assert (Hidden [view])
-  local document = assert (view.document)
-  if getmetatable (value) == View.__metatable then
-    value = assert (Hidden [value].document)
-  end
-  document [key] = value
-end
-
-function View.__div (view, pattern)
-  assert (getmetatable (view) == View.__metatable)
-  assert (type (pattern) == "string")
-  view = assert (Hidden [view])
-  local document
-  if view.document then
-    document = assert (view.document) / pattern
-  else
-    document = assert (view.store   ) / pattern
-  end
-  local rawdocument = assert (Hidden [document])
-  if rawdocument.data == nil then
-    return nil
-  end
-  local result      = setmetatable ({}, View)
-  Hidden [result]   = {
-    access   = view.access,
-    document = document,
-    iterator = view.iterator,
-    root     = view.root,
-    store    = view.store,
-    token    = view.token,
-  }
-  return result
-end
-
-function View.__mul (view, pattern)
-  assert (getmetatable (view) == View.__metatable)
-  assert (type (pattern) == "string")
-  view = assert (Hidden [view])
-  local document
-  if view.document then
-    document = assert (view.document) / pattern
-  else
-    document = assert (view.store   ) / pattern
-  end
-  local result = setmetatable ({}, View)
-  Hidden [result]   = {
-    access   = view.access,
-    document = document,
-    iterator = true,
-    root     = view.root,
-    store    = view.store,
-    token    = view.token,
-  }
-  return result
-end
-
-function View.export (view)
-  assert (getmetatable (view) == View.__metatable)
-  view = assert (Hidden [view])
-  local document
-  if view.document then
-    document = assert (view.document)
-  else
-    document = assert (view.store   )
-  end
-  local rawdocument = assert (Hidden [document])
-  return rawdocument.data
-end
-
-function View.__add (view, key)
-  assert (getmetatable (view) == View.__metatable)
-  assert (type (key) == "string")
-  local rawview = assert (Hidden [view])
-  local document
-  if rawview.document then
-    document = assert (Hidden [view].document)
-    assert (document + key)
-    document = document / key
-  else
-    document = assert (rawview.store) / key
-  end
-  local rawdoc    = assert (Hidden [document])
-  rawdoc.data     = {}
-  rawdoc.dirty    = true
-  local result    = setmetatable ({}, View)
-  Hidden [result] = {
-    access   = rawview.access,
-    document = document,
-    iterator = rawview.iterator,
-    root     = rawview.root,
-    store    = rawview.store,
-    token    = rawview.token,
-  }
-  return result
-end
-
-function View.__sub (view, x)
-  assert (getmetatable (view) == View.__metatable)
-  if type (x) == "string" then
-    for _, document in view * x do
-      local _ = document - ".*"
-      document = assert (Hidden [document]).document
-      document = assert (Hidden [document])
-      document.data   = nil
-      document.dirty  = true
-      document.loaded = true
-    end
-  elseif getmetatable (x) == View.__metatable then
-    for _, lhs in view do
-      local lhsd = assert (Hidden [lhs ]).document
-      local lhsk = assert (Hidden [lhsd]).keys
-      for _, rhs in x do
-        local rhsd = assert (Hidden [rhs ]).document
-        local rhsk = assert (Hidden [rhsd]).keys
-        local suppress = true
-        for i = 1, #lhsk do
-          if lhsk [i] ~= rhsk [i] then
-            suppress = false
-            break
-          end
-        end
-        if suppress then
-          local current = lhs
-          for i = #lhsk+1, #rhsk-1 do
-            current = current / rhsk [i]
-          end
-          local _ = current - rhsk [#rhsk]
-        end
-      end
+  local document = View.document (view)
+  assert (document ~= nil and document.data ~= nil)
+  document.dirty = true
+  local field = View.field (view)
+  if type (value) == "table" then
+    local subview = view [key]
+    field [key] = {}
+    for k, v in pairs (value) do
+      subview [k] = v
     end
   else
-    assert (false)
+    field [key] = value
   end
-  return view
 end
 
 function View.__call (view)
   assert (getmetatable (view) == View.__metatable)
   local rawview = assert (Hidden [view])
-  if type (rawview.ifunction) ~= "function" then
-    local document  = assert (Hidden [rawview.document])
-    local store     = assert (Hidden [rawview.store])
+  assert (#rawview.field == 0)
+  if not rawview.iterator then
     local coroutine = Coromake ()
-    local seen      = {}
-    local function match (key)
-      local extracted = {}
-      for skey in key:gmatch "[^/]+" do
-        extracted [#extracted+1] = decode (skey)
+    rawview.iterator = coroutine.wrap (function ()
+      for t in Documents.filter (rawview.store.documents, rawview.document) do
+        local result    = View.copy (view)
+        local rawresult = assert (Hidden [result])
+        rawresult.document = t
+        coroutine.yield (result)
       end
-      if #extracted == #document.keys then
-        local matched = true
-        for i = 1, #extracted do
-          if not extracted [i]:match ("^" .. document.keys [i] .. "$") then
-            matched = false
-            break
-          end
-        end
-        if  matched
-        and not seen [key] then
-          seen [key] = true
-          local v = View.from_key (view, key)
-          local d = Hidden [v].document
-          if Hidden [d].data ~= nil then
-            coroutine.yield (extracted, v)
-          end
-        end
-      end
-    end
-    rawview.ifunction = coroutine.wrap (function ()
-      for key in pairs (store.documents) do
-        match (key)
-      end
-      local pattern = {}
-      for i = 1, #document.keys do
-        local key = document.keys [i]
-        pattern [i] = is_pattern (key) and "*" or encode (key)
-      end
-      pattern = table.concat (pattern, "/")
-      local cursor = 0
-      repeat
-        local r = store.redis:scan (cursor, {
-          match = pattern,
-          count = 100,
-        })
-        cursor = r [1]
-        for i = 1, #r [2] do
-          match (r [2] [i])
-        end
-      until cursor == "0"
-      rawview.ifunction = false
     end)
   end
-  return rawview.ifunction ()
+  return rawview.iterator ()
 end
 
 function View.__pairs (view)
   assert (getmetatable (view) == View.__metatable)
-  view            = assert (Hidden [view])
-  local document  = assert (Hidden [view.document])
+  local field = View.field (view)
   local coroutine = Coromake ()
   return coroutine.wrap (function ()
-    for k in pairs (document.data) do
-      coroutine.yield (k, view.document [k])
+    for k in pairs (field) do
+      coroutine.yield (k, view [k])
     end
   end)
 end
 
 function View.__ipairs (view)
   assert (getmetatable (view) == View.__metatable)
-  view            = assert (Hidden [view])
-  local document  = assert (Hidden [view.document])
   local coroutine = Coromake ()
   return coroutine.wrap (function ()
-    for i = 1, #document.data do
-      coroutine.yield (i, view.document [i])
+    for i = 1, View.__len (view) do
+      coroutine.yield (i, view [i])
     end
   end)
 end
 
 function View.__len (view)
   assert (getmetatable (view) == View.__metatable)
-  view            = assert (Hidden [view])
-  local document  = assert (Hidden [view.document])
-  return #document.data
+  return # View.field (view)
 end
 
 function View.__tostring (view)
   assert (getmetatable (view) == View.__metatable)
-  view = assert (Hidden [view])
-  if view.document then
-    return tostring (view.document)
+  local rawview  = assert (Hidden [view])
+  local doc      = View.document (view)
+  local document = {}
+  local field    = {}
+  if #rawview.document == 0 then
+    document [1] = "(root)"
   else
-    return tostring (view.store)
+    for i = 1, #rawview.document do
+      document [i] = rawview.document [i].is_pattern
+                 and "¿" .. rawview.document [i].key .. "?"
+                  or rawview.document [i].key
+    end
+  end
+  for i = 1, #rawview.field do
+    field [i] = rawview.field [i]
+  end
+  return table.concat (document, "/")
+      .. ":"
+      .. table.concat (field, ".")
+      .. ":"
+      .. (doc and doc.dirty and "[dirty]" or "")
+end
+
+function View.__add (view, key)
+  assert (getmetatable (view) == View.__metatable)
+  assert (type (key) == "string")
+  local document  = View.document (view)
+  assert (document ~= nil and document.data ~= nil)
+  local result    = View.copy (view)
+  local rawresult = assert (Hidden [result])
+  rawresult.document [#rawresult.document+1] = {
+    is_pattern = false,
+    key        = key,
+  }
+  local subdocument = View.document (result)
+  subdocument.data  = {}
+  subdocument.dirty = true
+  return result
+end
+
+function View.__unm (view)
+  assert (getmetatable (view) == View.__metatable)
+  for subdocument in view * ".*" do
+    local _ = - subdocument
+  end
+  local rawview = assert (Hidden [view])
+  for _, document in Documents.filter (rawview.store.documents, rawview.document) do
+    document.data  = nil
+    document.dirty = true
   end
 end
 
-return {
-  initialize = function ()
-    local client = Redis ()
-    client:unwatch ()
-    for i = 1, Layer.size (Configuration.resource ["/"]) do
-      local key  = Configuration.resource ["/"] [i]
-      local name = key.__keys [#key.__keys]
-      client:setnx (encode (name), Value.expression {})
-    end
-  end,
-  new = function ()
-    return View.new (Store.new ())
-  end,
-  specialize = function (view)
-    assert (getmetatable (view) == View.__metatable)
-    return View.specialize (view)
-  end,
-  commit = function (view)
-    assert (getmetatable (view) == View.__metatable)
-    return Store.commit (Hidden [view].store)
-  end,
-  exists = function (view)
-    assert (view == nil or getmetatable (view) == View.__metatable)
-    if view == nil then
+function View.__sub (view, x)
+  assert (getmetatable (view) == View.__metatable)
+  assert (type (x) == "string")
+  return - (view / x)
+end
+
+function View.__eq (lhs, rhs)
+  assert (getmetatable (lhs) == View.__metatable)
+  assert (getmetatable (rhs) == View.__metatable)
+  local rawlhs = assert (Hidden [lhs])
+  local rawrhs = assert (Hidden [rhs])
+  if #rawlhs.document ~= #rawrhs.document then
+    return false
+  end
+  assert (#rawlhs.field == 0)
+  assert (#rawrhs.field == 0)
+  for i = 1, #rawlhs.document do
+    if rawlhs.document [i].key        ~= rawrhs.document [i].key
+    or rawlhs.document [i].is_pattern ~= rawrhs.document [i].is_pattern
+    then
       return false
-    else
-      return -view
     end
-  end,
-  export = function (view)
-    if getmetatable (view) == View.__metatable then
-      return View.export (view)
-    else
-      return view
+  end
+  return true
+end
+
+function View.__lt (lhs, rhs)
+  assert (getmetatable (lhs) == View.__metatable)
+  assert (getmetatable (rhs) == View.__metatable)
+  local rawlhs = assert (Hidden [lhs])
+  local rawrhs = assert (Hidden [rhs])
+  if #rawlhs.document >= #rawrhs.document then
+    return false
+  end
+  assert (#rawlhs.field == 0)
+  assert (#rawrhs.field == 0)
+  for i = 1, #rawlhs.document do
+    if rawlhs.document [i].key        ~= rawrhs.document [i].key
+    or rawlhs.document [i].is_pattern ~= rawrhs.document [i].is_pattern
+    then
+      return false
     end
-  end,
-  pairs  = View.__pairs,
-  ipairs = View.__ipairs,
-  size   = View.__len,
-}
+  end
+  return true
+end
+
+function View.__le (lhs, rhs)
+  return lhs <  rhs
+      or lhs == rhs
+end
+
+return Store

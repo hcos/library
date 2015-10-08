@@ -1,9 +1,11 @@
 local Configuration = require "cosy.configuration"
 local I18n          = require "cosy.i18n"
-local Store         = require "cosy.store"
 local Token         = require "cosy.token"
 local Default       = require "cosy.configuration.layers".default
 local Layer         = require "layeredata"
+local Lfs           = require "lfs"
+local Magick        = require "magick"
+local Mime          = require "mime"
 local this          = Layer.reference (false)
 
 Configuration.load "cosy.methods"
@@ -127,6 +129,28 @@ do
       this.data.string,
     },
   }
+  local checks = Default.data.avatar.checks
+  checks [#checks+1] = function (t)
+    local request    = t.request
+    local key        = t.key
+    local value      = request [key]
+    local filename   = Configuration.http.uploads .. "/" .. value
+    local attributes = Lfs.attributes (filename)
+    if attributes.mode ~= "file"
+    or os.difftime (os.time (), attributes.modification) > Configuration.upload.timeout then
+      return nil, {
+            _ = i18n ["check:avatar:expired"],
+          }
+    end
+    local image = assert (Magick.load_image (filename))
+    image:resize (Configuration.data.avatar.height, Configuration.data.avatar.width)
+    image:set_format "png"
+    image:strip ()
+    request [key] = Mime.b64 (image:get_blob ())
+    image:destroy ()
+    os.remove (filename)
+    return true
+  end
 end
 
 do
@@ -332,7 +356,7 @@ do
         }
       end
       data = data / v
-      if not Store.exists (data) then
+      if not data then
         return  nil, {
           _    = i18n ["check:resource:miss"],
           name = value,
