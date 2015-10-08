@@ -3,7 +3,6 @@ local I18n   = require "cosy.i18n"
 local Logger = require "cosy.logger"
 local Layer  = require "layeredata"
 local layers = require "cosy.configuration.layers"
-local Lfs    = require "lfs"
 
 local i18n   = I18n.load "cosy.configuration"
 
