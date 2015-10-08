@@ -224,6 +224,11 @@ function install_cosyverif ()
 
 function install_main ()
 {
+echo "WARNING : You should now add the following path variables to your environment (.bashrc)"
+echo "export PATH=\"${prefix}/local/cosy/bin:${rockstree}/bin:${PATH}\""
+echo "export LUA_PATH=\"${rockstree}/share/lua/5.1/?.lua;${rockstree}/share/lua/5.1/?/init.lua\""
+echo "export PATH=\"${prefix}/local/cosy/bin:${rockstree}/bin:${PATH}\""
+
   cat > ${binary} <<EOL
 #! /bin/sh
 
