@@ -7,15 +7,12 @@ local I18n          = require "cosy.i18n"
 local Logger        = require "cosy.logger"
 local Parameters    = require "cosy.parameters"
 local Password      = require "cosy.password"
-local Redis         = require "cosy.redis"
 local Scheduler     = require "cosy.scheduler"
 local Time          = require "cosy.time"
 local Token         = require "cosy.token"
 local Value         = require "cosy.value"
 local Layer         = require "layeredata"
 local Websocket     = require "websocket"
-local Mime          = require "mime"
-local Magick        = require "magick"
 
 Configuration.load {
   "cosy.nginx",
@@ -419,18 +416,7 @@ function Methods.user.update (request, store, try_only)
     }
   end
   if request.avatar then
-    local filename = Configuration.http.uploads .. "/" .. request.avatar
-    local time     = lfs.attributes (filename, "modification")
-    assert (attributes.mode == "file")
-    if os.difftime (os.time (), time) <= Configuration.upload.timeout then
-      local image = assert (magick.load_image (filename))
-      image:resize (Configuration.data.avatar.height, Configuration.data.avatar.width)
-      image:set_format "png"
-      image:strip ()
-      user.avatar = Mime.b64 (image:get_blob ())
-      image:destroy ()
-    end
-    os.remove (filename)
+    user.avatar = request.avatar
   end
   for _, key in ipairs { "name", "homepage", "organization", "locale" } do
     if request [key] then
