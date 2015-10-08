@@ -43,7 +43,6 @@ local rockspec = {
     "luasocket >= 2",
     "lustache >= 1",
     "md5 >= 1",
-    "magick >= 1",
     "redis-lua >= 2",
     "serpent >= 0",
   },
