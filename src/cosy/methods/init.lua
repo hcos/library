@@ -15,8 +15,10 @@ local Value         = require "cosy.value"
 local Layer         = require "layeredata"
 local Websocket     = require "websocket"
 local Mime          = require "mime"
+local Magick        = require "magick"
 
 Configuration.load {
+  "cosy.nginx",
   "cosy.methods",
   "cosy.parameters",
   "cosy.server",
@@ -417,23 +419,18 @@ function Methods.user.update (request, store, try_only)
     }
   end
   if request.avatar then
-    local redis   = Redis ()
-    local content = redis:get (request.avatar)
-    redis:del (request.avatar)
-    local filename = os.tmpname ()
-    local file = io.open (filename, "w")
-    file:write (content)
-    file:close ()
-    os.execute ([[
-      convert {{{file}}} -resize {{{width}}}x{{{height}}} png:{{{file}}}
-    ]] % {
-      file   = filename,
-      height = Configuration.data.avatar.height,
-      width  = Configuration.data.avatar.width ,
-    })
-    file = io.open (filename, "r")
-    user.avatar = Mime.b64 (file:read "*all")
-    file:close ()
+    local filename = Configuration.http.uploads .. "/" .. request.avatar
+    local time     = lfs.attributes (filename, "modification")
+    assert (attributes.mode == "file")
+    if os.difftime (os.time (), time) <= Configuration.upload.timeout then
+      local image = assert (magick.load_image (filename))
+      image:resize (Configuration.data.avatar.height, Configuration.data.avatar.width)
+      image:set_format "png"
+      image:strip ()
+      user.avatar = Mime.b64 (image:get_blob ())
+      image:destroy ()
+    end
+    os.remove (filename)
   end
   for _, key in ipairs { "name", "homepage", "organization", "locale" } do
     if request [key] then
