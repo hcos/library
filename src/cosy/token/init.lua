@@ -6,7 +6,7 @@ local Configuration = require "cosy.configuration"
 local Digest        = require "cosy.digest"
 local Random        = require "cosy.random"
 local Time          = require "cosy.time"
-local Jwt           = require "luajwt"
+local Jwt           = require "jwt"
 local App           = require "cosy.configuration.layers".app
 
 Configuration.load "cosy.token"
@@ -20,9 +20,11 @@ end
 local Token = {}
 
 function Token.encode (token)
-  local secret        = Configuration.token.secret
-  local algorithm     = Configuration.token.algorithm
-  local result, err   = Jwt.encode (token, secret, algorithm)
+  local options = {
+    alg  = Configuration.token.algorithm,
+    keys = { private = Configuration.token.secret },
+  }
+  local result, err = Jwt.encode (token, options)
   if not result then
     error (err)
   end
@@ -30,9 +32,11 @@ function Token.encode (token)
 end
 
 function Token.decode (s)
-  local key           = Configuration.token.secret
-  local algorithm     = Configuration.token.algorithm
-  local result, err   = Jwt.decode (s, key, algorithm)
+  local options = {
+    alg  = Configuration.token.algorithm,
+    keys = { private = Configuration.token.secret },
+  }
+  local result, err = Jwt.decode (s, options)
   if not result then
     error (err)
   end
