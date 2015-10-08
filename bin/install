@@ -28,124 +28,80 @@
 ###############################################################################################
 for i in "$@"
 do
-case $i in
+  case ${i} in
     -s=*|--sourcepath=*)
-    SOURCEPATH="${i#*=}"
-    shift # past argument=value
+      sourcepath="${i#*=}"
+      shift # past argument=value
     ;;
     -p=*|--prefix=*)
-    PREFIX="${i#*=}"
-    shift # past argument=value
+      prefix="${i#*=}"
+      shift # past argument=value
     ;;
-    -s=*|--server*)
-    SERVER=true
-    MODE="SERVER"
-    shift # past argument=value
-    ;;
-    -s=*|--client*)
-    CLIENT=true
-    MODE="CLIENT"
-    shift # past argument=value
+    -m=*|--mode=*)
+      mode="${i#*=}"
+      shift # past argument=value
     ;;
     *)
-            # unknown option
+      echo "Usage: "
+      echo "  install [--prefix=PREFIX] [--mode=server|client] [--sourcepath=PATH]"
+      exit 1;
+      # unknown option
     ;;
-esac
+  esac
 done
 
-echo "SOURCEPATH='${SOURCEPATH}'"
-echo "PREFIX='${PREFIX}'"
-echo "SERVER='${SERVER}'"
-echo "CLIENT='${CLIENT}'"
-echo "MODE='${MODE}'"
+prefix=${prefix:-/usr/local}
+mode=${mode:-server}
 
-
-if [ ! -z ${SERVER+x} ] && [ ! -z ${CLIENT+x} ]; then
-  echo "FATAL: incompatible options --server and --client'"
-  echo "Usages: "
-  echo "     install --prefix=\${TARGET_PATH} --client"
-  echo "     install --prefix=\${TARGET_PATH} --server"
-  echo "     install --sourcepath=\${TARGET_PATH} --server"
-  exit 1;
-else
-  echo "SERVER or CLIENT is unset";
-fi
-
-if [ -z ${SERVER+x} ] && [ -z ${CLIENT+x} ]; then
-  echo "Setting CLIENT mode";
-  CLIENT=true
-  MODE="CLIENT"
-else
-  echo "SERVER or CLIENT set";
-fi
-
-if [ -z ${SOURCEPATH+x} ]; then
-  echo "SOURCEPATH is unset";
-else
-  echo "SOURCEPATH is set to  '${SOURCEPATH}'";
-fi
-
-if [ ! -z ${SOURCEPATH+x} ] && [ ! -z ${PREFIX+x} ]; then
-  echo "FATAL: incompatible options --sourcepath and --prefix'"
-  echo "FATAL: incompatible options SOURCEPATH is set to  '${SOURCEPATH}' AND PREFIX is set to '${PREFIX}'"
-  exit 1;
-else
-  echo "SOURCEPATH or PREFIX is unset";
-fi
-
-if [ -z ${PREFIX+x} ]; then
-  echo "PREFIX is unset";
-else
-  prefix=${PREFIX}
-  echo "Setting a user version to path '${prefix}'";
-  echo "PREFIX is set to  '${PREFIX}'";
-fi
-if [ -z ${SOURCEPATH+x} ] && [ -z ${PREFIX+x} ]; then
-  echo "both SOURCEPATH  and PREFIX are unset"
-  prefix=/usr/local
-  echo "setting prefix to '${prefix}'";
-fi
-if [ ! -z ${SOURCEPATH+x} ]; then
-  prefix=${SOURCEPATH}
-  echo "Setting a development version to path '{$prefix}'";
-else
-  if [ ! -z ${PREFIX+x}  ]; then
-    prefix=${PREFIX}
-    echo "Setting a user version to path '${prefix}'";
-  else
-    prefix=/usr/local/
-    echo "Setting a user version to the path '${prefix}'";
-  fi
-fi
-
+green='\033[0;32m'
+nc='\033[0m'
 
 ## Now cmd args have been parsed
 ##################################
-echo ${MODE}
-echo ${prefix}
-
-
+versions="5.2"
 binary=${prefix}/bin/cosy
 rockstree=${prefix}/local/cosy
 currentwd=$(pwd)
 tempwd=$(mktemp -d)
 log=$(mktemp)
 
+echo -e "Temporary directory: ${green}${tempwd}${nc}"
+echo -e "Log file           : ${green}${log}${nc}"
+echo -e "Mode               :  ${green}${mode}${nc}"
+echo -e "Prefix             :  ${green}${prefix}${nc}"
+if [ -z ${sourcepath+x} ]; then
+  echo -e "Source             : ${green}not set${nc}"
+else
+  echo -e "Source             : ${green}${sourcepath}${nc}"
+fi
+
 # Install dependencies:
 function install_dependencies ()
 {
   echo "Installing packages required by both client and server"
-  sudo apt-get install --yes git make gcc diffutils patch wget unzip
+  sudo apt-get install --yes git make gcc diffutils patch wget unzip \
+    >> ${log} 2>&1
 
-#  echo "Installing packages required only by the server"
+  echo "Installing packages required only by the server"
   sudo apt-get install --yes libev-dev libssl-dev libgeoip-dev libmagickwand-dev \
-                             nginx-extras redis-server
+                             nginx-extras redis-server \
+    >> ${log} 2>&1
+
+  if [ ! -z ${sourcepath+x} ]; then
+    for version in ${versions}
+    do
+      echo "Installing lua-${version}"
+      sudo apt-get install --yes  lua${versions} liblua${version}-dev \
+        >> ${log} 2>&1
+    done
+  fi
 }
 
 # Install LuaJIT with 5.2 compatibility:
 function install_luajit ()
 {
-  wget http://luajit.org/download/LuaJIT-2.0.4.tar.gz
+  echo "Installing luajit"
+  wget --quiet http://luajit.org/download/LuaJIT-2.0.4.tar.gz
   tar  xf LuaJIT-2.0.4.tar.gz
   cd   LuaJIT-2.0.4
   cat > luajit.patch <<EOL
@@ -157,7 +113,7 @@ diff -rupN LuaJIT-2.0.4.back/Makefile LuaJIT-2.0.4/Makefile
  # the paths in src/luaconf.h, too. Note: PREFIX must be an absolute path!
  #
 -export PREFIX= /usr/local
-+export PREFIX= ${rockstree}
++export PREFIX= ${rockstree}/5.1
  export MULTILIB= lib
  ##############################################################################
 
@@ -174,79 +130,119 @@ diff -rupN LuaJIT-2.0.4.back/src/Makefile LuaJIT-2.0.4/src/Makefile
  # Disable the JIT compiler, i.e. turn LuaJIT into a pure interpreter.
  #XCFLAGS+= -DLUAJIT_DISABLE_JIT
 EOL
-  patch -p1 -i luajit.patch
-  make
-  make install
+  patch -p1 -i luajit.patch \
+    >> ${log} 2>&1
+  make \
+    >> ${log} 2>&1
+  make install \
+    >> ${log} 2>&1
   cd   ..
 }
 
 function install_luarocks ()
 {
-  wget http://luarocks.org/releases/luarocks-2.2.2.tar.gz
+  echo "Installing luarocks"
+  wget --quiet http://luarocks.org/releases/luarocks-2.2.2.tar.gz
   tar  xf luarocks-2.2.2.tar.gz
   cd   luarocks-2.2.2
-  ./configure --prefix=${rockstree} \
-              --with-lua=${rockstree} \
+  ./configure --prefix=${rockstree}/5.1 \
+              --with-lua=${rockstree}/5.1 \
               --lua-suffix="jit" \
-              --with-lua-include=${rockstree}/include/luajit-2.0/ \
-              --with-lua-lib=${rockstree}/lib/
-  make bootstrap
+              --with-lua-include=${rockstree}/5.1/include/luajit-2.0/ \
+              --with-lua-lib=${rockstree}/5.1/lib/ \
+    >> ${log} 2>&1
+  make bootstrap \
+    >> ${log} 2>&1
   cd   ..
+
+  if [ ! -z ${sourcepath+x} ]; then
+    cd   luarocks-2.2.2
+    for version in ${versions}
+    do
+      echo "Installing luarocks for Lua-${version}"
+      make clean \
+        >> ${log} 2>&1
+      ./configure --prefix=${rockstree}/${version} \
+                  --lua-version=${version} \
+                  --lua-suffix=${version} \
+        >> ${log} 2>&1
+      make bootstrap \
+        >> ${log} 2>&1
+    done
+    cd   ..
+  fi
+
 }
 
 # Install cosyverif:
 function install_cosyverif ()
 {
-  git clone https://github.com/saucisson/lua-websockets.git
-  git clone https://github.com/nrk/redis-lua.git
-  git clone https://github.com/leafo/magick.git
-  ${rockstree}/bin/luarocks install --tree=${rockstree} cosyverif
-  rm -rf ${rockstree}/share/lua/5.1/redis*
-  cp     ${tempwd}/redis-lua/src/redis.lua          ${rockstree}/share/lua/5.1/
-  rm -rf ${rockstree}/share/lua/5.1/websocket*
-  cp     ${tempwd}/lua-websockets/src/websocket.lua ${rockstree}/share/lua/5.1/
-  cp -r  ${tempwd}/lua-websockets/src/websocket     ${rockstree}/share/lua/5.1/
-  rm -rf ${rockstree}/share/lua/5.1/magick*
-  cp -r  ${tempwd}/magick/magick                    ${rockstree}/share/lua/5.1/
-  rm -rf ${rockstree}/share/lua/5.1/cosy*
-###### 20151007 in order to be able to use your cosy sources that you are editing
-  if [ -z ${SOURCEPATH+x} ]; then
-    echo "Setting a user version to path ${tempwd}/library/src/cosy"
-    ## In the standard user mode : get the official version of cosy
-    git clone https://github.com/CosyVerif/library.git
-    cp -r  ${tempwd}/library/src/cosy                 ${rockstree}/share/lua/5.1/
-    echo "SOURCEPATH is unset";
-  else
-    echo "Setting a development version to path '{$SOURCEPATH}'"
-    ## In the developper mode : use the version of cosy provided by the SOURCEPATH
-    ln -s ${SOURCEPATH}/library/src/cosy                          ${rockstree}/share/lua/5.1/
-    echo "SOURCEPATH is set to '${SOURCEPATH}'";
-  fi
+  git clone https://github.com/saucisson/lua-websockets.git \
+    >> ${log} 2>&1
+  git clone https://github.com/nrk/redis-lua.git \
+    >> ${log} 2>&1
+  for version in 5.1 ${versions}
+  do
+    echo "Installing cosyverif dependencies for Lua-${version}"
+    if [ -d ${rockstree}/${version}/share/lua/${version} ]
+    then
+      ${rockstree}/${version}/bin/luarocks install cosyverif \
+        >> ${log} 2>&1
+      rm -rf ${rockstree}/${version}/share/lua/${version}/redis*
+      cp     ${tempwd}/redis-lua/src/redis.lua          ${rockstree}/${version}/share/lua/${version}/
+      rm -rf ${rockstree}/${version}/share/lua/${version}/websocket*
+      cp     ${tempwd}/lua-websockets/src/websocket.lua ${rockstree}/${version}/share/lua/${version}/
+      cp -r  ${tempwd}/lua-websockets/src/websocket     ${rockstree}/${version}/share/lua/${version}/
+      rm -rf ${rockstree}/${version}/share/lua/${version}/cosy*
+    fi
+    ###### 20151007 in order to be able to use your cosy sources that you are editing
+    if [ -z ${sourcepath+x} ]; then
+      ## In the standard user mode : get the official version of cosy
+      git clone https://github.com/CosyVerif/library.git \
+        >> ${log} 2>&1
+      cp -r  ${tempwd}/library/src/cosy   ${rockstree}/${version}/share/lua/${version}/
+    else
+      echo "Linking cosy to ${sourcepath}"
+      ## In the developper mode : use the version of cosy provided by the sourcepath
+      ln -s ${sourcepath}/src/cosy        ${rockstree}/${version}/share/lua/${version}/
+    fi
+    if [ ! -z ${sourcepath+x} ]; then
+      echo "Installing development tools"
+      ${rockstree}/${version}/bin/luarocks install luacheck \
+        >> ${log} 2>&1
+      ${rockstree}/${version}/bin/luarocks install luacov \
+        >> ${log} 2>&1
+      ${rockstree}/${version}/bin/luarocks install busted \
+        >> ${log} 2>&1
+    fi
+  done
 
 }
 
 function install_main ()
 {
-echo "WARNING : You should now add the following path variables to your environment (.bashrc)"
-echo "export PATH=\"${prefix}/local/cosy/bin:${rockstree}/bin:${PATH}\""
-echo "export LUA_PATH=\"${rockstree}/share/lua/5.1/?.lua;${rockstree}/share/lua/5.1/?/init.lua\""
-echo "export PATH=\"${prefix}/local/cosy/bin:${rockstree}/bin:${PATH}\""
-
+  echo
+  echo -e "You should now add the following path variables to your environment (${green}.bashrc${nc})"
+  echo "export PATH=\"${prefix}/bin:${rockstree}/5.1/bin:\${PATH}\""
+  echo "export LUA_PATH=\"${rockstree}/5.1/share/lua/5.1/?.lua;${rockstree}/5.1/share/lua/5.1/?/init.lua\""
+  echo "export LUA_CPATH=\"${rockstree}/5.1/lib/lua/5.1/?.so\""
+  echo
   cat > ${binary} <<EOL
 #! /bin/sh
 
-export PATH="${prefix}/local/cosy/bin:${rockstree}/bin:${PATH}"
-export LUA_PATH="${rockstree}/share/lua/5.1/?.lua;${rockstree}/share/lua/5.1/?/init.lua"
-export LUA_CPATH="${rockstree}/lib/lua/5.1/?.so"
+export PATH="${prefix}/bin:${rockstree}/5.1/bin:${PATH}"
+export LUA_PATH="${rockstree}/5.1/share/lua/5.1/?.lua;${rockstree}/5.1/share/lua/5.1/?/init.lua"
+export LUA_CPATH="${rockstree}/5.1/lib/lua/5.1/?.so"
 export COSY_PREFIX="${prefix}"
 
-${rockstree}/bin/luajit ${rockstree}/share/lua/5.1/cosy/cli/init.lua \$*
+${rockstree}/5.1/bin/luajit ${rockstree}/5.1/share/lua/5.1/cosy/cli/init.lua \$*
 EOL
   chmod a+x ${binary}
 }
 
 function install_configuration ()
 {
+  echo -e "Installing configuration in ${green}${prefix}/etc/cosy.conf${nc}"
   mkdir -p ${prefix}/etc
   cat > ${prefix}/etc/cosy.conf <<EOL
 return {
@@ -272,18 +268,12 @@ trap error ERR
 mkdir -p ${prefix}
 mkdir -p ${prefix}/bin
 cd ${tempwd}
-echo "Installing dependencies..."
-install_dependencies  >> ${log} 2>&1
-echo "Installing luajit..."
-install_luajit        >> ${log} 2>&1
-echo "Installing luarocks..."
-install_luarocks      >> ${log} 2>&1
-echo "Installing cosyverif..."
-install_cosyverif     >> ${log} 2>&1
-echo "Installing launcher..."
-install_main          >> ${log} 2>&1
-echo "Installing configuration..."
-install_configuration >> ${log} 2>&1
+install_dependencies
+install_luajit
+install_luarocks
+install_cosyverif
+install_main
+install_configuration
 cd ${currentwd}
 rm -rf ${tempwd}
 rm -f  ${log}
