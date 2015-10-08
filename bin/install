@@ -1,6 +1,125 @@
 #! /bin/bash
 
-prefix=${1:-/usr/local/}
+## check for command line arguments 
+##  --sourcepath=<SOURCEPATH> 
+##          eg   ./install --sourcepath=$HOME
+##          Use this option if you are a cosy developper.
+##           This install bash will make a     ln -s ${SOURCEPATH}/library/src/cosy   ${rockstree}/share/lua/5.1/
+##            instead of a classic             cp -r  ${tempwd}/library/src/cosy   ${rockstree}/share/lua/5.1/
+##  --prefix=<PREFIX> 
+##          eg   ./install --prefix=$HOME
+##          Use this option if you are a cosy user.
+##
+##  A user wants to install a client version  :
+##      install --prefix=${TARGET_PATH} --client
+##      install --prefix=${TARGET_PATH}
+##      install ${TARGET_PATH}
+##
+##  A user wants to install a server version  :
+##      install --prefix=${TARGET_PATH} --server
+##
+##  A developper wants to install a server version  :
+##      install --sourcepath=${TARGET_DEV_PATH} --server
+##
+##  A developper wants to install a client version  :
+##      install --sourcepath=${TARGET_DEV_PATH} --client
+##      install --sourcepath=${TARGET_DEV_PATH}
+##
+###############################################################################################
+for i in "$@"
+do
+case $i in
+    -s=*|--sourcepath=*)
+    SOURCEPATH="${i#*=}"
+    shift # past argument=value
+    ;;
+    -p=*|--prefix=*)
+    PREFIX="${i#*=}"
+    shift # past argument=value
+    ;;
+    -s=*|--server*)
+    SERVER=true
+    MODE="SERVER"
+    shift # past argument=value
+    ;;
+    -s=*|--client*)
+    CLIENT=true
+    MODE="CLIENT"
+    shift # past argument=value
+    ;;
+    *)
+            # unknown option
+    ;;
+esac
+done
+
+echo "SOURCEPATH='${SOURCEPATH}'"
+echo "PREFIX='${PREFIX}'"
+echo "SERVER='${SERVER}'"
+echo "CLIENT='${CLIENT}'"
+echo "MODE='${MODE}'"
+
+
+if [ ! -z ${SERVER+x} ] && [ ! -z ${CLIENT+x} ]; then
+  echo "FATAL: incompatible options --server and --client'"
+  exit 1;
+else
+  echo "SERVER or CLIENT is unset";
+fi
+
+if [ -z ${SERVER+x} ] && [ -z ${CLIENT+x} ]; then
+  echo "Setting CLIENT mode";
+  CLIENT=true
+  MODE="CLIENT"
+else
+  echo "SERVER or CLIENT set";
+fi
+
+if [ -z ${SOURCEPATH+x} ]; then
+  echo "SOURCEPATH is unset";
+else
+  echo "SOURCEPATH is set to  '${SOURCEPATH}'";
+fi
+
+if [ ! -z ${SOURCEPATH+x} ] && [ ! -z ${PREFIX+x} ]; then
+  echo "FATAL: incompatible options --sourcepath and --prefix'"
+  echo "FATAL: incompatible options SOURCEPATH is set to  '${SOURCEPATH}' AND PREFIX is set to '${PREFIX}'"
+  exit 1;
+else
+  echo "SOURCEPATH or PREFIX is unset";
+fi
+
+if [ -z ${PREFIX+x} ]; then
+  echo "PREFIX is unset";
+else
+  prefix=${PREFIX}
+  echo "Setting a user version to path '${prefix}'";
+  echo "PREFIX is set to  '${PREFIX}'";
+fi
+if [ -z ${SOURCEPATH+x} ] && [ -z ${PREFIX+x} ]; then
+  echo "both SOURCEPATH  and PREFIX are unset"
+  prefix=/usr/local
+  echo "setting prefix to '${prefix}'";
+fi
+if [ ! -z ${SOURCEPATH+x} ]; then
+  prefix=${SOURCEPATH}
+  echo "Setting a development version to path '{$prefix}'";
+else
+  if [ ! -z ${PREFIX+x}  ]; then
+    prefix=${PREFIX}
+    echo "Setting a user version to path '${prefix}'";
+  else
+    prefix=/usr/local/
+    echo "Setting a user version to the path '${prefix}'";
+  fi
+fi
+
+
+## Now cmd args have been parsed
+##################################
+echo ${MODE}
+echo ${prefix}
+
 
 binary=${prefix}/bin/cosy
 rockstree=${prefix}/local/cosy
@@ -11,9 +130,15 @@ log=$(mktemp)
 # Install dependencies:
 function install_dependencies ()
 {
-  sudo apt-get install git make gcc diffutils patch wget \
-                       libev-dev libssl-dev libgeoip-dev \
+  echo "Installing packages required by both client and server"
+  sudo apt-get install git make gcc diffutils patch wget 
+
+  if [ ! -z ${SERVER+x} ]; then
+    echo "Installing packages required only by the server"
+    sudo apt-get install libev-dev libssl-dev libgeoip-dev \
                        nginx-extras lua-nginx-redis redis-server
+    echo "done";
+  fi
 }
 
 # Install LuaJIT with 5.2 compatibility:
@@ -73,7 +198,7 @@ function install_cosyverif ()
 {
   git clone https://github.com/saucisson/lua-websockets.git
   git clone https://github.com/nrk/redis-lua.git
-  git clone https://github.com/CosyVerif/library.git
+#  git clone https://github.com/CosyVerif/library.git
   ${rockstree}/bin/luarocks install --tree=${rockstree} cosyverif
   rm -rf ${rockstree}/share/lua/5.1/redis*
   cp     ${tempwd}/redis-lua/src/redis.lua          ${rockstree}/share/lua/5.1/
@@ -81,7 +206,17 @@ function install_cosyverif ()
   cp     ${tempwd}/lua-websockets/src/websocket.lua ${rockstree}/share/lua/5.1/
   cp -r  ${tempwd}/lua-websockets/src/websocket     ${rockstree}/share/lua/5.1/
   rm -rf ${rockstree}/share/lua/5.1/cosy*
-  cp -r  ${tempwd}/library/src/cosy                 ${rockstree}/share/lua/5.1/
+###### 20151007 in order to be able to use your cosy sources that you are editing 
+  if [ -z ${SOURCEPATH+x} ]; then
+    echo "Setting a user version to path ${tempwd}/library/src/cosy"
+    cp -r  ${tempwd}/library/src/cosy                 ${rockstree}/share/lua/5.1/
+    echo "SOURCEPATH is unset";
+  else
+    echo "Setting a development version to path '{$SOURCEPATH}'"
+    ln -s ${SOURCEPATH}/library/src/cosy                          ${rockstree}/share/lua/5.1/
+    echo "SOURCEPATH is set to '${SOURCEPATH}'";
+  fi
+
 }
 
 function install_main ()
@@ -89,7 +224,7 @@ function install_main ()
   cat > ${binary} <<EOL
 #! /bin/sh
 
-export PATH="${prefix}/local/cosy/bin:${PATH}"
+export PATH="${prefix}/local/cosy/bin:${rockstree}/bin:${PATH}"
 export LUA_PATH="${rockstree}/share/lua/5.1/?.lua;${rockstree}/share/lua/5.1/?/init.lua"
 export LUA_CPATH="${rockstree}/lib/lua/5.1/?.so"
 export COSY_PREFIX="${prefix}"
@@ -127,17 +262,23 @@ mkdir -p ${prefix}
 mkdir -p ${prefix}/bin
 cd ${tempwd}
 echo "Installing dependencies..."
-install_dependencies  >> ${log} 2>&1
+#install_dependencies
+##  >> ${log} 2>&1
 echo "Installing luajit..."
-install_luajit        >> ${log} 2>&1
+install_luajit     
+##   >> ${log} 2>&1
 echo "Installing luarocks..."
-install_luarocks      >> ${log} 2>&1
+install_luarocks  
+##    >> ${log} 2>&1
 echo "Installing cosyverif..."
-install_cosyverif     >> ${log} 2>&1
+install_cosyverif  
+##   >> ${log} 2>&1
 echo "Installing launcher..."
-install_main          >> ${log} 2>&1
+install_main i
+##         >> ${log} 2>&1
 echo "Installing configuration..."
-install_configuration >> ${log} 2>&1
+install_configuration
+## >> ${log} 2>&1
 cd ${currentwd}
 rm -rf ${tempwd}
 rm -f  ${log}
