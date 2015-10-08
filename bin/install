@@ -12,7 +12,7 @@ log=$(mktemp)
 function install_dependencies ()
 {
   sudo apt-get install git make gcc diffutils patch wget \
-                       libev-dev libssl-dev libgeoip-dev \
+                       libev-dev libssl-dev libgeoip-dev libmagickwand-dev \
                        nginx-extras redis-server
 }
 

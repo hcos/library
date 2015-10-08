@@ -7,17 +7,15 @@ local I18n          = require "cosy.i18n"
 local Logger        = require "cosy.logger"
 local Parameters    = require "cosy.parameters"
 local Password      = require "cosy.password"
-local Redis         = require "cosy.redis"
 local Scheduler     = require "cosy.scheduler"
-local Store         = require "cosy.store"
 local Time          = require "cosy.time"
 local Token         = require "cosy.token"
 local Value         = require "cosy.value"
 local Layer         = require "layeredata"
 local Websocket     = require "websocket"
-local Mime          = require "mime"
 
 Configuration.load {
+  "cosy.nginx",
   "cosy.methods",
   "cosy.parameters",
   "cosy.server",
@@ -150,9 +148,9 @@ function Methods.server.filter (request, store)
     }
   }
   Scheduler.addserver = addserver
-  os.execute ("{{{command}}} {{{port}}} &" % {
-    command = package.searchpath ("cosy.methods.filter", package.path),
-    port    = server_port,
+  os.execute ([[luajit -e '_G.logfile = "{{{log}}}"; _G.port = {{{port}}}; require "cosy.methods.filter"' &]] % {
+    port = server_port,
+    log  = Configuration.server.log,
   })
   return function ()
     repeat
@@ -194,13 +192,13 @@ function Methods.user.create (request, store, try_only)
       administration = Parameters.token.administration,
     },
   })
-  if Store.exists (store / "email" / request.email) then
+  if store / "email" / request.email then
     error {
       _     = i18n ["email:exist"],
       email = request.email,
     }
   end
-  if Store.exists (store / "data" / request.identifier) then
+  if store / "data" / request.identifier then
     error {
       _        = i18n ["identifier:exist"],
       identifier = request.identifier,
@@ -386,7 +384,7 @@ function Methods.user.update (request, store, try_only)
   })
   local user = request.authentication.user
   if request.email and user.email ~= request.email then
-    if Store.exists (store / "email" / request.email) then
+    if store / "email" / request.email then
       error {
         _     = i18n ["email:exist"],
         email = request.email,
@@ -418,23 +416,7 @@ function Methods.user.update (request, store, try_only)
     }
   end
   if request.avatar then
-    local redis   = Redis ()
-    local content = redis:get (request.avatar)
-    redis:del (request.avatar)
-    local filename = os.tmpname ()
-    local file = io.open (filename, "w")
-    file:write (content)
-    file:close ()
-    os.execute ([[
-      convert {{{file}}} -resize {{{width}}}x{{{height}}} png:{{{file}}}
-    ]] % {
-      file   = filename,
-      height = Configuration.data.avatar.height,
-      width  = Configuration.data.avatar.width ,
-    })
-    file = io.open (filename, "r")
-    user.avatar = Mime.b64 (file:read "*all")
-    file:close ()
+    user.avatar = request.avatar
   end
   for _, key in ipairs { "name", "homepage", "organization", "locale" } do
     if request [key] then
@@ -499,11 +481,11 @@ function Methods.user.reset (request, store, try_only)
     },
   })
   local email = store / "email" / request.email
-  if not Store.exists (email) then
+  if email then
     return
   end
   local user = store / "data" / email.identifier
-  if not Store.exists (user) or user.type ~= "user" then
+  if not user or user.type ~= "user" then
     return
   end
   user.password = ""
@@ -615,7 +597,7 @@ function Methods.project.create (request, store)
   })
   local user    = request.authentication.user
   local project = user / request.identifier
-  if Store.exists (project) then
+  if project then
     error {
       _    = i18n ["resource:exist"],
       name = request.identifier,
@@ -635,19 +617,20 @@ function Methods.project.delete (request, store)
     },
   })
   local project = request.project
-  if not Store.exists (project) then
+  if not project then
     error {
       _    = i18n ["resource:miss"],
       name = request.project.rawname,
     }
   end
   local user = request.authentication.user
-  if not (user - project) then
+  if not (user < project) then
     error {
       _    = i18n ["resource:forbidden"],
       name = tostring (project),
     }
   end
+  local _ = - project
 end
 
 for id in Layer.pairs (Configuration.resource.project ["/"]) do
@@ -672,7 +655,7 @@ for id in Layer.pairs (Configuration.resource.project ["/"]) do
       }
     end
     local resource = project / request.name
-    if Store.exists (resource) then
+    if resource then
       error {
         _    = i18n ["resource:exist"],
         name = request.name,
@@ -703,7 +686,7 @@ for id in Layer.pairs (Configuration.resource.project ["/"]) do
       }
     end
     local resource = project / request.name
-    if Store.exists (resource) then
+    if resource then
       error {
         _    = i18n ["resource:exist"],
         name = request.name,
@@ -724,7 +707,7 @@ for id in Layer.pairs (Configuration.resource.project ["/"]) do
       },
     })
     local resource = request.resource
-    if not Store.exists (resource) then
+    if not resource then
       error {
         _    = i18n ["resource:miss"],
         name = resource.id,

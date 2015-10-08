@@ -21,6 +21,10 @@ Default.http = {
   www           = main:gsub ("cosy/nginx.*", "cosy/www"),
 }
 
+Default.upload = {
+  timeout = 5 * 60, -- 5 minutes
+}
+
 Default.dependencies = {
   expiration = 24 * 3600, -- 1 day
   ["/js/lua.vm.js"] = "https://kripken.github.io/lua.vm.js/lua.vm.js",
