@@ -298,7 +298,7 @@ do
           reason = err,
         }
       end
-      setfenv (f, environment)
+      _G.setfenv (f, environment) -- Lua 5.1 specific
       request [key] = f
     end
     if value:byte (1) ~= 27 then
