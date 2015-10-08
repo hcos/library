@@ -1,12 +1,12 @@
 #! /bin/bash
 
-## check for command line arguments 
-##  --sourcepath=<SOURCEPATH> 
+## check for command line arguments
+##  --sourcepath=<SOURCEPATH>
 ##          eg   ./install --sourcepath=$HOME
 ##          Use this option if you are a cosy developper.
 ##           This install bash will make a     ln -s ${SOURCEPATH}/library/src/cosy   ${rockstree}/share/lua/5.1/
 ##            instead of a classic             cp -r  ${tempwd}/library/src/cosy   ${rockstree}/share/lua/5.1/
-##  --prefix=<PREFIX> 
+##  --prefix=<PREFIX>
 ##          eg   ./install --prefix=$HOME
 ##          Use this option if you are a cosy user.
 ##
@@ -137,9 +137,9 @@ function install_dependencies ()
   echo "Installing packages required by both client and server"
   sudo apt-get install git make gcc diffutils patch wget unzip
 
-#  echo "Installing packages required only by the server" 
-  sudo apt-get install libev-dev libssl-dev libgeoip-dev \
-                       nginx-extras lua-nginx-redis redis-server
+#  echo "Installing packages required only by the server"
+  sudo apt-get install libev-dev libssl-dev libgeoip-dev libmagickwand-dev \
+                       nginx-extras redis-server
 }
 
 # Install LuaJIT with 5.2 compatibility:

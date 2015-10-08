@@ -1,6 +1,9 @@
+local Loader        = require "cosy.loader"
 local Configuration = require "cosy.configuration"
 local I18n          = require "cosy.i18n"
 local Logger        = require "cosy.logger"
+local Scheduler     = require "cosy.scheduler"
+local Lfs           = require "lfs"
 
 Configuration.load {
   "cosy.nginx",
@@ -32,8 +35,6 @@ http {
   lua_package_path      "{{{path}}}";
   lua_package_cpath     "{{{cpath}}}";
 
-  include /etc/nginx/mime.types;
-
   gzip              on;
   gzip_min_length   0;
   gzip_types        *;
@@ -48,43 +49,45 @@ http {
     include       /etc/nginx/mime.types;
     default_type  application/octet-stream;
     access_log    access.log;
-    root          "{{{www}}}";
 
     location / {
       add_header  Access-Control-Allow-Origin *;
-      try_files   $uri $uri/ $uri/index.html @foreigns;
+      root        www;
+      index       index.html;
     }
 
-    location @foreigns {
-      proxy_cache  foreign;
-      expires      modified  1d;
-      resolver     {{{resolver}}};
-      set $target  "";
-      access_by_lua '
-        local encode  = require "cosy.store.key".encode
-        local decode  = require "cosy.store.key".decode
-        local value   = require "cosy.value"
-        local redis   = require "nginx.redis" :new ()
-        local ok, err = redis:connect ("{{{redis_host}}}", {{{redis_port}}})
-        if not ok then
-          ngx.log (ngx.ERR, "failed to connect to redis: ", err)
-          return ngx.exit (500)
-        end
-        redis:select ({{{redis_database}}})
-        local path = encode ("foreign") .. "/" .. encode (ngx.var.uri)
-        local target = redis:get (path)
-        if not target or target == ngx.null then
-          return ngx.exit (404)
-        end
-        ngx.var.target = value.decode (target).url
+    location /upload {
+      limit_except                POST { deny all; }
+      client_body_in_file_only    on;
+      client_body_temp_path       {{{uploads}}};
+      client_body_buffer_size     128K;
+      client_max_body_size        10240K;
+      proxy_pass_request_headers  on;
+      proxy_set_header            X-File $request_body_file;
+      proxy_set_body              off;
+      proxy_redirect              off;
+      proxy_pass                  http://localhost:{{{port}}}/uploaded;
+    }
+
+    location /uploaded {
+      content_by_lua '
+        local md5      = require "md5"
+        local filename = ngx.var.http_x_file
+        local file     = assert (io.open (filename))
+        local contents = file:read "*all"
+        file:close ()
+        local sum      = md5.sumhexa (contents)
+        ngx.log (ngx.ERR, filename)
+        ngx.log (ngx.ERR, filename:gsub ("([^/]+)$", sum))
+        os.rename (filename, filename:gsub ("([^/]+)$", sum))
+        ngx.say (sum)
       ';
-      proxy_pass $target$is_args$args;
     }
 
     location /lua {
       default_type  application/lua;
       root          /;
-      set $target   "";
+      set           $target   "";
       access_by_lua '
         local name = ngx.var.uri:match "/lua/(.*)"
         local filename = package.searchpath (name, "{{{path}}}")
@@ -123,28 +126,7 @@ http {
       ';
     }
 
-    location /upload {
-      limit_except               POST { deny all; }
-      client_body_temp_path      uploads/;
-      client_body_buffer_size    128K;
-      client_max_body_size       10240K;
-      content_by_lua '
-        ngx.req.read_body ()
-        local redis   = require "nginx.redis" :new ()
-        local ok, err = redis:connect ("{{{redis_host}}}", {{{redis_port}}})
-        if not ok then
-          ngx.log (ngx.ERR, "failed to connect to redis: ", err)
-          return ngx.exit (500)
-        end
-        redis:select ({{{redis_database}}})
-        local id = redis:incr "#upload"
-        local key = "upload:" .. tostring (id)
-        redis:set (key, ngx.req.get_body_data ())
-        redis:expire (key, 300)
-        ngx.header ["Cosy-Avatar"] = key
-      ';
-    }
-
+{{{redirects}}}
   }
 }
 ]]
@@ -181,6 +163,24 @@ function Nginx.configure ()
     directory = Configuration.http.directory,
     uploads   = Configuration.http.uploads  ,
   })
+  local locations = {}
+  for url, remote in pairs (Configuration.dependencies) do
+    if type (remote) == "string" and remote:match "^http" then
+      locations [#locations+1] = [==[
+    location {{{url}}} {
+      proxy_cache foreign;
+      expires     modified  1d;
+      resolver    {{{resolver}}};
+      set         $target   "{{{remote}}}";
+      proxy_pass  $target$is_args$args;
+    }
+        ]==] % {
+          url      = url,
+          remote   = remote,
+          resolver = resolver,
+        }
+    end
+  end
   local configuration = configuration_template % {
     host           = Configuration.http.interface  ,
     port           = Configuration.http.port       ,
@@ -195,7 +195,7 @@ function Nginx.configure ()
     redis_database = Configuration.redis.database  ,
     path           = package.path,
     cpath          = package.cpath,
-    resolver       = resolver,
+    redirects      = table.concat (locations, "\n"),
   }
   local file = io.open (Configuration.http.configuration, "w")
   file:write (configuration)
@@ -213,6 +213,7 @@ function Nginx.start ()
     configuration = Configuration.http.configuration,
     error         = Configuration.http.error        ,
   })
+  Nginx.stopped = false
 end
 
 function Nginx.stop ()
@@ -232,6 +233,7 @@ function Nginx.stop ()
     directory     = Configuration.http.directory,
   })
   Nginx.directory = nil
+  Nginx.stopped   = true
 end
 
 function Nginx.update ()
@@ -244,5 +246,30 @@ function Nginx.update ()
     pidfile = Configuration.http.pid,
   })
 end
+
+Loader.hotswap.on_change ["cosy:configuration"] = function ()
+  Nginx.update ()
+end
+
+Scheduler.addthread (function ()
+  repeat
+    local count = 0
+    for entry in Lfs.dir (Configuration.http.uploads) do
+      if entry ~= "." and entry ~= ".." then
+        local filename     = Configuration.http.uploads .. "/" .. entry
+        print (entry, filename)
+        local modification = Lfs.attributes (filename, "modification")
+        if os.difftime (os.time (), modification) > 2 * Configuration.upload.timeout then
+          os.remove (filename)
+        end
+        count = count + 1
+        Scheduler.sleep (Configuration.upload.timeout / count / 2)
+      end
+    end
+    if count == 0 then
+      Scheduler.sleep (Configuration.upload.timeout)
+    end
+  until Nginx.stopped
+end)
 
 return Nginx

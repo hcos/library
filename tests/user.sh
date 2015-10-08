@@ -45,6 +45,18 @@ do
   echo "Creating ${type} in project"
   ./cosy.lua ${type}:create instance-${type} alinard/dd
 done
+echo "Iterating over users"
+./cosy.lua server:filter 'return function (store)
+    for user in store / "data" * ".*" do
+      coroutine.yield (user)
+    end
+  end'
+echo "Iterating over projects"
+./cosy.lua server:filter 'return function (store)
+    for project in store / "data" * ".*" * ".*" do
+      coroutine.yield (project)
+    end
+  end'
 echo "Deleting project"
 ./cosy.lua project:delete alinard/dd
 echo "Deleting user alinard:"
