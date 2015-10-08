@@ -270,23 +270,17 @@ mkdir -p ${prefix}
 mkdir -p ${prefix}/bin
 cd ${tempwd}
 echo "Installing dependencies..."
-#install_dependencies
-##  >> ${log} 2>&1
+install_dependencies  >> ${log} 2>&1
 echo "Installing luajit..."
-install_luajit     
-##   >> ${log} 2>&1
+install_luajit        >> ${log} 2>&1
 echo "Installing luarocks..."
-install_luarocks  
-##    >> ${log} 2>&1
+install_luarocks      >> ${log} 2>&1
 echo "Installing cosyverif..."
-install_cosyverif  
-##   >> ${log} 2>&1
+install_cosyverif     >> ${log} 2>&1
 echo "Installing launcher..."
-install_main i
-##         >> ${log} 2>&1
+install_main          >> ${log} 2>&1
 echo "Installing configuration..."
-install_configuration
-## >> ${log} 2>&1
+install_configuration >> ${log} 2>&1
 cd ${currentwd}
 rm -rf ${tempwd}
 rm -f  ${log}
