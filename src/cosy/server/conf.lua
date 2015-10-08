@@ -17,7 +17,6 @@ Default.recaptcha = {
 }
 
 Default.geodb = {
-  dataset  = "http://geolite.maxmind.com/download/geoip/database/GeoLiteCity.dat.gz",
   position = {
     longitude      = 4.6,
     latitude	     = 44.735833,
