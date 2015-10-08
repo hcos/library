@@ -85,11 +85,12 @@ end
 
 function Server.call_method (method, parameters, try_only)
   for _ = 1, Configuration.redis.retry or 1 do
-    local store  = Store.new ()
-    store = Store.specialize (store, Configuration.server.token)
+    local store = Store.new ()
+    local view  = Store.toview (store)
+    view = view % Configuration.server.token
     local err
     local ok, result = xpcall (function ()
-      local r = method (parameters, store, try_only)
+      local r = method (parameters, view, try_only)
       if not try_only then
         Store.commit (store)
       end
@@ -277,10 +278,11 @@ function Server.start ()
 
   Scheduler.addthread (function ()
     local store = Store.new ()
-    store = Store.specialize (store, Configuration.server.token)
-    for key in Layer.pairs (Configuration.resource ["/"]) do
-      if not Store.exists (store / key) then
-        local _ = store + key
+    local view  = Store.toview (store)
+    view = view % Configuration.server.token
+    for key in pairs (Configuration.resource ["/"]) do
+      if view / key == nil then
+        local _ = view + key
       end
     end
     Store.commit (store)

@@ -1,6 +1,5 @@
 local Configuration = require "cosy.configuration"
 local I18n          = require "cosy.i18n"
-local Store         = require "cosy.store"
 local Token         = require "cosy.token"
 local Default       = require "cosy.configuration.layers".default
 local Layer         = require "layeredata"
@@ -357,7 +356,7 @@ do
         }
       end
       data = data / v
-      if not Store.exists (data) then
+      if not data then
         return  nil, {
           _    = i18n ["check:resource:miss"],
           name = value,
