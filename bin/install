@@ -13,7 +13,7 @@ function install_dependencies ()
 {
   sudo apt-get install git make gcc diffutils patch wget \
                        libev-dev libssl-dev libgeoip-dev \
-                       nginx-extras lua-nginx-redis redis-server
+                       nginx-extras redis-server
 }
 
 # Install LuaJIT with 5.2 compatibility:
