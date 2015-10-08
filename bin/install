@@ -199,12 +199,15 @@ function install_cosyverif ()
 {
   git clone https://github.com/saucisson/lua-websockets.git
   git clone https://github.com/nrk/redis-lua.git
+  git clone https://github.com/leafo/magick.git
   ${rockstree}/bin/luarocks install --tree=${rockstree} cosyverif
   rm -rf ${rockstree}/share/lua/5.1/redis*
   cp     ${tempwd}/redis-lua/src/redis.lua          ${rockstree}/share/lua/5.1/
   rm -rf ${rockstree}/share/lua/5.1/websocket*
   cp     ${tempwd}/lua-websockets/src/websocket.lua ${rockstree}/share/lua/5.1/
   cp -r  ${tempwd}/lua-websockets/src/websocket     ${rockstree}/share/lua/5.1/
+  rm -rf ${rockstree}/share/lua/5.1/magick*
+  cp -r  ${tempwd}/magick/magick                    ${rockstree}/share/lua/5.1/
   rm -rf ${rockstree}/share/lua/5.1/cosy*
 ###### 20151007 in order to be able to use your cosy sources that you are editing
   if [ -z ${SOURCEPATH+x} ]; then
