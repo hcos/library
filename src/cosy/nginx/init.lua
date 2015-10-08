@@ -2,6 +2,8 @@ local Loader        = require "cosy.loader"
 local Configuration = require "cosy.configuration"
 local I18n          = require "cosy.i18n"
 local Logger        = require "cosy.logger"
+local Scheduler     = require "cosy.scheduler"
+local Lfs           = require "lfs"
 
 Configuration.load {
   "cosy.nginx",
@@ -57,7 +59,7 @@ http {
     location /upload {
       limit_except                POST { deny all; }
       client_body_in_file_only    on;
-      client_body_temp_path       uploads/;
+      client_body_temp_path       {{{uploads}}};
       client_body_buffer_size     128K;
       client_max_body_size        10240K;
       proxy_pass_request_headers  on;
@@ -69,9 +71,16 @@ http {
 
     location /uploaded {
       content_by_lua '
-        local file = ngx.var.http_x_file
-        local id   = file:match "./uploads/(.*)"
-        ngx.say (id)
+        local md5      = require "md5"
+        local filename = ngx.var.http_x_file
+        local file     = assert (io.open (filename))
+        local contents = file:read "*all"
+        file:close ()
+        local sum      = md5.sumhexa (contents)
+        ngx.log (ngx.ERR, filename)
+        ngx.log (ngx.ERR, filename:gsub ("([^/]+)$", sum))
+        os.rename (filename, filename:gsub ("([^/]+)$", sum))
+        ngx.say (sum)
       ';
     }
 
@@ -204,6 +213,7 @@ function Nginx.start ()
     configuration = Configuration.http.configuration,
     error         = Configuration.http.error        ,
   })
+  Nginx.stopped = false
 end
 
 function Nginx.stop ()
@@ -223,6 +233,7 @@ function Nginx.stop ()
     directory     = Configuration.http.directory,
   })
   Nginx.directory = nil
+  Nginx.stopped   = true
 end
 
 function Nginx.update ()
@@ -239,5 +250,26 @@ end
 Loader.hotswap.on_change ["cosy:configuration"] = function ()
   Nginx.update ()
 end
+
+Scheduler.addthread (function ()
+  repeat
+    local count = 0
+    for entry in Lfs.dir (Configuration.http.uploads) do
+      if entry ~= "." and entry ~= ".." then
+        local filename     = Configuration.http.uploads .. "/" .. entry
+        print (entry, filename)
+        local modification = Lfs.attributes (filename, "modification")
+        if os.difftime (os.time (), modification) > 2 * Configuration.upload.timeout then
+          os.remove (filename)
+        end
+        count = count + 1
+        Scheduler.sleep (Configuration.upload.timeout / count / 2)
+      end
+    end
+    if count == 0 then
+      Scheduler.sleep (Configuration.upload.timeout)
+    end
+  until Nginx.stopped
+end)
 
 return Nginx
