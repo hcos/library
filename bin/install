@@ -135,11 +135,11 @@ log=$(mktemp)
 function install_dependencies ()
 {
   echo "Installing packages required by both client and server"
-  sudo apt-get install git make gcc diffutils patch wget unzip
+  sudo apt-get install --yes git make gcc diffutils patch wget unzip
 
 #  echo "Installing packages required only by the server"
-  sudo apt-get install libev-dev libssl-dev libgeoip-dev libmagickwand-dev \
-                       nginx-extras redis-server
+  sudo apt-get install --yes libev-dev libssl-dev libgeoip-dev libmagickwand-dev \
+                             nginx-extras redis-server
 }
 
 # Install LuaJIT with 5.2 compatibility:
