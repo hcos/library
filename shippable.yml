@@ -10,7 +10,7 @@ install:
   - sudo apt-get install -y nginx-extras redis-server imagemagick
   - pwd
   - ls
-  - ./bin/install $HOME
+  - ./bin/install --prefix=$HOME --sourcepath=$(pwd)
 
 script:
   - ${HOME}/bin/cosy-check
