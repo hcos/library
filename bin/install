@@ -83,8 +83,8 @@ function install_dependencies ()
     >> ${log} 2>&1
 
   echo "Installing packages required only by the server"
-  sudo apt-get install --yes libev-dev libssl-dev libgeoip-dev libmagickwand-dev \
-                             nginx-extras redis-server \
+  sudo apt-get install --yes libev-dev libssl-dev \
+                             nginx-extras redis-server imagemagick \
     >> ${log} 2>&1
 
   if [ ! -z ${sourcepath+x} ]; then
