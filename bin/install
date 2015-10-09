@@ -122,7 +122,11 @@ function install_dependencies ()
 # Install LuaJIT with 5.2 compatibility:
 function install_luajit ()
 {
-  echo "Installing luajit"
+  if [ -e "${rockstree}/5.1/bin/luajit" ]; then
+    echo "Luajit is already installed."
+    return
+  fi
+  echo "Installing luajit."
   wget --quiet http://luajit.org/download/LuaJIT-2.0.4.tar.gz
   tar  xf LuaJIT-2.0.4.tar.gz
   cd   LuaJIT-2.0.4
@@ -162,26 +166,34 @@ EOL
 
 function install_luarocks ()
 {
-  echo "Installing luarocks"
-  wget --quiet http://luarocks.org/releases/luarocks-2.2.2.tar.gz
-  tar  xf luarocks-2.2.2.tar.gz
-  cd   luarocks-2.2.2
-  {
-    ./configure --prefix="${rockstree}/5.1" \
-                --with-lua="${rockstree}/5.1" \
-                --lua-suffix="jit" \
-                --with-lua-include="${rockstree}/5.1/include/luajit-2.0/" \
-                --with-lua-lib="${rockstree}/5.1/lib/"
-      make bootstrap
-  } >> "${log}" 2>&1
-  cd   ..
+  if [ -e "${rockstree}/5.1/bin/luarocks" ]; then
+    echo "Luarocks for lua-5.1 is already installed."
+  else
+  (
+    echo "Installing luarocks for Lua-5.1."
+    wget --quiet http://luarocks.org/releases/luarocks-2.2.2.tar.gz
+    tar  xf luarocks-2.2.2.tar.gz
+    cd   luarocks-2.2.2
+    {
+      ./configure --prefix="${rockstree}/5.1" \
+                  --with-lua="${rockstree}/5.1" \
+                  --lua-suffix="jit" \
+                  --with-lua-include="${rockstree}/5.1/include/luajit-2.0/" \
+                  --with-lua-lib="${rockstree}/5.1/lib/"
+        make bootstrap
+    } >> "${log}" 2>&1
+  )
+  fi
 
   if [ ! -z "${sourcepath+x}" ]; then
-    (
-      cd   luarocks-2.2.2 || exit
-      for version in ${versions}
-      do
-        echo "Installing luarocks for Lua-${version}"
+    for version in ${versions}
+    do
+      if [ -e "${rockstree}/${version}/bin/luarocks" ]; then
+        echo "Luarocks for lua-${version} is already installed."
+      else
+      (
+        cd   luarocks-2.2.2
+        echo "Installing luarocks for lua-${version}."
         {
           make clean
           ./configure --prefix="${rockstree}/${version}" \
@@ -189,8 +201,9 @@ function install_luarocks ()
                       --lua-suffix="${version}"
           make bootstrap
         } >> "${log}" 2>&1
-      done
-    )
+      )
+      fi
+    done
   fi
 
 }
@@ -198,37 +211,67 @@ function install_luarocks ()
 # Install cosyverif:
 function install_cosyverif ()
 {
-  git clone https://github.com/saucisson/lua-websockets.git \
-    >> "${log}" 2>&1
-  git clone https://github.com/nrk/redis-lua.git \
-    >> "${log}" 2>&1
+  mkdir -p "${rockstree}/git"
+  if [ ! -d "${rockstree}/git/lua-websockets" ]; then
+    git clone https://github.com/saucisson/lua-websockets.git \
+              "${rockstree}/git/lua-websockets" \
+      >> "${log}" 2>&1
+  fi
+  (
+    cd "${rockstree}/git/lua-websockets"
+    git pull \
+      >> "${log}" 2>&1
+  )
+  if [ ! -d "${rockstree}/git/redis-lua" ]; then
+    git clone https://github.com/nrk/redis-lua.git \
+              "${rockstree}/git/redis-lua" \
+      >> "${log}" 2>&1
+  fi
+  (
+    cd "${rockstree}/git/redis-lua"
+    git pull \
+      >> "${log}" 2>&1
+  )
+  if [ -z "${sourcepath+x}" ]; then
+    if   [ -d "${rockstree}/git/library" ]; then
+      echo -n
+    else
+      rm -rf "${rockstree}/git/library"
+      git clone https://github.com/CosyVerif/library.git \
+                "${rockstree}/git/library" \
+        >> "${log}" 2>&1
+    fi
+  else
+    rm -rf "${rockstree}/git/library"
+    ln -s  "${sourcepath}" "${rockstree}/git/library"
+  fi
+  (
+    cd "${rockstree}/git/library"
+    git pull \
+      >> "${log}" 2>&1
+  )
   for version in 5.1 ${versions}
   do
-    echo "Installing cosyverif dependencies for Lua-${version}"
-    if [ -d "${rockstree}/${version}/share/lua/${version}" ]
-    then
+    echo "Installing rocks for lua-${version}."
+    if [ -d "${rockstree}/${version}/share/lua/${version}" ]; then
+      # Remove symlink to cosy to avoid modification of ${sourcepath} files by luarocks.
+      rm -rf "${rockstree}/${version}/share/lua/${version}/cosy"*
       "${rockstree}/${version}/bin/luarocks" install cosyverif \
         >> "${log}" 2>&1
       rm -rf "${rockstree}/${version}/share/lua/${version}/redis"*
-      cp     "${tempwd}/redis-lua/src/redis.lua"          "${rockstree}/${version}/share/lua/${version}/"
+      ln -s  "${rockstree}/git/redis-lua/src/redis.lua" \
+             "${rockstree}/${version}/share/lua/${version}/redis.lua"
       rm -rf "${rockstree}/${version}/share/lua/${version}/websocket"*
-      cp     "${tempwd}/lua-websockets/src/websocket.lua" "${rockstree}/${version}/share/lua/${version}/"
-      cp -r  "${tempwd}/lua-websockets/src/websocket"     "${rockstree}/${version}/share/lua/${version}/"
+      ln -s  "${rockstree}/git/lua-websockets/src/websocket.lua" \
+             "${rockstree}/${version}/share/lua/${version}/websocket.lua"
+      ln -s  "${rockstree}/git/lua-websockets/src/websocket" \
+             "${rockstree}/${version}/share/lua/${version}/websocket"
       rm -rf "${rockstree}/${version}/share/lua/${version}/cosy"*
-    fi
-    ###### 20151007 in order to be able to use your cosy sources that you are editing
-    if [ -z "${sourcepath+x}" ]; then
-      ## In the standard user mode : get the official version of cosy
-      git clone https://github.com/CosyVerif/library.git \
-        >> "${log}" 2>&1
-      cp -r  "${tempwd}/library/src/cosy"   "${rockstree}/${version}/share/lua/${version}/"
-    else
-      echo "Linking cosy to ${sourcepath}"
-      ## In the developper mode : use the version of cosy provided by the sourcepath
-      ln -s "${sourcepath}/src/cosy"        "${rockstree}/${version}/share/lua/${version}/"
+      ln -s  "${rockstree}/git/library/src/cosy" \
+             "${rockstree}/${version}/share/lua/${version}/cosy"
     fi
     if [ ! -z "${sourcepath+x}" ]; then
-      echo "Installing development tools"
+      echo "Installing development tools for lua-${version}."
       {
         "${rockstree}/${version}/bin/luarocks" install luacheck
         "${rockstree}/${version}/bin/luarocks" install luacov
