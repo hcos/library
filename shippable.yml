@@ -2,10 +2,12 @@ language: php
 php:
   - 5.3
 
+cache: true
+
 services:
  - redis
 
-install:
+before_install:
   - sudo apt-get update     -y
   - sudo apt-get autoremove -y
   - sudo apt-get install -y git make gcc diffutils patch wget unzip
