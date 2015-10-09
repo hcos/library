@@ -243,7 +243,7 @@ EOF
 ${paths}
 export COSY_PREFIX="${prefix}"
 
-${rockstree}/5.1/bin/luajit ${rockstree}/5.1/share/lua/5.1/cosy/cli/init.lua \$*
+${rockstree}/5.1/bin/luajit ${rockstree}/5.1/share/lua/5.1/cosy/cli/init.lua "\$@"
 EOF
   chmod a+x "${cosy}"
 
@@ -257,7 +257,7 @@ export COSY_PREFIX="${prefix}"
 currentdir=\$(pwd)
 tmpdir=\$(mktemp -d)
 cd  \${tmpdir}
-${rockstree}/5.1/bin/luajit ${rockstree}/5.1/share/lua/5.1/cosy/check/init.lua \$*
+${rockstree}/5.1/bin/luajit ${rockstree}/5.1/share/lua/5.1/cosy/check/init.lua "\$@"
 echo
 echo -e "TAP report and Coverage are in ${green}\${tmpdir}${nc}."
 cd  \${currentdir}
@@ -273,7 +273,7 @@ export COSY_PREFIX="${prefix}"
 currentdir=\$(pwd)
 tmpdir=\$(mktemp -d)
 cd  \${tmpdir}
-${rockstree}/5.1/bin/luajit ${rockstree}/5.1/share/lua/5.1/cosy/rockspec/init.lua \$*
+${rockstree}/5.1/bin/luajit ${rockstree}/5.1/share/lua/5.1/cosy/rockspec/init.lua "\$@"
 echo
 echo -e "Rockspec is in ${green}\${tmpdir}${nc}."
 cd  \${currentdir}
