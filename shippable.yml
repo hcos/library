@@ -3,12 +3,12 @@ php:
   - 5.3
 
 install:
-  - sudo apt-get install -y diffutils gcc git make patch unzip wget
-  - sudo apt-get install -y libev-dev libgeoip-dev libssl-dev
-  - sudo apt-get install -y nginx-extras lua-nginx-redis redis-server
+  - sudo apt-get install -y git make gcc diffutils patch wget unzip
+  - sudo apt-get install -y libev-dev libssl-dev
+  - sudo apt-get install -y nginx-extras redis-server imagemagick
   - pwd
   - ls
   - ./bin/install $HOME
 
 script:
-  - ./bin/make-check
+  - ${HOME}/bin/cosy-check
