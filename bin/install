@@ -85,6 +85,18 @@ else
   echo -e "Source             : ${green}${sourcepath}${nc}"
 fi
 
+# Stop existing server:
+function stop_server ()
+{
+  if [ -e "${cosy}" ]; then
+    echo "Stopping running server."
+    {
+      ${cosy} server:stop --force
+      ${cosy} daemon:stop --force
+    } >> "${log}" 2>&1
+  fi
+}
+
 # Install dependencies:
 function install_dependencies ()
 {
@@ -314,6 +326,7 @@ trap error ERR
 mkdir -p "${prefix}"
 mkdir -p "${prefix}/bin"
 cd "${tempwd}"
+stop_server
 install_dependencies
 install_luajit
 install_luarocks
