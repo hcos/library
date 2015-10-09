@@ -28,7 +28,9 @@ main = main:gsub ("/check/init.lua", "")
 
 local status = true
 
-status = os.execute ([[{{{luacheck}}} --std max --std +busted {{{path}}}/*/*.lua]] % {
+status = os.execute ([[
+  cd {{{path}}}/.. && {{{luacheck}}} --std max --std +busted cosy/*/*.lua
+]] % {
   luacheck = prefix .. "/local/cosy/5.1/bin/luacheck",
   path     = main,
 }) and status
