@@ -193,14 +193,14 @@ function install_cosyverif ()
     echo "Installing cosyverif dependencies for Lua-${version}"
     if [ -d "${rockstree}/${version}/share/lua/${version}" ]
     then
-      "${rockstree}/${version}/bin/luarocks install cosyverif" \
+      "${rockstree}/${version}/bin/luarocks" install cosyverif \
         >> "${log}" 2>&1
-      rm -rf "${rockstree}/${version}/share/lua/${version}/redis*"
+      rm -rf "${rockstree}/${version}/share/lua/${version}/redis"*
       cp     "${tempwd}/redis-lua/src/redis.lua"          "${rockstree}/${version}/share/lua/${version}/"
-      rm -rf "${rockstree}/${version}/share/lua/${version}/websocket*"
+      rm -rf "${rockstree}/${version}/share/lua/${version}/websocket"*
       cp     "${tempwd}/lua-websockets/src/websocket.lua" "${rockstree}/${version}/share/lua/${version}/"
       cp -r  "${tempwd}/lua-websockets/src/websocket"     "${rockstree}/${version}/share/lua/${version}/"
-      rm -rf "${rockstree}/${version}/share/lua/${version}/cosy*"
+      rm -rf "${rockstree}/${version}/share/lua/${version}/cosy"*
     fi
     ###### 20151007 in order to be able to use your cosy sources that you are editing
     if [ -z "${sourcepath+x}" ]; then
@@ -216,9 +216,9 @@ function install_cosyverif ()
     if [ ! -z "${sourcepath+x}" ]; then
       echo "Installing development tools"
       {
-        "${rockstree}/${version}/bin/luarocks install luacheck"
-        "${rockstree}/${version}/bin/luarocks install luacov"
-        "${rockstree}/${version}/bin/luarocks install busted"
+        "${rockstree}/${version}/bin/luarocks" install luacheck
+        "${rockstree}/${version}/bin/luarocks" install luacov
+        "${rockstree}/${version}/bin/luarocks" install busted
       } >> "${log}" 2>&1
     fi
   done
