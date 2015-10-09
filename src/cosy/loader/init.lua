@@ -34,6 +34,7 @@ if _G.js then
     return load (result, url)
   end)
   loader.hotswap   = require "hotswap" .new {}
+
 else
   loader.loadhttp  = function (url)
     local request = (require "copas.http").request
@@ -42,9 +43,18 @@ else
   end
   loader.scheduler = require "copas.ev"
   loader.scheduler.make_default ()
-  loader.hotswap   = require "hotswap.ev" .new {
-    loop = loader.scheduler._loop,
-  }
+
+  if package.loaded ["busted.runner"] then
+    loader.hotswap   = require "hotswap".new {}
+    loader.nolog     = true
+  else
+    loader.hotswap   = require "hotswap.ev" .new {
+      loop = loader.scheduler._loop,
+    }
+    _G.require = function (name)
+      return loader.hotswap.require (name)
+    end
+  end
 end
 
 do
@@ -53,10 +63,6 @@ do
     _G.bit32.lrotate = _G.bit32.rol
     _G.bit32.rrotate = _G.bit32.ror
     return _G.bit32
-  end
-
-  _G.require = function (name)
-    return loader.hotswap.require (name)
   end
 
   require "cosy.string"
