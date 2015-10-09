@@ -47,6 +47,7 @@ status = os.execute ([[
   path     = main,
 }) and status
 
+Lfs.mkdir "test"
 local test_id = 1
 
 for module in Lfs.dir (main) do
@@ -69,7 +70,7 @@ for module in Lfs.dir (main) do
           lua      = "lua" .. version,
           path     = path:gsub ("5%.1", version),
           format   = arguments ["test-format"],
-          output   = "test-" .. tostring (test_id),
+          output   = "test/" .. tostring (test_id),
           luapath  = package.path :gsub ("5%.1", version),
           luacpath = package.cpath:gsub ("5%.1", version),
         }) and status
