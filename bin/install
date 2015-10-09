@@ -41,6 +41,11 @@ do
       mode="${i#*=}"
       shift # past argument=value
     ;;
+    -h|--help)
+      echo "Usage: "
+      echo "  install [--prefix=PREFIX] [--mode=server|client] [--sourcepath=PATH]"
+      exit 1;
+    ;;
     *)
       echo "Usage: "
       echo "  install [--prefix=PREFIX] [--mode=server|client] [--sourcepath=PATH]"
