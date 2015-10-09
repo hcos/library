@@ -10,9 +10,7 @@ install:
   - sudo apt-get autoremove -y
   - sudo apt-get install -y git make gcc diffutils patch wget unzip
   - sudo apt-get install -y libev-dev libssl-dev
-  - sudo apt-get install -y nginx-extras redis-server imagemagick
-  - pwd
-  - ls
+  - sudo apt-get install -y nginx-extras imagemagick
   - ./bin/install --prefix=$HOME --sourcepath=$(pwd)
 
 script:
