@@ -308,9 +308,16 @@ ${paths}
 export COSY_PREFIX="${prefix}"
 
 (
-  tmpdir=\${1:-\$(mktemp -d)}
+  if [ \$# -ge 1 ]; then
+    tmpdir=\${1}
+  else
+    tmpdir=\$(mktemp -d)
+  fi
+  if [ ! -d "\${tmpdir}" ]; then
+    mkdir -p "\${tmpdir}"
+  fi
   shift
-  cd  "\${tmpdir}" || exit
+  cd  "\${tmpdir}"
   ${rockstree}/5.1/bin/luajit ${rockstree}/5.1/share/lua/5.1/cosy/check/init.lua "\$@"
   echo
   echo -e "Test and Coverage reports are in ${green}\${tmpdir}${nc}."
@@ -325,9 +332,16 @@ ${paths}
 export COSY_PREFIX="${prefix}"
 
 (
-  tmpdir=\${1:-\$(mktemp -d)}
+  if [ \$# -ge 1 ]; then
+    tmpdir=\${1}
+  else
+    tmpdir=\$(mktemp -d)
+  fi
+  if [ ! -d "\${tmpdir}" ]; then
+    mkdir -p "\${tmpdir}"
+  fi
   shift
-  cd  "\${tmpdir} "|| exit
+  cd  "\${tmpdir}"
   ${rockstree}/5.1/bin/luajit ${rockstree}/5.1/share/lua/5.1/cosy/rockspec/init.lua "\$@"
   echo
   echo -e "Rockspec is in ${green}\${tmpdir}${nc}."
