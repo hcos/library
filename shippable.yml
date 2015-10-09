@@ -25,10 +25,7 @@ script:
   - ${HOME}/bin/cosy-check output --test-format=junit
 
 after_script:
-  - mv output/test-*    shippable/testresults
-  - for file in shippable/testresults/*; do; mv ${file} ${file}.xml; done
-  - mv output/coverage  shippable/coverage
-  - mv luacov.*         shippable/
+  - for file in output/test/*; do mv ${file} shippable/testresults/$(basename ${file}).xml; done
 
 notifications:
   email:
