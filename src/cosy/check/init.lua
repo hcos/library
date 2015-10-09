@@ -2,6 +2,18 @@ local Lfs      = require "lfs"
 local Lustache = require "lustache"
 local Colors   = require 'ansicolors'
 local Reporter = require "luacov.reporter"
+local Cli      = require "cliargs"
+
+Cli:set_name "check"
+Cli:add_option (
+  "--test-format=FORMAT",
+  "format for the test results (supported by busted)",
+  "TAP"
+)
+local arguments = Cli:parse (arg)
+if not arguments then
+  os.exit (1)
+end
 
 local prefix    = os.getenv "COSY_PREFIX"
 
@@ -35,6 +47,8 @@ status = os.execute ([[
   path     = main,
 }) and status
 
+local test_id = 1
+
 for module in Lfs.dir (main) do
   local path = main .. "/" .. module
   if  module ~= "." and module ~= ".."
@@ -50,14 +64,16 @@ for module in Lfs.dir (main) do
         status = os.execute ([[
           export LUA_PATH="{{{luapath}}}"
           export LUA_CPATH="{{{luacpath}}}"
-          {{{lua}}} {{{path}}}/test.lua --verbose --coverage --output=TAP >> {{{output}}}
+          {{{lua}}} {{{path}}}/test.lua --verbose --coverage --output={{{format}}} >> {{{output}}}
         ]] % {
           lua      = "lua" .. version,
           path     = path:gsub ("5%.1", version),
-          output   = "tap.txt",
+          format   = arguments ["test-format"],
+          output   = "test-" .. tostring (test_id),
           luapath  = package.path :gsub ("5%.1", version),
           luacpath = package.cpath:gsub ("5%.1", version),
         }) and status
+        test_id = test_id + 1
       end
     end
   end
