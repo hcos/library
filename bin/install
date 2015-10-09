@@ -77,7 +77,7 @@ echo -e "Temporary directory: ${green}${tempwd}${nc}"
 echo -e "Log file           : ${green}${log}${nc}"
 echo -e "Mode               :  ${green}${mode}${nc}"
 echo -e "Prefix             :  ${green}${prefix}${nc}"
-if [ -z ${sourcepath+x} ]; then
+if [ -z "${sourcepath+x}" ]; then
   echo -e "Source             : ${green}not set${nc}"
 else
   echo -e "Source             : ${green}${sourcepath}${nc}"
@@ -88,19 +88,19 @@ function install_dependencies ()
 {
   echo "Installing packages required by both client and server"
   sudo apt-get install --yes git make gcc diffutils patch wget unzip \
-    >> ${log} 2>&1
+    >> "${log}" 2>&1
 
   echo "Installing packages required only by the server"
   sudo apt-get install --yes libev-dev libssl-dev \
                              nginx-extras redis-server imagemagick \
-    >> ${log} 2>&1
+    >> "${log}" 2>&1
 
-  if [ ! -z ${sourcepath+x} ]; then
+  if [ ! -z "${sourcepath+x}" ]; then
     for version in ${versions}
     do
       echo "Installing lua-${version}"
       sudo apt-get install --yes  lua${versions} liblua${version}-dev \
-        >> ${log} 2>&1
+        >> "${log}" 2>&1
     done
   fi
 }
@@ -138,12 +138,11 @@ diff -rupN LuaJIT-2.0.4.back/src/Makefile LuaJIT-2.0.4/src/Makefile
  # Disable the JIT compiler, i.e. turn LuaJIT into a pure interpreter.
  #XCFLAGS+= -DLUAJIT_DISABLE_JIT
 EOL
-  patch -p1 -i luajit.patch \
-    >> ${log} 2>&1
-  make \
-    >> ${log} 2>&1
-  make install \
-    >> ${log} 2>&1
+  {
+    patch -p1 -i luajit.patch
+    make
+    make install
+  } >> "${log}" 2>&1
   cd   ..
 }
 
@@ -153,31 +152,31 @@ function install_luarocks ()
   wget --quiet http://luarocks.org/releases/luarocks-2.2.2.tar.gz
   tar  xf luarocks-2.2.2.tar.gz
   cd   luarocks-2.2.2
-  ./configure --prefix=${rockstree}/5.1 \
-              --with-lua=${rockstree}/5.1 \
-              --lua-suffix="jit" \
-              --with-lua-include=${rockstree}/5.1/include/luajit-2.0/ \
-              --with-lua-lib=${rockstree}/5.1/lib/ \
-    >> ${log} 2>&1
-  make bootstrap \
-    >> ${log} 2>&1
+  {
+    ./configure --prefix="${rockstree}/5.1" \
+                --with-lua="${rockstree}/5.1" \
+                --lua-suffix="jit" \
+                --with-lua-include="${rockstree}/5.1/include/luajit-2.0/" \
+                --with-lua-lib="${rockstree}/5.1/lib/"
+      make bootstrap
+  } >> "${log}" 2>&1
   cd   ..
 
-  if [ ! -z ${sourcepath+x} ]; then
-    cd   luarocks-2.2.2
-    for version in ${versions}
-    do
-      echo "Installing luarocks for Lua-${version}"
-      make clean \
-        >> ${log} 2>&1
-      ./configure --prefix=${rockstree}/${version} \
-                  --lua-version=${version} \
-                  --lua-suffix=${version} \
-        >> ${log} 2>&1
-      make bootstrap \
-        >> ${log} 2>&1
-    done
-    cd   ..
+  if [ ! -z "${sourcepath+x}" ]; then
+    (
+      cd   luarocks-2.2.2 || exit
+      for version in ${versions}
+      do
+        echo "Installing luarocks for Lua-${version}"
+        {
+          make clean
+          ./configure --prefix="${rockstree}/${version}" \
+                      --lua-version="${version}" \
+                      --lua-suffix="${version}"
+          make bootstrap
+        } >> "${log}" 2>&1
+      done
+    )
   fi
 
 }
@@ -186,42 +185,41 @@ function install_luarocks ()
 function install_cosyverif ()
 {
   git clone https://github.com/saucisson/lua-websockets.git \
-    >> ${log} 2>&1
+    >> "${log}" 2>&1
   git clone https://github.com/nrk/redis-lua.git \
-    >> ${log} 2>&1
+    >> "${log}" 2>&1
   for version in 5.1 ${versions}
   do
     echo "Installing cosyverif dependencies for Lua-${version}"
-    if [ -d ${rockstree}/${version}/share/lua/${version} ]
+    if [ -d "${rockstree}/${version}/share/lua/${version}" ]
     then
-      ${rockstree}/${version}/bin/luarocks install cosyverif \
-        >> ${log} 2>&1
-      rm -rf ${rockstree}/${version}/share/lua/${version}/redis*
-      cp     ${tempwd}/redis-lua/src/redis.lua          ${rockstree}/${version}/share/lua/${version}/
-      rm -rf ${rockstree}/${version}/share/lua/${version}/websocket*
-      cp     ${tempwd}/lua-websockets/src/websocket.lua ${rockstree}/${version}/share/lua/${version}/
-      cp -r  ${tempwd}/lua-websockets/src/websocket     ${rockstree}/${version}/share/lua/${version}/
-      rm -rf ${rockstree}/${version}/share/lua/${version}/cosy*
+      "${rockstree}/${version}/bin/luarocks install cosyverif" \
+        >> "${log}" 2>&1
+      rm -rf "${rockstree}/${version}/share/lua/${version}/redis*"
+      cp     "${tempwd}/redis-lua/src/redis.lua"          "${rockstree}/${version}/share/lua/${version}/"
+      rm -rf "${rockstree}/${version}/share/lua/${version}/websocket*"
+      cp     "${tempwd}/lua-websockets/src/websocket.lua" "${rockstree}/${version}/share/lua/${version}/"
+      cp -r  "${tempwd}/lua-websockets/src/websocket"     "${rockstree}/${version}/share/lua/${version}/"
+      rm -rf "${rockstree}/${version}/share/lua/${version}/cosy*"
     fi
     ###### 20151007 in order to be able to use your cosy sources that you are editing
-    if [ -z ${sourcepath+x} ]; then
+    if [ -z "${sourcepath+x}" ]; then
       ## In the standard user mode : get the official version of cosy
       git clone https://github.com/CosyVerif/library.git \
-        >> ${log} 2>&1
-      cp -r  ${tempwd}/library/src/cosy   ${rockstree}/${version}/share/lua/${version}/
+        >> "${log}" 2>&1
+      cp -r  "${tempwd}/library/src/cosy"   "${rockstree}/${version}/share/lua/${version}/"
     else
       echo "Linking cosy to ${sourcepath}"
       ## In the developper mode : use the version of cosy provided by the sourcepath
-      ln -s ${sourcepath}/src/cosy        ${rockstree}/${version}/share/lua/${version}/
+      ln -s "${sourcepath}/src/cosy"        "${rockstree}/${version}/share/lua/${version}/"
     fi
-    if [ ! -z ${sourcepath+x} ]; then
+    if [ ! -z "${sourcepath+x}" ]; then
       echo "Installing development tools"
-      ${rockstree}/${version}/bin/luarocks install luacheck \
-        >> ${log} 2>&1
-      ${rockstree}/${version}/bin/luarocks install luacov \
-        >> ${log} 2>&1
-      ${rockstree}/${version}/bin/luarocks install busted \
-        >> ${log} 2>&1
+      {
+        "${rockstree}/${version}/bin/luarocks install luacheck"
+        "${rockstree}/${version}/bin/luarocks install luacov"
+        "${rockstree}/${version}/bin/luarocks install busted"
+      } >> "${log}" 2>&1
     fi
   done
 
@@ -287,8 +285,8 @@ EOF
 function install_configuration ()
 {
   echo -e "Installing configuration in ${green}${prefix}/etc/cosy.conf${nc}"
-  mkdir -p ${prefix}/etc
-  cat > ${prefix}/etc/cosy.conf <<EOL
+  mkdir -p "${prefix}/etc"
+  cat > "${prefix}/etc/cosy.conf" <<EOL
 return {
   http  = {
     nginx = "/usr/sbin/nginx",
@@ -303,23 +301,23 @@ EOL
 
 function error ()
 {
-  echo "An error happened."
-  echo "Please read log file: ${log}"
+  echo -e "${red}An error happened.${nc}"
+  echo -e "Please read log file: ${red}${log}${nc}."
   exit 1
 }
 trap error ERR
 
-mkdir -p ${prefix}
-mkdir -p ${prefix}/bin
-cd ${tempwd}
+mkdir -p "${prefix}"
+mkdir -p "${prefix}/bin"
+cd "${tempwd}"
 install_dependencies
 install_luajit
 install_luarocks
 install_cosyverif
 install_main
 install_configuration
-cd ${currentwd}
-rm -rf ${tempwd}
-rm -f  ${log}
+cd "${currentwd}"
+rm -rf "${tempwd}"
+rm -f  "${log}"
 
 echo "You can now run cosy commands using: ${prefix}/bin/cosy"
