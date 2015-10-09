@@ -86,7 +86,7 @@ do
   Reporter.report ()
 
   local report = {}
-  Lfs.mkdir ("coverage")
+  Lfs.mkdir "coverage"
 
   local file      = "luacov.report.out"
   local output    = nil
