@@ -260,7 +260,7 @@ export COSY_PREFIX="${prefix}"
   cd  "\${tmpdir}" || exit
   ${rockstree}/5.1/bin/luajit ${rockstree}/5.1/share/lua/5.1/cosy/check/init.lua "\$@"
   echo
-  echo -e "TAP report and Coverage are in ${green}\${tmpdir}${nc}."
+  echo -e "Test and Coverage reports are in ${green}\${tmpdir}${nc}."
 )
 EOF
     chmod a+x "${check}"
