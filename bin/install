@@ -193,8 +193,12 @@ function install_luarocks ()
         echo "Luarocks for lua-${version} is already installed."
       else
       (
-        cd   luarocks-2.2.2
         echo "Installing luarocks for lua-${version}."
+        if [ ! -d luarocks-2.2.2 ]; then
+          wget --quiet http://luarocks.org/releases/luarocks-2.2.2.tar.gz
+          tar  xf luarocks-2.2.2.tar.gz
+        fi
+        cd   luarocks-2.2.2
         {
           make clean
           ./configure --prefix="${rockstree}/${version}" \
