@@ -290,10 +290,6 @@ export LUA_PATH="${rockstree}/5.1/share/lua/5.1/?.lua;${rockstree}/5.1/share/lua
 export LUA_CPATH="${rockstree}/5.1/lib/lua/5.1/?.so"
 EOF
 
-  echo
-  echo -e "You should now add the following path variables to your environment (${green}.bashrc${nc} or ${green}.profile${nc})"
-  echo "${paths}"
-  echo
   cat > "${cosy}" <<EOF
 #! /bin/sh
 
