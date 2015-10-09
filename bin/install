@@ -31,10 +31,12 @@ do
   case ${i} in
     -s=*|--sourcepath=*)
       sourcepath="${i#*=}"
+      sourcepath=${sourcepath%/}
       shift # past argument=value
     ;;
     -p=*|--prefix=*)
       prefix="${i#*=}"
+      prefix=${prefix%/}
       shift # past argument=value
     ;;
     -m=*|--mode=*)
