@@ -3,6 +3,8 @@ php:
   - 5.3
 
 install:
+  - sudo apt-get update     -y
+  - sudo apt-get autoremove -y
   - sudo apt-get install -y git make gcc diffutils patch wget unzip
   - sudo apt-get install -y libev-dev libssl-dev
   - sudo apt-get install -y nginx-extras redis-server imagemagick
