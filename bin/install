@@ -58,13 +58,16 @@ done
 prefix=${prefix:-/usr/local}
 mode=${mode:-server}
 
+red='\033[0;31m'
 green='\033[0;32m'
 nc='\033[0m'
 
 ## Now cmd args have been parsed
 ##################################
 versions="5.2"
-binary=${prefix}/bin/cosy
+cosy=${prefix}/bin/cosy
+check=${prefix}/bin/cosy-check
+rockspec=${prefix}/bin/cosy-rockspec
 rockstree=${prefix}/local/cosy
 currentwd=$(pwd)
 tempwd=$(mktemp -d)
@@ -226,23 +229,59 @@ function install_cosyverif ()
 
 function install_main ()
 {
-  echo
-  echo -e "You should now add the following path variables to your environment (${green}.bashrc${nc})"
-  echo "export PATH=\"${prefix}/bin:${rockstree}/5.1/bin:\${PATH}\""
-  echo "export LUA_PATH=\"${rockstree}/5.1/share/lua/5.1/?.lua;${rockstree}/5.1/share/lua/5.1/?/init.lua\""
-  echo "export LUA_CPATH=\"${rockstree}/5.1/lib/lua/5.1/?.so\""
-  echo
-  cat > ${binary} <<EOL
-#! /bin/sh
-
-export PATH="${prefix}/bin:${rockstree}/5.1/bin:${PATH}"
+  read -d '' paths <<EOF
+export PATH="${prefix}/bin:${rockstree}/5.1/bin:\${PATH}"
 export LUA_PATH="${rockstree}/5.1/share/lua/5.1/?.lua;${rockstree}/5.1/share/lua/5.1/?/init.lua"
 export LUA_CPATH="${rockstree}/5.1/lib/lua/5.1/?.so"
+EOF
+
+  echo
+  echo -e "You should now add the following path variables to your environment (${green}.bashrc${nc} or ${green}.profile${nc})"
+  echo "${paths}"
+  echo
+  cat > "${cosy}" <<EOF
+#! /bin/sh
+
+${paths}
 export COSY_PREFIX="${prefix}"
 
 ${rockstree}/5.1/bin/luajit ${rockstree}/5.1/share/lua/5.1/cosy/cli/init.lua \$*
-EOL
-  chmod a+x ${binary}
+EOF
+  chmod a+x "${cosy}"
+
+  if [ ! -z "${sourcepath+x}" ]; then
+    cat > "${check}" <<EOF
+#! /bin/bash
+
+${paths}
+export COSY_PREFIX="${prefix}"
+
+currentdir=\$(pwd)
+tmpdir=\$(mktemp -d)
+cd  \${tmpdir}
+${rockstree}/5.1/bin/luajit ${rockstree}/5.1/share/lua/5.1/cosy/check/init.lua \$*
+echo
+echo -e "TAP report and Coverage are in ${green}\${tmpdir}${nc}."
+cd  \${currentdir}
+EOF
+    chmod a+x "${check}"
+
+  cat > "${rockspec}" <<EOF
+#! /bin/bash
+
+${paths}
+export COSY_PREFIX="${prefix}"
+
+currentdir=\$(pwd)
+tmpdir=\$(mktemp -d)
+cd  \${tmpdir}
+${rockstree}/5.1/bin/luajit ${rockstree}/5.1/share/lua/5.1/cosy/rockspec/init.lua \$*
+echo
+echo -e "Rockspec is in ${green}\${tmpdir}${nc}."
+cd  \${currentdir}
+EOF
+    chmod a+x "${rockspec}"
+  fi
 }
 
 function install_configuration ()
