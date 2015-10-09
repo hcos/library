@@ -26,6 +26,7 @@ script:
 
 after_script:
   - mv output/test-*    shippable/testresults
+  - for file in shippable/testresults/*; do; mv ${file} ${file}.xml; done
   - mv output/coverage  shippable/coverage
   - mv luacov.*         shippable/
 
