@@ -129,7 +129,7 @@ do
         line = line:gsub ("\t", " ")
         local parts = line:split " "
         if #parts == 4 and parts [4] ~= "" then
-          report [filename] = parts [3]
+          report [filename] = tonumber (parts [3]:match "([0-9%.]+)%%")
         end
       end
     end
@@ -153,17 +153,23 @@ do
   for i = 1, #keys do
     local k = keys   [i]
     local v = report [k]
-    if v == "100.00%" then
-      status = Colors("%{bright green}Full")
+    local color
+    if v == 100 then
+      color = "%{bright green}"
+    elseif v < 100 and v >= 90 then
+      color = "%{green}"
+    elseif v < 90 and v >= 80 then
+      color = "%{yellow}"
+    elseif v < 80 and v >= 50 then
+      color = "%{red}"
     else
-      status = Colors("%{bright red}" .. v)
+      color = "%{bright red}"
     end
     local line = k
     for _ = #k, max_size do
       line = line .. " "
     end
-    line = line .. status
-    print ("Coverage " .. line)
+    print ("Coverage " .. line .. Colors (color .. string.format ("%3d", v) .. "%"))
   end
 end
 
