@@ -1,12 +1,3 @@
-# Directories created by scripts:
-doc/
-coverage/
-rockspec/
-
-# Coverage stuff:
-coverage.txt
-luacov.*
-
 # Profiling stuff:
 ProFi.lua
 
