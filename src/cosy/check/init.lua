@@ -40,47 +40,60 @@ main = main:gsub ("/check/init.lua", "")
 
 local status = true
 
-status = os.execute ([[
-  cd {{{path}}}/.. && {{{luacheck}}} --std max --std +busted cosy/*/*.lua
-]] % {
-  luacheck = prefix .. "/local/cosy/5.1/bin/luacheck",
-  path     = main,
-}) and status
+-- luacheck
+-- ========
 
-Lfs.mkdir "test"
-local test_id = 1
+do
+  status = os.execute ([[
+    cd {{{path}}}/.. && {{{luacheck}}} --std max --std +busted cosy/*/*.lua
+  ]] % {
+    luacheck = prefix .. "/local/cosy/5.1/bin/luacheck",
+    path     = main,
+  }) and status
+end
 
-for module in Lfs.dir (main) do
-  local path = main .. "/" .. module
-  if  module ~= "." and module ~= ".."
-  and Lfs.attributes (path, "mode") == "directory" then
-    if Lfs.attributes (path .. "/test.lua", "mode") == "file" then
-      status = os.execute ([[{{{lua}}} {{{path}}}/test.lua --verbose]] % {
-        lua  = prefix .. "/local/cosy/5.1/bin/luajit",
-        path = path,
-      }) and status
-      for _, version in ipairs {
-        "5.2",
-      } do
-        status = os.execute ([[
-          export LUA_PATH="{{{luapath}}}"
-          export LUA_CPATH="{{{luacpath}}}"
-          {{{lua}}} {{{path}}}/test.lua --verbose --coverage --output={{{format}}} >> {{{output}}}
-        ]] % {
-          lua      = "lua" .. version,
-          path     = path:gsub ("5%.1", version),
-          format   = arguments ["test-format"],
-          output   = "test/" .. tostring (test_id),
-          luapath  = package.path :gsub ("5%.1", version),
-          luacpath = package.cpath:gsub ("5%.1", version),
+-- busted
+-- ======
+
+do
+  Lfs.mkdir "test"
+  local test_id = 1
+
+  for module in Lfs.dir (main) do
+    local path = main .. "/" .. module
+    if  module ~= "." and module ~= ".."
+    and Lfs.attributes (path, "mode") == "directory" then
+      if Lfs.attributes (path .. "/test.lua", "mode") == "file" then
+        status = os.execute ([[{{{lua}}} {{{path}}}/test.lua --verbose]] % {
+          lua  = prefix .. "/local/cosy/5.1/bin/luajit",
+          path = path,
         }) and status
-        test_id = test_id + 1
+        for _, version in ipairs {
+          "5.2",
+        } do
+          status = os.execute ([[
+            export LUA_PATH="{{{luapath}}}"
+            export LUA_CPATH="{{{luacpath}}}"
+            {{{lua}}} {{{path}}}/test.lua --verbose --coverage --output={{{format}}} >> {{{output}}}
+          ]] % {
+            lua      = "lua" .. version,
+            path     = path:gsub ("5%.1", version),
+            format   = arguments ["test-format"],
+            output   = "test/" .. tostring (test_id),
+            luapath  = package.path :gsub ("5%.1", version),
+            luacpath = package.cpath:gsub ("5%.1", version),
+          }) and status
+          test_id = test_id + 1
+        end
       end
     end
   end
+
+  print ()
 end
 
-print ()
+-- luacov
+-- ======
 
 do
   Reporter.report ()
