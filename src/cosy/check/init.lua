@@ -186,4 +186,112 @@ do
   end
 end
 
+print ()
+
+-- i18n
+-- ====
+
+do
+  local Loader   = require "cosy.loader"
+  Loader.nolog   = true
+  local messages = {}
+  local problems = 0
+
+  for module in Lfs.dir (main) do
+    local path = main .. "/" .. module
+    if  module ~= "." and module ~= ".."
+    and Lfs.attributes (path, "mode") == "directory" then
+      if Lfs.attributes (path .. "/i18n.lua", "mode") == "file" then
+        local translations = require ("cosy.{{{module}}}.i18n" % {
+          module = module,
+        })
+        for key, t in pairs (translations) do
+          if not messages [key] then
+            messages [key] = {
+              defined = {},
+              used    = {},
+            }
+          end
+          messages [key].defined [module] = true
+          if not t.en then
+            print (Colors ("Translation key %{red}{{{key}}}%{reset} defined in %{blue}{{{module}}}%{reset} does not have an 'en' translation." % {
+              key    = key,
+              module = "cosy." .. module,
+            }))
+            problems = problems + 1
+          end
+        end
+      end
+    end
+  end
+
+  for module in Lfs.dir (main) do
+    local path = main .. "/" .. module
+    if  module ~= "." and module ~= ".."
+    and Lfs.attributes (path, "mode") == "directory" then
+      for submodule in Lfs.dir (path) do
+        submodule = submodule:sub (1, #submodule-4)
+        local subpath = path .. "/" .. submodule .. ".lua"
+        if  submodule ~= "." and submodule ~= ".."
+        and Lfs.attributes (subpath, "mode") == "file" then
+          for line in io.lines (subpath) do
+            local key = line:match 'i18n%s*%[%s*"([%w%:%-%_]+)"%s*%]'
+                     or line:match "i18n%s*%[%s*'([%w%:%-%_]+)'%s*%]"
+                     or line:match 'methods%s*%[%s*"([%w%:%-%_]+)"%s*%]'
+                     or line:match "methods%s*%[%s*'([%w%:%-%_]+)'%s*%]"
+--                     or line:match [[i18n%s*%.([_%a][_%w]*)]]
+            if key and key:find "_" ~= 1 then
+              if messages [key] then
+                messages [key].used [module .. "." .. submodule] = true
+              else
+                print (Colors ("Translation key %{red}{{{key}}}%{reset} is used in %{blue}{{{module}}}%{reset}, but never defined." % {
+                  key    = key,
+                  module = "cosy." .. module .. "." .. submodule,
+                }))
+                problems = problems + 1
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
+  for key, t in pairs (messages) do
+    local uses = 0
+    for _ in pairs (t.used) do
+      uses = uses + 1
+    end
+    if uses == 0 then
+      local modules = {}
+      for m in pairs (t.defined) do
+        local module_name = "cosy." .. m
+        -- the three modules below define translations for the user only,
+        -- so we do not want to take them into account.
+        if  module_name ~= "cosy.methods"
+        and module_name ~= "cosy.parameters"
+        and module_name ~= "cosy.commands" then
+          modules [#modules+1] = Colors ("%{blue}" .. module_name .. "%{reset}")
+        end
+      end
+      if #modules ~= 0 then
+        print (Colors ("Translation key %{red}{{{key}}}%{reset} is defined in {{{module}}}, but never used." % {
+          key    = key,
+          module = table.concat (modules, ", "),
+        }))
+        problems = problems + 1
+      end
+    end
+  end
+
+  if problems == 0 then
+    print (Colors ("Translations checks detect %{bright green}no problems%{reset}."))
+  else
+    print (Colors ("Translations checks detect %{bright red}{{{problems}}} problems%{reset}.") % {
+      problems = problems,
+    })
+  end
+
+end
+
 os.exit (status and 0 or 1)
