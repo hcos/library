@@ -26,8 +26,4 @@ return {
   ["error:internal"] = {
     en = "internal server error",
   },
-  ["updated"] = {
-    en = "configuration has been updated",
-    fr = "la configuration vient d'être mise à jour",
-  },
 }
