@@ -1,8 +1,0 @@
-#! /usr/bin/env lua
-
-loadfile "./rockspec/cosyverif-master-1.rockspec" ()
-
-for _, d in ipairs (dependencies) do
-  local name = d:match "[^%s]+"
-  os.execute ("luarocks install " .. name)
-end
