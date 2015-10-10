@@ -84,7 +84,7 @@ return {
     en = "avatar file has expired",
   },
   ["translation:failure"] = {
-    "translation failed: {{{reason}}}",
+    en = "translation failed: {{{reason}}}",
   },
   ["avatar"] = {
     en = "avatar file or URL",
