@@ -296,4 +296,29 @@ do
 
 end
 
+print ()
+
+-- shellcheck
+-- ==========
+
+do
+  -- We know that we are in developper mode. Thus, there is a link to the user
+  -- sources of cosy library.
+  local script = [[
+#! /bin/bash
+
+git_dir=$(readlink "{{{main}}}")
+user_dir=$(dirname "${git_dir}")
+user_dir=$(dirname "${user_dir}")
+shellcheck --exclude=SC2024 "${user_dir}"/bin/*
+  ]] % {
+    main = main,
+  }
+  local file = io.open ("sc-script", "w")
+  file:write (script)
+  file:close ()
+  print (os.execute [[bash sc-script]])
+  status = (os.execute [[bash sc-script]]) and status
+end
+
 os.exit (status and 0 or 1)
