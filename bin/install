@@ -276,12 +276,17 @@ function install_cosyverif ()
       rm -rf "${rockstree}/${version}/share/lua/${version}/cosy"*
       "${rockstree}/${version}/bin/luarocks" install --only-deps cosyverif \
         >> "${log}" 2>&1
+      # For these modules, we depend on the "master" version.
+      # First, we delete installed files, and them we create a link to the correct version.
+      rm -rf "${rockstree}/${version}/share/lua/${version}/redis"*
       ln -s  "${rockstree}/git/redis-lua/src/redis.lua" \
              "${rockstree}/${version}/share/lua/${version}/redis.lua"
+      rm -rf "${rockstree}/${version}/share/lua/${version}/websocket"*
       ln -s  "${rockstree}/git/lua-websockets/src/websocket.lua" \
              "${rockstree}/${version}/share/lua/${version}/websocket.lua"
       ln -s  "${rockstree}/git/lua-websockets/src/websocket" \
              "${rockstree}/${version}/share/lua/${version}/websocket"
+      rm -rf "${rockstree}/${version}/share/lua/${version}/cosy"*
       ln -s  "${rockstree}/git/library/src/cosy" \
              "${rockstree}/${version}/share/lua/${version}/cosy"
     fi
