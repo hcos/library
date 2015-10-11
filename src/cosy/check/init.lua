@@ -212,7 +212,7 @@ do
               used    = {},
             }
           end
-          messages [key].defined [module] = true
+          messages [key].defined [module] = (messages [key].defined [module] or 0) + 1
           if not t.en then
             print (Colors ("Translation key %{red}{{{key}}}%{reset} defined in %{blue}{{{module}}}%{reset} does not have an 'en' translation." % {
               key    = key,
@@ -258,6 +258,16 @@ do
   end
 
   for key, t in pairs (messages) do
+    for module, times in pairs (t.defined) do
+      if times > 1 then
+        print (Colors ("Translation key %{red}{{{key}}}%{reset} is defined {{{n}}} times in {{{module}}}." % {
+          key    = key,
+          module = module,
+          n      = times,
+        }))
+        problems = problems + 1
+      end
+    end
     local uses = 0
     for _ in pairs (t.used) do
       uses = uses + 1
