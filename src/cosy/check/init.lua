@@ -286,10 +286,12 @@ do
 
   if problems == 0 then
     print (Colors ("Translations checks detect %{bright green}no problems%{reset}."))
+    status = status and true
   else
     print (Colors ("Translations checks detect %{bright red}{{{problems}}} problems%{reset}.") % {
       problems = problems,
     })
+  status = status and false
   end
 
 end
