@@ -43,10 +43,6 @@ do
       mode="${i#*=}"
       shift # past argument=value
     ;;
-    -o|--full-output)
-      full_output=true
-      shift # past argument=value
-    ;;
     -h|--help)
       echo "Usage: "
       echo "  install [--prefix=PREFIX] [--mode=server|client] [--sourcepath=PATH] [--full-output]"
@@ -88,9 +84,6 @@ if [ -z "${sourcepath+x}" ]; then
   echo -e "Source             : ${green}not set${nc}"
 else
   echo -e "Source             : ${green}${sourcepath}${nc}"
-fi
-if [ -z "${full_output+x}" ]; then
-  echo -e "Full output        : ${green}set${nc}"
 fi
 
 # Stop existing server:
@@ -391,7 +384,7 @@ function error ()
 {
   echo -e "${red}An error happened.${nc}"
   echo -e "Please read log file: ${red}${log}${nc}."
-  if [ ! -z "${full_output+x}" ]; then
+  if [ "${USER}" = "shippable" ]; then
     cat "${log}"
   fi
   exit 1
@@ -420,9 +413,9 @@ if [ ! -z "${sourcepath+x}" ]; then
   echo "- ${prefix}/bin/cosy-rockspec : to generate rockspec"
 fi
 
-if [ ! -z "${full_output+x}" ]; then
+if [ "${USER}" = "shippable" ]; then
   cat "${log}"
+else
+  rm -rf "${tempwd}"
+  rm -f  "${log}"
 fi
-
-rm -rf "${tempwd}"
-rm -f  "${log}"
