@@ -43,14 +43,18 @@ do
       mode="${i#*=}"
       shift # past argument=value
     ;;
+    --in-ci)
+    in_ci=true
+    shift # past argument=value
+    ;;
     -h|--help)
       echo "Usage: "
-      echo "  install [--prefix=PREFIX] [--mode=server|client] [--sourcepath=PATH] [--full-output]"
+      echo "  install [--prefix=PREFIX] [--mode=server|client] [--sourcepath=PATH] [--in_ci]"
       exit 1;
     ;;
     *)
       echo "Usage: "
-      echo "  install [--prefix=PREFIX] [--mode=server|client] [--sourcepath=PATH] [--full-output]"
+      echo "  install [--prefix=PREFIX] [--mode=server|client] [--sourcepath=PATH] [--in_ci]"
       exit 1;
       # unknown option
     ;;
@@ -407,7 +411,7 @@ function error ()
 {
   echo -e "${red}An error happened.${nc}"
   echo -e "Please read log file: ${red}${log}${nc}."
-  if [ "${USER}" = "shippable" ]; then
+  if [ ! -z "${in_ci+x}" ]; then
     cat "${log}"
   fi
   exit 1
@@ -436,7 +440,7 @@ if [ ! -z "${sourcepath+x}" ]; then
   echo "- ${prefix}/bin/cosy-rockspec : to generate rockspec"
 fi
 
-if [ "${USER}" = "shippable" ]; then
+if [ ! -z "${in_ci+x}" ]; then
   cat "${log}"
 else
   rm -rf "${tempwd}"

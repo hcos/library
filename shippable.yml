@@ -9,7 +9,7 @@ services:
 
 install:
   - sudo apt-get autoremove -y
-  - ./bin/install --prefix=$HOME --sourcepath=$(pwd)
+  - ./bin/install --prefix=$HOME --sourcepath=$(pwd) --in-ci
 
 before_script:
   - rm    -rf shippable/testresults
