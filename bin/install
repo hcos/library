@@ -43,14 +43,18 @@ do
       mode="${i#*=}"
       shift # past argument=value
     ;;
+    -o|--full-output)
+      full_output=true
+      shift # past argument=value
+    ;;
     -h|--help)
       echo "Usage: "
-      echo "  install [--prefix=PREFIX] [--mode=server|client] [--sourcepath=PATH]"
+      echo "  install [--prefix=PREFIX] [--mode=server|client] [--sourcepath=PATH] [--full-output]"
       exit 1;
     ;;
     *)
       echo "Usage: "
-      echo "  install [--prefix=PREFIX] [--mode=server|client] [--sourcepath=PATH]"
+      echo "  install [--prefix=PREFIX] [--mode=server|client] [--sourcepath=PATH] [--full-output]"
       exit 1;
       # unknown option
     ;;
@@ -84,6 +88,9 @@ if [ -z "${sourcepath+x}" ]; then
   echo -e "Source             : ${green}not set${nc}"
 else
   echo -e "Source             : ${green}${sourcepath}${nc}"
+fi
+if [ -z "${full_output+x}" ]; then
+  echo -e "Full output        : ${green}set${nc}"
 fi
 
 # Stop existing server:
@@ -379,6 +386,9 @@ function error ()
 {
   echo -e "${red}An error happened.${nc}"
   echo -e "Please read log file: ${red}${log}${nc}."
+  if [ ! -z "${full_output+x}" ]; then
+    cat "${log}"
+  fi
   exit 1
 }
 trap error ERR
@@ -394,8 +404,6 @@ install_cosyverif
 install_main
 install_configuration
 cd "${currentwd}"
-rm -rf "${tempwd}"
-rm -f  "${log}"
 
 echo "You can now try the following commands:"
 echo "- ${prefix}/bin/cosy server:start [--clean] [--force]"
@@ -406,3 +414,10 @@ if [ ! -z "${sourcepath+x}" ]; then
   echo "- ${prefix}/bin/cosy-check    : to run checks, tests and coverage"
   echo "- ${prefix}/bin/cosy-rockspec : to generate rockspec"
 fi
+
+if [ ! -z "${full_output+x}" ]; then
+  cat "${log}"
+fi
+
+rm -rf "${tempwd}"
+rm -f  "${log}"
