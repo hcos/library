@@ -327,7 +327,6 @@ shellcheck --exclude=SC2024 "${user_dir}"/bin/*
   local file = io.open ("sc-script", "w")
   file:write (script)
   file:close ()
-  print (os.execute [[bash sc-script]])
   status = (os.execute [[bash sc-script]]) and status
 end
 
