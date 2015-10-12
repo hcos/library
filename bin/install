@@ -139,14 +139,6 @@ function install_dependencies ()
     if [ "$(apt-cache search shellcheck | grep shellcheck)" != "" ]; then
       sudo apt-get install --yes shellcheck \
         >> "${log}" 2>&1
-    else
-    { # this is a special case for ubuntu precise, used by shippable CI:
-      sudo apt-get install --yes ghc libghc-parsec3-dev libghc-json-dev \
-                                 libghc-regex-compat-dev libghc-quickcheck2-dev \
-                                 cabal-install
-      cabal update
-      cabal install --global --root-cmd=sudo shellcheck
-    } >> "${log}" 2>&1
     fi
   fi
 }
