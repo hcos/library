@@ -1,14 +1,18 @@
 #! /bin/bash
 
-for file in $(find . -name "*.lua")
+shopt -s globstar nullglob
+
+for file in ./**/*.lua
 do
-  if ! grep -q Copyright ${file}
+  if ! grep -q Copyright "${file}"
   then
     echo "Adding license to ${file}..."
-    echo "--[[" >  ${file}.new
-    cat LICENSE >> ${file}.new
-    echo "--]]" >> ${file}.new
-    cat ${file} >> ${file}.new
-    mv ${file}.new ${file}
+    {
+      echo "--[["
+      cat LICENSE
+      echo "--]]"
+      cat "${file}"
+    } > "${file}.new"
+    mv "${file}.new" "${file}"
   fi
 done
