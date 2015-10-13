@@ -32,24 +32,47 @@ local function read (filename)
   return Value.decode (data)
 end
 
+function Cli.configure (arguments)
+  local keys = {  -- key to parse
+    "server",
+    "color",
+  }
+  for i = 1, #keys do
+    local key = keys [i]
+    local pattern = "%-%-" .. key .. "=(.*)"
+    local j = 1
+    while j <= #arguments do
+      local argument = arguments [j]
+      local value = argument:match (pattern)   -- value contains only right hand side of equals
+      if value then -- matched
+        assert (not Cli [key])  -- (better)  nil or false
+        Cli [key] = Value
+        table.remove (arguments, j)
+      else
+        j = j + 1
+      end
+    end
+  end
+  Cli.arguments = arguments
+end
 
 function Cli.start ()
   local directory  = Configuration.cli.directory
   Lfs.mkdir (directory)
-  
+
   local daemondata = read (Configuration.daemon.data)
-  
-  if _G.arg [1] == "--no-color" then
+
+  if Cli.arguments [1] == "--no-color" then
     _G.nocolor = true
-    table.remove (_G.arg, 1)
+    table.remove (Cli.arguments, 1)
   end
-  
+
   if _G.nocolor then
     Colors = function (s)
       return s:gsub ("(%%{(.-)})", "")
     end
   end
-  
+
   local ws = Websocket.client.sync {
     timeout = 10,
   }
@@ -85,14 +108,14 @@ function Cli.start ()
       os.exit (1)
     end
   end
-  
+
   local Commands = require "cosy.commands"
   local commands = Commands.new (ws)
-  local command  = commands [_G.arg [1] or false]
-  
-  Cliargs:set_name (_G.arg [0] .. " " .. _G.arg [1])
-  table.remove (_G.arg, 1)
-  
+  local command  = commands [Cli.arguments [1] or false]
+
+  Cliargs:set_name (Cli.arguments [0] .. " " .. Cli.arguments [1])
+  table.remove (Cli.arguments, 1)
+
   local ok, result = xpcall (command, function ()
     print (Colors ("%{white redbg}" .. i18n ["error:unexpected"] % {}))
   --  print (Value.expression (e))
