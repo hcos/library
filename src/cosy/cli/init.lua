@@ -46,7 +46,7 @@ function Cli.configure (arguments)
       local value = argument:match (pattern)   -- value contains only right hand side of equals
       if value then -- matched
         assert (not Cli [key])  -- (better)  nil or false
-        Cli [key] = Value
+        Cli [key] = value
         table.remove (arguments, j)
       else
         j = j + 1
