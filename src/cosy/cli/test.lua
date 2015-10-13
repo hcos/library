@@ -23,7 +23,7 @@ describe ("Module cosy.cli", function ()
           "--debug=true",
           "--".. key .. "=any_value",
         }
-        assert.are.equal(Cli.server, "any_value")
+        assert.are.equal(Cli[key], "any_value")
       end)
 
       it("should detect --" .. key .. " is missing", function()
@@ -31,7 +31,7 @@ describe ("Module cosy.cli", function ()
           "--debug=true",
           "-".. key .. "=any_value",
         }
-        assert.is_nil( Cli.server)
+        assert.is_nil( Cli[key])
       end)
 
       it("should fail by detecting several --" .. key, function()
