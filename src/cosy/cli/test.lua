@@ -2,11 +2,16 @@ local Runner = require "busted.runner"
 require "cosy.loader"
 Runner ()
 
-local Cli = require "cosy.cli"
 
 describe ("Module cosy.cli", function ()
 
   describe("method configure", function()
+
+    local Cli
+    before_each(function()
+      package.loaded["cosy.cli"] = nil
+      Cli = require "cosy.cli"
+    end)
 
     for _, key in ipairs {
       "server",
