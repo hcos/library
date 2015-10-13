@@ -1,7 +1,12 @@
-#! /usr/bin/env lua
+local Lfs     = require "lfs"
+local Serpent = require "serpent"
 
-local lfs     = require "lfs"
-local serpent = require "serpent"
+-- Compute path:
+local main = package.searchpath ("cosy.rockspec", package.path)
+if main:sub (1, 2) == "./" then
+  main = Lfs.currentdir () .. "/" .. main:sub (3)
+end
+main = main:gsub ("/rockspec/init.lua", "")
 
 local rockspec = {
   package = "cosyverif",
@@ -28,24 +33,22 @@ local rockspec = {
     "dkjson >= 2",
     "hotswap >= 1",
     "i18n >= 0",
+    "jwt >= 0",
     "layeredata >= 0",
     "lua >= 5.1",
     "lua_cliargs >= 2",
     "lua-cjson >= 2",
     "lua-ev >= v1",
-    "lua-geoip >= 0",
     "lua-websockets >= v2",
     "luacrypto >= 0",
-    "luajwt >= 1",
     "luafilesystem >= 1",
     "lualogging >= 1",
     "luasec >= 0",
     "luasocket >= 2",
     "lustache >= 1",
     "md5 >= 1",
-    "magick >= 1",
     "redis-lua >= 2",
-    "serpent >= 0",
+    "Serpent >= 0",
   },
 
   build = {
@@ -61,29 +64,29 @@ local rockspec = {
 }
 
 local function resource (path)
-  for content in lfs.dir (path) do
+  for content in Lfs.dir (path) do
     local subpath = path .. "/" .. content
-    if     lfs.attributes (subpath, "mode") == "file" then
-      rockspec.build.install.conf [subpath:sub (#"src/")] = subpath
+    if     Lfs.attributes (subpath, "mode") == "file" then
+      rockspec.build.install.conf [#rockspec.build.install.conf+1] = "src/cosy/" .. subpath:sub (#main+2)
     elseif content ~= "." and content ~= ".."
-    and    lfs.attributes (subpath, "mode") == "directory" then
+    and    Lfs.attributes (subpath, "mode") == "directory" then
       resource (subpath)
     end
   end
 end
 
-for module in lfs.dir "src/cosy/" do
-  local path = "src/cosy/" .. module .. "/"
+for module in Lfs.dir (main) do
+  local path = main .. "/" .. module
   if  module ~= "." and module ~= ".."
-  and lfs.attributes (path, "mode") == "directory" then
-    if lfs.attributes (path .. "init.lua", "mode") == "file" then
-      rockspec.build.modules ["cosy." .. module] = path .. "init.lua"
-      for submodule in lfs.dir (path) do
+  and Lfs.attributes (path, "mode") == "directory" then
+    if Lfs.attributes (path .. "/init.lua", "mode") == "file" then
+      rockspec.build.modules ["cosy." .. module] = "src/" .. module .. "/init.lua"
+      for submodule in Lfs.dir (path) do
         if  submodule ~= "." and submodule ~= ".."
-        and lfs.attributes (path .. submodule, "mode") == "file"
+        and Lfs.attributes (path .. "/" .. submodule, "mode") == "file"
         and submodule:find "%.lua$" then
           submodule = submodule:sub (1, #submodule-4)
-          rockspec.build.modules ["cosy." .. module .. "." .. submodule] = path .. submodule .. ".lua"
+          rockspec.build.modules ["cosy." .. module .. "." .. submodule] = "src/" .. module .. "/" .. submodule .. ".lua"
         end
       end
     else
@@ -101,8 +104,7 @@ local options = {
   nocode   = true,
   nohuge   = true,
 }
-lfs.mkdir "rockspec"
-local file = io.open ("rockspec/cosyverif-master-1.rockspec", "w")
+local file = io.open ("cosyverif-master-1.rockspec", "w")
 for _, key in ipairs {
   "package",
   "version",
@@ -111,7 +113,7 @@ for _, key in ipairs {
   "dependencies",
   "build",
 } do
-  local output = serpent.block (rockspec [key], options)
+  local output = Serpent.block (rockspec [key], options)
   file:write (key .. " = " .. output .. "\n")
 end
 file:close ()

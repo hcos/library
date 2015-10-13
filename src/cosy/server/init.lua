@@ -1,7 +1,3 @@
-package.path  = package.path:gsub ("'", "")
-  .. ";/usr/share/lua/5.1/?.lua;/usr/share/lua/5.1/?/init.lua;"
-
-local Loader        = require "cosy.loader"
 local Configuration = require "cosy.configuration"
 local Digest        = require "cosy.digest"
 local I18n          = require "cosy.i18n"
@@ -18,8 +14,6 @@ local Default       = require "cosy.configuration.layers".default
 local Layer         = require "layeredata"
 local Websocket     = require "websocket"
 local Ffi           = require "ffi"
-local GeoCity       = require 'geoip.city'
-local GeoDB
 
 Configuration.load "cosy.server"
 
@@ -27,20 +21,6 @@ local i18n   = I18n.load "cosy.server"
 i18n._locale = Configuration.locale
 
 local Server = {}
-
-Scheduler.addthread (function ()
-  if not io.open (Configuration.server.geodata, "r") then
-    local geodata, status = Loader.loadhttp (Configuration.geodb.dataset)
-    assert (status == 200)
-    local file = io.open (Configuration.server.geodata .. ".gz", "w")
-    file:write (geodata)
-    file:close ()
-    os.execute ([[gunzip {{{file}}}]] % {
-      file = Configuration.server.geodata .. ".gz",
-    })
-  end
-  GeoDB = assert (GeoCity.open (Configuration.server.geodata))
-end)
 
 function Server.sethostname ()
   local handle = io.popen "hostnamectl"
@@ -149,9 +129,8 @@ function Server.start ()
     protocols = {
       cosy = function (ws)
         ws.ip, ws.port = ws.sock:getpeername ()
-        local geo = GeoDB
-                and GeoDB:query_by_addr (ws.ip)
-                 or Layer.export (Layer.flatten (Configuration.geodb.position))
+        -- FIXME: geolocation is missing
+        local geo = Layer.export (Layer.flatten (Configuration.geodb.position))
         geo.country = geo.country_name
         local message
         local function send (t)

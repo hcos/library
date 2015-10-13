@@ -4,7 +4,6 @@ local Token         = require "cosy.token"
 local Default       = require "cosy.configuration.layers".default
 local Layer         = require "layeredata"
 local Lfs           = require "lfs"
-local Magick        = require "magick"
 local Mime          = require "mime"
 local this          = Layer.reference (false)
 
@@ -142,12 +141,16 @@ do
             _ = i18n ["check:avatar:expired"],
           }
     end
-    local image = assert (Magick.load_image (filename))
-    image:resize (Configuration.data.avatar.height, Configuration.data.avatar.width)
-    image:set_format "png"
-    image:strip ()
-    request [key] = Mime.b64 (image:get_blob ())
-    image:destroy ()
+    os.execute ([[
+      convert {{{filename}}} -resize {{{width}}}x{{{height}}} png:{{{filename}}}
+    ]] % {
+      filename = filename,
+      height   = Configuration.data.avatar.height,
+      width    = Configuration.data.avatar.width ,
+    })
+    local file    = io.open (filename, "r")
+    request [key] = Mime.b64 (file:read "*all")
+    file:close ()
     os.remove (filename)
     return true
   end
@@ -295,7 +298,7 @@ do
           reason = err,
         }
       end
-      setfenv (f, environment)
+      _G.setfenv (f, environment) -- Lua 5.1 specific
       request [key] = f
     end
     if value:byte (1) ~= 27 then

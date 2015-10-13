@@ -1,0 +1,32 @@
+language: php
+php:
+  - 5.3
+
+cache: true
+
+services:
+ - redis
+
+install:
+  - sudo apt-get autoremove -y
+  - ./bin/install --prefix=$HOME --sourcepath=$(pwd) --in-ci
+
+before_script:
+  - rm    -rf shippable/testresults
+  - mkdir -p  shippable/testresults
+  - rm    -rf output
+  - mkdir -p  output
+
+script:
+  - ${HOME}/bin/cosy-check output --test-format=junit
+
+after_script:
+  - for file in output/test/*; do mv ${file} shippable/testresults/$(basename ${file}).xml; done
+
+notifications:
+  email:
+    recipients:
+      - alban@linard.fr
+      - leprieur@lipn.univ-paris13.fr
+    on_success: change
+    on_failure: always

@@ -1,7 +1,7 @@
 local Default = require "cosy.configuration.layers".default
 
 Default.token = {
-  algorithm = "HS512",
+  algorithm = "HS256",
   secret    = nil,
 }
 

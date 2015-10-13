@@ -1,13 +1,9 @@
-# Directories created by scripts:
-doc/
-coverage/
-coverage.txt
+# Profiling stuff:
+ProFi.lua
 
-src/dkjson.lua
-src/ee5_base64.lua
-src/profiler.*
+# User configuration:
+src/cosy.conf
 
 # All swap files:
 *.swp
 *~
-
