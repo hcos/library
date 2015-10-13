@@ -22,18 +22,6 @@ i18n._locale = Configuration.locale
 
 local Server = {}
 
-function Server.setname ()
-  local name
-  local handle = io.popen "hostname"
-  name = handle:read "*l"
-  handle:close()
-  Default.server.name = name
-  Logger.info {
-    _    = i18n ["server:name"],
-    name = Default.server.name,
-  }
-end
-
 local function deproxify (t)
   if type (t) ~= "table" then
     return t
@@ -91,9 +79,6 @@ function Server.call_parameters (method, parameters)
 end
 
 function Server.start ()
-  if not Configuration.server.name then
-    Server.setname ()
-  end
   App.server            = {}
   App.server.passphrase = Digest (Random ())
   App.server.token      = Token.administration ()
