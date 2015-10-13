@@ -2,34 +2,44 @@ local Runner = require "busted.runner"
 require "cosy.loader"
 Runner ()
 
-local _ = require "cosy.cli"
+local Cli = require "cosy.cli"
 
-describe ("cosy.string", function ()
+describe ("Module cosy.cli", function ()
 
+  describe("method configure", function()
 
-  it ("dummy test 01", function ()
-    assert.are.same ( { key = "value", }, { key = "value", })
-    assert.True (1 == 1)
-    assert.is_true (1 == 1)
-    assert.falsy (nil)
-    assert.has_error (function() error("what") end, "what")
+    for _, key in ipairs {
+      "server",
+      "color",
+    } do
+
+      it("should detect the --" .. key, function()
+        Cli.configure {
+          "--debug=true",
+          "--".. key .. "=any_value",
+        }
+        assert.are.equal(Cli.server, "any_value")
+      end)
+
+      it("should detect --" .. key .. " is missing", function()
+        Cli.configure {
+          "--debug=true",
+          "-".. key .. "=any_value",
+        }
+        assert.is_nil( Cli.server)
+      end)
+
+      it("should fail by detecting several --" .. key, function()
+        assert.has.errors( function ()
+          Cli.configure {
+            "--debug=true",
+            "--".. key .. "=any_value",
+            "--".. key .. "=any_value",
+          }
+        end)
+      end)
+    end
+
   end)
 
 end)
-
-
-
---
---local Runner = require "busted.runner"
---require "cosy.loader"
---Runner ()
---
---local _ = require "cosy.cli"
---
---describe ("cosy.cli", function ()
---
---  it ("dummy test", function ()
---    assert.true (1 == 1)
---  end)
---
---end)
