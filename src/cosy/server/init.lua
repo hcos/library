@@ -1,3 +1,5 @@
+require "cosy.loader.server"
+
 local Configuration = require "cosy.configuration"
 local Digest        = require "cosy.digest"
 local I18n          = require "cosy.i18n"

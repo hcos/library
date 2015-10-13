@@ -1,5 +1,5 @@
-local Loader        = require "cosy.loader"
-      Loader.nolog  = true
+require "cosy.loader.cli"
+
 local Configuration = require "cosy.configuration"
 local Value         = require "cosy.value"
 local Lfs           = require "lfs"

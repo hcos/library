@@ -1,6 +1,5 @@
-local Runner = require "busted.runner"
-require "cosy.loader"
-Runner ()
+require "cosy.loader.busted"
+require "busted.runner" ()
 
 local _ = require "cosy.string"
 

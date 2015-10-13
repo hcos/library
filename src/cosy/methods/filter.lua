@@ -1,5 +1,7 @@
 #! /usr/bin/env luajit
 
+require "cosy.loader.server"
+
 local Configuration = require "cosy.configuration"
 local Parameters    = require "cosy.parameters"
 local Scheduler     = require "cosy.scheduler"
