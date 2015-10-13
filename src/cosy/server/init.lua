@@ -10,7 +10,6 @@ local Store         = require "cosy.store"
 local Token         = require "cosy.token"
 local Value         = require "cosy.value"
 local App           = require "cosy.configuration.layers".app
-local Default       = require "cosy.configuration.layers".default
 local Layer         = require "layeredata"
 local Websocket     = require "websocket"
 local Ffi           = require "ffi"
