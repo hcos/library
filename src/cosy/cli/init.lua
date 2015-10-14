@@ -33,12 +33,10 @@ local function read (filename)
 end
 
 function Cli.configure (arguments)
-  local keys = {  -- key to parse
+  for _, key in ipairs {  -- key to parse
     "server",
     "color",
-  }
-  for i = 1, #keys do
-    local key = keys [i]
+  } do
     local pattern = "%-%-" .. key .. "=(.*)"
     local j = 1
     while j <= #arguments do
