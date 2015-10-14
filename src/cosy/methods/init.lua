@@ -79,7 +79,7 @@ end
 function Methods.server.information (request, store)
   Parameters.check (store, request, {})
   return {
-    name    = Configuration.server.name,
+    name    = Configuration.http.hostname,
     captcha = Configuration.recaptcha.public_key,
   }
 end
@@ -251,7 +251,7 @@ function Methods.user.create (request, store, try_only)
     locale  = user.locale,
     from    = {
       _     = i18n ["user:create:from"],
-      name  = Configuration.server.name ,
+      name  = Configuration.http.hostname,
       email = Configuration.server.email,
     },
     to      = {
@@ -261,7 +261,7 @@ function Methods.user.create (request, store, try_only)
     },
     subject = {
       _          = i18n ["user:create:subject"],
-      servername = Configuration.server.name,
+      servername = Configuration.http.hostname,
       identifier = user.identifier,
     },
     body    = {
@@ -289,7 +289,7 @@ function Methods.user.send_validation (request, store, try_only)
     locale  = user.locale,
     from    = {
       _     = i18n ["user:update:from"],
-      name  = Configuration.server.name ,
+      name  = Configuration.http.hostname,
       email = Configuration.server.email,
     },
     to      = {
@@ -299,7 +299,7 @@ function Methods.user.send_validation (request, store, try_only)
     },
     subject = {
       _          = i18n ["user:update:subject"],
-      servername = Configuration.server.name,
+      servername = Configuration.http.hostname,
       identifier = user.identifier,
     },
     body    = {
@@ -497,7 +497,7 @@ function Methods.user.reset (request, store, try_only)
     locale  = user.locale,
     from    = {
       _     = i18n ["user:reset:from"],
-      name  = Configuration.server.name ,
+      name  = Configuration.http.hostname,
       email = Configuration.server.email,
     },
     to      = {
@@ -507,7 +507,7 @@ function Methods.user.reset (request, store, try_only)
     },
     subject = {
       _          = i18n ["user:reset:subject"],
-      servername = Configuration.server.name,
+      servername = Configuration.http.hostname,
       identifier = user.identifier,
     },
     body    = {
