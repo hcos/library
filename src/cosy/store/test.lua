@@ -1,7 +1,6 @@
 -- These lines are required to correctly run tests:
-local Runner = require "busted.runner"
-require "cosy.loader"
-Runner ()
+require "cosy.loader.busted"
+require "busted.runner" ()
 
 local Scheduler = require "cosy.scheduler"
 local Store     = require "cosy.store"

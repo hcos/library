@@ -1,3 +1,4 @@
+require "cosy.loader.busted"
 local Lfs      = require "lfs"
 local Lustache = require "lustache"
 local Colors   = require 'ansicolors'

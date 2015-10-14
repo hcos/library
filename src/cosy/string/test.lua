@@ -1,6 +1,6 @@
-local Runner = require "busted.runner"
-require "cosy.loader"
-Runner ()
+-- These lines are required to correctly run tests:
+require "cosy.loader.busted"
+require "busted.runner" ()
 
 local _ = require "cosy.string"
 
