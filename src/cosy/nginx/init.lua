@@ -1,5 +1,6 @@
 local Loader        = require "cosy.loader"
 local Configuration = require "cosy.configuration"
+local Default       = require "cosy.configuration.layers".default
 local I18n          = require "cosy.i18n"
 local Logger        = require "cosy.logger"
 local Scheduler     = require "cosy.scheduler"
@@ -131,6 +132,21 @@ http {
 }
 ]]
 
+local function sethostname ()
+  local handle = io.popen "hostnamectl"
+  local result = handle:read "*all"
+  handle:close()
+  local results = {}
+  for key, value in result:gmatch "%s*([^:]+):%s*(%S+)%s*[\r\n]+" do
+    results [key] = value
+  end
+  Default.http.hostname = results ["Static hostname"]
+  Logger.info {
+    _        = i18n ["nginx:hostname"],
+    hostname = Configuration.http.hostname,
+  }
+end
+
 function Nginx.configure ()
   local resolver
   do
@@ -181,13 +197,16 @@ function Nginx.configure ()
         }
     end
   end
+  if not Configuration.http.hostname then
+    sethostname ()
+  end
   local configuration = configuration_template % {
     host           = Configuration.http.interface  ,
     port           = Configuration.http.port       ,
     www            = Configuration.http.www        ,
     uploads        = Configuration.http.uploads    ,
     pidfile        = Configuration.http.pid        ,
-    name           = Configuration.server.name     ,
+    name           = Configuration.http.hostname   ,
     wshost         = Configuration.server.interface,
     wsport         = Configuration.server.port     ,
     redis_host     = Configuration.redis.interface ,

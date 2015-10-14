@@ -10,7 +10,6 @@ local Store         = require "cosy.store"
 local Token         = require "cosy.token"
 local Value         = require "cosy.value"
 local App           = require "cosy.configuration.layers".app
-local Default       = require "cosy.configuration.layers".default
 local Layer         = require "layeredata"
 local Websocket     = require "websocket"
 local Ffi           = require "ffi"
@@ -21,33 +20,6 @@ local i18n   = I18n.load "cosy.server"
 i18n._locale = Configuration.locale
 
 local Server = {}
-
-function Server.sethostname ()
-  local handle = io.popen "hostnamectl"
-  local result = handle:read "*all"
-  handle:close()
-  local results = {}
-  for key, value in result:gmatch "%s*([^:]+):%s*(%S+)%s*[\r\n]+" do
-    results [key] = value
-  end
-  Default.http.hostname = results ["Static hostname"]
-  Logger.info {
-    _        = i18n ["server:hostname"],
-    hostname = Configuration.http.hostname,
-  }
-end
-
-function Server.setname ()
-  local name
-  local handle = io.popen "hostname"
-  name = handle:read "*l"
-  handle:close()
-  Default.server.name = name
-  Logger.info {
-    _    = i18n ["server:name"],
-    name = Default.server.name,
-  }
-end
 
 local function deproxify (t)
   if type (t) ~= "table" then
@@ -106,12 +78,6 @@ function Server.call_parameters (method, parameters)
 end
 
 function Server.start ()
-  if not Configuration.http.hostname then
-    Server.sethostname ()
-  end
-  if not Configuration.server.name then
-    Server.setname ()
-  end
   App.server            = {}
   App.server.passphrase = Digest (Random ())
   App.server.token      = Token.administration ()
