@@ -11,7 +11,7 @@ end
 function File.decode (filename)
   local file, err = io.open (filename, "r")
   if not file then
-    error (err)
+    return nil, err
   end
   local data = file:read "*all"
   file:close ()
