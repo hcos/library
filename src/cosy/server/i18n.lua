@@ -14,9 +14,6 @@ return {
   ["server:response"] = {
     en = "< server: {{{request}}} {{{response}}}",
   },
-  ["server:hostname"] = {
-    en = "hostname has been set to {{{hostname}}}",
-  },
   ["server:name"] = {
     en = "name has been set to {{{name}}}",
   },

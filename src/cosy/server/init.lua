@@ -22,21 +22,6 @@ i18n._locale = Configuration.locale
 
 local Server = {}
 
-function Server.sethostname ()
-  local handle = io.popen "hostnamectl"
-  local result = handle:read "*all"
-  handle:close()
-  local results = {}
-  for key, value in result:gmatch "%s*([^:]+):%s*(%S+)%s*[\r\n]+" do
-    results [key] = value
-  end
-  Default.http.hostname = results ["Static hostname"]
-  Logger.info {
-    _        = i18n ["server:hostname"],
-    hostname = Configuration.http.hostname,
-  }
-end
-
 function Server.setname ()
   local name
   local handle = io.popen "hostname"
@@ -106,9 +91,6 @@ function Server.call_parameters (method, parameters)
 end
 
 function Server.start ()
-  if not Configuration.http.hostname then
-    Server.sethostname ()
-  end
   if not Configuration.server.name then
     Server.setname ()
   end

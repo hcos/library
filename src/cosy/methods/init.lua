@@ -17,6 +17,7 @@ local Websocket     = require "websocket"
 Configuration.load {
   "cosy.nginx",
   "cosy.methods",
+  "cosy.nginx",
   "cosy.parameters",
   "cosy.server",
   "cosy.token",
