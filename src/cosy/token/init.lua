@@ -9,7 +9,10 @@ local Time          = require "cosy.time"
 local Jwt           = require "jwt"
 local App           = require "cosy.configuration.layers".app
 
-Configuration.load "cosy.token"
+Configuration.load {
+  "cosy.nginx",
+  "cosy.token",
+}
 
 if Configuration.token.secret == nil then
   App.token = {
@@ -49,7 +52,7 @@ function Token.administration ()
     iat      = now,
     nbf      = now - 1,
     exp      = now + Configuration.expiration.administration,
-    iss      = Configuration.server.name,
+    iss      = Configuration.http.hostname,
     aud      = nil,
     sub      = "cosy:administration",
     jti      = Digest (tostring (now + Random ())),
@@ -67,7 +70,7 @@ function Token.validation (data)
     iat      = now,
     nbf      = now - 1,
     exp      = now + Configuration.expiration.validation,
-    iss      = Configuration.server.name,
+    iss      = Configuration.http.hostname,
     aud      = nil,
     sub      = "cosy:validation",
     jti      = Digest (tostring (now + Random ())),
@@ -86,7 +89,7 @@ function Token.authentication (data)
     iat      = now,
     nbf      = now - 1,
     exp      = now + Configuration.expiration.authentication,
-    iss      = Configuration.server.name,
+    iss      = Configuration.http.hostname,
     aud      = nil,
     sub      = "cosy:authentication",
     jti      = Digest (tostring (now + Random ())),

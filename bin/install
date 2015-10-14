@@ -327,7 +327,7 @@ EOF
 ${paths}
 export COSY_PREFIX="${prefix}"
 
-${rockstree}/5.1/bin/luajit ${rockstree}/5.1/share/lua/5.1/cosy/cli/init.lua "\$@"
+${rockstree}/5.1/bin/luajit ${rockstree}/5.1/share/lua/5.1/cosy/cli/runner.lua "\$@"
 EOF
   chmod a+x "${cosy}"
 
