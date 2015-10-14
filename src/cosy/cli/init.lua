@@ -60,12 +60,7 @@ function Cli.start ()
 
   local daemondata = read (Configuration.daemon.data)
 
-  if Cli.arguments [1] == "--no-color" then
-    _G.nocolor = true
-    table.remove (Cli.arguments, 1)
-  end
-
-  if _G.nocolor then
+  if not Cli.color then
     Colors = function (s)
       return s:gsub ("(%%{(.-)})", "")
     end
