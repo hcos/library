@@ -19,7 +19,9 @@ local i18n   = I18n.load {
 }
 i18n._locale = Configuration.cli.locale
 
-local Cli = {}
+local Cli = {
+  color = true,
+}
 
 -----------------------------
 --  While not found Cli tries to determine what server it will connect to
