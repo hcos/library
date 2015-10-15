@@ -270,7 +270,6 @@ Scheduler.addthread (function ()
     for entry in Lfs.dir (Configuration.http.uploads) do
       if entry ~= "." and entry ~= ".." then
         local filename     = Configuration.http.uploads .. "/" .. entry
-        print (entry, filename)
         local modification = Lfs.attributes (filename, "modification")
         if os.difftime (os.time (), modification) > 2 * Configuration.upload.timeout then
           os.remove (filename)
