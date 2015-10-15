@@ -5,20 +5,22 @@ local File = require "cosy.file"
 
 describe ("Module cosy.cli", function ()
 
-  describe ("parsing options by method configure", function ()
+  local Cli
+  local Configuration
 
-    local Cli
-    local Configuration
-    before_each (function ()
-      package.loaded ["cosy.cli"] = nil  -- reload to reset
-      Cli = require "cosy.cli"
-      Configuration = require "cosy.configuration"
-      Configuration.cli.data = os.tmpname()
-      Configuration.cli.server = "dummy_default"  -- override to a known default value
-    end)
-    after_each (function ()
-      os.remove( Configuration.cli.data )
-    end)
+  before_each (function ()
+    package.loaded ["cosy.cli"] = nil  -- reload to reset
+    Cli = require "cosy.cli"
+    Configuration = require "cosy.configuration"
+    Configuration.cli.data = os.tmpname()
+    Configuration.cli.server = "dummy_default"  -- override to a known default value
+  end)
+
+  after_each (function ()
+    os.remove( Configuration.cli.data )
+  end)
+
+  describe ("parsing options by method configure", function ()
 
     for _, key in ipairs {
       "server",
@@ -57,20 +59,6 @@ describe ("Module cosy.cli", function ()
 
   describe ("saving options by method configure", function ()
 
-    local Cli
-    local Configuration
-    before_each (function ()
-      package.loaded ["cosy.cli"] = nil  -- reload to reset
-      Cli = require "cosy.cli"
-      Configuration = require "cosy.configuration"
-      Configuration.cli.data = os.tmpname()
-      Configuration.cli.server = "dummy_default"  -- override to a known default value
-    end)
-    after_each (function ()
-      os.remove( Configuration.cli.data )
-    end)
-
-    -- case server defined by cmd line
     it ("should detect the --server", function ()
       Cli.configure {
         "--debug=true",
