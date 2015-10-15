@@ -18,7 +18,7 @@ local Nginx = {}
 
 local configuration_template = [[
 error_log   error.log;
-pid         {{{pidfile}}};
+pid         {{{pid}}};
 
 worker_processes 1;
 events {
@@ -167,17 +167,15 @@ function Nginx.configure ()
     resolver = table.concat (result, " ")
   end
   os.execute ([[
-    if [ ! -d {{{directory}}} ]
-    then
+    if [ ! -d {{{directory}}} ]; then
       mkdir {{{directory}}}
     fi
-    if [ ! -d {{{uploads}}} ]
-    then
+    if [ ! -d {{{uploads}}} ]; then
       mkdir {{{uploads}}}
     fi
   ]] % {
     directory = Configuration.http.directory,
-    uploads   = Configuration.http.uploads  ,
+    uploads   = Configuration.http.uploads,
   })
   local locations = {}
   for url, remote in pairs (Configuration.dependencies) do
@@ -201,17 +199,17 @@ function Nginx.configure ()
     sethostname ()
   end
   local configuration = configuration_template % {
-    host           = Configuration.http.interface  ,
-    port           = Configuration.http.port       ,
-    www            = Configuration.http.www        ,
-    uploads        = Configuration.http.uploads    ,
-    pidfile        = Configuration.http.pid        ,
-    name           = Configuration.http.hostname   ,
+    host           = Configuration.http.interface,
+    port           = Configuration.http.port,
+    www            = Configuration.http.www,
+    uploads        = Configuration.http.uploads,
+    pid            = Configuration.http.pid,
+    name           = Configuration.http.hostname,
     wshost         = Configuration.server.interface,
-    wsport         = Configuration.server.port     ,
-    redis_host     = Configuration.redis.interface ,
-    redis_port     = Configuration.redis.port      ,
-    redis_database = Configuration.redis.database  ,
+    wsport         = Configuration.server.port,
+    redis_host     = Configuration.redis.interface,
+    redis_port     = Configuration.redis.port,
+    redis_database = Configuration.redis.database,
     path           = package.path,
     cpath          = package.cpath,
     redirects      = table.concat (locations, "\n"),
@@ -227,23 +225,19 @@ function Nginx.start ()
   os.execute ([[
     {{{nginx}}} -p {{{directory}}} -c {{{configuration}}} 2>> {{{error}}}
   ]] % {
-    nginx         = Configuration.http.nginx        ,
-    directory     = Configuration.http.directory    ,
+    nginx         = Configuration.http.nginx,
+    directory     = Configuration.http.directory,
     configuration = Configuration.http.configuration,
-    error         = Configuration.http.error        ,
+    error         = Configuration.http.error,
   })
   Nginx.stopped = false
 end
 
 function Nginx.stop ()
   os.execute ([[
-    [ -f {{{pidfile}}} ] && {
-      kill -QUIT $(cat {{{pidfile}}})
+    [ -f {{{pid}}} ] && {
+      kill -QUIT $(cat {{{pid}}})
     }
-  ]] % {
-    pidfile = Configuration.http.pid,
-  })
-  os.execute ([[
     rm -rf {{{directory}}} {{{pid}}} {{{error}}} {{{configuration}}}
   ]] % {
     pid           = Configuration.http.pid,
