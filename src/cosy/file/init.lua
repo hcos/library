@@ -3,9 +3,13 @@ local Value = require "cosy.value"
 local File = {}
 
 function File.encode (filname, data)
-  local file = io.open (filname, "w")
+  local file, err = io.open (filname, "w")
+  if not file then
+    return nil, err
+  end
   file:write (Value.expression (data))
   file:close ()
+  return true
 end
 
 function File.decode (filename)
