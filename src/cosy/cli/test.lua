@@ -64,17 +64,12 @@ describe ("Module cosy.cli", function ()
         "--debug=true",
         "--server=server_uri_from_cmd_line",
       }
-      -- assert server was found was set
+      -- assert server was found and set
       assert.are.equal (Cli.server, "server_uri_from_cmd_line")
       -- assert config was saved to config file
       local saved_config = File.decode (Configuration.cli.data)
       assert.are.equal (saved_config.server, Cli.server)
     end)
-
-    -- case server defined by file
-    -- case server defined by default
-    -- case no server defined
-
 
   end)
 
