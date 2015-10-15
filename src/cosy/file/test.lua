@@ -15,6 +15,7 @@ describe ("Module cosy.file", function ()
      "First line.",
    }
   end)
+
   after_each (function ()
     os.remove( filename )
   end)
@@ -26,7 +27,7 @@ describe ("Module cosy.file", function ()
   end)
 
   it ("should fail by trying to read a non existing file", function ()
-    os.remove( filename )
+    os.remove (filename)
     local data, err = File.decode (filename)
     assert.is_nil (data)
     print(err)
