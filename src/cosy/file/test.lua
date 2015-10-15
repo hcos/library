@@ -30,7 +30,6 @@ describe ("Module cosy.file", function ()
     os.remove (filename)
     local data, err = File.decode (filename)
     assert.is_nil (data)
-    print(err)
     assert.is_not_nil (err)
   end)
 
