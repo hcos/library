@@ -5,10 +5,6 @@ require "busted.runner" ()
 local File = require "cosy.file"
 
 describe ("Module cosy.file", function ()
--------------------------- commented randomize that is not recognized by luacheck tool
---------------------------   adapted tests so that they can be passed in any order
---  randomize (false)  --  tells to play the test in that given order
-  --   the first test creates a file and the second test needs that file
 
   local expected_data
   local filename
