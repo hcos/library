@@ -20,6 +20,7 @@ Loader.scheduler.make_default ()
 Loader.hotswap   = require "hotswap".new {}
 Loader.nolog     = true
 
+                 require "cosy.string"
 local Coromake = require "coroutine.make"
 _G.coroutine   = Coromake ()
 

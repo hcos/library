@@ -32,6 +32,7 @@ table.insert (package.searchers, 2, function (name)
   return load (result, url)
 end)
 
+                 require "cosy.string"
 local Coromake = require "coroutine.make"
 _G.coroutine   = Coromake ()
 

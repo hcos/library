@@ -30,6 +30,7 @@ if _G.logfile then
   Loader.logfile = _G.logfile
 end
 
+                 require "cosy.string"
 local Coromake = require "coroutine.make"
 _G.coroutine   = Coromake ()
 
