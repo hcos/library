@@ -306,15 +306,15 @@ function Commands.__index (commands, key)
     for _, x in pairs (result.response) do
       for name, t in pairs (x) do
         if t.type == "password" and args [name] then
-          io.write (i18n ["argument:password" .. tostring (1)] % {} .. " ")
+          io.write (i18n ["argument:password1"] % {} .. " ")
           parameters [name] = getpassword ()
         elseif t.type == "password:checked" and args [name] then
           local passwords = {}
           repeat
-            for i = 1, 2 do
-              io.write (i18n ["argument:password" .. tostring (i)] % {} .. " ")
-              passwords [i] = getpassword ()
-            end
+            io.write (i18n ["argument:password1"] % {} .. " ")
+            passwords [1] = getpassword ()
+            io.write (i18n ["argument:password2"] % {} .. " ")
+            passwords [2] = getpassword ()
             if passwords [1] ~= passwords [2] then
               print (i18n ["argument:password:nomatch"] % {})
             end
