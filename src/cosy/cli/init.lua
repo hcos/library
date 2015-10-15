@@ -15,7 +15,6 @@ Configuration.load {
 
 local i18n   = I18n.load {
   "cosy.cli",
-  "cosy.commands",
   "cosy.daemon",
 }
 i18n._locale = Configuration.cli.locale
@@ -102,7 +101,7 @@ function Cli.start ()
     end
   end
 
-  local Commands = require "cosy.commands"
+  local Commands = require "cosy.cli.commands"
   local commands = Commands.new (ws)
   local command  = commands [Cli.arguments [1] or false]
 
