@@ -280,8 +280,7 @@ do
         -- the three modules below define translations for the user only,
         -- so we do not want to take them into account.
         if  module_name ~= "cosy.methods"
-        and module_name ~= "cosy.parameters"
-        and module_name ~= "cosy.commands" then
+        and module_name ~= "cosy.parameters" then
           modules [#modules+1] = Colors ("%{blue}" .. module_name .. "%{reset}")
         end
       end
