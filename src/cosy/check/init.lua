@@ -314,7 +314,7 @@ print ()
 do
   -- We know that we are in developper mode. Thus, there is a link to the user
   -- sources of cosy library.
-  if os.execute "command -v shellcheck" then
+  if os.execute "command -v shellcheck > /dev/null 2>&1" then
     local script = [[
 #! /bin/bash
 
