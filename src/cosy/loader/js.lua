@@ -32,6 +32,7 @@ end)
 
 Loader.hotswap = require "hotswap" .new {}
 
+                 require "cosy.string"
 local Coromake = require "coroutine.make"
 _G.coroutine   = Coromake ()
 
