@@ -1,20 +1,30 @@
 -- These lines are required to correctly run tests:
 require "cosy.loader.busted"
 require "busted.runner" ()
+local File = require "cosy.file"
 
 describe ("Module cosy.cli", function ()
 
-  describe ("method configure", function ()
+  local Cli
+  local Configuration
 
-    local Cli
-    before_each (function ()
-      package.loaded ["cosy.cli"] = nil
-      Cli = require "cosy.cli"
-    end)
+  before_each (function ()
+    package.loaded ["cosy.cli"] = nil  -- reload to reset
+    Cli = require "cosy.cli"
+    Configuration = require "cosy.configuration"
+    Configuration.cli.data = os.tmpname()
+    Configuration.cli.server = "dummy_default"  -- override to a known default value
+  end)
+
+  after_each (function ()
+    os.remove( Configuration.cli.data )
+  end)
+
+  describe ("parsing options by method configure", function ()
 
     for _, key in ipairs {
       "server",
-      "color",
+      -- "color",
     } do
 
       it ("should detect the --" .. key, function ()
@@ -25,15 +35,15 @@ describe ("Module cosy.cli", function ()
         assert.are.equal (Cli [key], "any_value")
       end)
 
-      it ("should detect --" .. key .. " is missing", function()
+      it ("should detect --" .. key .. " is missing", function ()
         Cli.configure {
           "--debug=true",
           "-".. key .. "=any_value",
         }
-        assert.is_nil (Cli [key])
+        assert.are.equal (Cli [key] , "dummy_default")
       end)
 
-      it ("should fail by detecting several --" .. key, function()
+      it ("should fail by detecting several --" .. key, function ()
         assert.has.errors (function ()
           Cli.configure {
             "--debug=true",
@@ -44,6 +54,22 @@ describe ("Module cosy.cli", function ()
       end)
 
     end
+
+  end)
+
+  describe ("saving options by method configure", function ()
+
+    it ("should detect the --server", function ()
+      Cli.configure {
+        "--debug=true",
+        "--server=server_uri_from_cmd_line",
+      }
+      -- assert server was found and set
+      assert.are.equal (Cli.server, "server_uri_from_cmd_line")
+      -- assert config was saved to config file
+      local saved_config = File.decode (Configuration.cli.data)
+      assert.are.equal (saved_config.server, Cli.server)
+    end)
 
   end)
 

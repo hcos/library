@@ -1,9 +1,9 @@
 require "cosy.loader.cli"
 
 local Configuration = require "cosy.configuration"
-local Value         = require "cosy.value"
-local Lfs           = require "lfs"
+local File          = require "cosy.file"
 local I18n          = require "cosy.i18n"
+local Lfs           = require "lfs"
 local Cliargs       = require "cliargs"
 local Colors        = require "ansicolors"
 local Websocket     = require "websocket"
@@ -21,17 +21,15 @@ i18n._locale = Configuration.cli.locale
 
 local Cli = {}
 
-local function read (filename)
-  local file = io.open (filename, "r")
-  if not file then
-    return nil
-  end
-  local data = file:read "*all"
-  file:close ()
-  return Value.decode (data)
-end
+-----------------------------
+--  While not found Cli tries to determine what server it will connect to
+--    by scanning in that order :
+--  1. --server=xxx   cmd line option
+--  2. ~/.cosy/cli.data config file (ie last server used)
+--  3. configuration
 
 function Cli.configure (arguments)
+  -- parse  the cmd line arguments to fetch server and/or color options
   for _, key in ipairs {  -- key to parse
     "server",
     "color",
@@ -51,13 +49,33 @@ function Cli.configure (arguments)
     end
   end
   Cli.arguments = arguments
+
+  -- tell in which directory should the config be saved
+  local directory  = Configuration.cli.directory
+  Lfs.mkdir (directory)  -- in the case it does not exist already
+  local data_file  = Configuration.cli.data
+  -- reads the config
+  local saved_config = File.decode (data_file) or {}
+  if Cli.server then -- save the server in the config file  ~/.cosy/cli.data
+    saved_config.server = Cli.server -- may override the server
+    File.encode (data_file, saved_config)
+  else -- try to fetch the server from the previously saved config
+    if saved_config.server then
+      Cli.server = saved_config.server
+    else -- try to fetch the server from the default config
+      if Configuration.cli.server then
+        Cli.server = Configuration.cli.server  -- may override the server
+        saved_config.server = Cli.server
+        File.encode (data_file, saved_config)
+      end
+    end
+  end
+  assert (Cli.server)
 end
 
 function Cli.start ()
-  local directory  = Configuration.cli.directory
-  Lfs.mkdir (directory)
-
-  local daemondata = read (Configuration.daemon.data)
+  Cli.configure ( _G.arg)
+  local daemondata = File.decode (Configuration.daemon.data)
 
   if not Cli.color then
     Colors = function (s)
@@ -87,7 +105,7 @@ function Cli.start ()
     local tries = 0
     repeat
       os.execute ([[sleep {{{time}}}]] % { time = 0.5 })
-      daemondata = read (Configuration.daemon.data)
+      daemondata = File.decode (Configuration.daemon.data)
       tries      = tries + 1
     until daemondata or tries == 5
     if not daemondata
