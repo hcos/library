@@ -76,7 +76,7 @@ function Cli.configure (arguments)
 end
 
 function Cli.start ()
-  Cli.configure ( _G.arg)
+  Cli.configure (_G.arg)
   local daemondata = File.decode (Configuration.daemon.data)
 
   if not Cli.color then
