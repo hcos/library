@@ -6,10 +6,6 @@ return {
   ["error:unexpected"] = {
     en = "an unepected error happened, please retry",
   },
-  ["command:missing"] = {
-    en = "missing the command to run: {{{cli}}} <command> [parameters...]",
-    fr = "commande non spécifiée: {{{cli}}} <commande> [paramètres...]",
-  },
   ["command:erroneous"] = {
     en = "erroneous command to run: {{{cli}}} <command> [parameters...]",
     fr = "commande inexistante: {{{cli}}} <commande> [paramètres...]",
@@ -33,35 +29,17 @@ return {
   ["upload:failure"] = {
     en = "failed to upload content (error {{{status}}})",
   },
-  ["daemon:stop"] = {
-    en = "stop cosy daemon",
-  },
   ["daemon:force-stop"] = {
     en = "daemon has been forced to stop",
   },
   ["daemon:not-stopped"] = {
     en = "cosy daemon is not stopped",
   },
-  ["server:force-stop"] = {
-    en = "server has been forced to stop",
-  },
-  ["server:start"] = {
-    en = "start cosy server",
-  },
-  ["server:stop"] = {
-    en = "stop cosy server",
-  },
-  ["server:not-stopped"] = {
-    en = "cosy server is not stopped",
-  },
   ["server:unreachable"] = {
     en = "cosy server is not reachable",
   },
   ["server:already-running"] = {
     en = "server is already running",
-  },
-  ["server:dead"] = {
-    en = "server seems to be dead",
   },
   ["option:locale"] = {
     en = "locale for messages",
@@ -71,9 +49,6 @@ return {
   },
   ["flag:captcha"] = {
     en = "answer to captcha in web browser",
-  },
-  ["flag:clean"] = {
-    en = "clean database before run",
   },
   ["flag:debug"] = {
     en = "show debug information",

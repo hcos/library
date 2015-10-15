@@ -552,44 +552,6 @@ Commands ["server:stop"] = function (commands)
   else
     result = Value.decode (result)
   end
-  if not result.success and args.force then
-    os.execute ([==[
-      if [ -f "{{{pid}}}" ]
-      then
-        kill -9 $(cat {{{pid}}}) 2> /dev/null
-      fi
-    ]==] % {
-      pid = Configuration.server.pid,
-    })
-    os.remove (Configuration.server.data)
-    os.remove (Configuration.server.pid )
-    result = i18n {
-      success  = true,
-      response = {
-        _ = i18n ["server:force-stop"] % {},
-      },
-    }
-    show_status (result)
-  end
-  local serverpid
-  local tries = 0
-  repeat
-    os.execute ([[sleep {{{time}}}]] % { time = 0.2 })
-    serverpid = read (Configuration.server.pid)
-    tries     = tries + 1
-  until not serverpid or tries == 10
-  if serverpid then
-    result = i18n {
-      success = false,
-      error   = {
-        _ = i18n ["server:not-stopped"] % {},
-      },
-    }
-  else
-    result = {
-      success = true,
-    }
-  end
   show_status (result)
   if args.debug then
     print (Colors ("%{white yellowbg}" .. Value.expression (result)))
