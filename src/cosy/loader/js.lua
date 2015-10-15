@@ -1,4 +1,13 @@
-local Loader = require "cosy.loader"
+if #setmetatable ({}, { __len = function () return 1 end }) ~= 1
+then
+  error "Cosy requires Lua >= 5.2 or Luajit with 5.2 compatibility to run."
+end
+
+local Loader = {}
+
+package.preload ["cosy.loader"] = function ()
+  return Loader
+end
 
 Loader.loadhttp = function (url)
   local request = _G.js.new (_G.window.XMLHttpRequest)
@@ -23,6 +32,7 @@ end)
 
 Loader.hotswap = require "hotswap" .new {}
 
-Loader.configure ()
+local Coromake = require "coroutine.make"
+_G.coroutine   = Coromake ()
 
 return Loader
