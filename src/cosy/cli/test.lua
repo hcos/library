@@ -35,7 +35,7 @@ describe ("Module cosy.cli", function ()
         assert.are.equal (Cli [key], "any_value")
       end)
 
-      it ("should detect --" .. key .. " is missing", function()
+      it ("should detect --" .. key .. " is missing", function ()
         Cli.configure {
           "--debug=true",
           "-".. key .. "=any_value",
@@ -43,7 +43,7 @@ describe ("Module cosy.cli", function ()
         assert.are.equal (Cli [key] , "dummy_default")
       end)
 
-      it ("should fail by detecting several --" .. key, function()
+      it ("should fail by detecting several --" .. key, function ()
         assert.has.errors (function ()
           Cli.configure {
             "--debug=true",
