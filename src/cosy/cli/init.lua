@@ -1,26 +1,50 @@
-require "cosy.loader.cli"
+local loaded_modules = {}
+for k in pairs (package.loaded) do
+  loaded_modules [k] = true
+end
 
-local Configuration = require "cosy.configuration"
-local File          = require "cosy.file"
-local I18n          = require "cosy.i18n"
-local Lfs           = require "lfs"
-local Cliargs       = require "cliargs"
-local Colors        = require "ansicolors"
-local Websocket     = require "websocket"
+local Loader = require "cosy.loader.cli"
 
-Configuration.load {
-  "cosy.cli",
-  "cosy.daemon",
-}
 
-local i18n   = I18n.load {
-  "cosy.cli",
-  "cosy.commands",
-  "cosy.daemon",
-}
-i18n._locale = Configuration.cli.locale
+local Configuration
+local File
+local I18n
+local Cliargs
+local Colors
+local Lfs
+local Websocket
+
+
+local function init ()
+
+  Configuration = require "cosy.configuration"
+  File          = require "cosy.file"
+  I18n          = require "cosy.i18n"
+  Cliargs       = require "cliargs"
+  Colors        = require "ansicolors"
+  Lfs           = require "lfs"
+  Websocket     = require "websocket"
+
+  Configuration.load {
+    "cosy.cli",
+    "cosy.daemon",
+  }
+
+  local i18n   = I18n.load {
+    "cosy.cli",
+    "cosy.commands",
+    "cosy.daemon",
+  }
+  i18n._locale = Configuration.cli.locale
+
+end
+
+init()
+
 
 local Cli = {}
+
+
 
 -----------------------------
 --  While not found Cli tries to determine what server it will connect to
@@ -72,6 +96,24 @@ function Cli.configure (arguments)
     end
   end
   assert (Cli.server)
+
+  Loader.server = Cli.server
+
+  -- telecharger le nouveau loader
+  local Http = require "socket.http"
+  local body, status = Http.request (Cli.server .. "/lua/cosy.loader.cli")
+  if status ~= 200 then -- could not fetch loader
+    return
+  end  -- otherwise keep the same modules
+
+  -- decharger tous les modules already loaded ( directly or by transitivity)
+  for k in pairs (package.loaded) do
+    if not loaded_modules [k] then
+       package.loaded [k] = nil  -- unload every module that was not loaded at startup
+    end
+  end
+  assert (loadstring (body)) ()  -- execute the loader
+  init()   -- reloads locally every modules
 end
 
 function Cli.start ()
