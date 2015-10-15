@@ -5,10 +5,6 @@ require "busted.runner" ()
 local File = require "cosy.file"
 
 describe ("Module cosy.file", function ()
--------------------------- commented randomize that is not recognized by luacheck tool
---------------------------   adapted tests so that they can be passed in any order
---  randomize (false)  --  tells to play the test in that given order
-  --   the first test creates a file and the second test needs that file
 
   local expected_data
   local filename
@@ -19,6 +15,7 @@ describe ("Module cosy.file", function ()
      "First line.",
    }
   end)
+
   after_each (function ()
     os.remove( filename )
   end)
@@ -30,10 +27,9 @@ describe ("Module cosy.file", function ()
   end)
 
   it ("should fail by trying to read a non existing file", function ()
-    os.remove( filename )
+    os.remove (filename)
     local data, err = File.decode (filename)
     assert.is_nil (data)
-    print(err)
     assert.is_not_nil (err)
   end)
 
