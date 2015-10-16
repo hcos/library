@@ -127,8 +127,9 @@ function install_dependencies ()
   fi
 
   if [ ! -z "${sourcepath+x}" ]; then
-    if [ ! -z "${apt_available+x}" ]; then
+    if [ -z "${apt_available+x}" ]; then
       echo "Developper mode requires a working version of apt and sudo."
+      return
     fi
     for version in ${versions}
     do
