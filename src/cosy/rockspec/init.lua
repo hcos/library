@@ -39,6 +39,7 @@ local rockspec = {
     "lua_cliargs >= 2",
     "lua-cjson >= 2",
     "lua-ev >= v1",
+    "lua-resty-http >= 0",
     "lua-websockets >= v2",
     "luacrypto >= 0",
     "luafilesystem >= 1",
