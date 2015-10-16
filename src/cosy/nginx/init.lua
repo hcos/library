@@ -132,15 +132,26 @@ http {
 }
 ]]
 
+-- local function sethostname ()
+--   local handle = io.popen "hostnamectl"
+--   local result = handle:read "*all"
+--   handle:close()
+--   local results = {}
+--   for key, value in result:gmatch "%s*([^:]+):%s*(%S+)%s*[\r\n]+" do
+--     results [key] = value
+--   end
+--   Default.http.hostname = results ["Static hostname"]
+--   Logger.info {
+--     _        = i18n ["nginx:hostname"],
+--     hostname = Configuration.http.hostname,
+--   }
+-- end
+
 local function sethostname ()
-  local handle = io.popen "hostnamectl"
+  local handle = io.popen "hostname"
   local result = handle:read "*all"
   handle:close()
-  local results = {}
-  for key, value in result:gmatch "%s*([^:]+):%s*(%S+)%s*[\r\n]+" do
-    results [key] = value
-  end
-  Default.http.hostname = results ["Static hostname"]
+  Default.http.hostname = result
   Logger.info {
     _        = i18n ["nginx:hostname"],
     hostname = Configuration.http.hostname,
