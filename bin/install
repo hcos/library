@@ -114,12 +114,13 @@ function install_dependencies ()
 
   if [ ! -z "${apt_available+x}" ]; then
     echo "Installing packages required by both client and server."
-    sudo apt-get install --yes git make gcc diffutils patch wget unzip \
+    sudo apt-get install --yes git perl build-essential make gcc diffutils patch wget unzip \
       >> "${log}" 2>&1
 
     echo "Installing packages required only by the server."
     sudo apt-get install --yes libev-dev libssl-dev \
-                               nginx-extras redis-server imagemagick \
+                               libreadline-dev libncurses5-dev libpcre3-dev \
+                               redis-server imagemagick \
       >> "${log}" 2>&1
   else
     echo "Not installing packages as apt-get or sudo is not available."
@@ -151,9 +152,9 @@ function install_luajit ()
     return
   fi
   echo "Installing luajit."
-  wget --quiet http://luajit.org/download/LuaJIT-2.0.4.tar.gz
-  tar  xf LuaJIT-2.0.4.tar.gz
-  cd   LuaJIT-2.0.4
+  wget --quiet http://luajit.org/download/LuaJIT-2.1.0-beta1.tar.gz
+  tar  xf LuaJIT-2.1.0-beta1.tar.gz
+  cd   LuaJIT-2.1.0-beta1
   cat > luajit.patch <<EOL
 diff -rupN LuaJIT-2.0.4.back/Makefile LuaJIT-2.0.4/Makefile
 --- LuaJIT-2.0.4.back/Makefile	2015-10-02 17:19:16.774268017 +0200
@@ -186,6 +187,30 @@ EOL
     make install
   } >> "${log}" 2>&1
   cd   ..
+  ln -sf ${rockstree}/5.1/bin/luajit-2.1.0-beta1 ${rockstree}/5.1/bin/luajit
+  ln -sf ${rockstree}/5.1/include/luajit-2.1     ${rockstree}/5.1/include/luajit-2.0
+}
+
+# Install openresty:
+function install_openresty ()
+{
+  if [ -e "${prefix}/bin/resty" ]; then
+    echo "Openresty is already installed."
+    return
+  fi
+  echo "Installing openresty."
+  (
+    wget https://openresty.org/download/ngx_openresty-1.9.3.1.tar.gz
+    tar xf ngx_openresty-1.9.3.1.tar.gz
+    cd ngx_openresty-1.9.3.1
+    ./configure --prefix=${prefix} \
+                --without-lua51 \
+                --with-luajit=${rockstree}/5.1 \
+                --with-ipv6 \
+                --with-pcre-jit
+    make
+    make install
+  ) >> "${log}" 2>&1
 }
 
 function install_luarocks ()
@@ -416,6 +441,7 @@ cd "${tempwd}"
 stop_server
 install_dependencies
 install_luajit
+install_openresty
 install_luarocks
 install_cosyverif
 install_main
