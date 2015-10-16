@@ -188,8 +188,8 @@ EOL
     make install
   } >> "${log}" 2>&1
   cd   ..
-  ln -sf ${rockstree}/5.1/bin/luajit-2.1.0-beta1 ${rockstree}/5.1/bin/luajit
-  ln -sf ${rockstree}/5.1/include/luajit-2.1     ${rockstree}/5.1/include/luajit-2.0
+  ln -sf "${rockstree}/5.1/bin/luajit-2.1.0-beta1" "${rockstree}/5.1/bin/luajit"
+  ln -sf "${rockstree}/5.1/include/luajit-2.1"     "${rockstree}/5.1/include/luajit-2.0"
 }
 
 # Install openresty:
@@ -204,9 +204,9 @@ function install_openresty ()
     wget https://openresty.org/download/ngx_openresty-1.9.3.1.tar.gz
     tar xf ngx_openresty-1.9.3.1.tar.gz
     cd ngx_openresty-1.9.3.1
-    ./configure --prefix=${prefix} \
+    ./configure --prefix="${prefix}" \
                 --without-lua51 \
-                --with-luajit=${rockstree}/5.1 \
+                --with-luajit="${rockstree}/5.1" \
                 --with-ipv6 \
                 --with-pcre-jit
     make
