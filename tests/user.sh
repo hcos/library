@@ -1,6 +1,11 @@
 #! /bin/bash
-
-cosy="$1"
+if [ -z "$1" ]; then
+  echo "usage: $0 path_to_cosy_script"
+  echo "ex: $0 /home/cosy/bin/cosy"
+  exit
+else
+  cosy="$1"
+fi
 
 passwords=$(mktemp)
 echo "password" >> "${passwords}"
