@@ -62,12 +62,14 @@ end
 do
   Lfs.mkdir "test"
   local test_id = 1
-
   for module in Lfs.dir (main) do
     local path = main .. "/" .. module
     if  module ~= "." and module ~= ".."
     and Lfs.attributes (path, "mode") == "directory" then
       if Lfs.attributes (path .. "/test.lua", "mode") == "file" then
+        print ("Testing {{{module}}} module:" % {
+          module = module,
+        })
         status = os.execute ([[{{{lua}}} {{{path}}}/test.lua --verbose]] % {
           lua  = prefix .. "/local/cosy/5.1/bin/luajit",
           path = path,
@@ -89,6 +91,7 @@ do
           }) and status
           test_id = test_id + 1
         end
+        print ()
       end
     end
   end
