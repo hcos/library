@@ -48,7 +48,8 @@ local status = true
 
 do
   status = os.execute ([[
-    cd {{{path}}}/.. && {{{luacheck}}} --std max --std +busted cosy/*/*.lua
+    cd {{{path}}}/..
+    {{{luacheck}}} --std max --std +busted cosy/*/*.lua
   ]] % {
     luacheck = prefix .. "/local/cosy/5.1/bin/luacheck",
     path     = main,
