@@ -2,11 +2,17 @@ return {
   ["message:invalid"] = {
     en = "rpc message is invalid",
   },
-  ["server:action"] = {
-    en = "start or stop",
+  ["command"] = {
+    en = "Control the server",
+  },
+  ["command:start"] = {
+    en = "Start the server",
+  },
+  ["command:stop"] = {
+    en = "Stop the server",
   },
   ["flag:clean"] = {
-    en = "clean database (start only)",
+    en = "Clean database",
   },
   ["server:no-operation"] = {
     en = "operation {{{operation}}} does not exist",
