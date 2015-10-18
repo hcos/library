@@ -37,7 +37,7 @@ local function deproxify (t)
   end
 end
 
-function Server.call_method (method, parameters, try_only)
+local function call_method (method, parameters, try_only)
   for _ = 1, Configuration.redis.retry or 1 do
     local store = Store.new ()
     local view  = Store.toview (store)
@@ -74,7 +74,7 @@ function Server.call_method (method, parameters, try_only)
   }
 end
 
-function Server.call_parameters (method, parameters)
+local function call_parameters (method, parameters)
   parameters.__DESCRIBE = true
   local _, result = pcall (method, parameters)
   return result
@@ -164,9 +164,9 @@ function Server.start ()
                 })
               end
               if parameters_only then
-                result      = Server.call_parameters (method, parameters)
+                result      = call_parameters (method, parameters)
               else
-                result, err = Server.call_method (method, parameters, try_only)
+                result, err = call_method (method, parameters, try_only)
               end
               if type (result) == "function" then
                 send (i18n {
