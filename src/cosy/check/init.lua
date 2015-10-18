@@ -1,22 +1,24 @@
 require "cosy.loader.busted"
-local Lfs      = require "lfs"
-local Lustache = require "lustache"
-local Colors   = require 'ansicolors'
-local Reporter = require "luacov.reporter"
-local Cli      = require "cliargs"
+local Lfs       = require "lfs"
+local Lustache  = require "lustache"
+local Colors    = require 'ansicolors'
+local Reporter  = require "luacov.reporter"
+local Arguments = require "argparse"
 
-Cli:set_name "check"
-Cli:add_option (
-  "--test-format=FORMAT",
-  "format for the test results (supported by busted)",
-  "TAP"
-)
-local arguments = Cli:parse (arg)
-if not arguments then
-  os.exit (1)
-end
+local prefix = os.getenv "COSY_PREFIX"
+local name   = prefix .. "/bin/cosy-check"
+name         = name:gsub (os.getenv "HOME", "~")
 
-local prefix    = os.getenv "COSY_PREFIX"
+local parser = Arguments () {
+  name        = name,
+  description = "Perform various checks on the cosy sources",
+}
+parser:option "--test-format" {
+  description = "format for the test results (supported by busted)",
+  default     = "TAP",
+}
+
+local arguments = parser:parse ()
 
 local string_mt = getmetatable ""
 
@@ -79,7 +81,7 @@ do
           ]] % {
             lua      = "lua" .. version,
             path     = path:gsub ("5%.1", version),
-            format   = arguments ["test-format"],
+            format   = arguments.test_format,
             output   = "test/" .. tostring (test_id),
             luapath  = package.path :gsub ("5%.1", version),
             luacpath = package.cpath:gsub ("5%.1", version),
