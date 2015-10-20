@@ -132,7 +132,7 @@ function install_dependencies ()
     for version in ${versions}
     do
       echo "Installing lua-${version}."
-      sudo apt-get install --yes lua${versions} liblua${version}-dev \
+      sudo apt-get install --yes lua${version} liblua${version}-dev \
         >> "${log}" 2>&1
     done
     echo "Installing developper tools."
