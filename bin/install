@@ -49,12 +49,12 @@ do
     ;;
     -h|--help)
       echo "Usage: "
-      echo "  install [--prefix=PREFIX] [--mode=server|client] [--sourcepath=PATH] [--in_ci]"
+      echo "  install [--prefix=PREFIX] [--mode=server|client] [--sourcepath=PATH] [--in-ci]"
       exit 1;
     ;;
     *)
       echo "Usage: "
-      echo "  install [--prefix=PREFIX] [--mode=server|client] [--sourcepath=PATH] [--in_ci]"
+      echo "  install [--prefix=PREFIX] [--mode=server|client] [--sourcepath=PATH] [--in-ci]"
       exit 1;
       # unknown option
     ;;
