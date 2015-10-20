@@ -44,7 +44,11 @@ init()
 
 local Cli = {}
 
+Cli.__index = Cli
 
+function Cli.new ()
+  return setmetatable ({}, Cli)
+end
 
 -----------------------------
 --  While not found Cli tries to determine what server it will connect to
@@ -53,7 +57,7 @@ local Cli = {}
 --  2. ~/.cosy/cli.data config file (ie last server used)
 --  3. configuration
 
-function Cli.configure (arguments)
+function Cli.configure (cli, arguments)
   -- parse  the cmd line arguments to fetch server and/or color options
   for _, key in ipairs {  -- key to parse
     "server",
@@ -65,15 +69,15 @@ function Cli.configure (arguments)
       local argument = arguments [j]
       local value = argument:match (pattern)   -- value contains only right hand side of equals
       if value then -- matched
-        assert (not Cli [key])  -- (better)  nil or false
-        Cli [key] = value
+        assert (not cli [key])  -- (better)  nil or false
+        cli [key] = value
         table.remove (arguments, j)
       else
         j = j + 1
       end
     end
   end
-  Cli.arguments = arguments
+  cli.arguments = arguments
 
   -- tell in which directory should the config be saved
   local directory  = Configuration.cli.directory
@@ -81,27 +85,27 @@ function Cli.configure (arguments)
   local data_file  = Configuration.cli.data
   -- reads the config
   local saved_config = File.decode (data_file) or {}
-  if Cli.server then -- save the server in the config file  ~/.cosy/cli.data
-    saved_config.server = Cli.server -- may override the server
+  if cli.server then -- save the server in the config file  ~/.cosy/cli.data
+    saved_config.server = cli.server -- may override the server
     File.encode (data_file, saved_config)
   else -- try to fetch the server from the previously saved config
     if saved_config.server then
-      Cli.server = saved_config.server
+      cli.server = saved_config.server
     else -- try to fetch the server from the default config
       if Configuration.cli.server then
-        Cli.server = Configuration.cli.server  -- may override the server
-        saved_config.server = Cli.server
+        cli.server = Configuration.cli.server  -- may override the server
+        saved_config.server = cli.server
         File.encode (data_file, saved_config)
       end
     end
   end
-  assert (Cli.server)
+  assert (cli.server)
 
-  Loader.server = Cli.server
+  Loader.server = cli.server
 
   -- telecharger le nouveau loader
   local Http = require "socket.http"
-  local body, status = Http.request (Cli.server .. "/lua/cosy.loader.cli")
+  local body, status = Http.request (cli.server .. "/lua/cosy.loader.cli")
   if status ~= 200 then -- could not fetch loader
     return
   end  -- otherwise keep the same modules
@@ -116,11 +120,11 @@ function Cli.configure (arguments)
   init()   -- reloads locally every modules
 end
 
-function Cli.start ()
-  Cli.configure ( _G.arg)
+function Cli.start (cli)
+  cli:configure (_G.arg)
   local daemondata = File.decode (Configuration.daemon.data)
 
-  if not Cli.color then
+  if not cli.color then
     Colors = function (s)
       return s:gsub ("(%%{(.-)})", "")
     end
@@ -164,10 +168,10 @@ function Cli.start ()
 
   local Commands = require "cosy.commands"
   local commands = Commands.new (ws)
-  local command  = commands [Cli.arguments [1] or false]
+  local command  = commands [cli.arguments [1] or false]
 
-  Cliargs:set_name (Cli.arguments [0] .. " " .. Cli.arguments [1])
-  table.remove (Cli.arguments, 1)
+  Cliargs:set_name (cli.arguments [0] .. " " .. cli.arguments [1])
+  table.remove (cli.arguments, 1)
 
   local ok, result = xpcall (command, function ()
     print (Colors ("%{white redbg}" .. i18n ["error:unexpected"] % {}))
