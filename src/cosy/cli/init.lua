@@ -13,7 +13,7 @@ local Cliargs
 local Colors
 local Lfs
 local Websocket
-
+local i18n
 
 local function init ()
 
@@ -30,7 +30,7 @@ local function init ()
     "cosy.daemon",
   }
 
-  local i18n   = I18n.load {
+  i18n = I18n.load {
     "cosy.cli",
     "cosy.commands",
     "cosy.daemon",
