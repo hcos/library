@@ -152,19 +152,20 @@ function install_dependencies ()
   fi
 
   if [ ! -z "${sourcepath+x}" ]; then
-    if [ ! -z "${apt_available+x}" ]; then
+    if [ -z "${apt_available+x}" ]; then
       echo "Developper mode requires a working version of apt and sudo."
-    fi
-    for version in ${versions}
-    do
-      echo "Installing lua-${version}."
-      sudo apt-get install --yes lua${versions} liblua${version}-dev \
-        >> "${log}" 2>&1
-    done
-    echo "Installing developper tools."
-    if [ "$(apt-cache search shellcheck | grep shellcheck)" != "" ]; then
-      sudo apt-get install --yes shellcheck \
-        >> "${log}" 2>&1
+    else
+      for version in ${versions}
+      do
+        echo "Installing lua-${version}."
+        sudo apt-get install --yes lua${versions} liblua${version}-dev \
+          >> "${log}" 2>&1
+      done
+      echo "Installing developper tools."
+      if [ "$(apt-cache search shellcheck | grep shellcheck)" != "" ]; then
+        sudo apt-get install --yes shellcheck \
+          >> "${log}" 2>&1
+      fi
     fi
   fi
 }
