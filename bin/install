@@ -302,7 +302,8 @@ function install_cosyverif ()
   do
     echo "Installing rocks for lua-${version}."
     if [ -d "${rockstree}/${version}/share/lua/${version}" ]; then
-      "${rockstree}/${version}/bin/luarocks" install "luasec}" \
+      # Install luasec before everything to allow the use of HTTPS in luarocks:
+      "${rockstree}/${version}/bin/luarocks" install "luasec" \
         >> "${log}" 2>&1
       # Remove symlink to cosy to avoid modification of ${sourcepath} files by luarocks.
       rm -rf "${rockstree}/${version}/share/lua/${version}/redis"*
