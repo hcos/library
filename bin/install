@@ -79,6 +79,32 @@ rockstree=${prefix}/local/cosy
 currentwd=$(pwd)
 tempwd=$(mktemp -d)
 log=$(mktemp)
+dependencies="\
+  ansicolors \
+  argparse \
+  bcrypt \
+  bit32 \
+  copas-ev \
+  coronest \
+  dkjson \
+  hotswap \
+  hotswap-ev \
+  hotswap-http \
+  i18n \
+  jwt \
+  layeredata \
+  lua_cliargs \
+  lua-cjson \
+  lua-ev \
+  luacrypto \
+  luafilesystem \
+  lualogging \
+  luasec \
+  luasocket \
+  lustache \
+  md5 \
+  serpent \
+"
 
 echo -e "Temporary directory: ${green}${tempwd}${nc}"
 echo -e "Log file           : ${green}${log}${nc}"
@@ -260,18 +286,11 @@ function install_cosyverif ()
     git pull \
       >> "${log}" 2>&1
   )
-  if [ -z "${sourcepath+x}" ]; then
-    if   [ -d "${rockstree}/git/library" ]; then
-      echo -n
-    else
-      rm -rf "${rockstree}/git/library"
-      git clone https://github.com/CosyVerif/library.git \
-                "${rockstree}/git/library" \
-        >> "${log}" 2>&1
-    fi
-  else
+  if [ ! -d "${rockstree}/git/library" ]; then
     rm -rf "${rockstree}/git/library"
-    ln -s  "${sourcepath}" "${rockstree}/git/library"
+    git clone https://github.com/CosyVerif/library.git \
+              "${rockstree}/git/library" \
+      >> "${log}" 2>&1
   fi
   (
     cd "${rockstree}/git/library"
@@ -286,10 +305,11 @@ function install_cosyverif ()
       rm -rf "${rockstree}/${version}/share/lua/${version}/redis"*
       rm -rf "${rockstree}/${version}/share/lua/${version}/websocket"*
       rm -rf "${rockstree}/${version}/share/lua/${version}/cosy"*
-      "${rockstree}/${version}/bin/luarocks" install --only-deps cosyverif \
-        >> "${log}" 2>&1
-      # For these modules, we depend on the "master" version.
-      # First, we delete installed files, and them we create a link to the correct version.
+      for dependency in ${dependencies}; do
+        "${rockstree}/${version}/bin/luarocks" install "${dependency}" \
+          >> "${log}" 2>&1
+      done
+      # Create symlinks in rockstree:
       rm -rf "${rockstree}/${version}/share/lua/${version}/redis"*
       ln -s  "${rockstree}/git/redis-lua/src/redis.lua" \
              "${rockstree}/${version}/share/lua/${version}/redis.lua"
@@ -298,7 +318,6 @@ function install_cosyverif ()
              "${rockstree}/${version}/share/lua/${version}/websocket.lua"
       ln -s  "${rockstree}/git/lua-websockets/src/websocket" \
              "${rockstree}/${version}/share/lua/${version}/websocket"
-      rm -rf "${rockstree}/${version}/share/lua/${version}/cosy"*
       ln -s  "${rockstree}/git/library/src/cosy" \
              "${rockstree}/${version}/share/lua/${version}/cosy"
     fi
