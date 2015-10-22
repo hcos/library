@@ -2,13 +2,13 @@ return {
   ["message:invalid"] = {
     en = "rpc message is invalid",
   },
-  ["command"] = {
+  ["server:command"] = {
     en = "Control the server",
   },
-  ["command:start"] = {
+  ["server:start"] = {
     en = "Start the server",
   },
-  ["command:stop"] = {
+  ["server:stop"] = {
     en = "Stop the server",
   },
   ["flag:clean"] = {

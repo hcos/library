@@ -22,10 +22,10 @@ local name = os.getenv "COSY_PREFIX" .. "/bin/cosy-server"
 name = name:gsub (os.getenv "HOME", "~")
 local parser = Arguments () {
   name        = name,
-  description = i18n ["command"] % {},
+  description = i18n ["server:command"] % {},
 }
 local start  = parser:command "start" {
-  description = i18n ["command:start"] % {},
+  description = i18n ["server:start"] % {},
 }
 start:flag "-f" "--force" {
   description = i18n ["flag:force"] % {},
@@ -34,7 +34,7 @@ start:flag "-c" "--clean" {
   description = i18n ["flag:clean"] % {},
 }
 local stop   = parser:command "stop" {
-  description = i18n ["command:stop"] % {},
+  description = i18n ["server:stop"] % {},
 }
 stop:flag "-f" "--force" {
   description = i18n ["flag:force"] % {},
