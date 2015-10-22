@@ -464,9 +464,9 @@ install_configuration
 cd "${currentwd}"
 
 echo "You can now try the following commands:"
-echo "- ${prefix}/bin/cosy-server [--clean] [--force] start"
+echo "- ${prefix}/bin/cosy-server start [--clean] [--force]"
 echo "- ${prefix}/bin/cosy"
-echo "- ${prefix}/bin/cosy-server [--force] stop"
+echo "- ${prefix}/bin/cosy-server stop  [--force]"
 if [ ! -z "${sourcepath+x}" ]; then
   echo "This development environment also provides two commands:"
   echo "- ${prefix}/bin/cosy-check    : to run checks, tests and coverage"
