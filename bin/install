@@ -74,6 +74,7 @@ nc='\033[0m'
 versions="5.2"
 cli=${prefix}/bin/cosy
 server=${prefix}/bin/cosy-server
+uninstall=${prefix}/bin/cosy-uninstall
 check=${prefix}/bin/cosy-check
 rockspec=${prefix}/bin/cosy-rockspec
 rockstree=${prefix}/local/cosy
@@ -397,6 +398,22 @@ ${rockstree}/5.1/bin/luajit ${rockstree}/5.1/share/lua/5.1/cosy/server/cli.lua "
 EOF
   chmod a+x "${server}"
 
+  cat > "${uninstall}" <<EOF
+#! /bin/bash
+
+${paths}
+export COSY_PREFIX="${prefix}"
+rm -rf ${prefix}/bin/cosy* ${prefix}/bin/resty \
+       ${prefix}/etc/cosy* \
+       ${prefix}/lualib \
+       ${prefix}/nginx \
+       ${prefix}/local/cosy
+find ${prefix} -maxdepth 1 -empty -exec rm -rf {} \;
+find ${prefix} -maxdepth 0 -empty -exec rm -rf {} \;
+echo -e "Cosy has been ${green}successfully uninstalled${nc}."
+EOF
+  chmod a+x "${uninstall}"
+
   if [ ! -z "${sourcepath+x}" ]; then
     cat > "${check}" <<EOF
 #! /bin/bash
@@ -493,6 +510,7 @@ echo "You can now try the following commands:"
 echo "- ${prefix}/bin/cosy-server start [--clean] [--force]"
 echo "- ${prefix}/bin/cosy"
 echo "- ${prefix}/bin/cosy-server stop  [--force]"
+echo "- ${prefix}/bin/cosy-uninstall"
 if [ ! -z "${sourcepath+x}" ]; then
   echo "This development environment also provides two commands:"
   echo "- ${prefix}/bin/cosy-check    : to run checks, tests and coverage"
