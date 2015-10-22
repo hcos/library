@@ -288,17 +288,24 @@ function install_cosyverif ()
     git pull \
       >> "${log}" 2>&1
   )
-  if [ ! -d "${rockstree}/git/library" ]; then
+  if [ -z "${sourcepath+x}" ]; then
+    if [ ! -d "${rockstree}/git/library" ]; then
+      rm -rf "${rockstree}/git/library"
+      git clone https://github.com/CosyVerif/library.git \
+                "${rockstree}/git/library" \
+        >> "${log}" 2>&1
+    fi
+    (
+      cd "${rockstree}/git/library"
+      git pull \
+        >> "${log}" 2>&1
+    )
+  else
     rm -rf "${rockstree}/git/library"
-    git clone https://github.com/CosyVerif/library.git \
-              "${rockstree}/git/library" \
-      >> "${log}" 2>&1
+    ln -s  "${sourcepath}" \
+           "${rockstree}/git/library"
+
   fi
-  (
-    cd "${rockstree}/git/library"
-    git pull \
-      >> "${log}" 2>&1
-  )
   for version in 5.1 ${versions}
   do
     echo "Installing rocks for lua-${version}."
