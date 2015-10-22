@@ -58,6 +58,7 @@ end
 --  3. configuration
 
 function Cli.configure (cli, arguments)
+  assert (getmetatable (cli) == Cli)
   -- parse  the cmd line arguments to fetch server and/or color options
   for _, key in ipairs {  -- key to parse
     "server",
@@ -121,6 +122,7 @@ function Cli.configure (cli, arguments)
 end
 
 function Cli.start (cli)
+  assert (getmetatable (cli) == Cli)
   cli:configure (_G.arg)
   local daemondata = File.decode (Configuration.daemon.data)
 
@@ -190,7 +192,8 @@ function Cli.start (cli)
   end
 end
 
-function Cli.stop ()
+function Cli.stop (cli)
+  assert (getmetatable (cli) == Cli)
 end
 
 return Cli
