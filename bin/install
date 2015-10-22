@@ -267,16 +267,6 @@ function install_luarocks ()
 function install_cosyverif ()
 {
   mkdir -p "${rockstree}/git"
-  if [ ! -d "${rockstree}/git/lua-websockets" ]; then
-    git clone https://github.com/saucisson/lua-websockets.git \
-              "${rockstree}/git/lua-websockets" \
-      >> "${log}" 2>&1
-  fi
-  (
-    cd "${rockstree}/git/lua-websockets"
-    git pull \
-      >> "${log}" 2>&1
-  )
   if [ ! -d "${rockstree}/git/redis-lua" ]; then
     git clone https://github.com/nrk/redis-lua.git \
               "${rockstree}/git/redis-lua" \
@@ -284,6 +274,16 @@ function install_cosyverif ()
   fi
   (
     cd "${rockstree}/git/redis-lua"
+    git pull \
+      >> "${log}" 2>&1
+  )
+  if [ ! -d "${rockstree}/git/lua-websockets" ]; then
+    git clone https://github.com/saucisson/lua-websockets.git \
+              "${rockstree}/git/lua-websockets" \
+      >> "${log}" 2>&1
+  fi
+  (
+    cd "${rockstree}/git/lua-websockets"
     git pull \
       >> "${log}" 2>&1
   )
