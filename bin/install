@@ -72,7 +72,8 @@ nc='\033[0m'
 ##################################
 
 versions="5.2"
-cosy=${prefix}/bin/cosy
+cli=${prefix}/bin/cosy
+server=${prefix}/bin/cosy-server
 check=${prefix}/bin/cosy-check
 rockspec=${prefix}/bin/cosy-rockspec
 rockstree=${prefix}/local/cosy
@@ -119,11 +120,11 @@ fi
 # Stop existing server:
 function stop_server ()
 {
-  if [ -e "${cosy}" ]; then
+  if [ -e "${server}" ]; then
     echo "Stopping running server."
     {
-      ${cosy} server:stop --force
-      ${cosy} daemon:stop --force
+      ${server} stop --force
+      ${cli} daemon:stop --force
     } >> "${log}" 2>&1
   fi
 }
@@ -312,17 +313,24 @@ function install_cosyverif ()
     git pull \
       >> "${log}" 2>&1
   )
-  if [ ! -d "${rockstree}/git/library" ]; then
+  if [ -z "${sourcepath+x}" ]; then
+    if [ ! -d "${rockstree}/git/library" ]; then
+      rm -rf "${rockstree}/git/library"
+      git clone https://github.com/CosyVerif/library.git \
+                "${rockstree}/git/library" \
+        >> "${log}" 2>&1
+    fi
+    (
+      cd "${rockstree}/git/library"
+      git pull \
+        >> "${log}" 2>&1
+    )
+  else
     rm -rf "${rockstree}/git/library"
-    git clone https://github.com/CosyVerif/library.git \
-              "${rockstree}/git/library" \
-      >> "${log}" 2>&1
+    ln -s  "${sourcepath}" \
+           "${rockstree}/git/library"
+
   fi
-  (
-    cd "${rockstree}/git/library"
-    git pull \
-      >> "${log}" 2>&1
-  )
   for version in 5.1 ${versions}
   do
     echo "Installing rocks for lua-${version}."
@@ -369,7 +377,7 @@ export LUA_PATH="${rockstree}/5.1/share/lua/5.1/?.lua;${rockstree}/5.1/share/lua
 export LUA_CPATH="${rockstree}/5.1/lib/lua/5.1/?.so"
 EOF
 
-  cat > "${cosy}" <<EOF
+  cat > "${cli}" <<EOF
 #! /bin/sh
 
 ${paths}
@@ -377,7 +385,17 @@ export COSY_PREFIX="${prefix}"
 
 ${rockstree}/5.1/bin/luajit ${rockstree}/5.1/share/lua/5.1/cosy/cli/runner.lua "\$@"
 EOF
-  chmod a+x "${cosy}"
+  chmod a+x "${cli}"
+
+  cat > "${server}" <<EOF
+#! /bin/sh
+
+${paths}
+export COSY_PREFIX="${prefix}"
+
+${rockstree}/5.1/bin/luajit ${rockstree}/5.1/share/lua/5.1/cosy/server/cli.lua "\$@"
+EOF
+  chmod a+x "${server}"
 
   if [ ! -z "${sourcepath+x}" ]; then
     cat > "${check}" <<EOF
@@ -456,12 +474,12 @@ function error ()
   fi
   exit 1
 }
-trap error ERR
 
 mkdir -p "${prefix}"
 mkdir -p "${prefix}/bin"
 cd "${tempwd}"
 stop_server
+trap error ERR
 install_dependencies
 install_luajit
 install_openresty
@@ -472,9 +490,9 @@ install_configuration
 cd "${currentwd}"
 
 echo "You can now try the following commands:"
-echo "- ${prefix}/bin/cosy server:start [--clean] [--force]"
+echo "- ${prefix}/bin/cosy-server start [--clean] [--force]"
 echo "- ${prefix}/bin/cosy"
-echo "- ${prefix}/bin/cosy server:stop"
+echo "- ${prefix}/bin/cosy-server stop  [--force]"
 if [ ! -z "${sourcepath+x}" ]; then
   echo "This development environment also provides two commands:"
   echo "- ${prefix}/bin/cosy-check    : to run checks, tests and coverage"

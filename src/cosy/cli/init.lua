@@ -15,12 +15,13 @@ Configuration.load {
 
 local i18n   = I18n.load {
   "cosy.cli",
-  "cosy.commands",
   "cosy.daemon",
 }
 i18n._locale = Configuration.cli.locale
 
-local Cli = {}
+local Cli = {
+  color = true,
+}
 
 -----------------------------
 --  While not found Cli tries to determine what server it will connect to
@@ -75,7 +76,7 @@ function Cli.configure (arguments)
 end
 
 function Cli.start ()
-  Cli.configure ( _G.arg)
+  Cli.configure (_G.arg)
   local daemondata = File.decode (Configuration.daemon.data)
 
   if not Cli.color then
@@ -120,7 +121,7 @@ function Cli.start ()
     end
   end
 
-  local Commands = require "cosy.commands"
+  local Commands = require "cosy.cli.commands"
   local commands = Commands.new (ws)
   local command  = commands [Cli.arguments [1] or false]
 

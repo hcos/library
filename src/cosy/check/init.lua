@@ -1,22 +1,24 @@
 require "cosy.loader.busted"
-local Lfs      = require "lfs"
-local Lustache = require "lustache"
-local Colors   = require 'ansicolors'
-local Reporter = require "luacov.reporter"
-local Cli      = require "cliargs"
+local Lfs       = require "lfs"
+local Lustache  = require "lustache"
+local Colors    = require 'ansicolors'
+local Reporter  = require "luacov.reporter"
+local Arguments = require "argparse"
 
-Cli:set_name "check"
-Cli:add_option (
-  "--test-format=FORMAT",
-  "format for the test results (supported by busted)",
-  "TAP"
-)
-local arguments = Cli:parse (arg)
-if not arguments then
-  os.exit (1)
-end
+local prefix = os.getenv "COSY_PREFIX"
+local name   = prefix .. "/bin/cosy-check"
+name         = name:gsub (os.getenv "HOME", "~")
 
-local prefix    = os.getenv "COSY_PREFIX"
+local parser = Arguments () {
+  name        = name,
+  description = "Perform various checks on the cosy sources",
+}
+parser:option "--test-format" {
+  description = "format for the test results (supported by busted)",
+  default     = "TAP",
+}
+
+local arguments = parser:parse ()
 
 local string_mt = getmetatable ""
 
@@ -46,7 +48,8 @@ local status = true
 
 do
   status = os.execute ([[
-    cd {{{path}}}/.. && {{{luacheck}}} --std max --std +busted cosy/*/*.lua
+    cd {{{path}}}/..
+    {{{luacheck}}} --std max --std +busted cosy/*/*.lua
   ]] % {
     luacheck = prefix .. "/local/cosy/5.1/bin/luacheck",
     path     = main,
@@ -59,12 +62,14 @@ end
 do
   Lfs.mkdir "test"
   local test_id = 1
-
   for module in Lfs.dir (main) do
     local path = main .. "/" .. module
     if  module ~= "." and module ~= ".."
     and Lfs.attributes (path, "mode") == "directory" then
       if Lfs.attributes (path .. "/test.lua", "mode") == "file" then
+        print ("Testing {{{module}}} module:" % {
+          module = module,
+        })
         status = os.execute ([[{{{lua}}} {{{path}}}/test.lua --verbose]] % {
           lua  = prefix .. "/local/cosy/5.1/bin/luajit",
           path = path,
@@ -79,13 +84,14 @@ do
           ]] % {
             lua      = "lua" .. version,
             path     = path:gsub ("5%.1", version),
-            format   = arguments ["test-format"],
+            format   = arguments.test_format,
             output   = "test/" .. tostring (test_id),
             luapath  = package.path :gsub ("5%.1", version),
             luacpath = package.cpath:gsub ("5%.1", version),
           }) and status
           test_id = test_id + 1
         end
+        print ()
       end
     end
   end
@@ -280,8 +286,7 @@ do
         -- the three modules below define translations for the user only,
         -- so we do not want to take them into account.
         if  module_name ~= "cosy.methods"
-        and module_name ~= "cosy.parameters"
-        and module_name ~= "cosy.commands" then
+        and module_name ~= "cosy.parameters" then
           modules [#modules+1] = Colors ("%{blue}" .. module_name .. "%{reset}")
         end
       end
@@ -315,7 +320,7 @@ print ()
 do
   -- We know that we are in developper mode. Thus, there is a link to the user
   -- sources of cosy library.
-  if os.execute "command -v shellcheck" then
+  if os.execute "command -v shellcheck > /dev/null 2>&1" then
     local script = [[
 #! /bin/bash
 

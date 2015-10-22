@@ -3,6 +3,7 @@ require "cosy.loader.server"
 local Configuration = require "cosy.configuration"
 local Digest        = require "cosy.digest"
 local I18n          = require "cosy.i18n"
+local File          = require "cosy.file"
 local Logger        = require "cosy.logger"
 local Methods       = require "cosy.methods"
 local Nginx         = require "cosy.nginx"
@@ -36,7 +37,7 @@ local function deproxify (t)
   end
 end
 
-function Server.call_method (method, parameters, try_only)
+local function call_method (method, parameters, try_only)
   for _ = 1, Configuration.redis.retry or 1 do
     local store = Store.new ()
     local view  = Store.toview (store)
@@ -73,7 +74,7 @@ function Server.call_method (method, parameters, try_only)
   }
 end
 
-function Server.call_parameters (method, parameters)
+local function call_parameters (method, parameters)
   parameters.__DESCRIBE = true
   local _, result = pcall (method, parameters)
   return result
@@ -163,9 +164,9 @@ function Server.start ()
                 })
               end
               if parameters_only then
-                result      = Server.call_parameters (method, parameters)
+                result      = call_parameters (method, parameters)
               else
-                result, err = Server.call_method (method, parameters, try_only)
+                result, err = call_method (method, parameters, try_only)
               end
               if type (result) == "function" then
                 send (i18n {
@@ -197,17 +198,20 @@ function Server.start ()
                   end
                 until subresult == nil or suberr
               elseif result then
-                return send (i18n {
+                send (i18n {
                   identifier = identifier,
                   success    = true,
                   response   = result,
                 })
               else
-                return send (i18n {
+                send (i18n {
                   identifier = identifier,
                   success    = false,
                   error      = err,
                 })
+              end
+              if request.operation == "server:stop" and result then
+                Server.stop ()
               end
             end)
           end
@@ -234,29 +238,19 @@ function Server.start ()
     Store.commit (store)
   end)
 
-  do
-    Nginx.start ()
-  end
-
-  do
-    local datafile = Configuration.server.data
-    local file     = io.open (datafile, "w")
-    file:write (Value.expression {
-      token     = Configuration.server.token,
-      interface = Configuration.server.interface,
-      port      = Configuration.server.port,
-    })
-    file:close ()
-    os.execute ([[ chmod 0600 {{{file}}} ]] % { file = datafile })
-  end
+  Nginx.start ()
 
   do
     Ffi.cdef [[ unsigned int getpid (); ]]
-    local pidfile = Configuration.server.pid
-    local file    = io.open (pidfile, "w")
-    file:write (Ffi.C.getpid ())
-    file:close ()
-    os.execute ([[ chmod 0600 {{{file}}} ]] % { file = pidfile })
+    File.encode (Configuration.server.data, {
+      token     = Configuration.server.token,
+      interface = Configuration.server.interface,
+      port      = Configuration.server.port,
+      pid       = Ffi.C.getpid (),
+    })
+    os.execute ([[ chmod 0600 {{{file}}} ]] % {
+      file = Configuration.server.data,
+    })
   end
 
   Scheduler.loop ()
@@ -264,17 +258,8 @@ end
 
 function Server.stop ()
   os.remove (Configuration.server.data)
-  Scheduler.addthread (function ()
-    Scheduler.sleep (1)
-    Nginx.stop ()
-    os.execute ([[
-      rm -rf {{{pid}}} {{{data}}}
-    ]] % {
-      pid  = Configuration.server.pid,
-      data = Configuration.server.data,
-    })
-    os.exit (0)
-  end)
+  Nginx.stop ()
+  os.exit (0)
 end
 
 return Server
