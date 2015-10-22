@@ -94,10 +94,10 @@ fi
 # Stop existing server:
 function stop_server ()
 {
-  if [ -e "${cli}" ]; then
+  if [ -e "${server}" ]; then
     echo "Stopping running server."
     {
-      ${server} --force stop
+      ${server} stop --force
       ${cli} daemon:stop --force
     } >> "${log}" 2>&1
   fi
