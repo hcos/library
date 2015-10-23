@@ -98,6 +98,7 @@ dependencies="\
   lua_cliargs \
   lua-cjson \
   lua-ev \
+  lua-resty-http \
   luacrypto \
   luafilesystem \
   lualogging \
