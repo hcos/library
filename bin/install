@@ -406,7 +406,9 @@ EOF
 
 ${paths}
 export COSY_PREFIX="${prefix}"
-rm -rf ${prefix}/bin/cosy* ${prefix}/bin/resty \
+${prefix}/bin/cosy-server stop --force
+rm -rf ${prefix}/bin/cosy* \
+       ${prefix}/bin/resty \
        ${prefix}/etc/cosy* \
        ${prefix}/lualib \
        ${prefix}/nginx \
