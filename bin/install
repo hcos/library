@@ -336,17 +336,18 @@ function install_cosyverif ()
   do
     echo "Installing rocks for lua-${version}."
     if [ -d "${rockstree}/${version}/share/lua/${version}" ]; then
-      # Install luasec before everything to allow the use of HTTPS in luarocks:
-      "${rockstree}/${version}/bin/luarocks" install "luasec" \
-        >> "${log}" 2>&1
       # Remove symlink to cosy to avoid modification of ${sourcepath} files by luarocks.
       rm -rf "${rockstree}/${version}/share/lua/${version}/redis"*
       rm -rf "${rockstree}/${version}/share/lua/${version}/websocket"*
       rm -rf "${rockstree}/${version}/share/lua/${version}/cosy"*
-      for dependency in ${dependencies}; do
-        "${rockstree}/${version}/bin/luarocks" install "${dependency}" \
-          >> "${log}" 2>&1
-      done
+      # Install luasec before everything to allow the use of HTTPS in luarocks:
+      for dependency in luasec ${dependencies}; do
+        if "${rockstree}/${version}/bin/luarocks" list --porcelain | grep "${dependency}"; then
+          echo -n
+        else
+          "${rockstree}/${version}/bin/luarocks" install "${dependency}"
+        fi
+      done >> "${log}" 2>&1
       # Create symlinks in rockstree:
       rm -rf "${rockstree}/${version}/share/lua/${version}/redis"*
       ln -s  "${rockstree}/git/redis-lua/src/redis.lua" \
@@ -361,11 +362,13 @@ function install_cosyverif ()
     fi
     if [ ! -z "${sourcepath+x}" ]; then
       echo "Installing development tools for lua-${version}."
-      {
-        "${rockstree}/${version}/bin/luarocks" install luacheck
-        "${rockstree}/${version}/bin/luarocks" install luacov
-        "${rockstree}/${version}/bin/luarocks" install busted
-      } >> "${log}" 2>&1
+      for module in luacheck luacov busted; do
+        if "${rockstree}/${version}/bin/luarocks" list --porcelain | grep "${module}"; then
+          echo -n
+        else
+          "${rockstree}/${version}/bin/luarocks" install "${module}"
+        fi
+      done >> "${log}" 2>&1
     fi
   done
 }
