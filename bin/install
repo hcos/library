@@ -74,6 +74,7 @@ nc='\033[0m'
 versions="5.2"
 cli=${prefix}/bin/cosy
 server=${prefix}/bin/cosy-server
+uninstall=${prefix}/bin/cosy-uninstall
 check=${prefix}/bin/cosy-check
 rockspec=${prefix}/bin/cosy-rockspec
 rockstree=${prefix}/local/cosy
@@ -335,17 +336,18 @@ function install_cosyverif ()
   do
     echo "Installing rocks for lua-${version}."
     if [ -d "${rockstree}/${version}/share/lua/${version}" ]; then
-      # Install luasec before everything to allow the use of HTTPS in luarocks:
-      "${rockstree}/${version}/bin/luarocks" install "luasec" \
-        >> "${log}" 2>&1
       # Remove symlink to cosy to avoid modification of ${sourcepath} files by luarocks.
       rm -rf "${rockstree}/${version}/share/lua/${version}/redis"*
       rm -rf "${rockstree}/${version}/share/lua/${version}/websocket"*
       rm -rf "${rockstree}/${version}/share/lua/${version}/cosy"*
-      for dependency in ${dependencies}; do
-        "${rockstree}/${version}/bin/luarocks" install "${dependency}" \
-          >> "${log}" 2>&1
-      done
+      # Install luasec before everything to allow the use of HTTPS in luarocks:
+      for dependency in luasec ${dependencies}; do
+        if "${rockstree}/${version}/bin/luarocks" list --porcelain | grep "${dependency}"; then
+          echo -n
+        else
+          "${rockstree}/${version}/bin/luarocks" install "${dependency}"
+        fi
+      done >> "${log}" 2>&1
       # Create symlinks in rockstree:
       rm -rf "${rockstree}/${version}/share/lua/${version}/redis"*
       ln -s  "${rockstree}/git/redis-lua/src/redis.lua" \
@@ -360,11 +362,13 @@ function install_cosyverif ()
     fi
     if [ ! -z "${sourcepath+x}" ]; then
       echo "Installing development tools for lua-${version}."
-      {
-        "${rockstree}/${version}/bin/luarocks" install luacheck
-        "${rockstree}/${version}/bin/luarocks" install luacov
-        "${rockstree}/${version}/bin/luarocks" install busted
-      } >> "${log}" 2>&1
+      for module in luacheck luacov busted; do
+        if "${rockstree}/${version}/bin/luarocks" list --porcelain | grep "${module}"; then
+          echo -n
+        else
+          "${rockstree}/${version}/bin/luarocks" install "${module}"
+        fi
+      done >> "${log}" 2>&1
     fi
   done
 }
@@ -396,6 +400,24 @@ export COSY_PREFIX="${prefix}"
 ${rockstree}/5.1/bin/luajit ${rockstree}/5.1/share/lua/5.1/cosy/server/cli.lua "\$@"
 EOF
   chmod a+x "${server}"
+
+  cat > "${uninstall}" <<EOF
+#! /bin/bash
+
+${paths}
+export COSY_PREFIX="${prefix}"
+${prefix}/bin/cosy-server stop --force
+rm -rf ${prefix}/bin/cosy* \
+       ${prefix}/bin/resty \
+       ${prefix}/etc/cosy* \
+       ${prefix}/lualib \
+       ${prefix}/nginx \
+       ${prefix}/local/cosy
+find ${prefix} -maxdepth 1 -empty -exec rm -rf {} \;
+find ${prefix} -maxdepth 0 -empty -exec rm -rf {} \;
+echo -e "Cosy has been ${green}successfully uninstalled${nc}."
+EOF
+  chmod a+x "${uninstall}"
 
   if [ ! -z "${sourcepath+x}" ]; then
     cat > "${check}" <<EOF
@@ -493,6 +515,7 @@ echo "You can now try the following commands:"
 echo "- ${prefix}/bin/cosy-server start [--clean] [--force]"
 echo "- ${prefix}/bin/cosy"
 echo "- ${prefix}/bin/cosy-server stop  [--force]"
+echo "- ${prefix}/bin/cosy-uninstall"
 if [ ! -z "${sourcepath+x}" ]; then
   echo "This development environment also provides two commands:"
   echo "- ${prefix}/bin/cosy-check    : to run checks, tests and coverage"
