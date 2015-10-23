@@ -136,7 +136,6 @@ function Cli.start (cli)
 
   local i18n = I18n.load {
     "cosy.cli",
-    "cosy.commands",
     "cosy.daemon",
   }
   i18n._locale = Configuration.cli.locale
