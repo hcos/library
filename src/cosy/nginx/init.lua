@@ -18,7 +18,7 @@ local Nginx = {}
 
 local configuration_template = [[
 error_log   error.log;
-pid         {{{pidfile}}};
+pid         {{{pid}}};
 
 worker_processes 1;
 events {
@@ -102,6 +102,43 @@ http {
       try_files     $target =404;
     }
 
+    location /luaset {
+      default_type  application/json;
+      access_by_lua '
+        ngx.req.read_body ()
+        local body    = ngx.req.get_body_data ()
+        local json    = require "cjson"
+        local http    = require "resty.http"
+        local data    = json.decode (body)
+        local result  = {}
+        for k, t in pairs (data) do
+          local hc  = http:new ()
+          local url = "http://127.0.0.1:8080/lua/" .. k
+          local res, err = hc:request_uri (url, {
+            method = "GET",
+            headers = {
+              ["If-None-Match"] = type (t) == "table" and t.etag,
+            },
+          })
+          if not res then
+            ngx.log (ngx.ERR, "failed to request: " .. err)
+            return
+          end
+          if res.status == 200 then
+            result [k] = {
+              lua  = res.body,
+              etag = res.headers.etag:match [=[^"([^"]+)"$]=],
+            }
+          elseif res.status == 304 then
+            result [k] = {}
+          elseif res.status == 404 then
+            result [k] = nil
+          end
+        end
+        ngx.say (json.encode (result))
+      ';
+    }
+
     location /ws {
       proxy_pass          http://{{{wshost}}}:{{{wsport}}};
       proxy_http_version  1.1;
@@ -132,15 +169,26 @@ http {
 }
 ]]
 
+-- local function sethostname ()
+--   local handle = io.popen "hostnamectl"
+--   local result = handle:read "*all"
+--   handle:close()
+--   local results = {}
+--   for key, value in result:gmatch "%s*([^:]+):%s*(%S+)%s*[\r\n]+" do
+--     results [key] = value
+--   end
+--   Default.http.hostname = results ["Static hostname"]
+--   Logger.info {
+--     _        = i18n ["nginx:hostname"],
+--     hostname = Configuration.http.hostname,
+--   }
+-- end
+
 local function sethostname ()
-  local handle = io.popen "hostnamectl"
+  local handle = io.popen "hostname"
   local result = handle:read "*all"
   handle:close()
-  local results = {}
-  for key, value in result:gmatch "%s*([^:]+):%s*(%S+)%s*[\r\n]+" do
-    results [key] = value
-  end
-  Default.http.hostname = results ["Static hostname"]
+  Default.http.hostname = result
   Logger.info {
     _        = i18n ["nginx:hostname"],
     hostname = Configuration.http.hostname,
@@ -167,17 +215,15 @@ function Nginx.configure ()
     resolver = table.concat (result, " ")
   end
   os.execute ([[
-    if [ ! -d {{{directory}}} ]
-    then
+    if [ ! -d {{{directory}}} ]; then
       mkdir {{{directory}}}
     fi
-    if [ ! -d {{{uploads}}} ]
-    then
+    if [ ! -d {{{uploads}}} ]; then
       mkdir {{{uploads}}}
     fi
   ]] % {
     directory = Configuration.http.directory,
-    uploads   = Configuration.http.uploads  ,
+    uploads   = Configuration.http.uploads,
   })
   local locations = {}
   for url, remote in pairs (Configuration.dependencies) do
@@ -201,17 +247,17 @@ function Nginx.configure ()
     sethostname ()
   end
   local configuration = configuration_template % {
-    host           = Configuration.http.interface  ,
-    port           = Configuration.http.port       ,
-    www            = Configuration.http.www        ,
-    uploads        = Configuration.http.uploads    ,
-    pidfile        = Configuration.http.pid        ,
-    name           = Configuration.http.hostname   ,
+    host           = Configuration.http.interface,
+    port           = Configuration.http.port,
+    www            = Configuration.http.www,
+    uploads        = Configuration.http.uploads,
+    pid            = Configuration.http.pid,
+    name           = Configuration.http.hostname,
     wshost         = Configuration.server.interface,
-    wsport         = Configuration.server.port     ,
-    redis_host     = Configuration.redis.interface ,
-    redis_port     = Configuration.redis.port      ,
-    redis_database = Configuration.redis.database  ,
+    wsport         = Configuration.server.port,
+    redis_host     = Configuration.redis.interface,
+    redis_port     = Configuration.redis.port,
+    redis_database = Configuration.redis.database,
     path           = package.path,
     cpath          = package.cpath,
     redirects      = table.concat (locations, "\n"),
@@ -227,23 +273,19 @@ function Nginx.start ()
   os.execute ([[
     {{{nginx}}} -p {{{directory}}} -c {{{configuration}}} 2>> {{{error}}}
   ]] % {
-    nginx         = Configuration.http.nginx        ,
-    directory     = Configuration.http.directory    ,
+    nginx         = Configuration.http.nginx,
+    directory     = Configuration.http.directory,
     configuration = Configuration.http.configuration,
-    error         = Configuration.http.error        ,
+    error         = Configuration.http.error,
   })
   Nginx.stopped = false
 end
 
 function Nginx.stop ()
   os.execute ([[
-    [ -f {{{pidfile}}} ] && {
-      kill -QUIT $(cat {{{pidfile}}})
+    [ -f {{{pid}}} ] && {
+      kill -QUIT $(cat {{{pid}}})
     }
-  ]] % {
-    pidfile = Configuration.http.pid,
-  })
-  os.execute ([[
     rm -rf {{{directory}}} {{{pid}}} {{{error}}} {{{configuration}}}
   ]] % {
     pid           = Configuration.http.pid,
@@ -276,7 +318,6 @@ Scheduler.addthread (function ()
     for entry in Lfs.dir (Configuration.http.uploads) do
       if entry ~= "." and entry ~= ".." then
         local filename     = Configuration.http.uploads .. "/" .. entry
-        print (entry, filename)
         local modification = Lfs.attributes (filename, "modification")
         if os.difftime (os.time (), modification) > 2 * Configuration.upload.timeout then
           os.remove (filename)

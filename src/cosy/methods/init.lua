@@ -72,8 +72,7 @@ function Methods.server.stop (request, store)
       administration = Parameters.token.administration,
     },
   })
-  local Server = require "cosy.server"
-  return Server.stop ()
+  return true
 end
 
 function Methods.server.information (request, store)

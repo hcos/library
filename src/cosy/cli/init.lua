@@ -42,7 +42,9 @@ end
 init()
 
 
-local Cli = {}
+local Cli = {
+  color = true,
+}
 
 Cli.__index = Cli
 
@@ -168,7 +170,7 @@ function Cli.start (cli)
     end
   end
 
-  local Commands = require "cosy.commands"
+  local Commands = require "cosy.cli.commands"
   local commands = Commands.new (ws)
   local command  = commands [cli.arguments [1] or false]
 

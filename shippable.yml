@@ -2,8 +2,6 @@ language: php
 php:
   - 5.3
 
-cache: true
-
 services:
  - redis
 
