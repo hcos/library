@@ -1,13 +1,15 @@
-                      require "cosy.loader.server"
-local Configuration = require "cosy.configuration"
-local I18n          = require "cosy.i18n"
-local Library       = require "cosy.library"
-local Logger        = require "cosy.logger"
-local Value         = require "cosy.value"
-local Scheduler     = require "cosy.scheduler"
-local App           = require "cosy.configuration.layers".app
-local Ffi           = require "ffi"
-local Websocket     = require "websocket"
+local loader        = require "cosy.loader.lua" {
+  logto = os.getenv "HOME" .. "/.cosy/daemon.log",
+}
+local Configuration = loader.load "cosy.configuration"
+local I18n          = loader.load "cosy.i18n"
+local Library       = loader.load "cosy.library"
+local Logger        = loader.load "cosy.logger"
+local Value         = loader.load "cosy.value"
+local Scheduler     = loader.load "cosy.scheduler"
+local App           = loader.load "cosy.configuration.layers".app
+local Ffi           = loader.require "ffi"
+local Websocket     = loader.require "websocket"
 
 Configuration.load {
   "cosy.daemon",

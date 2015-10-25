@@ -1,21 +1,22 @@
-require "cosy.loader.server"
-
-local Configuration = require "cosy.configuration"
-local Digest        = require "cosy.digest"
-local I18n          = require "cosy.i18n"
-local File          = require "cosy.file"
-local Logger        = require "cosy.logger"
-local Methods       = require "cosy.methods"
-local Nginx         = require "cosy.nginx"
-local Random        = require "cosy.random"
-local Scheduler     = require "cosy.scheduler"
-local Store         = require "cosy.store"
-local Token         = require "cosy.token"
-local Value         = require "cosy.value"
-local App           = require "cosy.configuration.layers".app
-local Layer         = require "layeredata"
-local Websocket     = require "websocket"
-local Ffi           = require "ffi"
+local loader        = require "cosy.loader.server" {
+  logto = _G.logfile,
+}
+local Configuration = loader.load "cosy.configuration"
+local Digest        = loader.load "cosy.digest"
+local I18n          = loader.load "cosy.i18n"
+local File          = loader.load "cosy.file"
+local Logger        = loader.load "cosy.logger"
+local Methods       = loader.load "cosy.methods"
+local Nginx         = loader.load "cosy.nginx"
+local Random        = loader.load "cosy.random"
+local Scheduler     = loader.load "cosy.scheduler"
+local Store         = loader.load "cosy.store"
+local Token         = loader.load "cosy.token"
+local Value         = loader.load "cosy.value"
+local App           = loader.load "cosy.configuration.layers".app
+local Layer         = loader.require "layeredata"
+local Websocket     = loader.require "websocket"
+local Ffi           = loader.require "ffi"
 
 Configuration.load "cosy.server"
 

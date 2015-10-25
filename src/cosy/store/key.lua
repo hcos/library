@@ -1,14 +1,18 @@
-local Mime = require "mime"
+return function (loader)
 
-local Key = {}
+  local Mime = loader.require "mime"
 
--- See RFC 4648
-function Key.encode (s)
-  return select (1, Mime.b64 (s):gsub ("+", "-"):gsub ("/", "_"))
+  local Key = {}
+
+  -- See RFC 4648
+  function Key.encode (s)
+    return select (1, Mime.b64 (s):gsub ("+", "-"):gsub ("/", "_"))
+  end
+
+  function Key.decode (s)
+    return select (1, Mime.unb64 (s:gsub ("-", "+"):gsub ("_", "/")))
+  end
+
+  return Key
+
 end
-
-function Key.decode (s)
-  return select (1, Mime.unb64 (s:gsub ("-", "+"):gsub ("_", "/")))
-end
-
-return Key

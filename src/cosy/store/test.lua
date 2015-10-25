@@ -1,9 +1,11 @@
 -- These lines are required to correctly run tests:
-require "cosy.loader.busted"
 require "busted.runner" ()
+local loader = require "cosy.loader.lua" {
+  logto = false,
+}
 
-local Scheduler = require "cosy.scheduler"
-local Store     = require "cosy.store"
+local Scheduler = loader.load "cosy.scheduler"
+local Store     = loader.load "cosy.store"
 
 describe ("cosy.store", function ()
 

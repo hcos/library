@@ -1,34 +1,38 @@
-local Serpent = require "serpent"
+return function (loader)
 
-local Value   = {}
+  local Serpent = loader.require "serpent"
 
-function Value.encode (t, options)
-  return Serpent.dump (t, options or {
-    sortkeys = false,
-    compact  = true,
-    fatal    = true,
-    comment  = false,
-  })
-end
+  local Value   = {}
 
-function Value.expression (t, options)
-  return Serpent.line (t, options or {
-    sortkeys = true,
-    compact  = true,
-    fatal    = true,
-    comment  = false,
-    nocode   = true,
-  })
-end
-
-function Value.decode (s)
-  local ok, result = Serpent.load (s, {
-    safe = false,
-  })
-  if not ok then
-    error (result)
+  function Value.encode (t, options)
+    return Serpent.dump (t, options or {
+      sortkeys = false,
+      compact  = true,
+      fatal    = true,
+      comment  = false,
+    })
   end
-  return result
-end
 
-return Value
+  function Value.expression (t, options)
+    return Serpent.line (t, options or {
+      sortkeys = true,
+      compact  = true,
+      fatal    = true,
+      comment  = false,
+      nocode   = true,
+    })
+  end
+
+  function Value.decode (s)
+    local ok, result = Serpent.load (s, {
+      safe = false,
+    })
+    if not ok then
+      error (result)
+    end
+    return result
+  end
+
+  return Value
+
+end

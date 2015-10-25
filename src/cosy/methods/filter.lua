@@ -1,13 +1,12 @@
 #! /usr/bin/env luajit
 
-require "cosy.loader.server"
-
-local Configuration = require "cosy.configuration"
-local Parameters    = require "cosy.parameters"
-local Scheduler     = require "cosy.scheduler"
-local Store         = require "cosy.store"
-local Value         = require "cosy.value"
-local Websocket     = require "websocket"
+local loader        = require "cosy.loader.lua" {}
+local Configuration = loader.load "cosy.configuration"
+local Parameters    = loader.load "cosy.parameters"
+local Scheduler     = loader.load "cosy.scheduler"
+local Store         = loader.load "cosy.store"
+local Value         = loader.load "cosy.value"
+local Websocket     = loader.require "websocket"
 
 Configuration.load {
   "cosy.parameters",

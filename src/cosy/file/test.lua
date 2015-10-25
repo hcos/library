@@ -1,8 +1,9 @@
 -- These lines are required to correctly run tests:
-require "cosy.loader.busted"
 require "busted.runner" ()
-
-local File = require "cosy.file"
+local loader = require "cosy.loader.lua" {
+  logto = false,
+}
+local File   = loader.load "cosy.file"
 
 describe ("Module cosy.file", function ()
 

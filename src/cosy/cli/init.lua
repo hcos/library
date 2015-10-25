@@ -1,9 +1,3 @@
-local loaded_modules = {}
-for k in pairs (package.loaded) do
-  loaded_modules [k] = true
-end
-
-
 local Cli = {
   color = true,
 }
@@ -24,9 +18,9 @@ end
 function Cli.configure (cli, arguments)
   assert (getmetatable (cli) == Cli)
 
-  local Lfs           = require "lfs"  -- C module : won't be reloaded from server
-  local Json          = require "cjson"  -- lua tables are transcoded into json for server  (pkg comes with lua socket)
-  local  Ltn12         = require "ltn12"  -- to store the content of the requests ( pkgcomes with lua socket)
+  local Lfs   = require "lfs"  -- C module : won't be reloaded from server
+  local Json  = require "cjson"  -- lua tables are transcoded into json for server  (pkg comes with lua socket)
+  local Ltn12 = require "ltn12"  -- to store the content of the requests ( pkgcomes with lua socket)
 
   -- parse  the cmd line arguments to fetch server and/or color options
   local key = "server"
@@ -75,8 +69,6 @@ function Cli.configure (cli, arguments)
     end
   end -- save server name for next cli launch
 
-
-
 -- hot_swap_http  (  storage_dir , cache)
   local Mime =  require "mime"
 
@@ -102,17 +94,19 @@ function Cli.configure (cli, arguments)
       }
     end,
     decode = function (t)
-      return Json.decode (t.body)
+      if t.code == 200 then
+        return Json.decode (t.body)
+      end
     end,
   }
 
 -- In order to download lua modules (required by the client) from the server
 -- we replace the Lua require function
 --      by the hotswap.require which will also save lua packages into "server_dir"
-  _G.require = hotswap.require  --
-  local Loader = require "cosy.loader.cli"  -- "cosy.loader.cli" is downloaded from server
-  Loader.hotswap = hotswap  -- just set the variable (useless ?)
-
+  cli.loader = hotswap.require "cosy.loader.lua" {
+    hotswap = hotswap,
+    logto   = os.getenv "HOME" .. "/.cosy/client.log",
+  }
  -- no module to download
  end
 
@@ -121,13 +115,14 @@ function Cli.start (cli)
   assert (getmetatable (cli) == Cli)
 
   cli:configure (_G.arg)
+  local loader = cli.loader
 
-  local Configuration = require "cosy.configuration"
-  local File          = require "cosy.file"
-  local I18n          = require "cosy.i18n"
-  local Cliargs       = require "cliargs"
-  local Colors        = require "ansicolors"
-  local Websocket     = require "websocket"
+  local Configuration = loader.load "cosy.configuration"
+  local File          = loader.load "cosy.file"
+  local I18n          = loader.load "cosy.i18n"
+  local Cliargs       = loader.require "cliargs"
+  local Colors        = loader.require "ansicolors"
+  local Websocket     = loader.require "websocket"
 
   Configuration.load {
     "cosy.cli",
@@ -186,7 +181,7 @@ function Cli.start (cli)
     end
   end
 
-  local Commands = require "cosy.cli.commands"
+  local Commands = loader.load "cosy.cli.commands"
   local commands = Commands.new (ws)
   local command  = commands [cli.arguments [1] or false]
 

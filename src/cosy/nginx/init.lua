@@ -1,22 +1,23 @@
-local Loader        = require "cosy.loader"
-local Configuration = require "cosy.configuration"
-local Default       = require "cosy.configuration.layers".default
-local I18n          = require "cosy.i18n"
-local Logger        = require "cosy.logger"
-local Scheduler     = require "cosy.scheduler"
-local Lfs           = require "lfs"
+return function (loader)
 
-Configuration.load {
-  "cosy.nginx",
-  "cosy.redis",
-}
+  local Configuration = loader.load "cosy.configuration"
+  local Default       = loader.load "cosy.configuration.layers".default
+  local I18n          = loader.load "cosy.i18n"
+  local Logger        = loader.load "cosy.logger"
+  local Scheduler     = loader.load "cosy.scheduler"
+  local Lfs           = loader.require "lfs"
 
-local i18n   = I18n.load "cosy.nginx"
-i18n._locale = Configuration.locale
+  Configuration.load {
+    "cosy.nginx",
+    "cosy.redis",
+  }
 
-local Nginx = {}
+  local i18n   = I18n.load "cosy.nginx"
+  i18n._locale = Configuration.locale
 
-local configuration_template = [[
+  local Nginx = {}
+
+  local configuration_template = [[
 error_log   error.log;
 pid         {{{pid}}};
 
@@ -169,66 +170,51 @@ http {
 }
 ]]
 
--- local function sethostname ()
---   local handle = io.popen "hostnamectl"
---   local result = handle:read "*all"
---   handle:close()
---   local results = {}
---   for key, value in result:gmatch "%s*([^:]+):%s*(%S+)%s*[\r\n]+" do
---     results [key] = value
---   end
---   Default.http.hostname = results ["Static hostname"]
---   Logger.info {
---     _        = i18n ["nginx:hostname"],
---     hostname = Configuration.http.hostname,
---   }
--- end
-
-local function sethostname ()
-  local handle = io.popen "hostname"
-  local result = handle:read "*all"
-  handle:close()
-  Default.http.hostname = result
-  Logger.info {
-    _        = i18n ["nginx:hostname"],
-    hostname = Configuration.http.hostname,
-  }
-end
-
-function Nginx.configure ()
-  local resolver
-  do
-    local file = io.open "/etc/resolv.conf"
-    if not file then
-      Logger.error {
-        _ = i18n ["nginx:no-resolver"],
-      }
-    end
-    local result = {}
-    for line in file:lines () do
-      local address = line:match "nameserver%s+(%S+)"
-      if address then
-        result [#result+1] = address
-      end
-    end
-    file:close ()
-    resolver = table.concat (result, " ")
+  local function sethostname ()
+    local handle = io.popen "hostname"
+    local result = handle:read "*all"
+    handle:close()
+    Default.http.hostname = result
+    Logger.info {
+      _        = i18n ["nginx:hostname"],
+      hostname = Configuration.http.hostname,
+    }
   end
-  os.execute ([[
-    if [ ! -d {{{directory}}} ]; then
-      mkdir {{{directory}}}
-    fi
-    if [ ! -d {{{uploads}}} ]; then
-      mkdir {{{uploads}}}
-    fi
-  ]] % {
-    directory = Configuration.http.directory,
-    uploads   = Configuration.http.uploads,
-  })
-  local locations = {}
-  for url, remote in pairs (Configuration.dependencies) do
-    if type (remote) == "string" and remote:match "^http" then
-      locations [#locations+1] = [==[
+
+  function Nginx.configure ()
+    local resolver
+    do
+      local file = io.open "/etc/resolv.conf"
+      if not file then
+        Logger.error {
+          _ = i18n ["nginx:no-resolver"],
+        }
+      end
+      local result = {}
+      for line in file:lines () do
+        local address = line:match "nameserver%s+(%S+)"
+        if address then
+          result [#result+1] = address
+        end
+      end
+      file:close ()
+      resolver = table.concat (result, " ")
+    end
+    os.execute ([[
+if [ ! -d {{{directory}}} ]; then
+  mkdir {{{directory}}}
+fi
+if [ ! -d {{{uploads}}} ]; then
+  mkdir {{{uploads}}}
+fi
+    ]] % {
+      directory = Configuration.http.directory,
+      uploads   = Configuration.http.uploads,
+    })
+    local locations = {}
+    for url, remote in pairs (Configuration.dependencies) do
+      if type (remote) == "string" and remote:match "^http" then
+        locations [#locations+1] = [==[
     location {{{url}}} {
       proxy_cache foreign;
       expires     modified  1d;
@@ -236,100 +222,102 @@ function Nginx.configure ()
       set         $target   "{{{remote}}}";
       proxy_pass  $target$is_args$args;
     }
-        ]==] % {
-          url      = url,
-          remote   = remote,
-          resolver = resolver,
-        }
-    end
-  end
-  if not Configuration.http.hostname then
-    sethostname ()
-  end
-  local configuration = configuration_template % {
-    host           = Configuration.http.interface,
-    port           = Configuration.http.port,
-    www            = Configuration.http.www,
-    uploads        = Configuration.http.uploads,
-    pid            = Configuration.http.pid,
-    name           = Configuration.http.hostname,
-    wshost         = Configuration.server.interface,
-    wsport         = Configuration.server.port,
-    redis_host     = Configuration.redis.interface,
-    redis_port     = Configuration.redis.port,
-    redis_database = Configuration.redis.database,
-    path           = package.path,
-    cpath          = package.cpath,
-    redirects      = table.concat (locations, "\n"),
-  }
-  local file = io.open (Configuration.http.configuration, "w")
-  file:write (configuration)
-  file:close ()
-end
-
-function Nginx.start ()
-  Nginx.stop      ()
-  Nginx.configure ()
-  os.execute ([[
-    {{{nginx}}} -p {{{directory}}} -c {{{configuration}}} 2>> {{{error}}}
-  ]] % {
-    nginx         = Configuration.http.nginx,
-    directory     = Configuration.http.directory,
-    configuration = Configuration.http.configuration,
-    error         = Configuration.http.error,
-  })
-  Nginx.stopped = false
-end
-
-function Nginx.stop ()
-  os.execute ([[
-    [ -f {{{pid}}} ] && {
-      kill -QUIT $(cat {{{pid}}})
-    }
-    rm -rf {{{directory}}} {{{pid}}} {{{error}}} {{{configuration}}}
-  ]] % {
-    pid           = Configuration.http.pid,
-    configuration = Configuration.http.configuration,
-    error         = Configuration.http.error,
-    directory     = Configuration.http.directory,
-  })
-  Nginx.directory = nil
-  Nginx.stopped   = true
-end
-
-function Nginx.update ()
-  Nginx.configure ()
-  os.execute ([[
-    [ -f {{{pidfile}}} ] && {
-      kill -HUP $(cat {{{pidfile}}})
-    }
-  ]] % {
-    pidfile = Configuration.http.pid,
-  })
-end
-
-Loader.hotswap.on_change ["cosy:configuration"] = function ()
-  Nginx.update ()
-end
-
-Scheduler.addthread (function ()
-  repeat
-    local count = 0
-    for entry in Lfs.dir (Configuration.http.uploads) do
-      if entry ~= "." and entry ~= ".." then
-        local filename     = Configuration.http.uploads .. "/" .. entry
-        local modification = Lfs.attributes (filename, "modification")
-        if os.difftime (os.time (), modification) > 2 * Configuration.upload.timeout then
-          os.remove (filename)
-        end
-        count = count + 1
-        Scheduler.sleep (Configuration.upload.timeout / count / 2)
+          ]==] % {
+            url      = url,
+            remote   = remote,
+            resolver = resolver,
+          }
       end
     end
-    if count == 0 then
-      Scheduler.sleep (Configuration.upload.timeout)
+    if not Configuration.http.hostname then
+      sethostname ()
     end
-  until Nginx.stopped
-end)
+    local configuration = configuration_template % {
+      host           = Configuration.http.interface,
+      port           = Configuration.http.port,
+      www            = Configuration.http.www,
+      uploads        = Configuration.http.uploads,
+      pid            = Configuration.http.pid,
+      name           = Configuration.http.hostname,
+      wshost         = Configuration.server.interface,
+      wsport         = Configuration.server.port,
+      redis_host     = Configuration.redis.interface,
+      redis_port     = Configuration.redis.port,
+      redis_database = Configuration.redis.database,
+      path           = package.path,
+      cpath          = package.cpath,
+      redirects      = table.concat (locations, "\n"),
+    }
+    local file = io.open (Configuration.http.configuration, "w")
+    file:write (configuration)
+    file:close ()
+  end
 
-return Nginx
+  function Nginx.start ()
+    Nginx.stop      ()
+    Nginx.configure ()
+    os.execute ([[
+      {{{nginx}}} -p {{{directory}}} -c {{{configuration}}} 2>> {{{error}}}
+    ]] % {
+      nginx         = Configuration.http.nginx,
+      directory     = Configuration.http.directory,
+      configuration = Configuration.http.configuration,
+      error         = Configuration.http.error,
+    })
+    Nginx.stopped = false
+  end
+
+  function Nginx.stop ()
+    os.execute ([[
+      [ -f {{{pid}}} ] && {
+        kill -QUIT $(cat {{{pid}}})
+      }
+      rm -rf {{{directory}}} {{{pid}}} {{{error}}} {{{configuration}}}
+    ]] % {
+      pid           = Configuration.http.pid,
+      configuration = Configuration.http.configuration,
+      error         = Configuration.http.error,
+      directory     = Configuration.http.directory,
+    })
+    Nginx.directory = nil
+    Nginx.stopped   = true
+  end
+
+  function Nginx.update ()
+    Nginx.configure ()
+    os.execute ([[
+      [ -f {{{pidfile}}} ] && {
+        kill -HUP $(cat {{{pidfile}}})
+      }
+    ]] % {
+      pidfile = Configuration.http.pid,
+    })
+  end
+
+  loader.hotswap.on_change ["cosy:configuration"] = function ()
+    Nginx.update ()
+  end
+
+  Scheduler.addthread (function ()
+    repeat
+      local count = 0
+      for entry in Lfs.dir (Configuration.http.uploads) do
+        if entry ~= "." and entry ~= ".." then
+          local filename     = Configuration.http.uploads .. "/" .. entry
+          local modification = Lfs.attributes (filename, "modification")
+          if os.difftime (os.time (), modification) > 2 * Configuration.upload.timeout then
+            os.remove (filename)
+          end
+          count = count + 1
+          Scheduler.sleep (Configuration.upload.timeout / count / 2)
+        end
+      end
+      if count == 0 then
+        Scheduler.sleep (Configuration.upload.timeout)
+      end
+    until Nginx.stopped
+  end)
+
+  return Nginx
+
+end

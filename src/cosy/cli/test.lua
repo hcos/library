@@ -1,9 +1,14 @@
 -- These lines are required to correctly run tests:
-require "cosy.loader.busted"
 require "busted.runner" ()
-local File          = require "cosy.file"
-local Cli           = require "cosy.cli"
-local Configuration = require "cosy.configuration"
+local loader = require "cosy.loader.lua" {
+  logto = false,
+}
+local Configuration = loader.load "cosy.configuration"
+local Cli           = loader.require "cosy.cli"
+
+Configuration.load {
+  "cosy.cli",
+}
 
 describe ("Module cosy.cli", function ()
 
@@ -18,57 +23,58 @@ describe ("Module cosy.cli", function ()
 
   describe ("parsing options by method configure", function ()
 
-    for _, key in ipairs {
-      "server",
-      -- "color",
-    } do
+    it ("should set the server if the --server option is set", function ()
+      local cli = Cli.new ()
+      cli:configure {
+        "--server=http://public.cosyverif.org",
+      }
+      assert.are.equal (cli.server, "http://public.cosyverif.org")
+    end)
 
-      it ("should detect the --" .. key, function ()
-        local cli = Cli.new ()
+    it ("should use a default server if the --server option is missing", function ()
+      local cli = Cli.new ()
+      cli:configure {}
+      assert.is.not_nil (cli.server)
+    end)
+
+    it ("should fail if several --server options are set", function ()
+      local cli = Cli.new ()
+      assert.has.errors (function ()
         cli:configure {
-          "--debug=true",
-          "--".. key .. "=any_value",
+          "--server=http://public.cosyverif.org",
+          "--server=http://private.cosyverif.org",
         }
-        assert.are.equal (cli [key], "any_value")
       end)
+    end)
 
-      it ("should detect --" .. key .. " is missing", function ()
-        local cli = Cli.new ()
+    it ("should fail if the --server option is not a HTTP(s) URL", function ()
+      local cli = Cli.new ()
+      assert.has.errors (function ()
         cli:configure {
-          "--debug=true",
-          "-".. key .. "=any_value",
+          "--server=some.server.org",
         }
-        assert.are.equal (cli [key] , "dummy_default")
       end)
-
-      it ("should fail by detecting several --" .. key, function ()
-        local cli = Cli.new ()
-        assert.has.errors (function ()
-          cli:configure {
-            "--debug=true",
-            "--".. key .. "=any_value",
-            "--".. key .. "=any_value",
-          }
-        end)
-      end)
-
-    end
+    end)
 
   end)
 
   describe ("saving options by method configure", function ()
 
     it ("should detect the --server", function ()
-      local cli = Cli.new ()
-      cli:configure {
-        "--debug=true",
-        "--server=server_uri_from_cmd_line",
-      }
-      -- assert server was found and set
-      assert.are.equal (cli.server, "server_uri_from_cmd_line")
-      -- assert config was saved to config file
-      local saved_config = File.decode (Configuration.cli.data)
-      assert.are.equal (saved_config.server, cli.server)
+      do
+        local cli = Cli.new ()
+        cli:configure {
+          "--server=http://my.server.org",
+        }
+        -- assert server was found and set
+        assert.are.equal (cli.server, "http://my.server.org")
+      end
+      do
+        local cli = Cli.new ()
+        cli:configure {}
+        -- assert config was saved to config file
+        assert.are.equal (cli.server, "http://my.server.org")
+      end
     end)
 
   end)

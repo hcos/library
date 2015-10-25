@@ -1,11 +1,12 @@
-require "cosy.loader.server"
-
-local Configuration = require "cosy.configuration"
-local File          = require "cosy.file"
-local I18n          = require "cosy.i18n"
-local Library       = require "cosy.library"
-local Arguments     = require "argparse"
-local Colors        = require "ansicolors"
+local loader        = require "cosy.loader.server" {
+  logto = false,
+}
+local Configuration = loader.load "cosy.configuration"
+local File          = loader.load "cosy.file"
+local I18n          = loader.load "cosy.i18n"
+local Library       = loader.load "cosy.library"
+local Arguments     = loader.require "argparse"
+local Colors        = loader.require "ansicolors"
 
 Configuration.load {
   "cosy.nginx",
@@ -68,7 +69,7 @@ if arguments.start then
 
   if arguments.clean then
     Configuration.load "cosy.redis"
-    local Redis     = require "redis"
+    local Redis     = loader.require "redis"
     local host      = Configuration.redis.interface
     local port      = Configuration.redis.port
     local database  = Configuration.redis.database
