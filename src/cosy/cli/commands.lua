@@ -23,12 +23,6 @@ return function (loader)
   }
   i18n._locale = Configuration.cli.locale
 
-  if not Cli.color then
-    Colors = function (s)
-      return s:gsub ("(%%{(.-)})", "")
-    end
-  end
-
   local function read (filename)
     local file = io.open (filename, "r")
     if not file then
