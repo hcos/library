@@ -6,7 +6,6 @@ return function (loader)
     interface = "127.0.0.1",
     port      = 0, -- random port
     data      = os.getenv "HOME" .. "/.cosy/server.data",
-    log       = os.getenv "HOME" .. "/.cosy/server.log",
     retry     = 5,
     name      = nil,
     locale    = "en",
