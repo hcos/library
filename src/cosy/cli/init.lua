@@ -75,8 +75,8 @@ function Cli.configure (cli, arguments)
 -- hot_swap_http  (  storage_dir , cache)
 
   --  every dowloaded lua package will be saved in ~/.cosy/lua/base64(server_name)
-  local package_dir =  cosy_dir .. "/lua/"
-  local server_dir =  package_dir .. Mime.b64 (cli.server)
+  local package_dir = cosy_dir .. "/lua/"
+  local server_dir  = package_dir .. Mime.b64 (cli.server)
   Lfs.mkdir (package_dir)
   Lfs.mkdir (server_dir)
 
@@ -110,7 +110,6 @@ function Cli.configure (cli, arguments)
  -- no module to download
  end
 
-
 function Cli.start (cli)
   assert (getmetatable (cli) == Cli)
 
@@ -134,8 +133,6 @@ function Cli.start (cli)
     "cosy.daemon",
   }
   i18n._locale = Configuration.cli.locale
-
-
 
   local daemondata = File.decode (Configuration.daemon.data)
 
