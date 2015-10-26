@@ -257,7 +257,7 @@ fi
     Nginx.stop      ()
     Nginx.configure ()
     os.execute ([[
-      {{{nginx}}} -p {{{directory}}} -c {{{configuration}}} 2>> {{{error}}}
+      {{{nginx}}} -p {{{directory}}} -c {{{configuration}}} 2> {{{error}}}
     ]] % {
       nginx         = Configuration.http.nginx,
       directory     = Configuration.http.directory,
