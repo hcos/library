@@ -28,6 +28,7 @@ Daemon.libraries = {}
 
 function Daemon.start ()
   local addserver = Scheduler.addserver
+  Scheduler:make_default ()
   App.daemon = {}
   Scheduler.addserver = function (s, f)
     local ok, port = s:getsockname ()
