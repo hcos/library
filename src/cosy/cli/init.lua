@@ -18,9 +18,12 @@ end
 function Cli.configure (cli, arguments)
   assert (getmetatable (cli) == Cli)
 
-  local Lfs   = require "lfs"  -- C module : won't be reloaded from server
-  local Json  = require "cjson"  -- lua tables are transcoded into json for server  (pkg comes with lua socket)
-  local Ltn12 = require "ltn12"  -- to store the content of the requests ( pkgcomes with lua socket)
+  local _       = require "copas"  ---- WARNING WE CANNOT WAIT TO GET IT FROM THE SERVER
+  local Lfs     = require "lfs"  -- C module : won't be reloaded from server
+  local Json    = require "cjson"  -- lua tables are transcoded into json for server  (pkg comes with lua socket)
+  local Ltn12   = require "ltn12"  -- to store the content of the requests ( pkgcomes with lua socket)
+  local Mime    = require "mime"
+  local Hotswap = require "hotswap.http"
 
   -- parse  the cmd line arguments to fetch server and/or color options
   local key = "server"
@@ -70,7 +73,6 @@ function Cli.configure (cli, arguments)
   end -- save server name for next cli launch
 
 -- hot_swap_http  (  storage_dir , cache)
-  local Mime =  require "mime"
 
   --  every dowloaded lua package will be saved in ~/.cosy/lua/base64(server_name)
   local package_dir =  cosy_dir .. "/lua/"
@@ -78,9 +80,7 @@ function Cli.configure (cli, arguments)
   Lfs.mkdir (package_dir)
   Lfs.mkdir (server_dir)
 
-  require "copas"  ---- WARNING WE CANNOT WAIT TO GET IT FROM THE SERVER
-
-  local hotswap = require "hotswap.http" {
+  local hotswap = Hotswap {
     storage = server_dir, -- where to save the lua files
     encode = function (t)
       local data = Json.encode (t)
