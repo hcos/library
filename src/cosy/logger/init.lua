@@ -25,9 +25,9 @@ return function (loader)
     function Logger.warning () end
     function Logger.error   () end
   elseif loader.logto then
-    local logging   = loader.require "logging"
-                      loader.require "logging.file"
-    local logger    = logging.file (loader.logto, "%Y-%m-%d")
+    local logging = loader.require "logging"
+    logging.file  = loader.require "logging.file"
+    local logger  = logging.file (loader.logto, "%Y-%m-%d")
     function Logger.debug (t)
       logger:debug (i18n (t).message)
     end
