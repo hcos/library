@@ -1,6 +1,6 @@
 return function (loader)
 
-  local Cli           = loader.load "cosy.cli"
+  local Cli           = loader.require "cosy.cli"
   local Configuration = loader.load "cosy.configuration"
   local I18n          = loader.load "cosy.i18n"
   local Value         = loader.load "cosy.value"
