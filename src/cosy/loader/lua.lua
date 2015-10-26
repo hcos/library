@@ -9,7 +9,9 @@ return function (t)
   local modules  = setmetatable ({}, { __mode = "kv" })
   loader.hotswap = t.hotswap
                 or require "hotswap".new {}
-  loader.require = loader.hotswap.require
+  loader.require = function (name)
+    return loader.hotswap.require (name)
+  end
   loader.load    = function (name)
     if modules [name] then
       return modules [name]
