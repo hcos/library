@@ -33,15 +33,6 @@ return function (loader)
 
   local make_socket = {}
 
-  function make_socket.sync ()
-    local result = Socket.tcp ()
-    result:settimeout (Configuration.smtp.timeout)
-    result:setoption ("keepalive"  , true)
-    result:setoption ("reuseaddr"  , true)
-    result:setoption ("tcp-nodelay", true)
-    return result
-  end
-
   function make_socket.async ()
     local result = CSocket ()
     result:settimeout (Configuration.smtp.timeout)
@@ -175,7 +166,7 @@ return function (loader)
             method   = method,
             protocol = protocol,
           }
-          local ok, s = pcall (Smtp.open, host, port, Tcp [method] (protocol, make_socket.sync))
+          local ok, s = pcall (Smtp.open, host, port, Tcp [method] (protocol, make_socket.async))
           if ok then
             ok = pcall (s.auth, s, username, password, s:greet (domain))
             if ok then
@@ -225,7 +216,7 @@ return function (loader)
     end)
   end
 
-  do
+  Scheduler.addthread (function ()
     local ok, result = pcall (Email.discover)
     if not ok or not result then
       Email.ready = false
@@ -242,7 +233,7 @@ return function (loader)
         protocol = Configuration.smtp.protocol,
       }
     end
-  end
+  end)
 
   return Email
 
