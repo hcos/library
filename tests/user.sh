@@ -18,7 +18,7 @@ echo "password" >> "${passwords}"
 #echo "Starting server:"
 #"${cosy}" server:start --force --clean
 echo "Printing available methods:"
-"${cosy}"
+"${cosy}" --server=http://127.0.0.1:8080/
 echo "Server information:"
 "${cosy}" server:information
 echo "Terms of Service:"
