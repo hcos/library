@@ -10,8 +10,15 @@ return function (t)
   loader.hotswap = t.hotswap
                 or require "hotswap".new {}
   loader.require = function (name)
-    return loader.hotswap.require (name)
+    local back = _G.require
+    _G.require = loader.hotswap.require
+    local result = loader.hotswap.require (name)
+    _G.require = back
+    return result
   end
+  -- loader.require = function (name)
+  --   return loader.hotswap.require (name)
+  -- end
   loader.load    = function (name)
     if modules [name] then
       return modules [name]
