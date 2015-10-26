@@ -1,9 +1,12 @@
 return function (--[[loader]])
 
   return {
-    ["daemon:unreachable"] = {
-      en = "cosy daemon is unreachable",
-      fr = "le démon cosy est injoignable",
+    ["client:command"] = {
+      en = "cosy command-line interface",
+    },
+    ["server:unreachable"] = {
+      en = "cosy server is unreachable",
+      fr = "le serveur cosy est injoignable",
     },
     ["error:unexpected"] = {
       en = "an unepected error happened, please retry",
