@@ -202,10 +202,10 @@ http {
     end
     os.execute ([[
 if [ ! -d {{{directory}}} ]; then
-  mkdir {{{directory}}}
+  mkdir -p {{{directory}}}
 fi
 if [ ! -d {{{uploads}}} ]; then
-  mkdir {{{uploads}}}
+  mkdir -p {{{uploads}}}
 fi
     ]] % {
       directory = Configuration.http.directory,
