@@ -114,7 +114,7 @@ http {
         local result  = {}
         for k, t in pairs (data) do
           local hc  = http:new ()
-          local url = "http://127.0.0.1:8080/lua/" .. k
+          local url = "http://127.0.0.1:{{{port}}}/lua/" .. k
           local res, err = hc:request_uri (url, {
             method = "GET",
             headers = {
