@@ -1,6 +1,8 @@
 #! /usr/bin/env luajit
 
-local loader        = require "cosy.loader.lua" {}
+local loader        = require "cosy.loader.lua" {
+  logto = false,
+}
 local Configuration = loader.load "cosy.configuration"
 local Parameters    = loader.load "cosy.parameters"
 local Scheduler     = loader.load "cosy.scheduler"

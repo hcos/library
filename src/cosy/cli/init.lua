@@ -159,7 +159,7 @@ function Cli.start (cli)
         kill -9 $(cat {{{pid}}}) 2> /dev/null
       fi
       rm -f {{{pid}}} {{{log}}}
-      luajit -e '_G.logfile = "{{{log}}}"; require "cosy.daemon" .start ()' &
+      luajit -e 'require "cosy.daemon" .start ()' &
     ]==] % {
       pid = Configuration.daemon.pid,
       log = Configuration.daemon.log,

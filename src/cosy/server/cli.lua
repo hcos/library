@@ -1,4 +1,6 @@
-local loader        = require "cosy.loader.lua" {}
+local loader        = require "cosy.loader.lua" {
+  logto = false,
+}
 local Configuration = loader.load "cosy.configuration"
 local File          = loader.load "cosy.file"
 local I18n          = loader.load "cosy.i18n"
@@ -79,9 +81,8 @@ if arguments.start then
 
   os.execute ([==[
     rm -f {{{log}}} {{{data}}}
-    luajit -e '_G.logfile = "{{{log}}}"; require "cosy.server" .start ()' &
+    luajit -e 'require "cosy.server.runner"' &
   ]==] % {
-    log  = Configuration.server.log,
     data = Configuration.server.data,
   })
   local tries = 0
