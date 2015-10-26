@@ -13,7 +13,7 @@ return function (loader)
     nginx         = os.getenv "COSY_PREFIX" .. "/nginx/sbin/nginx",
     hostname      = nil,
     interface     = "*",
-    port          = 80,
+    port          = 8080,
     timeout       = 5,
     pid           = os.getenv "HOME" .. "/.cosy/nginx.pid",
     configuration = os.getenv "HOME" .. "/.cosy/nginx.conf",
