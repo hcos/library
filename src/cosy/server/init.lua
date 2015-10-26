@@ -1,5 +1,5 @@
-local loader        = require "cosy.loader.server" {
-  logto = _G.logfile,
+local loader        = require "cosy.loader.lua" {
+  logto = os.getenv "HOME" .. "/.cosy/server.log",
 }
 local Configuration = loader.load "cosy.configuration"
 local Digest        = loader.load "cosy.digest"

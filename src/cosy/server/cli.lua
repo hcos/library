@@ -1,6 +1,4 @@
-local loader        = require "cosy.loader.server" {
-  logto = false,
-}
+local loader        = require "cosy.loader.lua" {}
 local Configuration = loader.load "cosy.configuration"
 local File          = loader.load "cosy.file"
 local I18n          = loader.load "cosy.i18n"
