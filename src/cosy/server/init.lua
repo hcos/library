@@ -85,6 +85,7 @@ function Server.start ()
   App.server            = {}
   App.server.passphrase = Digest (Random ())
   App.server.token      = Token.administration ()
+  Scheduler:make_default ()
   local addserver       = Scheduler.addserver
   Scheduler.addserver   = function (s, f)
     local ok, port = s:getsockname ()
