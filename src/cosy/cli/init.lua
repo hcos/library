@@ -118,12 +118,10 @@ function Cli.start (cli)
 
   local Configuration = loader.load "cosy.configuration"
   local App           = loader.load "cosy.configuration.layers".app
-  local File          = loader.load "cosy.file"
   local I18n          = loader.load "cosy.i18n"
   local Library       = loader.load "cosy.library"
   local Arguments     = loader.require "argparse"
   local Colors        = loader.require "ansicolors"
-  local Websocket     = loader.require "websocket"
 
   Configuration.load {
     "cosy.cli",
@@ -163,7 +161,7 @@ function Cli.start (cli)
     parser = parser,
     client = client,
   }
-  local command = commands [cli.arguments [1] or false]
+  Commands.parse (commands)
 
   local ok, result = xpcall (command, function ()
     print (Colors ("%{white redbg}" .. i18n ["error:unexpected"] % {}))

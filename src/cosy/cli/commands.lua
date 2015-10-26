@@ -12,26 +12,14 @@ return function (loader)
 
   Configuration.load {
     "cosy.cli",
-    "cosy.daemon",
     "cosy.nginx",
     "cosy.server",
   }
 
   local i18n   = I18n.load {
     "cosy.cli",
-    "cosy.daemon",
   }
   i18n._locale = Configuration.cli.locale
-
-  local function read (filename)
-    local file = io.open (filename, "r")
-    if not file then
-      return nil
-    end
-    local data = file:read "*all"
-    file:close ()
-    return Value.decode (data)
-  end
 
   -- http://lua.2524044.n2.nabble.com/Reading-passwords-in-a-console-application-td6641037.html
   local function getpassword ()
@@ -112,11 +100,13 @@ return function (loader)
       parser:flag ("--{{{name}}}" % { name = name }) {
         description = i18n ["flag:password"] % {},
         default     = tostring (part == "required"),
+        convert     = function (x) return x:tolower () == "true" end,
       }
     elseif oftype == "password" then
       parser:flag ("--{{{name}}}" % { name = name }) {
         description = i18n ["flag:password"] % {},
         default     = tostring (part == "required"),
+        convert     = function (x) return x:tolower () == "true" end,
       }
     elseif oftype == "token:administration" then
       parser:option ("--{{{name}}}" % { name = name }) {
@@ -138,6 +128,7 @@ return function (loader)
       parser:flag ("--{{{name}}}" % { name = name }) {
         description = i18n ["flag:captcha"] % {},
         default     = tostring (part == "required"),
+        convert     = function (x) return x:tolower () == "true" end,
       }
     elseif oftype == "boolean" then
       parser:flag ("--{{{name}}}" % { name = name }) {
@@ -167,9 +158,9 @@ return function (loader)
         description = description,
       }
       local info = commands.client [name .. "?"] {}
-      for part, t in pairs (info) do
-        for name, x in pairs (t) do
-          Options.set (command, part, name, x.type, x.description)
+      for part, subt in pairs (info) do
+        for parameter, x in pairs (subt) do
+          Options.set (command, part, parameter, x.type, x.description)
         end
       end
     end
@@ -177,131 +168,123 @@ return function (loader)
     return commands
   end
 
-  function Commands.__index (commands, key)
-    if Commands [key] then
-      return function ()
-        return Commands [key] (commands)
+  function Commands.parse (commands)
+    local args = commands.parser:parse ()
+    local key
+    for method in pairs (commands.methods) do
+      if args [method] then
+        key = method
       end
     end
-    if not key then
-      commands.parser:parse ()
-      os.exit (1)
+    assert (key)
+    if Prepares [key] then
+      Prepares [key] (commands, args)
     end
-    return function ()
-      local args = commands.parser:parse ()
-      if Prepares [key] then
-        Prepares [key] (commands, args)
-      end
-      local parameters = {}
-      for _, x in pairs (result.response) do
-        for name, t in pairs (x) do
-          if t.type == "password" and args [name] then
+    local parameters = {}
+    local info = commands.client [key .. "?"] {}
+    for _, x in pairs (info) do
+      for name, t in pairs (x) do
+        if t.type == "password" and args [name] then
+          io.write (i18n ["argument:password1"] % {} .. " ")
+          parameters [name] = getpassword ()
+        elseif t.type == "password:checked" and args [name] then
+          local passwords = {}
+          repeat
             io.write (i18n ["argument:password1"] % {} .. " ")
-            parameters [name] = getpassword ()
-          elseif t.type == "password:checked" and args [name] then
-            local passwords = {}
-            repeat
-              io.write (i18n ["argument:password1"] % {} .. " ")
-              passwords [1] = getpassword ()
-              io.write (i18n ["argument:password2"] % {} .. " ")
-              passwords [2] = getpassword ()
-              if passwords [1] ~= passwords [2] then
-                print (i18n ["argument:password:nomatch"] % {})
-              end
-            until passwords [1] == passwords [2]
-            parameters [name] = passwords [1]
-          elseif t.type == "position" and args [name] then
-            if args [name] == "auto" then
-              parameters [name] = true
-            else
-              parameters [name] = args [name] / "{{{Country}}}/{{{City}}}"
+            passwords [1] = getpassword ()
+            io.write (i18n ["argument:password2"] % {} .. " ")
+            passwords [2] = getpassword ()
+            if passwords [1] ~= passwords [2] then
+              print (i18n ["argument:password:nomatch"] % {})
             end
-          elseif t.type == "captcha" and args [name] then
-            Commands.captcha (args, parameters)
-          elseif args [name] then
-            if t.type == "token:authentication" then
-              local _ = false
-            elseif t.type == "avatar" then
-              local avatar = args [name]
-              local filename = avatar
-              local errresult
-              if avatar:match "^https?://" then
-                filename   = os.tmpname ()
-                local file = io.open (filename, "w")
-                local _, status = Http.request {
-                  method = "GET",
-                  url    = avatar,
-                  sink   = Ltn12.sink.file (file),
-                }
-                if status ~= 200 then
-                  errresult = {
-                    success = false,
-                    error   = i18n {
-                      _      = i18n ["url:not-found"],
-                      url    = avatar,
-                      reason = status,
-                    },
-                  }
-                end
-                file:close ()
-              elseif avatar:match "^~" then
-                filename = os.getenv "HOME" .. avatar:sub (2)
-              end
-              local file, err = io.open (filename, "r")
-              if not file then
+          until passwords [1] == passwords [2]
+          parameters [name] = passwords [1]
+        elseif t.type == "position" and args [name] then
+          if args [name] == "auto" then
+            parameters [name] = true
+          else
+            parameters [name] = args [name] / "{{{Country}}}/{{{City}}}"
+          end
+        elseif t.type == "captcha" and args [name] then
+          Commands.captcha (args, parameters)
+        elseif args [name] then
+          if t.type == "token:authentication" then
+            local _ = false
+          elseif t.type == "avatar" then
+            local avatar = args [name]
+            local filename = avatar
+            local errresult
+            if avatar:match "^https?://" then
+              filename   = os.tmpname ()
+              local file = io.open (filename, "w")
+              local _, status = Http.request {
+                method = "GET",
+                url    = avatar,
+                sink   = Ltn12.sink.file (file),
+              }
+              if status ~= 200 then
                 errresult = {
                   success = false,
                   error   = i18n {
-                    _        = i18n ["file:not-found"],
-                    filename = filename,
-                    reason   = err,
+                    _      = i18n ["url:not-found"],
+                    url    = avatar,
+                    reason = status,
                   },
                 }
               end
-              local body = file:read "*all"
               file:close ()
-              local _, status, headers = Http.request (args.server .. "/upload", body)
-              if status == 200 then
-                parameters [name] = headers ["cosy-avatar"]
-              else
-                errresult = {
-                  success = false,
-                  error   = i18n {
-                    _      = i18n ["upload:failure"],
-                    status = status,
-                  },
-                }
-              end
-              if errresult then
-                show_status (errresult)
-                os.exit (1)
-              end
-            else
-              parameters [name] = args [name]
+            elseif avatar:match "^~" then
+              filename = os.getenv "HOME" .. avatar:sub (2)
             end
+            local file, err = io.open (filename, "r")
+            if not file then
+              errresult = {
+                success = false,
+                error   = i18n {
+                  _        = i18n ["file:not-found"],
+                  filename = filename,
+                  reason   = err,
+                },
+              }
+            end
+            local body = file:read "*all"
+            file:close ()
+            local _, status, headers = Http.request (args.server .. "/upload", body)
+            if status == 200 then
+              parameters [name] = headers ["cosy-avatar"]
+            else
+              errresult = {
+                success = false,
+                error   = i18n {
+                  _      = i18n ["upload:failure"],
+                  status = status,
+                },
+              }
+            end
+            if errresult then
+              show_status (errresult)
+              os.exit (1)
+            end
+          else
+            parameters [name] = args [name]
           end
         end
       end
-      parameters.server = nil
-      parameters.debug  = nil
-      commands.ws:send (Value.expression {
-        server     = server,
-        operation  = key,
-        parameters = parameters,
-      })
-      result = commands.ws:receive ()
-      result = Value.decode (result)
-      show_status (result)
-      if result.success
-      and type (result.response) == "table"
-      and Results [key] then
-        Results [key] (result.response, commands.ws)
-      end
-      if args.debug then
-        print (Colors ("%{white yellowbg}" .. Value.expression (result)))
-      end
-      return result
     end
+    parameters.server = nil
+    parameters.debug  = nil
+    local result = commands.client [key] (parameters)
+    print (Value.expression (result))
+    show_status (result)
+    if result.success
+    and type (result.response) == "table"
+    and Results [key] then
+      Results [key] (result.response, commands.ws)
+    end
+    if args.debug then
+      print (Colors ("%{white yellowbg}" .. Value.expression (result)))
+    end
+    return result
   end
 
   function Commands.captcha (args, parameters)
@@ -343,99 +326,6 @@ return function (loader)
       },
     })
     Copas.loop()
-  end
-
-  Commands ["daemon:stop"] = function (commands)
-    Options.set (commands, "optional", "force" , "force" )
-    local args = commands.parser:parse ()
-    commands.ws:send "daemon-stop"
-    local result = commands.ws:receive ()
-    if not result then
-      result = i18n {
-        success = false,
-        error   = {
-          _ = i18n ["daemon:unreachable"] % {},
-        },
-      }
-    else
-      result = Value.decode (result)
-    end
-    if not result.success and args.force then
-      os.execute ([==[
-        if [ -f "{{{pid}}}" ]
-        then
-          kill -9 $(cat {{{pid}}}) 2> /dev/null
-        fi
-      ]==] % {
-        pid = Configuration.daemon.pid,
-      })
-      os.remove (Configuration.daemon.data)
-      os.remove (Configuration.daemon.pid )
-      result = i18n {
-        success  = true,
-        response = {
-          _ = i18n ["daemon:force-stop"] % {},
-        },
-      }
-      show_status (result)
-    end
-    local daemonpid
-    local tries = 0
-    repeat
-      os.execute ([[sleep {{{time}}}]] % { time = 0.2 })
-      daemonpid = read (Configuration.daemon.pid)
-      tries     = tries + 1
-    until not daemonpid or tries == 10
-    if daemonpid then
-      result = i18n {
-        success = false,
-        error   = {
-          _ = i18n ["daemon:not-stopped"] % {},
-        },
-      }
-    else
-      result = {
-        success = true,
-      }
-    end
-    show_status (result)
-    if args.debug then
-      print (Colors ("%{white yellowbg}" .. Value.expression (result)))
-    end
-    return result
-  end
-
-  Commands ["server:stop"] = function (commands)
-    Options.set (commands, "optional", "server")
-    commands.parser:option ("--administration") {
-      description = "administration token",
-    }
-    local args = commands.parser:parse ()
-    commands.ws:send (Value.expression {
-      server     = args.server,
-      operation  = "server:stop",
-      server     = args.server,
-      parameters = {
-        administration = args.administration,
-        locale         = args.locale,
-      },
-    })
-    local result = commands.ws:receive ()
-    if not result then
-      result = i18n {
-        success = false,
-        error   = {
-          _ = i18n ["daemon:unreachable"] % {},
-        },
-      }
-    else
-      result = Value.decode (result)
-    end
-    show_status (result)
-    if args.debug then
-      print (Colors ("%{white yellowbg}" .. Value.expression (result)))
-    end
-    return result
   end
 
   Results ["server:information"] = function (response)

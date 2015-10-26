@@ -11,14 +11,6 @@ return function (--[[loader]])
     ["error:unexpected"] = {
       en = "an unepected error happened, please retry",
     },
-    ["command:erroneous"] = {
-      en = "erroneous command to run: {{{cli}}} <command> [parameters...]",
-      fr = "commande inexistante: {{{cli}}} <commande> [paramètres...]",
-    },
-    ["command:available"] = {
-      en = "available commands are:",
-      fr = "les commandes disponibles sont:",
-    },
     ["file:not-found"] = {
       en = "file not found: {{{filename}}} ({{{reason}}})",
     },
@@ -33,12 +25,6 @@ return function (--[[loader]])
     },
     ["upload:failure"] = {
       en = "failed to upload content (error {{{status}}})",
-    },
-    ["daemon:force-stop"] = {
-      en = "daemon has been forced to stop",
-    },
-    ["daemon:not-stopped"] = {
-      en = "cosy daemon is not stopped",
     },
     ["server:unreachable"] = {
       en = "cosy server is not reachable",
