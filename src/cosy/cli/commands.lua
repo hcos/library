@@ -1,10 +1,8 @@
 return function (loader)
 
-  local Cli           = loader.require "cosy.cli"
   local Configuration = loader.load "cosy.configuration"
   local I18n          = loader.load "cosy.i18n"
   local Value         = loader.load "cosy.value"
-  local Cliargs       = loader.require "cliargs"
   local Colors        = loader.require "ansicolors"
   local Websocket     = loader.require "websocket"
   local Copas         = loader.require "copas.ev"
@@ -100,141 +98,89 @@ return function (loader)
   local Options  = {}
   local Results  = {}
 
-  function Options.set (part, name, oftype, description)
+  function Options.set (parser, part, name, oftype, description)
     if name == "locale" then
       if not oftype then
-        Cliargs:add_option (
-          "-l, --locale=LOCALE",
-          i18n ["option:locale"] % {},
-          Configuration.cli.locale
-        )
+        parser:option "-l" "--locale" {
+          description = i18n ["option:locale"] % {},
+          default     = Configuration.cli.locale,
+        }
       end
-    elseif part == "optional" and name == "server" then
-      Cliargs:add_option (
-        "-s, --server=SERVER",
-        i18n ["option:server"] % {},
-        Configuration.cli.server
-      )
     elseif part == "optional" and name == "debug" then
-      Cliargs:add_flag (
-        "-d, --debug",
-        i18n ["flag:debug"] % {}
-      )
+      parser:flag "-d" "--debug" {
+        description = i18n ["flag:debug"] % {},
+      }
     elseif part == "optional" and name == "force" then
-      Cliargs:add_flag (
-        "-f, --force",
-        i18n ["flag:force"] % {}
-      )
+      parser:flag "-f" "--force" {
+        description = i18n ["flag:force"] % {},
+      }
     elseif oftype == "password:checked" then
-      Cliargs:add_flag (
-        "--{{{name}}}" % { name = name },
-        i18n ["flag:password"] % {},
-        part == "required"
-      )
+      parser:flag ("--{{{name}}}" % { name = name }) {
+        description = i18n ["flag:password"] % {},
+        default     = tostring (part == "required"),
+      }
     elseif oftype == "password" then
-      Cliargs:add_flag (
-        "--{{{name}}}" % { name = name },
-        i18n ["flag:password"] % {},
-        part == "required"
-      )
+      parser:flag ("--{{{name}}}" % { name = name }) {
+        description = i18n ["flag:password"] % {},
+        default     = tostring (part == "required"),
+      }
     elseif oftype == "token:administration" then
-      local serverdata = read (Configuration.server.data)
-      Cliargs:add_option (
-        "--{{{name}}}=TOKEN" % { name = name },
-        description,
-        serverdata and serverdata.token or nil
-      )
+      parser:option ("--{{{name}}}" % { name = name }) {
+        description = description,
+      }
     elseif oftype == "token:authentication" then
-      Cliargs:add_option (
-        "--{{{name}}}=TOKEN" % { name = name },
-        description
-      )
+      parser:option ("--{{{name}}}" % { name = name }) {
+        description = description,
+      }
     elseif oftype == "tos:digest" then
       local _ = false
     elseif oftype == "position" then
-      Cliargs:add_option (
-        "--{{{name}}}=auto or Country/City" % { name = name },
-        description
-      )
+      parser:option ("--{{{name}}}" % { name = name }) {
+        description = description,
+      }
     elseif oftype == "ip" then
       local _ = false
     elseif oftype == "captcha" then
-      Cliargs:add_flag (
-        "--{{{name}}}" % { name = name },
-        i18n ["flag:captcha"] % {},
-        part == "required"
-      )
+      parser:flag ("--{{{name}}}" % { name = name }) {
+        description = i18n ["flag:captcha"] % {},
+        default     = tostring (part == "required"),
+      }
     elseif oftype == "boolean" then
-      Cliargs:add_flag (
-        "--{{{name}}}" % { name = name },
-        description
-      )
+      parser:flag ("--{{{name}}}" % { name = name }) {
+        description = description,
+      }
     elseif part == "required" then
-      Cliargs:add_argument (
-        "{{{name}}}" % { name = name },
-        description
-      )
+      parser:argument ("{{{name}}}" % { name = name }) {
+        description = description,
+      }
     elseif part == "optional" then
-      Cliargs:add_option (
-        "--{{{name}}}=..." % { name = name },
-        description
-      )
+      parser:option ("--{{{name}}}=..." % { name = name }) {
+        description = description,
+      }
     else
       print (part, name, oftype)
       assert (false)
     end
   end
 
-  function Commands.new (ws)
-    return setmetatable ({
-      ws = ws,
-    }, Commands)
-  end
-
-  function Commands.print_help (commands)
-    commands.ws:send (Value.expression {
-      server     = commands.server,
-      operation  = "server:list-methods",
-      parameters = {
-        locale = Configuration.locale.default,
+  function Commands.new (t)
+    local commands   = setmetatable (t, Commands)
+    commands.methods = commands.client.server.list_methods {
+      locale = Configuration.locale.default,
+    }
+    for name, description in pairs (commands.methods) do
+      local command = commands.parser:command (name) {
+        description = description,
       }
-    })
-    local result = commands.ws:receive ()
-    if not result then
-      result = {
-        success = false,
-        error   = i18n {
-          _ = i18n ["daemon:unreachable"] % {},
-        },
-      }
-    else
-      result = Value.decode (result)
-    end
-    local name_size = 0
-    local names     = {}
-    local list      = {}
-    if not result.success then
-      show_status (result)
-      os.exit (1)
-    end
-    for name, description in pairs (result.response) do
-      name_size = math.max (name_size, #name)
-      names [#names+1] = name
-      list [name] = description
-    end
-    print (Colors ("%{white redbg}" .. i18n ["command:erroneous"] % {
-      cli = arg [0],
-    }))
-    print (i18n ["command:available"] % {})
-    table.sort (names)
-    for i = 1, #names do
-      local line = "  %{green}" .. names [i]
-      for _ = #line, name_size+12 do
-        line = line .. " "
+      local info = commands.client [name .. "?"] {}
+      for part, t in pairs (info) do
+        for name, x in pairs (t) do
+          Options.set (command, part, name, x.type, x.description)
+        end
       end
-      line = line .. "%{yellow}" .. list [names [i]]
-      print (Colors (line))
     end
+    commands.parser:parse ()
+    return commands
   end
 
   function Commands.__index (commands, key)
@@ -243,66 +189,12 @@ return function (loader)
         return Commands [key] (commands)
       end
     end
-    local server
-    for i = 1, #_G.arg do
-      server = _G.arg [i]:match "^-s=(.)"
-            or _G.arg [i]:match "^--server=(.)"
-    end
-    if not server then
-      server = Configuration.cli.server
-    end
-    commands.server = server
     if not key then
-      Commands.print_help (commands)
+      commands.parser:parse ()
       os.exit (1)
     end
-    commands.ws:send (Value.expression {
-      server    = server,
-      operation = key .. "?",
-    })
-    local result = Value.decode (commands.ws:receive ())
-    if not result.success and result.error._ == "server:no-operation" then
-      Commands.print_help (commands)
-      os.exit (1)
-    end
-    if not result.success then
-      show_status (result)
-      os.exit (1)
-    end
-    if not result.response.optional then
-      result.response.optional = {}
-    end
-    local option_names = {}
-    local option_parts = {}
-    local option_types = {}
-    local option_descs = {}
-    for part, t in pairs (result.response) do
-      for name, x in pairs (t) do
-        option_names [#option_names+1] = name
-        option_parts [name] = part
-        option_types [name] = x.type
-        option_descs [name] = x.description
-      end
-    end
-    table.sort (option_names)
-    for i = 1, #option_names do
-      local name   = option_names [i]
-      local part   = option_parts [name]
-      local oftype = option_types [name]
-      local desc   = option_descs [name]
-      Options.set (part, name, oftype, desc)
-    end
-    Options.set ("optional", "debug" )
-    Options.set ("optional", "locale")
-    Options.set ("optional", "server")
     return function ()
-      local args, s = Cliargs:parse_args ()
-      if not args then
-        if not s:match "^Usage" then
-          Cliargs:print_help ()
-        end
-        os.exit (1)
-      end
+      local args = commands.parser:parse ()
       if Prepares [key] then
         Prepares [key] (commands, args)
       end
@@ -460,11 +352,8 @@ return function (loader)
   end
 
   Commands ["daemon:stop"] = function (commands)
-    Options.set ("optional", "force" , "force" )
-    local args = Cliargs:parse_args ()
-    if not args then
-      os.exit (1)
-    end
+    Options.set (commands, "optional", "force" , "force" )
+    local args = commands.parser:parse ()
     commands.ws:send "daemon-stop"
     local result = commands.ws:receive ()
     if not result then
@@ -523,17 +412,11 @@ return function (loader)
   end
 
   Commands ["server:stop"] = function (commands)
-    local serverdata = read (Configuration.server.data)
-    Options.set ("optional", "server")
-    Cliargs:add_option (
-      "--administration=TOKEN",
-      "administration token",
-      serverdata and serverdata.token or nil
-    )
-    local args = Cliargs:parse_args ()
-    if not args then
-      os.exit (1)
-    end
+    Options.set (commands, "optional", "server")
+    commands.parser:option ("--administration") {
+      description = "administration token",
+    }
+    local args = commands.parser:parse ()
     commands.ws:send (Value.expression {
       server     = args.server,
       operation  = "server:stop",
