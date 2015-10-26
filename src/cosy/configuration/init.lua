@@ -52,14 +52,14 @@ return function (loader)
       return result, name
     end
     for key, name in pairs (files) do
-      local ok, result = pcall (loader.load, name)
-      if ok then
+      local result = loadfile (name)
+      if result then
         Logger.debug {
           _      = i18n ["use"],
           path   = name,
           locale = Configuration.locale or "en",
         }
-        Layer.replacewith (layers [key], result)
+        Layer.replacewith (layers [key], result ())
       else
         Logger.warning {
           _      = i18n ["skip"],
