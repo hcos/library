@@ -10,7 +10,7 @@ return function (loader)
   end
 
   Default.http = {
-    nginx         = "nginx",
+    nginx         = os.getenv "COSY_PREFIX" .. "/nginx/sbin/nginx",
     hostname      = nil,
     interface     = "*",
     port          = 80,
