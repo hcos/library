@@ -81,33 +81,50 @@ rockstree=${prefix}/local/cosy
 currentwd=$(pwd)
 tempwd=$(mktemp -d)
 log=$(mktemp)
-dependencies="\
-  ansicolors \
-  argparse \
-  bcrypt \
-  bit32 \
-  copas-ev \
-  coronest \
-  dkjson \
-  hotswap \
-  hotswap-ev \
-  hotswap-http \
-  i18n \
-  jwt \
-  layeredata \
-  lua_cliargs \
-  lua-cjson \
-  lua-ev \
-  lua-resty-http \
-  luacrypto \
-  luafilesystem \
-  lualogging \
-  luasec \
-  luasocket \
-  lustache \
-  md5 \
-  serpent \
-"
+if [ "${mode}" == "server" ]; then
+  dependencies="\
+    ansicolors \
+    argparse \
+    bcrypt \
+    bit32 \
+    copas-ev \
+    coronest \
+    dkjson \
+    hotswap \
+    hotswap-ev \
+    hotswap-http \
+    i18n \
+    jwt \
+    layeredata \
+    lua_cliargs \
+    lua-cjson \
+    lua-ev \
+    lua-resty-http \
+    luacrypto \
+    luafilesystem \
+    lualogging \
+    luasec \
+    luasocket \
+    lustache \
+    md5 \
+    serpent \
+  "
+else
+  dependencies="\
+    copas \
+    copas-ev \
+    hotswap \
+    hotswap-ev \
+    hotswap-http \
+    lua_cliargs \
+    lua-cjson \
+    lua-ev \
+    luafilesystem \
+    luasec \
+    luasocket \
+  "
+  echo -e "dependencies             : ${green}${dependencies}${nc}"
+fi
 
 echo -e "Temporary directory: ${green}${tempwd}${nc}"
 echo -e "Log file           : ${green}${log}${nc}"
@@ -143,14 +160,16 @@ function install_dependencies ()
 
   if [ ! -z "${apt_available+x}" ]; then
     echo "Installing packages required by both client and server."
-    sudo apt-get install --yes git perl build-essential make gcc diffutils patch wget unzip \
+    sudo apt-get install --yes git perl build-essential make gcc diffutils patch curl unzip \
       >> "${log}" 2>&1
 
-    echo "Installing packages required only by the server."
-    sudo apt-get install --yes libev-dev libssl-dev \
-                               libreadline-dev libncurses5-dev libpcre3-dev \
-                               redis-server imagemagick \
-      >> "${log}" 2>&1
+    if [ "${mode}" == "server" ]; then
+      echo "Installing packages required only by the server."
+      sudo apt-get install --yes libev-dev libssl-dev \
+                                 libreadline-dev libncurses5-dev libpcre3-dev \
+                                 redis-server imagemagick \
+        >> "${log}" 2>&1
+    fi
   else
     echo "Not installing packages as apt-get or sudo is not available."
   fi
@@ -182,7 +201,7 @@ function install_luajit ()
     return
   fi
   echo "Installing luajit."
-  wget --quiet http://luajit.org/download/LuaJIT-2.1.0-beta1.tar.gz
+  curl --location --silent -O http://luajit.org/download/LuaJIT-2.1.0-beta1.tar.gz
   tar  xf LuaJIT-2.1.0-beta1.tar.gz
   cd   LuaJIT-2.1.0-beta1
   cat > luajit.patch <<EOL
@@ -230,7 +249,7 @@ function install_openresty ()
   fi
   echo "Installing openresty."
   (
-    wget https://openresty.org/download/ngx_openresty-1.9.3.1.tar.gz
+    curl --location --silent -O https://openresty.org/download/ngx_openresty-1.9.3.1.tar.gz
     tar xf ngx_openresty-1.9.3.1.tar.gz
     cd ngx_openresty-1.9.3.1
     ./configure --prefix="${prefix}" \
@@ -250,7 +269,7 @@ function install_luarocks ()
   else
   (
     echo "Installing luarocks for Lua-5.1."
-    wget --quiet http://luarocks.org/releases/luarocks-2.2.2.tar.gz
+    curl --location --silent -O http://luarocks.org/releases/luarocks-2.2.2.tar.gz
     tar  xf luarocks-2.2.2.tar.gz
     cd   luarocks-2.2.2
     {
@@ -273,7 +292,7 @@ function install_luarocks ()
       (
         echo "Installing luarocks for lua-${version}."
         if [ ! -d luarocks-2.2.2 ]; then
-          wget --quiet http://luarocks.org/releases/luarocks-2.2.2.tar.gz
+          curl --location --silent -O http://luarocks.org/releases/luarocks-2.2.2.tar.gz
           tar  xf luarocks-2.2.2.tar.gz
         fi
         cd   luarocks-2.2.2

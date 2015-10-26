@@ -126,10 +126,15 @@ http {
             return
           end
           if res.status == 200 then
+            local etag = res.headers.etag:match [=[^"([^"]+)"$]=]
             result [k] = {
-              lua  = res.body,
-              etag = res.headers.etag:match [=[^"([^"]+)"$]=],
+              etag = etag,
             }
+            if t == true
+            or (type (t) == "table" and t.etag ~= etag)
+            then
+              result [k].lua = res.body
+            end
           elseif res.status == 304 then
             result [k] = {}
           elseif res.status == 404 then
