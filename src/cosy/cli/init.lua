@@ -120,80 +120,53 @@ function Cli.start (cli)
   local App           = loader.load "cosy.configuration.layers".app
   local File          = loader.load "cosy.file"
   local I18n          = loader.load "cosy.i18n"
-  local Cliargs       = loader.require "cliargs"
+  local Library       = loader.load "cosy.library"
+  local Arguments     = loader.require "argparse"
   local Colors        = loader.require "ansicolors"
   local Websocket     = loader.require "websocket"
 
   Configuration.load {
     "cosy.cli",
-    "cosy.daemon",
   }
-
   App.cli = {
     server = cli.server,
   }
-
   local i18n = I18n.load {
     "cosy.cli",
-    "cosy.daemon",
   }
   i18n._locale = Configuration.cli.locale
 
-  local daemondata = File.decode (Configuration.daemon.data)
-
-  if not cli.color then
-    Colors = function (s)
-      return s:gsub ("(%%{(.-)})", "")
-    end
+  local client = Library.connect (cli.server)
+  if not client then
+    print (Colors ("%{white redbg}" .. i18n ["failure"] % {}),
+           Colors ("%{white redbg}" .. i18n ["server:unreachable"] % {}))
+    os.exit (1)
   end
 
-  local ws = Websocket.client.sync {
-    timeout = 10,
+  local name = os.getenv "COSY_PREFIX" .. "/bin/cosy"
+  name = name:gsub (os.getenv "HOME", "~")
+  local parser = Arguments () {
+    name        = name,
+    description = i18n ["client:command"] % {},
   }
-  if not daemondata
-  or not ws:connect ("ws://{{{interface}}}:{{{port}}}/ws" % {
-           interface = daemondata.interface,
-           port      = daemondata.port,
-         }, "cosy") then
-    os.execute ([==[
-      if [ -f "{{{pid}}}" ]
-      then
-        kill -9 $(cat {{{pid}}}) 2> /dev/null
-      fi
-      rm -f {{{pid}}} {{{log}}}
-      luajit -e 'require "cosy.daemon" .start ()' &
-    ]==] % {
-      pid = Configuration.daemon.pid,
-      log = Configuration.daemon.log,
-    })
-    local tries = 0
-    repeat
-      os.execute ([[sleep {{{time}}}]] % { time = 0.5 })
-      daemondata = File.decode (Configuration.daemon.data)
-      tries      = tries + 1
-    until daemondata or tries == 5
-    if not daemondata
-    or not ws:connect ("ws://{{{interface}}}:{{{port}}}/ws" % {
-             interface = daemondata.interface,
-             port      = daemondata.port,
-           }, "cosy") then
-      print (Colors ("%{white redbg}" .. i18n ["failure"] % {}),
-             Colors ("%{white redbg}" .. i18n ["daemon:unreachable"] % {}))
-      os.exit (1)
-    end
-  end
+  parser:option "-s" "--server" {
+    description = i18n ["option:server"] % {},
+    default     = cli.server,
+  }
+  parser:option "-l" "--locale" {
+    description = i18n ["option:locale"] % {},
+    default     = Configuration.cli.locale,
+  }
 
   local Commands = loader.load "cosy.cli.commands"
-  local commands = Commands.new (ws)
-  local command  = commands [cli.arguments [1] or false]
-
-  Cliargs:set_name (cli.arguments [0] .. " " .. cli.arguments [1])
-  table.remove (cli.arguments, 1)
+  local commands = Commands.new {
+    parser = parser,
+    client = client,
+  }
+  local command = commands [cli.arguments [1] or false]
 
   local ok, result = xpcall (command, function ()
     print (Colors ("%{white redbg}" .. i18n ["error:unexpected"] % {}))
-  --  print (Value.expression (e))
-  --  print (debug.traceback ())
   end)
   if not ok then
     if result then
