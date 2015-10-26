@@ -7,7 +7,6 @@ return function (loader)
     locale    = (os.getenv "LANG" or "en"):match "[^%.]+":gsub ("_", "-"),
     packages_directory = os.getenv "HOME" .. "/.cosy/lua",
     packages_data = os.getenv "HOME" .. "/.cosy/lua.data",
-    server    = "http://cosyverif.org/",
   }
 
 end

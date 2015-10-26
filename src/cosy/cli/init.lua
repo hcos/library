@@ -117,6 +117,7 @@ function Cli.start (cli)
   local loader = cli.loader
 
   local Configuration = loader.load "cosy.configuration"
+  local App           = loader.load "cosy.configuration.layers".app
   local File          = loader.load "cosy.file"
   local I18n          = loader.load "cosy.i18n"
   local Cliargs       = loader.require "cliargs"
@@ -126,6 +127,10 @@ function Cli.start (cli)
   Configuration.load {
     "cosy.cli",
     "cosy.daemon",
+  }
+
+  App.cli = {
+    server = cli.server,
   }
 
   local i18n = I18n.load {
