@@ -7,7 +7,6 @@ return function (loader)
   local Redis         = loader.load "cosy.redis"
   local Scheduler     = loader.load "cosy.scheduler"
   local Value         = loader.load "cosy.value"
-  local Socket        = loader.require "socket"
   local Smtp          = loader.require "socket.smtp"
   local Ssl           = loader.require "ssl"
   if not Ssl then
