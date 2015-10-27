@@ -38,25 +38,28 @@ return function (loader)
     end
   end
 
-  local function show_status (result)
-    assert (type (result) == "table")
-    if result.success then
-      if type (result.response) ~= "table" then
-        result.response = { message = result.response }
+  local function show_status (result, err)
+    if result then
+      if type (result) ~= "table" then
+        result = { message = tostring (result) }
       end
       print (Colors ("%{black greenbg}" .. i18n ["success"] % {}),
-             Colors ("%{green blackbg}" .. (result.response.message ~= nil and tostring (result.response.message) or "")))
-    elseif result.error then
+             Colors ("%{green blackbg}" .. (result.message ~= nil and tostring (result.message) or "")))
+    end
+    if err then
+      if type (err) ~= "table" then
+        err = { message = tostring (err) }
+      end
       print (Colors ("%{black redbg}" .. i18n ["failure"] % {}),
-             Colors ("%{red blackbg}" .. (result.error.message ~= nil and tostring (result.error.message) or "")))
-      if result.error._ == "check:error" then
+             Colors ("%{red blackbg}" .. (err.message ~= nil and tostring (err.message) or "")))
+      if err._ == "check:error" then
         local max = 0
-        for i = 1, #result.error.reasons do
-          local reason = result.error.reasons [i]
+        for i = 1, #err.reasons do
+          local reason = err.reasons [i]
           max = math.max (max, #reason.key)
         end
-        for i = 1, #result.error.reasons do
-          local reason    = result.error.reasons [i]
+        for i = 1, #err.reasons do
+          local reason    = err.reasons [i]
           local parameter = reason.key
           local message   = reason.message
           local space = ""
@@ -97,14 +100,12 @@ return function (loader)
     elseif oftype == "password:checked" then
       parser:flag ("--{{{name}}}" % { name = name }) {
         description = i18n ["flag:password"] % {},
-        default     = tostring (part == "required"),
-        convert     = function (x) return x:tolower () == "true" end,
+        default     = part == "required" and "" or nil,
       }
     elseif oftype == "password" then
       parser:flag ("--{{{name}}}" % { name = name }) {
         description = i18n ["flag:password"] % {},
-        default     = tostring (part == "required"),
-        convert     = function (x) return x:tolower () == "true" end,
+        default     = part == "required" and "" or nil,
       }
     elseif oftype == "token:administration" then
       parser:option ("--{{{name}}}" % { name = name }) {
@@ -125,8 +126,7 @@ return function (loader)
     elseif oftype == "captcha" then
       parser:flag ("--{{{name}}}" % { name = name }) {
         description = i18n ["flag:captcha"] % {},
-        default     = tostring (part == "required"),
-        convert     = function (x) return x:tolower () == "true" end,
+        default     = part == "required" and "" or nil,
       }
     elseif oftype == "boolean" then
       parser:flag ("--{{{name}}}" % { name = name }) {
@@ -228,13 +228,10 @@ return function (loader)
                 sink   = Ltn12.sink.file (file),
               }
               if status ~= 200 then
-                errresult = {
-                  success = false,
-                  error   = i18n {
-                    _      = i18n ["url:not-found"],
-                    url    = avatar,
-                    reason = status,
-                  },
+                errresult = i18n {
+                  _      = i18n ["url:not-found"],
+                  url    = avatar,
+                  reason = status,
                 }
               end
               file:close ()
@@ -243,13 +240,10 @@ return function (loader)
             end
             local file, err = io.open (filename, "r")
             if not file then
-              errresult = {
-                success = false,
-                error   = i18n {
-                  _        = i18n ["file:not-found"],
-                  filename = filename,
-                  reason   = err,
-                },
+              errresult = i18n {
+                _        = i18n ["file:not-found"],
+                filename = filename,
+                reason   = err,
               }
             end
             local body = file:read "*all"
@@ -258,16 +252,13 @@ return function (loader)
             if status == 200 then
               parameters [name] = headers ["cosy-avatar"]
             else
-              errresult = {
-                success = false,
-                error   = i18n {
-                  _      = i18n ["upload:failure"],
-                  status = status,
-                },
+              errresult = i18n {
+                _      = i18n ["upload:failure"],
+                status = status,
               }
             end
             if errresult then
-              show_status (errresult)
+              show_status (nil, errresult)
               os.exit (1)
             end
           else
@@ -276,13 +267,12 @@ return function (loader)
         end
       end
     end
-    local result = commands.client [key] (parameters)
-    print (Value.expression (result))
-    show_status (result)
-    if result.success
-    and type (result.response) == "table"
+    local result, err = commands.client [key] (parameters)
+    show_status (result, err)
+    if result
+    and type (result) == "table"
     and Results [key] then
-      Results [key] (result.response, commands.ws)
+      Results [key] (result, commands)
     end
     return result
   end
@@ -403,16 +393,11 @@ return function (loader)
 
   Prepares ["user:create"] = function (commands, args)
     if not args.tos_digest then
-      commands.ws:send (Value.expression {
-        server     = args.server,
-        operation  = "server:tos",
-        parameters = {
-          locale = args.locale,
-        },
-      })
-      local tosresult = Value.decode (commands.ws:receive ())
-      assert (tosresult.success)
-      args.tos_digest = tosresult.response.tos_digest
+      local tos = commands.client.server.tos {
+        locale = args.locale,
+      }
+      print (tos.tos)
+      args.tos_digest = tos.tos_digest
     end
   end
 

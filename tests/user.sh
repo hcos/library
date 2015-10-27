@@ -11,6 +11,16 @@ passwords=$(mktemp)
 echo "password" >> "${passwords}"
 echo "password" >> "${passwords}"
 
+token=$(luajit -e " \
+local file = io.open '${HOME}/.cosy/server.data' \
+if file then
+  local data = file:read '*all' \
+  data       = loadstring ('return ' .. data) () \
+  print (data.token)
+end")
+
+exit 1
+
 #echo "Stopping daemon:"
 #"${cosy}" daemon:stop --force
 #echo "Stopping server:"
@@ -24,11 +34,11 @@ echo "Server information:"
 echo "Terms of Service:"
 "${cosy}" server:tos
 echo "Creating user alinard:"
-"${cosy}" user:create "alban.linard@gmail.com" alinard < "${passwords}"
+"${cosy}" user:create --administration ${token} "alban.linard@gmail.com" alinard < "${passwords}"
 echo "Failing at creating user alban:"
-"${cosy}" user:create "alban.linard@gmail.com" alban < "${passwords}"
+"${cosy}" user:create --administration ${token} "alban.linard@gmail.com" alban < "${passwords}"
 echo "Creating user alban:"
-"${cosy}" user:create "jiahua.xu16@gmail.com" alban < "${passwords}"
+"${cosy}" user:create --administration ${token} "jiahua.xu16@gmail.com" alban < "${passwords}"
 echo "Authenticating user alinard:"
 "${cosy}" user:authenticate alinard < "${passwords}"
 echo "Authenticating user alban:"

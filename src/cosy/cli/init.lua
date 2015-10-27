@@ -157,19 +157,16 @@ function Cli.start (cli)
   }
   local ok, result = xpcall (function ()
       Commands.parse (commands)
-    end, function ()
+    end, function (err)
       print (Colors ("%{white redbg}" .. i18n ["error:unexpected"] % {}))
+      print (err)
+      print (debug.traceback ())
     end)
-  if not ok then
-    if result then
-      print (Colors ("%{white redbg}" .. i18n (result.error).message))
-    end
+  if not ok and result then
+    print (Colors ("%{red blackbg}" .. i18n ["failure"] % {}))
+    print (Colors ("%{white redbg}" .. i18n (result.error).message))
   end
-  if result and result.success then
-    os.exit (0)
-  else
-    os.exit (1)
-  end
+  os.exit (ok and 0 or 1)
 end
 
 function Cli.stop (cli)

@@ -54,7 +54,7 @@ http {
 
     location / {
       add_header  Access-Control-Allow-Origin *;
-      root        www;
+      root        {{{www}}};
       index       index.html;
     }
 
