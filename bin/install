@@ -152,12 +152,12 @@ function install_dependencies ()
   fi >> "${log}" 2>&1
 
   if [ ! -z "${apt_available+x}" ]; then
-    echo "Installing packages required by both client and server."
+    echo "Installing development packages."
     sudo apt-get install --yes git make gcc diffutils patch curl unzip \
       >> "${log}" 2>&1
 
     if [ "${mode}" == "server" ]; then
-      echo "Installing packages required only by the server."
+      echo "Installing packages required by the server."
       sudo apt-get install --yes perl build-essential \
                                  libreadline-dev libncurses5-dev libpcre3-dev \
                                  redis-server imagemagick \
