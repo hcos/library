@@ -6,6 +6,7 @@ return function (loader)
   local Digest        = loader.load "cosy.digest"
   local Email         = loader.load "cosy.email"
   local I18n          = loader.load "cosy.i18n"
+  local Json          = loader.load "cosy.json"
   local Logger        = loader.load "cosy.logger"
   local Parameters    = loader.load "cosy.parameters"
   local Password      = loader.load "cosy.password"
@@ -14,7 +15,6 @@ return function (loader)
   local Token         = loader.load "cosy.token"
   local Value         = loader.load "cosy.value"
   local Http          = loader.require "copas.http"
-  local Json          = loader.require "cosy.json"
   local Layer         = loader.require "layeredata"
   local Websocket     = loader.require "websocket"
 
