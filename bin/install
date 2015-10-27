@@ -155,7 +155,6 @@ function install_dependencies ()
   if [ ! -z "${apt_available+x}" ]; then
     echo "Installing packages required by both client and server."
     sudo apt-get install --yes git make gcc diffutils patch curl unzip \
-                               libev-dev libssl-dev \
       >> "${log}" 2>&1
 
     if [ "${mode}" == "server" ]; then
@@ -186,6 +185,33 @@ function install_dependencies ()
       fi
     fi
   fi
+}
+
+# Install libev:
+function install_libev()
+{
+  (
+  echo "Installing libev."
+  git clone "https://github.com/enki/libev.git"  \
+      >> "${log}" 2>&1
+  cd libev
+  ./configure --prefix="${prefix}"
+  make install
+  )
+}
+
+# Install libssl:
+function install_libssl ()
+{
+  (
+  echo "Installing libssl."
+  git clone "https://github.com/openssl/openssl.git"  \
+      >> "${log}" 2>&1
+  cd openssl
+  git checkout "OpenSSL_1_0_2-stable"
+  ./config --prefix="${prefix}"
+  make install
+  )
 }
 
 # Install LuaJIT with 5.2 compatibility:
@@ -525,6 +551,8 @@ cd "${tempwd}"
 stop_server
 trap error ERR
 install_dependencies
+install_libev
+install_libssl
 install_luajit
 install_openresty
 install_luarocks
