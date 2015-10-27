@@ -1,6 +1,9 @@
 return function (--[[loader]])
 
   return {
+    ["client:server"] = {
+      en = "using {{{server}}} server",
+    },
     ["client:command"] = {
       en = "cosy command-line interface",
     },

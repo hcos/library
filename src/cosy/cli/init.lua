@@ -129,6 +129,9 @@ function Cli.start (cli)
     "cosy.cli",
   }
   i18n._locale = Configuration.cli.locale
+  print (Colors ("%{green blackbg}" .. i18n ["client:server"] % {
+    server = cli.server,
+  }))
 
   local client = Library.connect (cli.server)
   if not client then
