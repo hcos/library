@@ -151,18 +151,16 @@ return function (loader)
     commands.methods = commands.client.server.list_methods {
       locale = Configuration.locale.default,
     }
-    for name, description in pairs (commands.methods) do
+    for name, info in pairs (commands.methods) do
       local command = commands.parser:command (name) {
-        description = description,
+        description = info.description,
       }
-      local info = commands.client [name .. "?"] {}
-      for part, subt in pairs (info) do
+      for part, subt in pairs (info.parameters) do
         for parameter, x in pairs (subt) do
           Options.set (command, part, parameter, x.type, x.description)
         end
       end
     end
-    commands.parser:parse ()
     return commands
   end
 
@@ -172,6 +170,7 @@ return function (loader)
     for method in pairs (commands.methods) do
       if args [method] then
         key = method
+        break
       end
     end
     assert (key)
@@ -179,8 +178,7 @@ return function (loader)
       Prepares [key] (commands, args)
     end
     local parameters = {}
-    local info = commands.client [key .. "?"] {}
-    for _, x in pairs (info) do
+    for _, x in pairs (commands.methods [key].parameters) do
       for name, t in pairs (x) do
         if t.type == "password" and args [name] then
           io.write (i18n ["argument:password1"] % {} .. " ")
