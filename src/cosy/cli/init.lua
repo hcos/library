@@ -1,3 +1,5 @@
+os.remove (os.getenv "HOME" .. "/.cosy/client.log")
+
 local Cli = {}
 
 Cli.__index = Cli
