@@ -101,11 +101,15 @@ function Cli.configure (cli, arguments)
 -- In order to download lua modules (required by the client) from the server
 -- we replace the Lua require function
 --      by the hotswap.require which will also save lua packages into "server_dir"
-  cli.loader = hotswap.require "cosy.loader.lua" {
+  local ok, factory = pcall (hotswap.require, "cosy.loader.lua")
+  if not ok then
+    print ("Cannot download sources from " .. cli.server .. ".")
+    os.exit (1)
+  end
+  cli.loader = factory {
     hotswap = hotswap,
     logto   = os.getenv "HOME" .. "/.cosy/client.log",
   }
- -- no module to download
  end
 
 function Cli.start (cli)
