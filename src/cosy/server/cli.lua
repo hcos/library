@@ -81,7 +81,7 @@ if arguments.start then
 
   os.execute ([==[
     rm -f {{{log}}} {{{data}}}
-    luajit -e 'require "cosy.server.runner"' &
+    luajit -e 'require "cosy.server".start ()' &
   ]==] % {
     data = Configuration.server.data,
   })
