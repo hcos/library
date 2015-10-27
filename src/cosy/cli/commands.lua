@@ -100,14 +100,12 @@ return function (loader)
     elseif oftype == "password:checked" then
       parser:flag ("--{{{name}}}" % { name = name }) {
         description = i18n ["flag:password"] % {},
-        default     = tostring (part == "required"),
-        convert     = function (x) return x:tolower () == "true" end,
+        default     = part == "required" and "" or nil,
       }
     elseif oftype == "password" then
       parser:flag ("--{{{name}}}" % { name = name }) {
         description = i18n ["flag:password"] % {},
-        default     = tostring (part == "required"),
-        convert     = function (x) return x:tolower () == "true" end,
+        default     = part == "required" and "" or nil,
       }
     elseif oftype == "token:administration" then
       parser:option ("--{{{name}}}" % { name = name }) {
@@ -128,8 +126,7 @@ return function (loader)
     elseif oftype == "captcha" then
       parser:flag ("--{{{name}}}" % { name = name }) {
         description = i18n ["flag:captcha"] % {},
-        default     = tostring (part == "required"),
-        convert     = function (x) return x:tolower () == "true" end,
+        default     = part == "required" and "" or nil,
       }
     elseif oftype == "boolean" then
       parser:flag ("--{{{name}}}" % { name = name }) {
