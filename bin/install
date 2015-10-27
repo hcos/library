@@ -423,7 +423,9 @@ EOF
 
 ${paths}
 export COSY_PREFIX="${prefix}"
-${prefix}/bin/cosy-server stop --force
+if [ -e "${prefix}/bin/cosy-server" ]; then
+  ${prefix}/bin/cosy-server stop --force
+fi
 rm -rf ${prefix}/bin/cosy* \
        ${prefix}/bin/resty \
        ${prefix}/etc/cosy* \
