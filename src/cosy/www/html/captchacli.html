@@ -6,7 +6,7 @@
     <link href="/css/skins/_all-skins.min.css" rel="stylesheet" type="text/css" />
     <title>reCAPTCHA for Cosy Command Line</title>
   </head>
-  <body style="  background-color: #3c8dbc;">
+  <body style="background-color: #3c8dbc;">
     <div class="row" style="margin-top:20px;">
       <div class="col-lg-4 col-xs-12">
       </div>
@@ -20,7 +20,7 @@
             <div id="info" style="color:green;"></div>
           </div>
         </div>
-       
+
       </div>
       <div class="col-lg-4 col-xs-12">
       </div>
@@ -39,34 +39,37 @@
     </script>
     <script type="text/lua" lang="Lua" id="luascript">
       local location = js.global.location
-      local loader   = require (location.origin .. "/lua/cosy.loader")
+      local loader   = require (location.origin .. "/lua/cosy.loader.js")
       local function main ()
-        local library   = require "cosy.library"
-        local value     = require "cosy.value"
+        local library   = loader.load "cosy.library"
+        local Value     = loader.load "cosy.value"
         local client    = library.connect (location.origin)
         local info      = client.server.information ()
         local port      = location.search:match "port=(%d+)"
         local params    = js.new (js.global.Object)
         params.sitekey  = info.captcha
+        local id
         params.callback = function ()
-          js.global.document:getElementById("info").innerHTML = "Thank you. Go back to the terminal to continue (this windows will be closed in 3s)"
           local wsurl    = "ws://127.0.0.1:" .. tostring (port) .. "/"
           local ws = js.new (js.global.WebSocket, wsurl, "cosycli")
             ws.onopen = function ()
-              ws:send (value.expression {
+              ws:send (Value.expression {
                 response = js.global.grecaptcha:getResponse (id)
               })
               ws:close ()
+              js.global.document:getElementById("info").innerHTML = "Thank you. Go back to the terminal to continue (this windows will be closed in 3s)"
             end
           local t = window:setTimeout(function()
               window.close ()
             end, 3000)
         end
-        local id        = js.global.grecaptcha:render ("captcha", params)
-
+        id = js.global.grecaptcha:render ("captcha", params)
       end
       local co = coroutine.create (main)
-      coroutine.resume (co)
+      local ok, err = coroutine.resume (co)
+      if not ok then
+        js.global.console:log (err)
+      end
     </script>
   </body>
 </html>

@@ -16,9 +16,6 @@ return function (t)
     _G.require = back
     return result
   end
-  -- loader.require = function (name)
-  --   return loader.hotswap.require (name)
-  -- end
   loader.load    = function (name)
     if modules [name] then
       return modules [name]
@@ -28,7 +25,9 @@ return function (t)
     return module
   end
   loader.logto     = t.logto
-  loader.coroutine = loader.require "coroutine.make" ()
+  loader.coroutine = t.coroutine
+                  or loader.require "coroutine.make" ()
+  _G.coroutine     = loader.coroutine
   loader.scheduler = t.scheduler
                   or loader.require "copas.ev"
   loader.request   = t.request
