@@ -96,7 +96,6 @@ if [ "${mode}" == "server" ]; then
     i18n \
     jwt \
     layeredata \
-    lua_cliargs \
     lua-cjson \
     lua-ev \
     lua-resty-http \
@@ -116,14 +115,12 @@ else
     hotswap \
     hotswap-ev \
     hotswap-http \
-    lua_cliargs \
     lua-cjson \
     lua-ev \
     luafilesystem \
     luasec \
     luasocket \
   "
-  echo -e "dependencies             : ${green}${dependencies}${nc}"
 fi
 
 echo -e "Temporary directory: ${green}${tempwd}${nc}"
