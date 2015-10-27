@@ -81,44 +81,43 @@ rockstree=${prefix}/local/cosy
 currentwd=$(pwd)
 tempwd=$(mktemp -d)
 log=$(mktemp)
-if [ "${mode}" == "server" ]; then
-  dependencies="\
-    ansicolors \
-    argparse \
-    bcrypt \
-    bit32 \
-    copas-ev \
-    coronest \
-    dkjson \
-    hotswap \
-    hotswap-ev \
-    hotswap-http \
-    i18n \
-    jwt \
-    layeredata \
-    lua-cjson \
-    lua-ev \
-    lua-resty-http \
-    luacrypto \
-    luafilesystem \
-    lualogging \
-    luasec \
-    luasocket \
-    lustache \
-    md5 \
-    serpent \
-  "
-else
-  dependencies="\
-    copas-ev \
-    hotswap-ev \
-    hotswap-http \
-    lua-cjson \
-    luafilesystem \
-    luasec \
-    luasocket \
-  "
-fi
+case "${mode}" in
+  "server")
+    dependencies="\
+      ansicolors \
+      argparse \
+      bcrypt \
+      bit32 \
+      copas-ev \
+      coronest \
+      dkjson \
+      hotswap-ev \
+      hotswap-http \
+      i18n \
+      jwt \
+      layeredata \
+      lua-cjson \
+      lua-resty-http \
+      luacrypto \
+      luafilesystem \
+      lualogging \
+      luasec \
+      luasocket \
+      lustache \
+      md5 \
+      serpent \
+    ";;
+  "client")
+    dependencies="\
+      copas-ev \
+      hotswap-ev \
+      hotswap-http \
+      lua-cjson \
+      luafilesystem \
+      luasec \
+      luasocket \
+    ";;
+esac
 
 echo -e "Temporary directory: ${green}${tempwd}${nc}"
 echo -e "Log file           : ${green}${log}${nc}"
