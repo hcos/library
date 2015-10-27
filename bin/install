@@ -530,15 +530,7 @@ function install_configuration ()
   echo -e "Installing configuration in ${green}${prefix}/etc/cosy.conf${nc}."
   mkdir -p "${prefix}/etc"
   cat > "${prefix}/etc/cosy.conf" <<EOL
-return {
-  http  = {
-    nginx = "/usr/sbin/nginx",
-    port  = 8080,
-  },
-  cli = {
-    server = "http://127.0.0.1:8080/"
-  },
-}
+return {}
 EOL
 }
 
