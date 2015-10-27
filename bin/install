@@ -188,27 +188,35 @@ function install_dependencies ()
 }
 
 # Install libev:
-function install_libev()
+function install_libev ()
 {
+  if [ "${mode}" != "client" ]; then
+    return
+  fi
   echo "Installing libev."
   (
-  git clone "https://github.com/enki/libev.git"
-  cd libev
-  ./configure --prefix="${prefix}"
-  make install
+    git clone "https://github.com/enki/libev.git"
+    cd libev
+    ./configure --prefix="${prefix}"
+    make -j"$(nproc)"
+    make install
   ) >> "${log}" 2>&1
 }
 
 # Install libssl:
 function install_libssl ()
 {
+  if [ "${mode}" != "client" ]; then
+    return
+  fi
   echo "Installing libssl."
   (
-  git clone "https://github.com/openssl/openssl.git" 
-  cd openssl
-  git checkout "OpenSSL_1_0_2-stable"
-  ./config --prefix="${prefix}"
-  make install
+    git clone "https://github.com/openssl/openssl.git"
+    cd openssl
+    git checkout "OpenSSL_1_0_2-stable"
+    ./config --prefix="${prefix}"
+    make -j"$(nproc)" CFLAG="-fPIC"
+    make install_sw
   ) >> "${log}" 2>&1
 }
 
