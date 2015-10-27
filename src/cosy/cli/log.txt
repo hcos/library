@@ -1,0 +1,553 @@
+
+**Commands.new info.parameters :	do local _={optional={},required={authentication={type="token:authentication",description="authentication token"}}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"authentication"};return _;end
+authentication
+
+**Commands.new info.parameters :	do local _={optional={organization={type="organization",description="organization"},password={type="password:checked",description="password"},position={type="position",description="position"},name={type="name",description="full name"},avatar={type="avatar",description="avatar file or URL"},email={type="email",description="email address"},locale={type="locale",description="locale for messages"},homepage={type="homepage",description="homepage URL"}},required={authentication={type="token:authentication",description="authentication token"}}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"organization","password","position","name","avatar","email","locale","homepage"};return _;end
+avatar
+email
+homepage
+locale
+name
+organization
+password
+position
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"authentication"};return _;end
+authentication
+
+**Commands.new info.parameters :	do local _={optional={},required={user={type="user:active",description="active user"},authentication={type="token:authentication",description="authentication token"}}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"user","authentication"};return _;end
+authentication
+user
+
+**Commands.new info.parameters :	do local _={optional={},required={project={type="project",description="project"},authentication={type="token:authentication",description="authentication token"},name={type="resource:identifier",description="identifier"}}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"project","authentication","name"};return _;end
+authentication
+name
+project
+
+**Commands.new info.parameters :	do local _={optional={},required={authentication={type="token:authentication",description="authentication token"}}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"authentication"};return _;end
+authentication
+
+**Commands.new info.parameters :	do local _={optional={},required={email={type="email",description="email address"}}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"email"};return _;end
+email
+
+**Commands.new info.parameters :	do local _={optional={},required={}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Commands.new info.parameters :	do local _={optional={},required={user={type="user",description="user"}}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"user"};return _;end
+user
+
+**Commands.new info.parameters :	do local _={optional={},required={password={type="password",description="password"},user={type="user:active",description="active user"}}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"password","user"};return _;end
+password
+user
+
+**Commands.new info.parameters :	do local _={optional={},required={project={type="project",description="project"},authentication={type="token:authentication",description="authentication token"},name={type="resource:identifier",description="identifier"}}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"project","authentication","name"};return _;end
+authentication
+name
+project
+
+**Commands.new info.parameters :	do local _={optional={},required={project={type="project",description="project"},authentication={type="token:authentication",description="authentication token"},name={type="resource:identifier",description="identifier"}}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"project","authentication","name"};return _;end
+authentication
+name
+project
+
+**Commands.new info.parameters :	do local _={optional={},required={project={type="project",description="project"},authentication={type="token:authentication",description="authentication token"},name={type="resource:identifier",description="identifier"}}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"project","authentication","name"};return _;end
+authentication
+name
+project
+
+**Commands.new info.parameters :	do local _={optional={},required={authentication={type="token:authentication",description="authentication token"}}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"authentication"};return _;end
+authentication
+
+**Commands.new info.parameters :	do local _={optional={},required={project={type="project",description="project"},authentication={type="token:authentication",description="authentication token"},name={type="resource:identifier",description="identifier"}}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"project","authentication","name"};return _;end
+authentication
+name
+project
+
+**Commands.new info.parameters :	do local _={optional={},required={authentication={type="token:authentication",description="authentication token"}}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"authentication"};return _;end
+authentication
+
+**Commands.new info.parameters :	do local _={optional={authentication={type="token:authentication",description="authentication token"}},required={iterator={type="iterator",description="iterator function"}}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"authentication"};return _;end
+authentication
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"iterator"};return _;end
+iterator
+
+**Commands.new info.parameters :	do local _={optional={},required={project={type="project",description="project"},authentication={type="token:authentication",description="authentication token"},name={type="resource:identifier",description="identifier"}}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"project","authentication","name"};return _;end
+authentication
+name
+project
+
+**Commands.new info.parameters :	do local _={optional={},required={authentication={type="token:authentication",description="authentication token"}}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"authentication"};return _;end
+authentication
+
+**Commands.new info.parameters :	do local _={optional={},required={authentication={type="token:authentication",description="authentication token"}}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"authentication"};return _;end
+authentication
+
+**Commands.new info.parameters :	do local _={optional={locale={type="locale",description="locale for messages"}},required={}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"locale"};return _;end
+locale
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Commands.new info.parameters :	do local _={optional={authentication={type="token:authentication",description="authentication token"}},required={}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"authentication"};return _;end
+authentication
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Commands.new info.parameters :	do local _={optional={is_private={type="is_private",description="(missing description)"}},required={identifier={type="resource:identifier",description="identifier"},authentication={type="token:authentication",description="authentication token"}}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"is_private"};return _;end
+is_private
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"identifier","authentication"};return _;end
+authentication
+identifier
+
+**Commands.new info.parameters :	do local _={optional={},required={project={type="project",description="project"},authentication={type="token:authentication",description="authentication token"},name={type="resource:identifier",description="identifier"}}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"project","authentication","name"};return _;end
+authentication
+name
+project
+
+**Commands.new info.parameters :	do local _={optional={},required={password={type="password:checked",description="password"},validation={type="token:validation",description="validation token"}}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"password","validation"};return _;end
+password
+validation
+
+**Commands.new info.parameters :	do local _={optional={},required={administration={type="token:administration",description="administration token"}}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"administration"};return _;end
+administration
+
+**Commands.new info.parameters :	do local _={optional={},required={authentication={type="token:authentication",description="authentication token"}}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"authentication"};return _;end
+authentication
+
+**Commands.new info.parameters :	do local _={optional={},required={project={type="project",description="project"},authentication={type="token:authentication",description="authentication token"},name={type="resource:identifier",description="identifier"}}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"project","authentication","name"};return _;end
+authentication
+name
+project
+
+**Commands.new info.parameters :	do local _={optional={},required={project={type="project",description="project"},authentication={type="token:authentication",description="authentication token"},name={type="resource:identifier",description="identifier"}}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"project","authentication","name"};return _;end
+authentication
+name
+project
+
+**Commands.new info.parameters :	do local _={optional={},required={user={type="user:suspended",description="suspended user"},authentication={type="token:authentication",description="authentication token"}}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"user","authentication"};return _;end
+authentication
+user
+
+**Commands.new info.parameters :	do local _={optional={ip={type="ip",description="IP address"},captcha={type="captcha",description="captcha"},administration={type="token:administration",description="administration token"}},required={password={type="password:checked",description="password"},tos_digest={type="tos:digest",description="terms of service digest"},identifier={type="resource:identifier",description="identifier"},email={type="email",description="email address"},locale={type="locale",description="locale for messages"}}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"ip","captcha","administration"};return _;end
+administration
+captcha
+ip
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"password","tos_digest","identifier","email","locale"};return _;end
+email
+identifier
+locale
+password
+tos_digest
+
+**Commands.new info.parameters :	do local _={optional={},required={project={type="project",description="project"},authentication={type="token:authentication",description="authentication token"}}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"project","authentication"};return _;end
+authentication
+project
+
+**Commands.new info.parameters :	do local _={optional={locale={type="locale",description="locale for messages"},authentication={type="token:authentication",description="authentication token"}},required={}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"locale","authentication"};return _;end
+authentication
+locale
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Commands.new info.parameters :	do local _={optional={},required={project={type="project",description="project"},authentication={type="token:authentication",description="authentication token"},name={type="resource:identifier",description="identifier"}}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"project","authentication","name"};return _;end
+authentication
+name
+project
+
+**Commands.new info.parameters :	do local _={optional={},required={authentication={type="token:authentication",description="authentication token"}}};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={};return _;end
+
+**Creating ordered table :
+a1 :
+	do local _={};return _;end
+before sort : a2 :
+	do local _={"authentication"};return _;end
+authentication

@@ -155,11 +155,20 @@ return function (loader)
       local command = commands.parser:command (name) {
         description = info.description,
       }
+      local optnam = {}
+      local optinfos = {}
       for part, subt in pairs (info.parameters) do
         for parameter, x in pairs (subt) do
-          Options.set (command, part, parameter, x.type, x.description)
+          x.part = part -- store field   optional / required
+          optnam [#optnam+1] = parameter
+          optinfos [parameter] = x
         end
       end
+      table.sort (optnam)
+      for _, parameter  in ipairs (optnam) do
+         local x = optinfos [parameter]
+         Options.set (command, x.part, parameter, x.type, x.description)
+       end
     end
     return commands
   end
