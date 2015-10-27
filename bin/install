@@ -532,9 +532,11 @@ install_configuration
 cd "${currentwd}"
 
 echo "You can now try the following commands:"
-echo "- ${prefix}/bin/cosy-server start [--clean] [--force]"
+if [ "${mode}" == "server" ]; then
+  echo "- ${prefix}/bin/cosy-server start [--clean] [--force]"
+  echo "- ${prefix}/bin/cosy-server stop  [--force]"
+fi
 echo "- ${prefix}/bin/cosy"
-echo "- ${prefix}/bin/cosy-server stop  [--force]"
 echo "- ${prefix}/bin/cosy-uninstall"
 if [ ! -z "${sourcepath+x}" ]; then
   echo "This development environment also provides two commands:"
