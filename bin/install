@@ -343,45 +343,40 @@ function install_luarocks ()
 # Install cosyverif:
 function install_cosyverif ()
 {
+  export CPATH="${prefix}/include:${C_INCLUDE_PATH}"
+  export LIBRARY_PATH="${prefix}/lib:${LD_LIBRARY_PATH}"
+  export LD_LIBRARY_PATH="${prefix}/lib:${LD_LIBRARY_PATH}"
   mkdir -p "${rockstree}/git"
-  if [ ! -d "${rockstree}/git/redis-lua" ]; then
-    git clone https://github.com/nrk/redis-lua.git \
-              "${rockstree}/git/redis-lua" \
-      >> "${log}" 2>&1
-  fi
-  (
-    cd "${rockstree}/git/redis-lua"
-    git pull \
-      >> "${log}" 2>&1
-  )
-  if [ ! -d "${rockstree}/git/lua-websockets" ]; then
-    git clone https://github.com/saucisson/lua-websockets.git \
-              "${rockstree}/git/lua-websockets" \
-      >> "${log}" 2>&1
-  fi
-  (
-    cd "${rockstree}/git/lua-websockets"
-    git pull \
-      >> "${log}" 2>&1
-  )
-  if [ -z "${sourcepath+x}" ]; then
-    if [ ! -d "${rockstree}/git/library" ]; then
-      rm -rf "${rockstree}/git/library"
-      git clone https://github.com/CosyVerif/library.git \
-                "${rockstree}/git/library" \
-        >> "${log}" 2>&1
-    fi
-    (
-      cd "${rockstree}/git/library"
-      git pull \
-        >> "${log}" 2>&1
+  {
+    ( if [ ! -d "${rockstree}/git/redis-lua" ]; then
+        git clone https://github.com/nrk/redis-lua.git \
+                  "${rockstree}/git/redis-lua"
+      fi
+      cd "${rockstree}/git/redis-lua"
+      git pull
     )
-  else
-    rm -rf "${rockstree}/git/library"
-    ln -s  "${sourcepath}" \
-           "${rockstree}/git/library"
-
-  fi
+    ( if [ ! -d "${rockstree}/git/lua-websockets" ]; then
+        git clone https://github.com/saucisson/lua-websockets.git \
+                  "${rockstree}/git/lua-websockets"
+      fi
+      cd "${rockstree}/git/lua-websockets"
+      git pull
+    )
+    if [ -z "${sourcepath+x}" ]; then
+      ( if [ ! -d "${rockstree}/git/library" ]; then
+          rm -rf "${rockstree}/git/library"
+          git clone https://github.com/CosyVerif/library.git \
+                    "${rockstree}/git/library"
+        fi
+        cd "${rockstree}/git/library"
+        git pull
+      )
+    else
+      rm -rf "${rockstree}/git/library"
+      ln -s  "${sourcepath}" \
+             "${rockstree}/git/library"
+    fi
+  } >> "${log}" 2>&1
   for version in 5.1 ${versions}
   do
     echo "Installing rocks for lua-${version}."
@@ -391,13 +386,23 @@ function install_cosyverif ()
       rm -rf "${rockstree}/${version}/share/lua/${version}/websocket"*
       rm -rf "${rockstree}/${version}/share/lua/${version}/cosy"*
       # Install luasec before everything to allow the use of HTTPS in luarocks:
+      case "${mode}" in
+        "server")
+          options=""
+          ;;
+        "client")
+          options=(OPENSSL_DIR="${prefix}" LIBEV_DIR="${prefix}")
+          ;;
+      esac
       for dependency in luasec ${dependencies}; do
-        if "${rockstree}/${version}/bin/luarocks" list --porcelain | grep "${dependency}"; then
-          echo -n
+        if "${rockstree}/${version}/bin/luarocks" list --porcelain | grep --silent "${dependency}"; then
+          echo "  Not installing ${dependency} as it is already installed."
         else
-          "${rockstree}/${version}/bin/luarocks" install "${dependency}"
+          echo "  Installing ${dependency} as it is not installed."
+          echo "${rockstree}/${version}/bin/luarocks" install "${dependency}" ${options[*]}
+          "${rockstree}/${version}/bin/luarocks" install "${dependency}" ${options[*]}
         fi
-      done >> "${log}" 2>&1
+      done
       # Create symlinks in rockstree:
       rm -rf "${rockstree}/${version}/share/lua/${version}/redis"*
       ln -s  "${rockstree}/git/redis-lua/src/redis.lua" \
@@ -409,7 +414,7 @@ function install_cosyverif ()
              "${rockstree}/${version}/share/lua/${version}/websocket"
       ln -s  "${rockstree}/git/library/src/cosy" \
              "${rockstree}/${version}/share/lua/${version}/cosy"
-    fi
+    fi # >> "${log}" 2>&1
     if [ ! -z "${sourcepath+x}" ]; then
       echo "Installing development tools for lua-${version}."
       for module in luacheck luacov busted; do
