@@ -2,11 +2,11 @@ return function (loader)
 
   local Configuration = loader.load "cosy.configuration"
   local I18n          = loader.load "cosy.i18n"
+  local Scheduler     = loader.load "cosy.scheduler"
   local Value         = loader.load "cosy.value"
+  Scheduler.make_default ()
   local Colors        = loader.require "ansicolors"
   local Websocket     = loader.require "websocket"
-  local Copas         = loader.require "copas.ev"
-  Copas.make_default ()
   local Http          = loader.require "socket.http"
   local Ltn12         = loader.require "ltn12"
 
@@ -279,8 +279,8 @@ return function (loader)
 
   function Commands.captcha (args, parameters)
     local info      = {}
-    local addserver = Copas.addserver
-    Copas.addserver = function (s, f)
+    local addserver = Scheduler.addserver
+    Scheduler.addserver = function (s, f)
       info.socket = s
       local ok, port = s:getsockname ()
       if ok then
@@ -297,7 +297,7 @@ return function (loader)
             if message then
               message = Value.decode (message)
               parameters.captcha = message.response
-              Copas.removeserver (info.socket)
+              Scheduler.removeserver (info.socket)
             else
               ws:close()
               return
@@ -306,7 +306,7 @@ return function (loader)
         end
       },
     }
-    Copas.addserver = addserver
+    Scheduler.addserver = addserver
     os.execute ([[
       xdg-open {{{url}}} || open {{{url}}} &
     ]] % {
@@ -315,7 +315,7 @@ return function (loader)
         port   = info.port,
       },
     })
-    Copas.loop()
+    Scheduler.loop()
   end
 
   Results ["server:information"] = function (response)
