@@ -110,13 +110,10 @@ if [ "${mode}" == "server" ]; then
   "
 else
   dependencies="\
-    copas \
     copas-ev \
-    hotswap \
     hotswap-ev \
     hotswap-http \
     lua-cjson \
-    lua-ev \
     luafilesystem \
     luasec \
     luasocket \
@@ -412,16 +409,18 @@ ${rockstree}/5.1/bin/luajit ${rockstree}/5.1/share/lua/5.1/cosy/cli/runner.lua "
 EOF
   chmod a+x "${cli}"
 
+if [ "${mode}" == "server" ]; then
   cat > "${server}" <<EOF
 #! /bin/sh
-
+  
 ${paths}
 export COSY_PREFIX="${prefix}"
-
+  
 ${rockstree}/5.1/bin/luajit ${rockstree}/5.1/share/lua/5.1/cosy/server/cli.lua "\$@"
 EOF
   chmod a+x "${server}"
-
+fi
+  
   cat > "${uninstall}" <<EOF
 #! /bin/bash
 
