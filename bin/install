@@ -259,7 +259,7 @@ diff -rupN LuaJIT-2.0.4.back/src/Makefile LuaJIT-2.0.4/src/Makefile
 EOL
   {
     patch -p1 -i luajit.patch
-    make
+    make -j"$(nproc)"
     make install
   } >> "${log}" 2>&1
   cd   ..
