@@ -16,9 +16,6 @@ return function (t)
     _G.require = back
     return result
   end
-  -- loader.require = function (name)
-  --   return loader.hotswap.require (name)
-  -- end
   loader.load    = function (name)
     if modules [name] then
       return modules [name]
