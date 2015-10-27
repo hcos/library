@@ -72,8 +72,6 @@ function Cli.configure (cli, arguments)
     end
   end -- save server name for next cli launch
 
--- hot_swap_http  (  storage_dir , cache)
-
   --  every dowloaded lua package will be saved in ~/.cosy/lua/base64(server_name)
   local package_dir = cosy_dir .. "/lua/"
   local server_dir  = package_dir .. Mime.b64 (cli.server)
