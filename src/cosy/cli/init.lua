@@ -155,11 +155,11 @@ function Cli.start (cli)
     parser = parser,
     client = client,
   }
-  Commands.parse (commands)
-
-  local ok, result = xpcall (command, function ()
-    print (Colors ("%{white redbg}" .. i18n ["error:unexpected"] % {}))
-  end)
+  local ok, result = xpcall (function ()
+      Commands.parse (commands)
+    end, function ()
+      print (Colors ("%{white redbg}" .. i18n ["error:unexpected"] % {}))
+    end)
   if not ok then
     if result then
       print (Colors ("%{white redbg}" .. i18n (result.error).message))
