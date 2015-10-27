@@ -524,7 +524,10 @@ stop_server
 trap error ERR
 install_dependencies
 install_luajit
-install_openresty
+if [ "${mode}" == "server" ]; then
+  echo "Installing openresty required only by the server."
+  install_openresty
+fi
 install_luarocks
 install_cosyverif
 install_main
