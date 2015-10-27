@@ -384,16 +384,11 @@ return function (loader)
 
   Prepares ["user:create"] = function (commands, args)
     if not args.tos_digest then
-      commands.ws:send (Value.expression {
-        server     = args.server,
-        operation  = "server:tos",
-        parameters = {
-          locale = args.locale,
-        },
-      })
-      local tosresult = Value.decode (commands.ws:receive ())
-      assert (tosresult.success)
-      args.tos_digest = tosresult.response.tos_digest
+      local tos = commands.client.server.tos {
+        locale = args.locale,
+      }
+      print (tos.tos)
+      args.tos_digest = tos.tos_digest
     end
   end
 
