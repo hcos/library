@@ -1,5 +1,19 @@
-local loader        = require "cosy.loader.lua" {
-  logto = os.getenv "HOME" .. "/.cosy/server.log",
+os.remove (os.getenv "HOME" .. "/.cosy/server.log")
+
+local Scheduler = require "copas.ev"
+-- Make scheduler the default for copas:
+Scheduler.make_default ()
+-- Make its coroutine the default one, also for copas:
+_G.coroutine    = Scheduler._coroutine
+local Hotswap   = require "hotswap.ev".new {
+  loop = Scheduler._loop,
+}
+
+local loader = require "cosy.loader.lua" {
+  logto     = os.getenv "HOME" .. "/.cosy/server.log",
+  hotswap   = Hotswap,
+  scheduler = Scheduler,
+  coroutine = coroutine,
 }
 local Configuration = loader.load "cosy.configuration"
 local Digest        = loader.load "cosy.digest"
@@ -9,7 +23,6 @@ local Logger        = loader.load "cosy.logger"
 local Methods       = loader.load "cosy.methods"
 local Nginx         = loader.load "cosy.nginx"
 local Random        = loader.load "cosy.random"
-local Scheduler     = loader.load "cosy.scheduler"
 local Store         = loader.load "cosy.store"
 local Token         = loader.load "cosy.token"
 local Value         = loader.load "cosy.value"
@@ -85,7 +98,6 @@ function Server.start ()
   App.server            = {}
   App.server.passphrase = Digest (Random ())
   App.server.token      = Token.administration ()
-  Scheduler:make_default ()
   local addserver       = Scheduler.addserver
   Scheduler.addserver   = function (s, f)
     local ok, port = s:getsockname ()
