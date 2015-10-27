@@ -12,8 +12,6 @@ return function (loader)
 
   Configuration.load {
     "cosy.cli",
-    "cosy.nginx",
-    "cosy.server",
   }
 
   local i18n   = I18n.load {
@@ -271,8 +269,6 @@ return function (loader)
         end
       end
     end
-    parameters.server = nil
-    parameters.debug  = nil
     local result = commands.client [key] (parameters)
     print (Value.expression (result))
     show_status (result)
@@ -280,9 +276,6 @@ return function (loader)
     and type (result.response) == "table"
     and Results [key] then
       Results [key] (result.response, commands.ws)
-    end
-    if args.debug then
-      print (Colors ("%{white yellowbg}" .. Value.expression (result)))
     end
     return result
   end
