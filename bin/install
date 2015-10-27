@@ -159,6 +159,7 @@ function install_dependencies ()
     if [ "${mode}" == "server" ]; then
       echo "Installing packages required by the server."
       sudo apt-get install --yes perl build-essential \
+                                 libssl-dev libev-dev \
                                  libreadline-dev libncurses5-dev libpcre3-dev \
                                  redis-server imagemagick \
         >> "${log}" 2>&1
