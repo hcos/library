@@ -48,21 +48,27 @@ return function (loader)
     local result = {}
     local function f (current, prefix)
       for k, v in pairs (current) do
-        local ok, err = pcall (function ()
-          if type (v) == "function" then
-            local name = (prefix or "") .. k:gsub ("_", "-")
-            result [name] = i18n [name] % { locale = locale }
-          elseif type (v) == "table" then
-            f (v, (prefix or "") .. k:gsub ("_", "-") .. ":")
-          end
-        end)
-        if not ok then
-          Logger.warning {
-            _      = i18n ["translation:failure"],
-            reason = err,
-          }
+        if type (v) == "function" then
           local name = (prefix or "") .. k:gsub ("_", "-")
-          result [name] = name
+          local ok, description = pcall (function ()
+            return i18n [name] % { locale = locale }
+          end)
+          if not ok then
+            Logger.warning {
+              _      = i18n ["translation:failure"],
+              reason = description,
+            }
+            description = name
+          end
+          local _, parameters = pcall (v, {
+            __DESCRIBE = true,
+          })
+          result [name] = {
+            description = description,
+            parameters  = parameters,
+          }
+        elseif type (v) == "table" then
+          f (v, (prefix or "") .. k:gsub ("_", "-") .. ":")
         end
       end
     end
