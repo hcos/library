@@ -190,28 +190,26 @@ function install_dependencies ()
 # Install libev:
 function install_libev()
 {
-  (
   echo "Installing libev."
-  git clone "https://github.com/enki/libev.git"  \
-      >> "${log}" 2>&1
+  (
+  git clone "https://github.com/enki/libev.git"
   cd libev
   ./configure --prefix="${prefix}"
   make install
-  )
+  ) >> "${log}" 2>&1
 }
 
 # Install libssl:
 function install_libssl ()
 {
-  (
   echo "Installing libssl."
-  git clone "https://github.com/openssl/openssl.git"  \
-      >> "${log}" 2>&1
+  (
+  git clone "https://github.com/openssl/openssl.git" 
   cd openssl
   git checkout "OpenSSL_1_0_2-stable"
   ./config --prefix="${prefix}"
   make install
-  )
+  ) >> "${log}" 2>&1
 }
 
 # Install LuaJIT with 5.2 compatibility:
