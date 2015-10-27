@@ -1,5 +1,3 @@
-#! /usr/bin/env luajit
-
 local loader        = require "cosy.loader.lua" {
   logto = false,
 }
