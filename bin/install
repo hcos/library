@@ -157,12 +157,13 @@ function install_dependencies ()
 
   if [ ! -z "${apt_available+x}" ]; then
     echo "Installing packages required by both client and server."
-    sudo apt-get install --yes git perl build-essential make gcc diffutils patch curl unzip \
+    sudo apt-get install --yes git make gcc diffutils patch curl unzip \
+                               libev-dev libssl-dev \
       >> "${log}" 2>&1
 
     if [ "${mode}" == "server" ]; then
       echo "Installing packages required only by the server."
-      sudo apt-get install --yes libev-dev libssl-dev \
+      sudo apt-get install --yes perl build-essential \
                                  libreadline-dev libncurses5-dev libpcre3-dev \
                                  redis-server imagemagick \
         >> "${log}" 2>&1
@@ -240,23 +241,26 @@ EOL
 # Install openresty:
 function install_openresty ()
 {
-  if [ -e "${prefix}/bin/resty" ]; then
-    echo "Openresty is already installed."
-    return
+  if [ "${mode}" == "server" ]; then
+    echo "Installing openresty required only by the server."
+    if [ -e "${prefix}/bin/resty" ]; then
+      echo "Openresty is already installed."
+      return
+    fi
+    echo "Installing openresty."
+    (
+      curl --location --silent -O https://openresty.org/download/ngx_openresty-1.9.3.1.tar.gz
+      tar xf ngx_openresty-1.9.3.1.tar.gz
+      cd ngx_openresty-1.9.3.1
+      ./configure --prefix="${prefix}" \
+                  --without-lua51 \
+                  --with-luajit="${rockstree}/5.1" \
+                  --with-ipv6 \
+                  --with-pcre-jit
+      make
+      make install
+    ) >> "${log}" 2>&1
   fi
-  echo "Installing openresty."
-  (
-    curl --location --silent -O https://openresty.org/download/ngx_openresty-1.9.3.1.tar.gz
-    tar xf ngx_openresty-1.9.3.1.tar.gz
-    cd ngx_openresty-1.9.3.1
-    ./configure --prefix="${prefix}" \
-                --without-lua51 \
-                --with-luajit="${rockstree}/5.1" \
-                --with-ipv6 \
-                --with-pcre-jit
-    make
-    make install
-  ) >> "${log}" 2>&1
 }
 
 function install_luarocks ()
@@ -523,10 +527,7 @@ stop_server
 trap error ERR
 install_dependencies
 install_luajit
-if [ "${mode}" == "server" ]; then
-  echo "Installing openresty required only by the server."
-  install_openresty
-fi
+install_openresty
 install_luarocks
 install_cosyverif
 install_main
