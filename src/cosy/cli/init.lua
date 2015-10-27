@@ -1,6 +1,4 @@
-local Cli = {
-  color = true,
-}
+local Cli = {}
 
 Cli.__index = Cli
 
@@ -117,7 +115,6 @@ function Cli.start (cli)
   local loader = cli.loader
 
   local Configuration = loader.load "cosy.configuration"
-  local App           = loader.load "cosy.configuration.layers".app
   local I18n          = loader.load "cosy.i18n"
   local Library       = loader.load "cosy.library"
   local Arguments     = loader.require "argparse"
@@ -125,9 +122,6 @@ function Cli.start (cli)
 
   Configuration.load {
     "cosy.cli",
-  }
-  App.cli = {
-    server = cli.server,
   }
   local i18n = I18n.load {
     "cosy.cli",
