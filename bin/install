@@ -439,7 +439,7 @@ function install_cosyverif ()
       ln -s  "${rockstree}/git/library/src/cosy" \
              "${rockstree}/${version}/share/lua/${version}/cosy"
     fi
-    if [ ! -z "${sourcepath+x}" ]; then
+    if [ ! -z "${sourcepath+x}" ] && [ "${mode}" != "client" ]; then
       echo "Installing development tools for lua-${version}."
       for dependency in ${development}; do
         if "${rockstree}/${version}/bin/luarocks" list \
@@ -507,7 +507,7 @@ echo -e "Cosy has been ${green}successfully uninstalled${nc}."
 EOF
   chmod a+x "${uninstall}"
 
-  if [ ! -z "${sourcepath+x}" ]; then
+  if [ ! -z "${sourcepath+x}" ] && [ "${mode}" != "client" ]; then
     cat > "${check}" <<EOF
 #! /bin/bash
 
@@ -596,7 +596,7 @@ if [ "${mode}" == "server" ]; then
 fi
 echo "- ${prefix}/bin/cosy"
 echo "- ${prefix}/bin/cosy-uninstall"
-if [ ! -z "${sourcepath+x}" ]; then
+if [ ! -z "${sourcepath+x}" ] && [ "${mode}" != "client" ]; then
   echo "This development environment also provides two commands:"
   echo "- ${prefix}/bin/cosy-check    : to run checks, tests and coverage"
   echo "- ${prefix}/bin/cosy-rockspec : to generate rockspec"
