@@ -101,6 +101,7 @@ case "${mode}" in
       luacrypto \
       luafilesystem \
       lualogging \
+      luaposix \
       luasec \
       luasocket \
       lustache \
@@ -114,6 +115,7 @@ case "${mode}" in
       hotswap-http \
       lua-cjson \
       luafilesystem \
+      luaposix \
       luasec \
       luasocket \
     ";;
