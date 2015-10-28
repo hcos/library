@@ -325,6 +325,7 @@ return function (loader)
       _status  = false,
       _error   = false,
       _ws      = false,
+      _co      = coroutine.running (),
       _results = {},
       _waiting = {},
       _data    = {},
