@@ -71,7 +71,9 @@ nc='\033[0m'
 ## Now cmd args have been parsed
 ##################################
 
-versions="5.2"
+if [ "${mode}" != "client" ]; then
+  versions="5.2"
+fi
 cli=${prefix}/bin/cosy
 server=${prefix}/bin/cosy-server
 uninstall=${prefix}/bin/cosy-uninstall
