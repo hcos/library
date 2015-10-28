@@ -184,7 +184,7 @@ function Cli.start (cli)
     os.exit (1)
   end
 
-  local data = File.decode (Configuration.cli.data)
+  local data = File.decode (Configuration.cli.data) or {}
   local who  = client.user.authentified_as {
     authentication = data.authentication,
   }
