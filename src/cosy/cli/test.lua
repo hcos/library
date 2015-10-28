@@ -37,14 +37,13 @@ describe ("Module cosy.cli", function ()
       assert.is.not_nil (cli.server)
     end)
 
-    it ("should fail if several --server options are set", function ()
+    it ("should pick the last one if several --server options are set", function ()
       local cli = Cli.new ()
-      assert.has.errors (function ()
-        cli:configure {
-          "--server=http://public.cosyverif.org",
-          "--server=http://private.cosyverif.org",
-        }
-      end)
+      cli:configure {
+        "--server=http://public.cosyverif.org",
+        "--server=http://private.cosyverif.org",
+      }
+      assert.are.equal (cli.server, "http://private.cosyverif.org")
     end)
 
     it ("should fail if the --server option is not a HTTP(s) URL", function ()
