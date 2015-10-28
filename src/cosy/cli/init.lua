@@ -30,17 +30,26 @@ function Cli.configure (cli, arguments)
   local Mime    = require "mime"
   local Hotswap = require "hotswap.http"
 
+  local default_server = "http://public.cosyverif.lsv.fr"
+  local default_locale = (os.getenv "LANG" or "en"):match "[^%.]+":gsub ("_", "-")
+
   local cosy_dir = os.getenv "HOME" .. "/.cosy"
     -- reads the config
-  local default_server
-  local data_filename = cosy_dir .. "/cli-server"
-  do
-    local file = io.open (data_filename, "r")
-    if file then
-      default_server = file:read "*all"  -- all the file
-      file:close ()
+  local data_filename = cosy_dir .. "/cli.txt"
+  pcall (function ()
+    for line in io.lines (data_filename) do
+      local value = line:match "^server:(.*)"
+      if value then
+        default_server = value
+      end
     end
-  end
+    for line in io.lines (data_filename) do
+      local value = line:match "^locale:(.*)"
+      if value then
+        default_locale = value
+      end
+    end
+  end)
 
   local parser = Arguments () {
     name        = name,
@@ -48,11 +57,11 @@ function Cli.configure (cli, arguments)
   }
   parser:option "-s" "--server" {
     description = "server URL",
-    default     = default_server or "http://public.cosyverif.lsv.fr",
+    default     = default_server,
   }
   parser:option "-l" "--locale" {
     description = "locale for messages",
-    default     = (os.getenv "LANG" or "en"):match "[^%.]+":gsub ("_", "-"),
+    default     = default_locale,
   }
   parser:argument "command" {
     args = "*",
@@ -72,11 +81,13 @@ function Cli.configure (cli, arguments)
   _G.os.exit = _exit
   _G.print   = _print
   -- End of UGLY hack.
-  if not ok then
-    return
+  if ok then
+    cli.server = args.server
+    cli.locale = args.locale
+  else
+    cli.server = default_server
+    cli.locale = default_locale
   end
-  cli.server = args.server
-  cli.locale = args.locale
   assert (cli.server)
 
   -- trim eventuel trailing /   http://server/
@@ -87,7 +98,8 @@ function Cli.configure (cli, arguments)
     Lfs.mkdir (cosy_dir)
     local file, err = io.open (data_filename, "w")
     if file then
-      file:write (cli.server)
+      file:write ("server:" .. cli.server .. "\n")
+      file:write ("locale:" .. cli.locale .. "\n")
       file:close ()
     else
       print (err)
