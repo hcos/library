@@ -272,12 +272,12 @@ return function (loader)
       end
     end
     local result, err = commands.client [key] (parameters)
-    show_status (result, err)
-    if result
-    and type (result) == "table"
-    and Results [key] then
-      Results [key] (result, commands)
+    if Results [key]
+    and (  type (result) == "function"
+        or type (result) == "table") then
+      result, err = pcall (Results [key], result, result)
     end
+    show_status (result, err)
     return result
   end
 
@@ -350,28 +350,16 @@ return function (loader)
            Colors ("%{yellow blackbg}" .. response.tos_digest))
   end
 
-  Results ["server:filter"] = function (_, ws)
-    for i = 1, math.huge do
-      local response = ws:receive ()
-      if response == nil then
-        break
-      end
-      local key      = tostring (i)
-      local value    = Value.decode (response)
-      if value.error then
-        print (Colors ("%{black redbg}" .. i18n ["failure"] % {}),
-               Colors ("%{red blackbg}" .. (value.error.message ~= nil and tostring (value.error.message) or "")))
-      end
-      if value.finished then
-        break
-      end
-      value = value.response
+  Results ["server:filter"] = function (_, result)
+    local i = 0
+    for value in result do
+      i = i + 1
       if type (value) ~= "table" then
-        print (Colors ("%{black yellowbg} " .. tostring (key)) ..
+        print (Colors ("%{black yellowbg} " .. tostring (i)) ..
                Colors ("%{reset}" .. " => ") ..
-               Colors ("%{yellow blackbg}" .. tostring (value)))
+               Colors ("%{yellow blackbg}" .. Value.expression (value)))
       else
-        print (Colors ("%{black cyanbg} " .. tostring (key) .. " ") ..
+        print (Colors ("%{black cyanbg} " .. tostring (i) .. " ") ..
                Colors ("%{reset}" .. " => "))
         local max  = 0
         local keys = {}
@@ -389,7 +377,7 @@ return function (loader)
           jspace = jspace .. " => "
           print (Colors ("%{black yellowbg}  " .. tostring (jkey)) ..
                  Colors ("%{reset}" .. jspace) ..
-                 Colors ("%{yellow blackbg}" .. tostring (jvalue)))
+                 Colors ("%{yellow blackbg}" .. Value.expression (jvalue)))
         end
       end
     end
