@@ -132,7 +132,7 @@ development="\
   lustache \
 "
 
-export CC=clang
+export CC="clang"
 
 echo -e "Temporary directory: ${green}${tempwd}${nc}"
 echo -e "Log file           : ${green}${log}${nc}"
@@ -283,7 +283,7 @@ EOL
   {
     patch -p1 -i luajit.patch
     make -j"$(nproc)"
-    make install
+    make install CC="clang"
   } >> "${log}" 2>&1
   cd   ..
   ln -sf "${rockstree}/5.1/bin/luajit-2.1.0-beta1" "${rockstree}/5.1/bin/luajit"
