@@ -111,7 +111,7 @@ case "${mode}" in
       serpent \
     ";;
   "client")
-    dependencies="\
+    dependencies=" \
       copas-ev \
       hotswap-ev \
       hotswap-http \
@@ -168,7 +168,7 @@ function install_dependencies ()
 
   if [ ! -z "${apt_available+x}" ]; then
     echo "Installing development packages."
-    sudo apt-get install --yes git make clang diffutils patch curl unzip \
+    sudo apt-get install --yes git make clang gcc diffutils patch curl unzip \
       >> "${log}" 2>&1
 
     if [ "${mode}" == "server" ]; then
