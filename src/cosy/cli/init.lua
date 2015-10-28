@@ -148,6 +148,7 @@ function Cli.start (cli)
   local loader = cli.loader
 
   local Configuration = loader.load "cosy.configuration"
+  local File          = loader.load "cosy.file"
   local I18n          = loader.load "cosy.i18n"
   local Library       = loader.load "cosy.library"
   local Colors        = loader.require "ansicolors"
@@ -181,6 +182,16 @@ function Cli.start (cli)
     print (Colors ("%{white redbg}" .. i18n ["failure"] % {}),
            Colors ("%{white redbg}" .. i18n ["server:unreachable"] % {}))
     os.exit (1)
+  end
+
+  local data = File.decode (Configuration.cli.data)
+  local who  = client.user.authentified_as {
+    authentication = data.authentication,
+  }
+  if who.identifier then
+    print (Colors ("%{green blackbg}" .. i18n ["client:identified"] % {
+      user = who.identifier,
+    }))
   end
 
   local Commands = loader.load "cosy.cli.commands"

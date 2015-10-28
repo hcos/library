@@ -4,9 +4,8 @@ return function (loader)
 
   Default.cli = {
     directory = os.getenv "HOME" .. "/.cosy",
+    data      = os.getenv "HOME" .. "/.cosy/client.data",
     locale    = (os.getenv "LANG" or "en"):match "[^%.]+":gsub ("_", "-"),
-    packages_directory = os.getenv "HOME" .. "/.cosy/lua",
-    packages_data = os.getenv "HOME" .. "/.cosy/lua.data",
   }
 
 end

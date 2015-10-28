@@ -2,7 +2,10 @@ return function (--[[loader]])
 
   return {
     ["client:server"] = {
-      en = "using {{{server}}} server",
+      en = "using '{{{server}}}' server",
+    },
+    ["client:identified"] = {
+      en = "identified as user '{{{user}}}'",
     },
     ["client:command"] = {
       en = "cosy command-line interface",

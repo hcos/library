@@ -1,6 +1,7 @@
 return function (loader)
 
   local Configuration = loader.load "cosy.configuration"
+  local File          = loader.load "cosy.file"
   local I18n          = loader.load "cosy.i18n"
   local Scheduler     = loader.load "cosy.scheduler"
   local Value         = loader.load "cosy.value"
@@ -183,10 +184,13 @@ return function (loader)
       end
     end
     assert (key)
+    local data = File.decode (Configuration.cli.data) or {}
     if Prepares [key] then
       Prepares [key] (commands, args)
     end
-    local parameters = {}
+    local parameters = {
+      authentication = data.authentication,
+    }
     for _, x in pairs (commands.methods [key].parameters) do
       for name, t in pairs (x) do
         if t.type == "password" and args [name] then
@@ -399,6 +403,12 @@ return function (loader)
       print (tos.tos)
       args.tos_digest = tos.tos_digest
     end
+  end
+
+  Results ["user:authenticate"] = function (response)
+    local data = File.decode (Configuration.cli.data) or {}
+    data.authentication = response.authentication
+    File.encode (Configuration.cli.data, data)
   end
 
   Results ["user:update"] = function (response)
