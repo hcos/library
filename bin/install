@@ -118,6 +118,15 @@ case "${mode}" in
       luasocket \
     ";;
 esac
+development="\
+  ansicolors \
+  argparse \
+  busted \
+  luacheck \
+  luacov \
+  luafilesystem \
+  lustache \
+"
 
 echo -e "Temporary directory: ${green}${tempwd}${nc}"
 echo -e "Log file           : ${green}${log}${nc}"
@@ -395,12 +404,15 @@ function install_cosyverif ()
           ;;
       esac
       for dependency in luasec ${dependencies}; do
-        if "${rockstree}/${version}/bin/luarocks" list --porcelain | grep --silent "${dependency}"; then
+        if "${rockstree}/${version}/bin/luarocks" list \
+            --porcelain \
+            --tree="${rockstree}/${version}" \
+            | grep --silent "${dependency}"; then
           echo "  Not installing ${dependency} as it is already installed."
         else
           echo "  Installing ${dependency} as it is not installed."
-          echo "${rockstree}/${version}/bin/luarocks" install "${dependency}" ${options[*]}
-          "${rockstree}/${version}/bin/luarocks" install "${dependency}" ${options[*]}
+          "${rockstree}/${version}/bin/luarocks" install "${dependency}" ${options[*]} \
+              >> "${log}" 2>&1
         fi
       done
       # Create symlinks in rockstree:
@@ -414,16 +426,21 @@ function install_cosyverif ()
              "${rockstree}/${version}/share/lua/${version}/websocket"
       ln -s  "${rockstree}/git/library/src/cosy" \
              "${rockstree}/${version}/share/lua/${version}/cosy"
-    fi # >> "${log}" 2>&1
+    fi
     if [ ! -z "${sourcepath+x}" ]; then
       echo "Installing development tools for lua-${version}."
-      for module in luacheck luacov busted; do
-        if "${rockstree}/${version}/bin/luarocks" list --porcelain | grep "${module}"; then
-          echo -n
+      for dependency in ${development}; do
+        if "${rockstree}/${version}/bin/luarocks" list \
+            --porcelain \
+            --tree="${rockstree}/${version}" \
+            | grep --silent "${dependency}"; then
+          echo "  Not installing ${dependency} as it is already installed."
         else
-          "${rockstree}/${version}/bin/luarocks" install "${module}"
+          echo "  Installing ${dependency} as it is not installed."
+          "${rockstree}/${version}/bin/luarocks" install "${dependency}" \
+            >> "${log}" 2>&1
         fi
-      done >> "${log}" 2>&1
+      done
     fi
   done
 }
