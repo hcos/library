@@ -39,7 +39,7 @@ return function (--[[loader]])
       en = "locale for messages",
     },
     ["option:server"]= {
-      en = "server url"
+      en = "server URL"
     },
     ["flag:captcha"] = {
       en = "answer to captcha in web browser",

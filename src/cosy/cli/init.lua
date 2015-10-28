@@ -1,5 +1,10 @@
 os.remove (os.getenv "HOME" .. "/.cosy/client.log")
 
+local Arguments = require "argparse"
+
+local name = os.getenv "COSY_PREFIX" .. "/bin/cosy"
+name = name:gsub (os.getenv "HOME", "~")
+
 local Cli = {}
 
 Cli.__index = Cli
@@ -25,45 +30,62 @@ function Cli.configure (cli, arguments)
   local Mime    = require "mime"
   local Hotswap = require "hotswap.http"
 
-  -- parse  the cmd line arguments to fetch server and/or color options
-  local key = "server"
-  local pattern = "%-%-" .. key .. "=(.*)"
-  local j = 1
-  while j <= #arguments do
-    local argument = arguments [j]
-    local value = argument:match (pattern)   -- value contains only right hand side of equals
-    if value then -- matched
-      assert (not cli [key])  -- (better)  nil or false
-      cli [key] = value
-      table.remove (arguments, j)
-    else
-      j = j + 1
-    end
-  end
-  cli.arguments = arguments
-
-  -- reads the config
-  local cosy_dir   = os.getenv "HOME" .. "/.cosy"
-  local data_file  = cosy_dir  .. "/cli-server" -- contains last server uri
-  if not cli.server then ---- try to fetch the server from the previously saved config
-    local file = io.open (data_file,"r")
+  local cosy_dir = os.getenv "HOME" .. "/.cosy"
+    -- reads the config
+  local default_server
+  local data_filename = cosy_dir .. "/cli-server"
+  do
+    local file = io.open (data_filename, "r")
     if file then
-        cli.server  = file:read "*all"  -- all the file
-        file:close ()
+      default_server = file:read "*all"  -- all the file
+      file:close ()
     end
   end
-  if not cli.server then ---- still not :  -- try to fetch the server from the default config
-    cli.server = "http://public.cosyverif.lsv.fr"
-    cli.hardcoded_server = true -- warning
+
+  local parser = Arguments () {
+    name        = name,
+    description = "cosy command-line interface",
+  }
+  parser:option "-s" "--server" {
+    description = "server URL",
+    default     = default_server or "http://public.cosyverif.lsv.fr",
+  }
+  parser:option "-l" "--locale" {
+    description = "locale for messages",
+    default     = (os.getenv "LANG" or "en"):match "[^%.]+":gsub ("_", "-"),
+  }
+  parser:argument "command" {
+    args = "*",
+    description = "command to run and its options and arguments",
+  }
+  -- Warning: UGLY hack.
+  -- `argparse` stops execution when `pparse` is used with a `--help` option.
+  -- But we want to continue to get the full help message from `Cli.start`.
+  -- Thus, we redefine temporarily `os.exit` to do nothing.
+  -- Moreover, with `--help`, it also shows the help message, so we
+  -- redefine `print` to do nothing.
+  local _exit  = os.exit
+  local _print = _G.print
+  os.exit = function () end
+  print   = function () end
+  local ok, args = parser:pparse ()
+  os.exit  = _exit
+  _G.print = _print
+  -- End of UGLY hack.
+  if not ok then
+    return
   end
+  cli.server = args.server
+  cli.locale = args.locale
   assert (cli.server)
+
   -- trim eventuel trailing /   http://server/
   cli.server  = cli.server:gsub("/+$","")
   assert (cli.server:match "^https?://")  -- check is an URI
 
   do -- save server name for next cli launch
     Lfs.mkdir (cosy_dir)
-    local file, err = io.open (data_file,"w")
+    local file, err = io.open (data_filename, "w")
     if file then
       file:write (cli.server)
       file:close ()
@@ -73,7 +95,7 @@ function Cli.configure (cli, arguments)
   end -- save server name for next cli launch
 
   --  every dowloaded lua package will be saved in ~/.cosy/lua/base64(server_name)
-  local package_dir = cosy_dir .. "/lua/"
+  local package_dir = cosy_dir ..  "/lua/"
   local server_dir  = package_dir .. Mime.b64 (cli.server)
   Lfs.mkdir (package_dir)
   Lfs.mkdir (server_dir)
@@ -116,7 +138,6 @@ function Cli.start (cli)
   local Configuration = loader.load "cosy.configuration"
   local I18n          = loader.load "cosy.i18n"
   local Library       = loader.load "cosy.library"
-  local Arguments     = loader.require "argparse"
   local Colors        = loader.require "ansicolors"
 
   Configuration.load {
@@ -130,15 +151,6 @@ function Cli.start (cli)
     server = cli.server,
   }))
 
-  local client = Library.connect (cli.server)
-  if not client then
-    print (Colors ("%{white redbg}" .. i18n ["failure"] % {}),
-           Colors ("%{white redbg}" .. i18n ["server:unreachable"] % {}))
-    os.exit (1)
-  end
-
-  local name = os.getenv "COSY_PREFIX" .. "/bin/cosy"
-  name = name:gsub (os.getenv "HOME", "~")
   local parser = Arguments () {
     name        = name,
     description = i18n ["client:command"] % {},
@@ -151,6 +163,13 @@ function Cli.start (cli)
     description = i18n ["option:locale"] % {},
     default     = Configuration.cli.locale,
   }
+
+  local client = Library.connect (cli.server)
+  if not client then
+    print (Colors ("%{white redbg}" .. i18n ["failure"] % {}),
+           Colors ("%{white redbg}" .. i18n ["server:unreachable"] % {}))
+    os.exit (1)
+  end
 
   local Commands = loader.load "cosy.cli.commands"
   local commands = Commands.new {

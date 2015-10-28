@@ -112,6 +112,7 @@ case "${mode}" in
     ";;
   "client")
     dependencies=" \
+      argparse \
       copas-ev \
       hotswap-ev \
       hotswap-http \
