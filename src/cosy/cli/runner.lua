@@ -1,7 +1,7 @@
 local Cli = require "cosy.cli"
 
 local cli = Cli.new ()
-local ok = xpcall (function ()
+xpcall (function ()
   cli:start ()
 end, function (err)
   print ("An error happened. Maybe the client was unable to download sources from " .. (cli.server or "no server") .. ".")
