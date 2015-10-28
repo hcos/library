@@ -138,7 +138,7 @@ return function (loader)
         description = description,
       }
     elseif part == "optional" then
-      parser:option ("--{{{name}}}=..." % { name = name }) {
+      parser:option ("--{{{name}}}" % { name = name }) {
         description = description,
       }
     else
