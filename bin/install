@@ -202,6 +202,10 @@ function install_libev ()
   if [ "${mode}" != "client" ]; then
     return
   fi
+  if [ -e "${prefix}/lib/libev.a" ]; then
+    echo "Libev is already installed."
+    return
+  fi
   echo "Installing libev."
   (
     git clone "https://github.com/enki/libev.git"
@@ -216,6 +220,10 @@ function install_libev ()
 function install_libssl ()
 {
   if [ "${mode}" != "client" ]; then
+    return
+  fi
+  if [ -e "${prefix}/lib/libssl.a" ]; then
+    echo "Libssl is already installed."
     return
   fi
   echo "Installing libssl."
