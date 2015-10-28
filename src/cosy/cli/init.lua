@@ -64,13 +64,13 @@ function Cli.configure (cli, arguments)
   -- Thus, we redefine temporarily `os.exit` to do nothing.
   -- Moreover, with `--help`, it also shows the help message, so we
   -- redefine `print` to do nothing.
-  local _exit  = os.exit
+  local _exit  = _G.os.exit
   local _print = _G.print
-  os.exit = function () end
-  print   = function () end
-  local ok, args = parser:pparse ()
-  os.exit  = _exit
-  _G.print = _print
+  _G.os.exit = function () end
+  _G.print   = function () end
+  local ok, args = parser:pparse (arguments)
+  _G.os.exit = _exit
+  _G.print   = _print
   -- End of UGLY hack.
   if not ok then
     return
