@@ -80,7 +80,7 @@ function Cli.configure (cli, arguments)
   assert (cli.server)
 
   -- trim eventuel trailing /   http://server/
-  cli.server  = cli.server:gsub("/+$","")
+  cli.server = cli.server:gsub ("/+$","")
   assert (cli.server:match "^https?://")  -- check is an URI
 
   do -- save server name for next cli launch
@@ -95,7 +95,7 @@ function Cli.configure (cli, arguments)
   end -- save server name for next cli launch
 
   --  every dowloaded lua package will be saved in ~/.cosy/lua/base64(server_name)
-  local package_dir = cosy_dir ..  "/lua/"
+  local package_dir = cosy_dir .. "/lua/"
   local server_dir  = package_dir .. Mime.b64 (cli.server)
   Lfs.mkdir (package_dir)
   Lfs.mkdir (server_dir)
