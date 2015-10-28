@@ -19,8 +19,6 @@ if file then
   print (data.token)
 end")
 
-exit 1
-
 #echo "Stopping daemon:"
 #"${cosy}" daemon:stop --force
 #echo "Stopping server:"
