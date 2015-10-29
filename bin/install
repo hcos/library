@@ -629,8 +629,8 @@ function generate_package ()
   basedir=$(basename "${prefix}")
 
   version=$("${prefix}/bin/cosy-version")
-  os="$(uname -o | sed -e 's/\//_/g')"
-  arch="$(uname -m | sed -e 's/ /_/g' | sed -e 's/\//_/g')"
+  os="  $(uname -o | sed -e 's/ /_/g' | sed -e 's/\//_/g' | tr '[:upper:]' '[:lower:]')"
+  arch="$(uname -m | sed -e 's/ /_/g' | sed -e 's/\//_/g' | tr '[:upper:]' '[:lower:]')"
   archive="cosy-${mode}-${version}-${os}-${arch}.tar.gz"
 
   rm -f "${parentdir}/${archive}"
