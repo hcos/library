@@ -593,62 +593,35 @@ EOF
 function install_configuration ()
 {
   echo -e "Installing configuration in ${green}${prefix}/etc/cosy.conf${nc}."
+  version=$("${prefix}/bin/cosy-version")
   mkdir -p "${prefix}/etc"
   cat > "${prefix}/etc/cosy.conf" <<EOL
-return {}
+return {
+  dependencies = {
+    ["/setup/x86_64/Linux"] = "https://cosyverif.org/BUNDLESv2/cosy-client-${version}-GNU_Linux-x86_64.tar.gz",
+  }
+}
 EOL
 }
 
-
-
-
-# Generate the package :
+# Generate the package:
 function generate_package ()
 {
   parentdir=$(dirname "${prefix}")
   basedir=$(basename "${prefix}")
-  
-  cosyname="cosy-${mode}"
-  cosyversion="0.2"
-  osname="$(uname -o| sed -e 's/\//_/g')"
-  osarch="$(uname -m| sed -e 's/ /_/g' | sed -e 's/\//_/g')"
-  packg="${cosyname}"_"${cosyversion}"_"${osname}"_"${osarch}"".tar.gz"
-  
-  echo -e "Log file           : ${green}${log}${nc}"
-  echo -e "Mode               :  ${green}${mode}${nc}"
-  echo -e "Prefix             :  ${green}${prefix}${nc}"
-  
-  echo "${scriptname}"
-  echo "${prefix}"
-  echo "${parentdir}"
-  echo "${basedir}"
-  echo "${cosyname}"
-  echo "${cosyversion}"
-  echo "${packg}"
-  
-  ## tests that dir exists
-  if [ ! -d "${prefix}" ]; then
-    echo "Fatal: directory ${prefix} is not reachable"
-    exit 1;
-  fi
-  if [ ! -d "${parentdir}" ]; then
-    echo "Fatal: directory ${parentdir} is not reachable"
-    exit 1;
-  fi
 
-  echo "Generating the package."
+  version=$("${prefix}/bin/cosy-version")
+  os="$(uname -o | sed -e 's/\//_/g')"
+  arch="$(uname -m | sed -e 's/ /_/g' | sed -e 's/\//_/g')"
+  archive="cosy-${mode}-${version}-${os}-${arch}.tar.gz"
+
+  rm -f "${parentdir}/${archive}"
+  echo -e "Packaging in ${green}${parentdir}/${archive}${nc}."
   (
-    echo "cd ${parentdir}"
     cd "${parentdir}"
-    tar czf "${packg}" "${basedir}"
+    tar czf "${archive}" "${basedir}"
   ) >> "${log}" 2>&1
-
 }
-
-
-
-
-
 
 function error ()
 {
