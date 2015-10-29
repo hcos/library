@@ -289,8 +289,8 @@ EOL
     make install CC="clang"
   } >> "${log}" 2>&1
   cd   ..
-  ln -sf "${rockstree}/5.1/bin/luajit-2.1.0-beta1" "${rockstree}/5.1/bin/luajit"
-  ln -sf "${rockstree}/5.1/include/luajit-2.1"     "${rockstree}/5.1/include/luajit-2.0"
+  ln -sf "luajit-2.1.0-beta1" "${rockstree}/5.1/bin/luajit"
+  ln -sf "luajit-2.1"         "${rockstree}/5.1/include/luajit-2.0"
 }
 
 # Install openresty:
@@ -434,14 +434,14 @@ function install_cosyverif ()
       done
       # Create symlinks in rockstree:
       rm -rf "${rockstree}/${version}/share/lua/${version}/redis"*
-      ln -s  "${rockstree}/git/redis-lua/src/redis.lua" \
+      ln -s  "../../../../git/redis-lua/src/redis.lua" \
              "${rockstree}/${version}/share/lua/${version}/redis.lua"
       rm -rf "${rockstree}/${version}/share/lua/${version}/websocket"*
-      ln -s  "${rockstree}/git/lua-websockets/src/websocket.lua" \
+      ln -s  "../../../../git/lua-websockets/src/websocket.lua" \
              "${rockstree}/${version}/share/lua/${version}/websocket.lua"
-      ln -s  "${rockstree}/git/lua-websockets/src/websocket" \
+      ln -s  "../../../../git/lua-websockets/src/websocket" \
              "${rockstree}/${version}/share/lua/${version}/websocket"
-      ln -s  "${rockstree}/git/library/src/cosy" \
+      ln -s  "../../../../git/library/src/cosy" \
              "${rockstree}/${version}/share/lua/${version}/cosy"
     fi
     if [ ! -z "${sourcepath+x}" ] && [ "${mode}" != "client" ]; then
