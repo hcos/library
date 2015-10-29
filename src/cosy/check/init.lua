@@ -324,10 +324,10 @@ do
     local script = [[
 #! /bin/bash
 
-git_dir=$(readlink "{{{main}}}")
+git_dir=$(readlink --canonicalize "{{{main}}}")
 user_dir=$(dirname "${git_dir}")
 user_dir=$(dirname "${user_dir}")
-shellcheck --exclude=SC2024 "${user_dir}"/bin/*
+shellcheck --exclude=SC2024 "${user_dir}/bin/"*
     ]] % {
       main = main,
     }
