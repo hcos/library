@@ -298,7 +298,7 @@ function install_openresty ()
   if [ "${mode}" != "server" ]; then
     return
   fi
-  if [ -e "${prefix}/bin/resty" ]; then
+  if [ -e "${prefix}/local/openresty/bin/resty" ]; then
     echo "Openresty is already installed."
     return
   fi
@@ -307,7 +307,7 @@ function install_openresty ()
     curl --location --silent -O https://openresty.org/download/ngx_openresty-1.9.3.1.tar.gz
     tar xf ngx_openresty-1.9.3.1.tar.gz
     cd ngx_openresty-1.9.3.1
-    ./configure --prefix="${prefix}" \
+    ./configure --prefix="${prefix}/local/openresty" \
                 --without-lua51 \
                 --with-luajit="${rockstree}/5.1" \
                 --with-ipv6 \

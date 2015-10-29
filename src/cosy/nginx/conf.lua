@@ -10,7 +10,7 @@ return function (loader)
   end
 
   Default.http = {
-    nginx         = os.getenv "COSY_PREFIX" .. "/nginx/sbin/nginx",
+    nginx         = os.getenv "COSY_PREFIX" .. "/local/openresty/nginx/sbin/nginx",
     hostname      = nil,
     interface     = "*",
     port          = 8080,
