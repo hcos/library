@@ -1,0 +1,169 @@
+#! /bin/bash
+
+##
+## This script sets up a CosyVerif client
+##  - it detects which package could suits to your OS/Arch
+##  - it downloads the package from the cosy server
+##  - it installs the package onto your machine
+##
+
+###  TODO  --prefix    : prefix destination
+###  TODO  --root_uri  : URI of the cosy server
+###  TODO  --full_uri  : full URI of the cosy client
+
+red='\033[0;31m'
+green='\033[0;32m'
+nc='\033[0m'
+
+tempwd=$(mktemp -d)
+log=$(mktemp)
+
+
+for i in "$@"
+do
+  case ${i} in
+    -f=*|--full_uri=*)
+      pkg_uri="${i#*=}"
+      pkg_uri=${pkg_uri%/}
+      shift # past argument=value
+    ;;
+    -r=*|--root_uri=*)
+      cosy_server_uri="${i#*=}"
+      cosy_server_uri=${sourcepath%/}
+      shift # past argument=value
+    ;;
+    -p=*|--prefix=*)
+      prefix="${i#*=}"
+      prefix=${prefix%/}
+      shift # past argument=value
+    ;;
+    -h|--help)
+      echo "Usage: "
+      echo "  install [--prefix=PREFIX] [--root_uri=<http://cosy>] [--full_uri=<http://cosy/pkg_v_os_arch.tar.gz>]"
+      exit 1;
+    ;;
+    *)
+      echo "Usage: "
+      echo "  install [--prefix=PREFIX] [--root_uri=<http://cosy>] [--full_uri=<http://cosy/pkg_v_os_arch.tar.gz>]"
+      exit 1;
+      # unknown option
+    ;;
+  esac
+done
+
+
+
+scriptname=$0
+parentdir="${prefix}"
+#basedir=$(basename "${prefix}")
+
+cosyname="cosycli"
+cosyversion="0.2"
+
+### compute default packg name automatically depending on OS arch
+packg="${cosyname}_${cosyversion}_"$(uname -m)_$(uname -o | sed -e 's/ /_/g' | sed -e 's/\//_/g')".tar.gz"
+if [ ! -z "${pkg_uri}" ]; then
+  ## override default package name
+  packg=$(basename "${pkg_uri}")
+elif [ ! -z "${cosy_server_uri}" ]; then
+  ##  use provided uri  with  default package name
+  pkg_uri=${cosy_server_uri}/${packg}
+else
+  ##  use default uri  with  default package name
+  cosy_server_uri="http://public.cosyverif.fr"
+  pkg_uri=${cosy_server_uri}/${packg}
+fi
+
+
+
+echo -e "Script name        :  ${green}${scriptname}${nc}"
+echo -e "Temporary directory: ${green}${tempwd}${nc}"
+echo -e "Log file           :  ${green}${log}${nc}"
+echo -e "Prefix             :  ${green}${prefix}${nc}"
+echo -e "Parentdir          :  ${green}${parentdir}${nc}"
+#echo -e "Basedir            :  ${green}${basedir}${nc}"
+#echo -e "Cosyname           :  ${green}${cosyname}${nc}"
+#echo -e "Cosyversion        :  ${green}${cosyversion}${nc}"
+echo -e "Cosy_server_uri    :  ${green}${cosy_server_uri}${nc}"
+echo -e "Packg              :  ${green}${packg}${nc}"
+echo -e "Pkg_uri            :  ${green}${pkg_uri}${nc}"
+
+
+
+
+
+
+
+## assert the curl is available 
+## assert the target dir exists or make it 
+## test if the target dir exists
+function install_package ()
+{
+  echo "Installing the package."
+  (
+    ## assert the target dir exists or make it 
+    if [ ! -d "${parentdir}" ]; then
+      mkdir -p "${parentdir}"
+      if [ ! -d "${parentdir}" ]; then
+        echo "Fatal: directory ${parentdir} is not reachable"
+        exit 1;
+      fi
+    fi
+    #t# fetch the archive
+    echo "inside $(pwd)"
+    echo "::: cd ${tempwd}"
+    cd "${tempwd}"
+    echo "inside $(pwd)"
+    
+
+    # check if curl is available:
+    if command -v curl; then
+      #curl_available=true
+      curl --location --silent -O "${pkg_uri}"
+    elif command -v wget; then
+      #wget_available=true
+      wget --quiet -O "${pkg_uri}"
+    else
+      echo "Neither curl nor wget is available."
+      exit 1;
+    fi >> "${log}" 2>&1
+    ## check got packg
+    if [ ! -f "${packg}" ]; then
+      echo "Missing file : ${packg}."
+      echo " from uri : ${pkg_uri}."
+      exit 1;
+    fi >> "${log}" 2>&1
+
+
+    # TODO check if directory would be erased
+    echo "inside $(pwd)"
+    echo "packg : ${packg}"
+    ls -al
+    ls -al "${packg}"
+
+    # check if tar is available:
+    if command -v tar; then
+      #tar_available=true
+      tar xf "${packg}"  --preserve-permissions --directory "${parentdir}"  
+    else
+      echo "Command tar is not available."
+      exit 1;
+    fi >> "${log}" 2>&1
+  ) >> "${log}" 2>&1
+
+}
+
+function error ()
+{
+  echo -e "${red}An error happened.${nc}"
+  echo -e "Please read log file: ${red}${log}${nc}."
+  if [ ! -z "${in_ci+x}" ]; then
+    cat "${log}"
+  fi
+  exit 1
+}
+
+
+install_package
+echo "--------logs:---"
+cat "${log}"
