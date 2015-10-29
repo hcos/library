@@ -535,8 +535,25 @@ rm -rf "\${COSY_PREFIX}/bin/cosy"* \
        "\${COSY_PREFIX}/etc/cosy"* \
        "\${COSY_PREFIX}/local/cosy" \
        "\${COSY_PREFIX}/local/openresty"*
-find "\${COSY_PREFIX}" -maxdepth 1 -empty -exec rm -rf {} \;
-find "\${COSY_PREFIX}" -maxdepth 0 -empty -exec rm -rf {} \;
+if [ "${mode}" == "client" ]; then
+  rm -rf "\${COSY_PREFIX}/bin/c_rehash" \
+         "\${COSY_PREFIX}/bin/openssl" \
+         "\${COSY_PREFIX}/include/ev"*.h \
+         "\${COSY_PREFIX}/include/openssl" \
+         "\${COSY_PREFIX}/lib/libcrypto"* \
+         "\${COSY_PREFIX}/lib/libssl"* \
+         "\${COSY_PREFIX}/lib/libev"* \
+         "\${COSY_PREFIX}/lib/engines" \
+         "\${COSY_PREFIX}/lib/pkgconfig/libcrypto.pc" \
+         "\${COSY_PREFIX}/lib/pkgconfig/libssl.pc" \
+         "\${COSY_PREFIX}/lib/pkgconfig/openssl.pc" \
+         "\${COSY_PREFIX}/share/man/man3/ev.3" \
+         "\${COSY_PREFIX}/ssl"
+fi
+for i in {1..10}; do
+  find "\${COSY_PREFIX}" -maxdepth 5 -empty -exec rm -rf {} \; \
+    > /dev/null 2>&1
+done
 echo -e "Cosy has been ${green}successfully uninstalled${nc}."
 EOF
   chmod a+x "${uninstall}"
