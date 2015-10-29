@@ -75,6 +75,7 @@ if [ "${mode}" != "client" ]; then
   versions="5.2"
 fi
 path=${prefix}/bin/cosy-path
+commit=${prefix}/bin/cosy-version
 cli=${prefix}/bin/cosy
 server=${prefix}/bin/cosy-server
 uninstall=${prefix}/bin/cosy-uninstall
@@ -463,6 +464,7 @@ function install_cosyverif ()
 
 function install_main ()
 {
+  base=$(basename "${path}")
   cat > "${path}" <<EOF
 #! /bin/bash
 
@@ -478,10 +480,34 @@ export LD_LIBRARY_PATH="\${COSY_PREFIX}/lib:${LD_LIBRARY_PATH}"
 EOF
   chmod a+x "${path}"
 
+  if [ -z "${sourcepath+x}" ]; then
+    cd "\${COSY_PREFIX}/local/cosy/git/library"
+    version=$(git describe)
+    cd "${tempwd}"
+    cat > "${commit}" <<EOF
+#! /bin/bash
+
+echo "${version}"
+EOF
+  else
+    cat > "${commit}" <<EOF
+#! /bin/bash
+
+root=\$(dirname "\$0")
+source "\${root}/${base}"
+(
+  cd "\${COSY_PREFIX}/local/cosy/git/library"
+  git describe
+)
+EOF
+  fi
+  chmod a+x "${commit}"
+
   cat > "${cli}" <<EOF
 #! /bin/bash
 
-source "$(basename ${path})"
+root=\$(dirname "\$0")
+source "\${root}/${base}"
 luajit "\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/cosy/cli/runner.lua" "\$@"
 EOF
   chmod a+x "${cli}"
@@ -490,7 +516,8 @@ if [ "${mode}" == "server" ]; then
   cat > "${server}" <<EOF
 #! /bin/bash
 
-source "$(basename ${path})"
+root=\$(dirname "\$0")
+source "\${root}/${base}"
 luajit "\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/cosy/server/cli.lua" "\$@"
 EOF
   chmod a+x "${server}"
@@ -499,7 +526,8 @@ fi
   cat > "${uninstall}" <<EOF
 #! /bin/bash
 
-source "$(basename ${path})"
+root=\$(dirname "\$0")
+source "\${root}/${base}"
 if [ -e "\${COSY_PREFIX}/bin/cosy-server" ]; then
   "\${COSY_PREFIX}/bin/cosy-server" stop --force
 fi
@@ -517,7 +545,8 @@ EOF
     cat > "${check}" <<EOF
 #! /bin/bash
 
-source "$(basename ${path})"
+root=\$(dirname "\$0")
+source "\${root}/${base}"
 (
   if [ \$# -ge 1 ]; then
     tmpdir=\${1}
@@ -539,7 +568,8 @@ EOF
     cat > "${rockspec}" <<EOF
 #! /bin/bash
 
-source "$(basename ${path})"
+root=\$(dirname "\$0")
+source "\${root}/${base}"
 (
   if [ \$# -ge 1 ]; then
     tmpdir=\${1}
