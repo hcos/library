@@ -7,10 +7,6 @@
 ##  - it installs the package onto your machine
 ##
 
-###  TODO  --prefix    : prefix destination
-###  TODO  --root_uri  : URI of the cosy server
-###  TODO  --full_uri  : full URI of the cosy client
-
 red='\033[0;31m'
 green='\033[0;32m'
 nc='\033[0m'
