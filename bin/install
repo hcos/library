@@ -74,6 +74,7 @@ nc='\033[0m'
 if [ "${mode}" != "client" ]; then
   versions="5.2"
 fi
+path=${prefix}/bin/cosy-path
 cli=${prefix}/bin/cosy
 server=${prefix}/bin/cosy-server
 uninstall=${prefix}/bin/cosy-uninstall
@@ -462,31 +463,35 @@ function install_cosyverif ()
 
 function install_main ()
 {
-  read -d '' paths <<EOF
-export PATH="${prefix}/bin:${rockstree}/5.1/bin:\${PATH}"
-export LUA_PATH="${rockstree}/5.1/share/lua/5.1/?.lua;${rockstree}/5.1/share/lua/5.1/?/init.lua"
-export LUA_CPATH="${rockstree}/5.1/lib/lua/5.1/?.so"
-export CPATH="${prefix}/include:${C_INCLUDE_PATH}"
-export LIBRARY_PATH="${prefix}/lib:${LD_LIBRARY_PATH}"
-export LD_LIBRARY_PATH="${prefix}/lib:${LD_LIBRARY_PATH}"
+  cat > "${path}" <<EOF
+#! /bin/bash
 
 export COSY_PREFIX="${prefix}"
+
+export PATH="\${COSY_PREFIX}/bin:\${COSY_PREFIX}/local/cosy/5.1/bin:\${PATH}"
+export LUA_PATH="\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/?.lua;\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/?/init.lua"
+export LUA_CPATH="\${COSY_PREFIX}/local/cosy/5.1/lib/lua/5.1/?.so"
+
+export CPATH="\${COSY_PREFIX}/include:${C_INCLUDE_PATH}"
+export LIBRARY_PATH="\${COSY_PREFIX}/lib:${LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="\${COSY_PREFIX}/lib:${LD_LIBRARY_PATH}"
 EOF
+  chmod a+x "${path}"
 
   cat > "${cli}" <<EOF
-#! /bin/sh
+#! /bin/bash
 
-${paths}
-${rockstree}/5.1/bin/luajit ${rockstree}/5.1/share/lua/5.1/cosy/cli/runner.lua "\$@"
+source "$(basename ${path})"
+luajit "\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/cosy/cli/runner.lua" "\$@"
 EOF
   chmod a+x "${cli}"
 
 if [ "${mode}" == "server" ]; then
   cat > "${server}" <<EOF
-#! /bin/sh
+#! /bin/bash
 
-${paths}
-${rockstree}/5.1/bin/luajit ${rockstree}/5.1/share/lua/5.1/cosy/server/cli.lua "\$@"
+source "$(basename ${path})"
+luajit "\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/cosy/server/cli.lua" "\$@"
 EOF
   chmod a+x "${server}"
 fi
@@ -494,18 +499,16 @@ fi
   cat > "${uninstall}" <<EOF
 #! /bin/bash
 
-${paths}
-if [ -e "${prefix}/bin/cosy-server" ]; then
-  ${prefix}/bin/cosy-server stop --force
+source "$(basename ${path})"
+if [ -e "\${COSY_PREFIX}/bin/cosy-server" ]; then
+  "\${COSY_PREFIX}/bin/cosy-server" stop --force
 fi
-rm -rf ${prefix}/bin/cosy* \
-       ${prefix}/bin/resty \
-       ${prefix}/etc/cosy* \
-       ${prefix}/lualib \
-       ${prefix}/nginx \
-       ${prefix}/local/cosy
-find ${prefix} -maxdepth 1 -empty -exec rm -rf {} \;
-find ${prefix} -maxdepth 0 -empty -exec rm -rf {} \;
+rm -rf "\${COSY_PREFIX}/bin/cosy"* \
+       "\${COSY_PREFIX}/etc/cosy"* \
+       "\${COSY_PREFIX}/local/cosy" \
+       "\${COSY_PREFIX}/local/openresty"*
+find "\${COSY_PREFIX}" -maxdepth 1 -empty -exec rm -rf {} \;
+find "\${COSY_PREFIX}" -maxdepth 0 -empty -exec rm -rf {} \;
 echo -e "Cosy has been ${green}successfully uninstalled${nc}."
 EOF
   chmod a+x "${uninstall}"
@@ -514,7 +517,7 @@ EOF
     cat > "${check}" <<EOF
 #! /bin/bash
 
-${paths}
+source "$(basename ${path})"
 (
   if [ \$# -ge 1 ]; then
     tmpdir=\${1}
@@ -526,7 +529,7 @@ ${paths}
   fi
   shift
   cd  "\${tmpdir}"
-  ${rockstree}/5.1/bin/luajit ${rockstree}/5.1/share/lua/5.1/cosy/check/init.lua "\$@"
+  luajit "\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/cosy/check/init.lua" "\$@"
   echo
   echo -e "Test and Coverage reports are in ${green}\${tmpdir}${nc}."
 )
@@ -536,7 +539,7 @@ EOF
     cat > "${rockspec}" <<EOF
 #! /bin/bash
 
-${paths}
+source "$(basename ${path})"
 (
   if [ \$# -ge 1 ]; then
     tmpdir=\${1}
@@ -548,7 +551,7 @@ ${paths}
   fi
   shift
   cd  "\${tmpdir}"
-  ${rockstree}/5.1/bin/luajit ${rockstree}/5.1/share/lua/5.1/cosy/rockspec/init.lua "\$@"
+  luajit "\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/cosy/rockspec/init.lua" "\$@"
   echo
   echo -e "Rockspec is in ${green}\${tmpdir}${nc}."
 )
