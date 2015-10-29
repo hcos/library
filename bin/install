@@ -569,6 +569,57 @@ return {}
 EOL
 }
 
+
+
+
+# Generate the package :
+function generate_package ()
+{
+  parentdir=$(dirname "${prefix}")
+  basedir=$(basename "${prefix}")
+  
+  cosyname="cosy-${mode}"
+  cosyversion="0.2"
+  osname="$(uname -o| sed -e 's/\//_/g')"
+  osarch="$(uname -m| sed -e 's/ /_/g' | sed -e 's/\//_/g')"
+  packg="${cosyname}"_"${cosyversion}"_"${osname}"_"${osarch}"".tar.gz"
+  
+  echo -e "Log file           : ${green}${log}${nc}"
+  echo -e "Mode               :  ${green}${mode}${nc}"
+  echo -e "Prefix             :  ${green}${prefix}${nc}"
+  
+  echo "${scriptname}"
+  echo "${prefix}"
+  echo "${parentdir}"
+  echo "${basedir}"
+  echo "${cosyname}"
+  echo "${cosyversion}"
+  echo "${packg}"
+  
+  ## tests that dir exists
+  if [ ! -d "${prefix}" ]; then
+    echo "Fatal: directory ${prefix} is not reachable"
+    exit 1;
+  fi
+  if [ ! -d "${parentdir}" ]; then
+    echo "Fatal: directory ${parentdir} is not reachable"
+    exit 1;
+  fi
+
+  echo "Generating the package."
+  (
+    echo "cd ${parentdir}"
+    cd "${parentdir}"
+    tar czf "${packg}" "${basedir}"
+  ) >> "${log}" 2>&1
+
+}
+
+
+
+
+
+
 function error ()
 {
   echo -e "${red}An error happened.${nc}"
@@ -593,6 +644,7 @@ install_luarocks
 install_cosyverif
 install_main
 install_configuration
+generate_package
 cd "${currentwd}"
 
 echo "You can now try the following commands:"
