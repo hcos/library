@@ -43,9 +43,7 @@ http {
   gzip_proxied      no-store no-cache private expired auth;
 
   server {
-    listen        localhost:{{{port}}};
     listen        {{{host}}}:{{{port}}};
-    server_name   "{{{name}}}";
     charset       utf-8;
     index         index.html;
     include       /etc/nginx/mime.types;
@@ -251,7 +249,6 @@ fi
       www            = Configuration.http.www,
       uploads        = Configuration.http.uploads,
       pid            = Configuration.http.pid,
-      name           = Configuration.http.hostname,
       wshost         = Configuration.server.interface,
       wsport         = Configuration.server.port,
       redis_host     = Configuration.redis.interface,
