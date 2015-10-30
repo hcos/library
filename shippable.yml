@@ -14,17 +14,13 @@ before_script:
   - rm    -rf shippable/testresults
   - mkdir -p  shippable/testresults
   - rm    -rf output
-  - mkdir -p  output
   - mkdir -p  output/server
-  - mkdir -p  output/client
 
 script:
-  - ${HOME}/cosy/server/bin/cosy-check output-server --test-format=junit
-  - ${HOME}/cosy/client/bin/cosy-check output-client --test-format=junit
+  - ${HOME}/cosy/server/bin/cosy-check output/server --test-format=junit
 
 after_script:
   - for file in output/server/test/*; do mv ${file} shippable/testresults/$(basename ${file}).xml; done
-  - for file in output/client/test/*; do mv ${file} shippable/testresults/$(basename ${file}).xml; done
 
 notifications:
   email:
