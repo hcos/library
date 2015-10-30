@@ -1,11 +1,13 @@
 #! /bin/bash
-if [ -z "$1" ]; then
-  echo "usage: $0 path_to_cosy_script"
-  echo "ex: $0 /home/cosy/bin/cosy"
+
+if [ "$#" -lt 2 ]; then
+  echo "usage: $0 path/to/cosy server-url"
+  echo "ex: $0 /home/cosy/bin/cosy http://public.cosyverif.org"
   exit
-else
-  cosy="$1"
 fi
+
+cosy="$1"
+url="$2"
 
 passwords=$(mktemp)
 echo "password" >> "${passwords}"
@@ -26,7 +28,7 @@ end")
 #echo "Starting server:"
 #"${cosy}" server:start --force --clean
 echo "Printing available methods:"
-"${cosy}" --server=http://127.0.0.1:8080/
+"${cosy}" --server="${url}"
 echo "Server information:"
 "${cosy}" server:information
 echo "Terms of Service:"
