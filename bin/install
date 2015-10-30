@@ -625,23 +625,50 @@ return {
 EOL
 }
 
+function fix_string ()
+{
+  echo "$1" \
+    | sed -e 's/^[[:space:]]+/ /' \
+    | sed -e 's/^[[:space:]]*//' \
+    | sed -e 's/[[:space:]]*$//' \
+    | tr '/' '-' \
+    | tr '[:upper:]' '[:lower:]'
+}
+
 # Generate the package:
 function generate_package ()
 {
+  if [ "${mode}" != "client" ]; then
+    return
+  fi
   parentdir=$(dirname "${prefix}")
-  basedir=$(basename "${prefix}")
-
   version=$("${prefix}/bin/cosy-version")
-  os="  $(uname -o | sed -e 's/ /_/g' | sed -e 's/\//_/g' | tr '[:upper:]' '[:lower:]')"
-  arch="$(uname -m | sed -e 's/ /_/g' | sed -e 's/\//_/g' | tr '[:upper:]' '[:lower:]')"
+  version=$(fix_string "${version}")
+  os=$(fix_string "$(uname -o)")
+  arch=$(fix_string "$(uname -m)")
   archive="cosy-${mode}-${version}-${os}-${arch}.tar.gz"
-
-  rm -f "${parentdir}/${archive}"
   echo -e "Packaging in ${green}${parentdir}/${archive}${nc}."
-  (
-    cd "${parentdir}"
-    tar czf "${archive}" "${basedir}"
-  ) >> "${log}" 2>&1
+  cp -r "${prefix}" "${tempwd}/cosy-${mode}"
+  # Clean:
+  {
+    "${tempwd}/cosy-${mode}/local/cosy/5.1/bin/luarocks" remove luarocks
+    rm -rf  "${tempwd}/cosy-${mode}/local/cosy/5.1/lib/luarocks" \
+            "${tempwd}/cosy-${mode}/bin/c_rehash" \
+            "${tempwd}/cosy-${mode}/bin/openssl" \
+            "${tempwd}/cosy-${mode}/include/event.h" \
+            "${tempwd}/cosy-${mode}/include/ev.h" \
+            "${tempwd}/cosy-${mode}/include/ev++.h" \
+            "${tempwd}/cosy-${mode}/include/openssl"
+    sed -i  "s|export COSY_PREFIX=.*|export COSY_PREFIX=\"...\"|" \
+            "${tempwd}/cosy-${mode}/bin/cosy-path" \
+            >> "${log}" 2>&1
+  } >> "${log}" 2>&1
+  # Package:
+  {
+    rm -f   "${archive}"
+    tar czf "${archive}" "cosy-${mode}"
+    cp      "${archive}" "${parentdir}/"
+  } >> "${log}" 2>&1
 }
 
 function error ()
