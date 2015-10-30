@@ -58,6 +58,14 @@ http {
       index       index.html;
     }
 
+    location /setup {
+      content_by_lua '
+        local setup = require "cosy.nginx.setup"
+        setup       = setup:gsub ("ROOT_URI", "http://" .. ngx.var.http_host)
+        ngx.say (setup)
+      ';
+    }
+
     location /upload {
       limit_except                POST { deny all; }
       client_body_in_file_only    on;
