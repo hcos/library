@@ -648,9 +648,15 @@ function generate_package ()
   arch=$(fix_string "$(uname -m)")
   archive="cosy-${mode}-${version}-${os}-${arch}.tar.gz"
   echo -e "Packaging in ${green}${parentdir}/${archive}${nc}."
-  cp -r "${prefix}" "${tempwd}/cosy-${mode}"
+  cp -r  "${prefix}" "${tempwd}/cosy-${mode}"
   # Clean:
   {
+    if [ -s "${tempwd}/cosy-${mode}/local/cosy/git/library" ]; then
+      target=$(readlink "${tempwd}/cosy-${mode}/local/cosy/git/library")
+      rm -rf "${tempwd}/cosy-${mode}/local/cosy/git/library"
+      cp -r  "${target}" \
+             "${tempwd}/cosy-${mode}/local/cosy/git/library"
+    fi
     "${tempwd}/cosy-${mode}/local/cosy/5.1/bin/luarocks" remove luarocks
     rm -rf  "${tempwd}/cosy-${mode}/local/cosy/5.1/lib/luarocks" \
             "${tempwd}/cosy-${mode}/bin/c_rehash" \
