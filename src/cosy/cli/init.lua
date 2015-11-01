@@ -28,6 +28,7 @@ function Cli.configure (cli, arguments)
   local Json    = require "cjson"  -- lua tables are transcoded into json for server  (pkg comes with lua socket)
   local Ltn12   = require "ltn12"  -- to store the content of the requests ( pkgcomes with lua socket)
   local Mime    = require "mime"
+  local Request = require "socket.http".request
   local Hotswap = require "hotswap.http"
 
   local default_server = "http://public.cosyverif.lsv.fr"
@@ -93,6 +94,14 @@ function Cli.configure (cli, arguments)
   -- trim eventuel trailing /   http://server/
   cli.server = cli.server:gsub ("/+$","")
   assert (cli.server:match "^https?://")  -- check is an URI
+
+  -- Test is server is valid:
+  local _, code = Request (cli.server .. "/lua/cosy.loader.lua")
+  if code ~= 200 then
+    print ("Server " .. cli.server .. " does not seem to be a Cosy server.")
+    print "Please use the --server option to set a running server."
+    os.exit (1)
+  end
 
   do -- save server name for next cli launch
     Lfs.mkdir (cosy_dir)
