@@ -126,6 +126,7 @@ return [==[
   download
   install
   fix
+  ${prefix}/bin/cosy --server="ROOT_URI" --help > /dev/null 2>&1
 
   echo "You can now try the following commands:"
   echo "- ${prefix}/bin/cosy            : to run the cosy client"
