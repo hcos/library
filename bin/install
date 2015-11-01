@@ -618,8 +618,8 @@ function install_configuration ()
   cat > "${prefix}/etc/cosy.conf" <<EOL
 return {
   dependencies = {
-    ["/setup/x86_64/Linux/client.tar.gz"] =
-      "https://cosyverif.org/BUNDLESv2/cosy-client-${version}-GNU_Linux-x86_64.tar.gz",
+    ["/setup/x86_64/gnu-inux/client.tar.gz"] =
+      "https://cosyverif.org/BUNDLESv2/cosy-client-${version}-gnu-linux-x86_64.tar.gz",
   }
 }
 EOL
