@@ -93,14 +93,20 @@ function Cli.configure (cli, arguments)
 
   -- trim eventuel trailing /   http://server/
   cli.server = cli.server:gsub ("/+$","")
-  assert (cli.server:match "^https?://")  -- check is an URI
+  if not cli.server:match "^https?://" then
+    error {
+      _      = "server:not-url",
+      server = cli.server,
+    }
+  end
 
   -- Test is server is valid:
   local _, code = Request (cli.server .. "/lua/cosy.loader.lua")
   if code ~= 200 then
-    print ("Server " .. cli.server .. " does not seem to be a Cosy server.")
-    print "Please use the --server option to set a running server."
-    os.exit (1)
+    error {
+      _      = "server:not-cosy",
+      server = cli.server,
+    }
   end
 
   do -- save server name for next cli launch
@@ -153,7 +159,30 @@ end
 function Cli.start (cli)
   assert (getmetatable (cli) == Cli)
 
-  cli:configure (_G.arg)
+  local ok, err = pcall (cli.configure, cli, _G.arg)
+  if not ok then
+    local Loader = require "cosy.loader.lua"
+    local loader = Loader ()
+    local Colors = loader.require "ansicolors"
+    local I18n   = loader.load "cosy.i18n"
+    local i18n   = I18n.load {
+      "cosy.cli",
+    }
+    if type (err) == "table" and err._ then
+      print (Colors ("%{red blackbg}" .. i18n ["failure"] % {}))
+      print (Colors ("%{white redbg}" .. i18n [err._] % err))
+    else
+      print ("An error happened. Maybe the client was unable to download sources from " .. (cli.server or "no server") .. ".")
+      local errorfile = os.tmpname ()
+      local file      = io.open (errorfile, "w")
+      file:write (tostring (err) .. "\n")
+      file:write (debug.traceback () .. "\n")
+      file:close ()
+      print ("See error file " .. Colors ("%{white redbg}" .. errorfile) .. " for more information.")
+    end
+    os.exit (1)
+  end
+
   local loader = cli.loader
 
   local Configuration = loader.load "cosy.configuration"

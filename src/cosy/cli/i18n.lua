@@ -10,6 +10,12 @@ return function (--[[loader]])
     ["client:command"] = {
       en = "cosy command-line interface",
     },
+    ["server:not-url"] = {
+      en = "server {{{server}}} is not a valid HTTP(s) URL",
+    },
+    ["server:not-cosy"] = {
+      en = "server {{{server}}} does not seem to be a Cosy server. Please use the --server option to set a running server.",
+    },
     ["server:unreachable"] = {
       en = "cosy server is unreachable",
       fr = "le serveur cosy est injoignable",

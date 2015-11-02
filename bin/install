@@ -114,15 +114,18 @@ case "${mode}" in
     ";;
   "client")
     dependencies=" \
+      ansicolors \
       argparse \
       copas-ev \
       hotswap-ev \
       hotswap-http \
+      i18n \
+      layeredata \
       lua-cjson \
       luafilesystem \
       luaposix \
-      luasec \
       luasocket \
+      lustache \
     ";;
 esac
 development="\
@@ -511,7 +514,10 @@ EOF
 
 root=\$(dirname "\$0")
 source "\${root}/${base}"
-luajit "\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/cosy/cli/runner.lua" "\$@"
+luajit -e 'Client = require "cosy.cli"' \
+       -e 'client = Client.new {}' \
+       -e 'client:start ()' \
+       "\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/cosy/dummy.lua" "\$@"
 EOF
   chmod a+x "${cli}"
 
@@ -694,7 +700,7 @@ stop_server
 trap error ERR
 install_dependencies
 install_libev
-install_libssl
+# install_libssl
 install_luajit
 install_openresty
 install_luarocks

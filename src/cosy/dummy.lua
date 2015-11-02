@@ -1,0 +1,1 @@
+-- This is am empty script used by runners generated in bin/install.
