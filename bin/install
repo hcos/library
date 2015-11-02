@@ -71,7 +71,7 @@ nc='\033[0m'
 ## Now cmd args have been parsed
 ##################################
 
-if [ "${mode}" != "client" ]; then
+if [ "${mode}" = "server" ]; then
   versions="5.2"
 fi
 path=${prefix}/bin/cosy-path
