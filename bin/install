@@ -671,7 +671,8 @@ function generate_package ()
       cp -r  "${target}" \
              "${tempwd}/cosy-${mode}/local/cosy/git/library"
     fi
-    "${tempwd}/cosy-${mode}/local/cosy/5.1/bin/luarocks" remove luarocks
+    "${tempwd}/cosy-${mode}/local/cosy/5.1/bin/luarocks" remove \
+       --tree="${tempwd}/cosy-${mode}/local/cosy/5.1/" luarocks
     rm -rf  "${tempwd}/cosy-${mode}/local/cosy/5.1/lib/luarocks" \
             "${tempwd}/cosy-${mode}/bin/c_rehash" \
             "${tempwd}/cosy-${mode}/bin/openssl" \
@@ -684,11 +685,17 @@ function generate_package ()
             >> "${log}" 2>&1
   } >> "${log}" 2>&1
   # Package:
-  {
-    rm -f   "${archive}"
-    tar czf "${archive}" "cosy-${mode}"
-    cp      "${archive}" "${parentdir}/"
-  } >> "${log}" 2>&1
+  case "$(uname -s)" in
+    "Linux")
+      {
+        rm -f   "${archive}"
+        tar czf "${archive}" "cosy-${mode}"
+        cp      "${archive}" "${parentdir}/"
+      } >> "${log}" 2>&1
+      ;;
+    *)
+    exit 1
+  esac
 }
 
 function error ()
