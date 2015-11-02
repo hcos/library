@@ -12,7 +12,7 @@ return [==[
   green='\033[0;32m'
   nc='\033[0m'
 
-  tempwd=$(mktemp -d -t cosy-setup-XXXXXX)
+  tempwd=$(mktemp -d -t cosy-setup)
   log="${tempwd}/setup.log"
 
   for i in "$@"
