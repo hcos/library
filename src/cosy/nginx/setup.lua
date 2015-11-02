@@ -66,7 +66,7 @@ return [==[
   }
 
   if [ ! -z "${root_uri}" ]; then
-    os=$(fix_string "$(uname -o)")
+    os=$(fix_string "$(uname -s)")
     arch=$(fix_string "$(uname -m)")
     package_uri="${root_uri}/setup/${arch}/${os}/client.tar.gz"
   fi

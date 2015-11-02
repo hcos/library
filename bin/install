@@ -644,7 +644,7 @@ function generate_package ()
   parentdir=$(dirname "${prefix}")
   version=$("${prefix}/bin/cosy-version")
   version=$(fix_string "${version}")
-  os=$(fix_string "$(uname -o)")
+  os=$(fix_string "$(uname -s)")
   arch=$(fix_string "$(uname -m)")
   archive="cosy-${mode}-${version}-${os}-${arch}.tar.gz"
   echo -e "Packaging in ${green}${parentdir}/${archive}${nc}."
