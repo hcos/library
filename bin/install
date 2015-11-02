@@ -88,6 +88,7 @@ log="${tempwd}/install.log"
 case "${mode}" in
   "server")
     dependencies="\
+      luasec \
       ansicolors \
       argparse \
       bcrypt \
@@ -426,7 +427,7 @@ function install_cosyverif ()
           options=(OPENSSL_DIR="${prefix}" LIBEV_DIR="${prefix}")
           ;;
       esac
-      for dependency in luasec ${dependencies}; do
+      for dependency in ${dependencies}; do
         if "${rockstree}/${version}/bin/luarocks" list \
             --porcelain \
             --tree="${rockstree}/${version}" \
