@@ -83,7 +83,7 @@ check=${prefix}/bin/cosy-check
 rockspec=${prefix}/bin/cosy-rockspec
 rockstree=${prefix}/local/cosy
 currentwd=$(pwd)
-tempwd=$(mktemp -d -t cosy)
+tempwd=$(mktemp -d 2>/dev/null || mktemp -d -t cosy)
 log="${tempwd}/install.log"
 case "${mode}" in
   "server")
@@ -582,7 +582,7 @@ source "\${root}/${base}"
   if [ \$# -ge 1 ]; then
     tmpdir=\${1}
   else
-    tmpdir=\$(mktemp -d -t cosy-check)
+    tmpdir=\$(mktemp -d 2>/dev/null || mktemp -d -t cosy-check)
   fi
   if [ ! -d "\${tmpdir}" ]; then
     mkdir -p "\${tmpdir}"
@@ -605,7 +605,7 @@ source "\${root}/${base}"
   if [ \$# -ge 1 ]; then
     tmpdir=\${1}
   else
-    tmpdir=\$(mktemp -d -t cosy-rockspec)
+    tmpdir=\$(mktemp -d 2>/dev/null || mktemp -d -t cosy-rockspec)
   fi
   if [ ! -d "\${tmpdir}" ]; then
     mkdir -p "\${tmpdir}"
