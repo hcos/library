@@ -268,7 +268,7 @@ function install_luajit ()
   curl --location --silent -O http://luajit.org/download/LuaJIT-2.1.0-beta1.tar.gz
   tar  xf LuaJIT-2.1.0-beta1.tar.gz
   cd   LuaJIT-2.1.0-beta1
-  cat > "${tempwd}/luajit.patch" <<EOL
+  cat > "luajit.patch" <<EOL
 diff -rupN LuaJIT-2.0.4.back/Makefile LuaJIT-2.0.4/Makefile
 --- LuaJIT-2.0.4.back/Makefile	2015-10-02 17:19:16.774268017 +0200
 +++ LuaJIT-2.0.4/Makefile	2015-10-02 17:11:14.533865635 +0200
@@ -295,7 +295,7 @@ diff -rupN LuaJIT-2.0.4.back/src/Makefile LuaJIT-2.0.4/src/Makefile
  #XCFLAGS+= -DLUAJIT_DISABLE_JIT
 EOL
   {
-    patch -p1 -i "${tempwd}/luajit.patch"
+    patch -p1 -i "luajit.patch"
     make -j"$(nproc)"
     make install CC="clang"
   } >> "${log}" 2>&1
