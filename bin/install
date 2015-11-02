@@ -143,8 +143,8 @@ export CC="clang"
 
 echo -e "Temporary directory: ${green}${tempwd}${nc}"
 echo -e "Log file           : ${green}${log}${nc}"
-echo -e "Mode               :  ${green}${mode}${nc}"
-echo -e "Prefix             :  ${green}${prefix}${nc}"
+echo -e "Mode               : ${green}${mode}${nc}"
+echo -e "Prefix             : ${green}${prefix}${nc}"
 if [ -z "${sourcepath+x}" ]; then
   echo -e "Source             : ${green}not set${nc}"
 else
