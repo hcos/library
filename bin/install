@@ -221,7 +221,7 @@ function install_libev ()
   fi
   echo "Installing libev."
   (
-    git clone "https://github.com/enki/libev.git"
+    git clone --depth=1 "https://github.com/enki/libev.git"
     cd libev
     ./configure --prefix="${prefix}"
     make -j"$(nproc)"
@@ -241,7 +241,7 @@ function install_libssl ()
   fi
   echo "Installing libssl."
   (
-    git clone "https://github.com/openssl/openssl.git"
+    git clone --depth=1 "https://github.com/openssl/openssl.git"
     cd openssl
     git checkout "OpenSSL_1_0_2-stable"
     case "$(uname -s)" in
