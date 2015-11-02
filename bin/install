@@ -244,7 +244,14 @@ function install_libssl ()
     git clone "https://github.com/openssl/openssl.git"
     cd openssl
     git checkout "OpenSSL_1_0_2-stable"
-    ./config --prefix="${prefix}"
+    case "$(uname -s)" in
+      "Linux")
+        ./config --prefix="${prefix}"
+        ;;
+      *)
+        exit 1
+        ;;
+    esac
     make -j"$(nproc)" CFLAG="-fPIC"
     make install_sw
   ) >> "${log}" 2>&1
