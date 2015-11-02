@@ -522,10 +522,7 @@ EOF
 
 root=\$(dirname "\$0")
 source "\${root}/${base}"
-luajit -e 'Client = require "cosy.cli"' \
-       -e 'client = Client.new {}' \
-       -e 'client:start ()' \
-       "\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/cosy/dummy.lua" "\$@"
+luajit "\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/cosy/cli/init.lua" "\$@"
 EOF
   chmod a+x "${cli}"
 

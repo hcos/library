@@ -13,12 +13,14 @@ Configuration.load {
 describe ("Module cosy.cli", function ()
 
   before_each (function ()
+    _G._TEST = true
     Configuration.cli.data   = os.tmpname()
     Configuration.cli.server = "dummy_default"  -- override to a known default value
   end)
 
   after_each (function ()
     os.remove (Configuration.cli.data)
+    _G._TEST = false
   end)
 
   describe ("parsing options by method configure", function ()

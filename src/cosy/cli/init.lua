@@ -56,6 +56,7 @@ function Cli.configure (cli, arguments)
     name        = name,
     description = "cosy command-line interface",
   }
+  parser:require_command (false)
   parser:option "-s" "--server" {
     description = "server URL",
     default     = default_server,
@@ -159,28 +160,30 @@ end
 function Cli.start (cli)
   assert (getmetatable (cli) == Cli)
 
-  local ok, err = pcall (cli.configure, cli, _G.arg)
-  if not ok then
-    local Loader = require "cosy.loader.lua"
-    local loader = Loader ()
-    local Colors = loader.require "ansicolors"
-    local I18n   = loader.load "cosy.i18n"
-    local i18n   = I18n.load {
-      "cosy.cli",
-    }
-    if type (err) == "table" and err._ then
-      print (Colors ("%{red blackbg}" .. i18n ["failure"] % {}))
-      print (Colors ("%{white redbg}" .. i18n [err._] % err))
-    else
-      print ("An error happened. Maybe the client was unable to download sources from " .. (cli.server or "no server") .. ".")
-      local errorfile = os.tmpname ()
-      local file      = io.open (errorfile, "w")
-      file:write (tostring (err) .. "\n")
-      file:write (debug.traceback () .. "\n")
-      file:close ()
-      print ("See error file " .. Colors ("%{white redbg}" .. errorfile) .. " for more information.")
+  do
+    local ok, err = pcall (cli.configure, cli, _G.arg)
+    if not ok then
+      local Loader = require "cosy.loader.lua"
+      local loader = Loader ()
+      local Colors = loader.require "ansicolors"
+      local I18n   = loader.load "cosy.i18n"
+      local i18n   = I18n.load {
+        "cosy.cli",
+      }
+      if type (err) == "table" and err._ then
+        print (Colors ("%{red blackbg}" .. i18n ["failure"] % {}))
+        print (Colors ("%{white redbg}" .. i18n [err._] % err))
+      else
+        print ("An error happened. Maybe the client was unable to download sources from " .. (cli.server or "no server") .. ".")
+        local errorfile = os.tmpname ()
+        local file      = io.open (errorfile, "w")
+        file:write (tostring (err) .. "\n")
+        file:write (debug.traceback () .. "\n")
+        file:close ()
+        print ("See error file " .. Colors ("%{white redbg}" .. errorfile) .. " for more information.")
+      end
+      os.exit (1)
     end
-    os.exit (1)
   end
 
   local loader = cli.loader
@@ -253,6 +256,11 @@ end
 
 function Cli.stop (cli)
   assert (getmetatable (cli) == Cli)
+end
+
+if not _G._TEST then
+  local cli = Cli.new ()
+  cli:start ()
 end
 
 return Cli
