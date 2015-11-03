@@ -222,7 +222,7 @@ function install_libev ()
   echo "Installing libev."
   (
     git clone --depth=1 "https://github.com/enki/libev.git"
-    cd libev
+    cd libev || exit 1
     ./configure --prefix="${prefix}"
     make -j"$(nproc)"
     make install
@@ -242,7 +242,7 @@ function install_libssl ()
   echo "Installing libssl."
   (
     git clone --depth=1 "https://github.com/openssl/openssl.git"
-    cd openssl
+    cd openssl || exit 1
     git checkout "OpenSSL_1_0_2-stable"
     case "$(uname -s)" in
       "Linux")
@@ -267,7 +267,7 @@ function install_luajit ()
   echo "Installing luajit."
   curl --location --silent -O http://luajit.org/download/LuaJIT-2.1.0-beta1.tar.gz
   tar  xf LuaJIT-2.1.0-beta1.tar.gz
-  cd   LuaJIT-2.1.0-beta1
+  cd   LuaJIT-2.1.0-beta1 || exit 1
   cat > "luajit.patch" <<EOL
 diff -rupN LuaJIT-2.0.4.back/Makefile LuaJIT-2.0.4/Makefile
 --- LuaJIT-2.0.4.back/Makefile	2015-10-02 17:19:16.774268017 +0200
@@ -318,7 +318,7 @@ function install_openresty ()
   (
     curl --location --silent -O https://openresty.org/download/ngx_openresty-1.9.3.1.tar.gz
     tar xf ngx_openresty-1.9.3.1.tar.gz
-    cd ngx_openresty-1.9.3.1
+    cd ngx_openresty-1.9.3.1 || exit 1
     ./configure --prefix="${prefix}/local/openresty" \
                 --without-lua51 \
                 --with-luajit="${rockstree}/5.1" \
@@ -338,7 +338,7 @@ function install_luarocks ()
     echo "Installing luarocks for Lua-5.1."
     curl --location --silent -O http://luarocks.org/releases/luarocks-2.2.2.tar.gz
     tar  xf luarocks-2.2.2.tar.gz
-    cd   luarocks-2.2.2
+    cd   luarocks-2.2.2 || exit 1
     {
       ./configure --prefix="${rockstree}/5.1" \
                   --with-lua="${rockstree}/5.1" \
@@ -362,7 +362,7 @@ function install_luarocks ()
           curl --location --silent -O http://luarocks.org/releases/luarocks-2.2.2.tar.gz
           tar  xf luarocks-2.2.2.tar.gz
         fi
-        cd   luarocks-2.2.2
+        cd   luarocks-2.2.2 || exit 1
         {
           make clean
           ./configure --prefix="${rockstree}/${version}" \
@@ -390,7 +390,7 @@ function install_cosyverif ()
                   https://github.com/nrk/redis-lua.git \
                   "${rockstree}/git/redis-lua"
       fi
-      cd "${rockstree}/git/redis-lua"
+      cd "${rockstree}/git/redis-lua" || exit 1
       git pull
     )
     ( if [ ! -d "${rockstree}/git/lua-websockets" ]; then
@@ -398,7 +398,7 @@ function install_cosyverif ()
                   https://github.com/saucisson/lua-websockets.git \
                   "${rockstree}/git/lua-websockets"
       fi
-      cd "${rockstree}/git/lua-websockets"
+      cd "${rockstree}/git/lua-websockets" || exit 1
       git pull
     )
     if [ -z "${sourcepath+x}" ]; then
@@ -408,7 +408,7 @@ function install_cosyverif ()
                     https://github.com/CosyVerif/library.git \
                     "${rockstree}/git/library"
         fi
-        cd "${rockstree}/git/library"
+        cd "${rockstree}/git/library" || exit 1
         git pull
       )
     else
@@ -504,9 +504,9 @@ EOF
   chmod a+x "${path}"
 
   if [ -z "${sourcepath+x}" ]; then
-    cd "\${COSY_PREFIX}/local/cosy/git/library"
+    cd "\${COSY_PREFIX}/local/cosy/git/library" || exit 1
     version=$(git describe)
-    cd "${tempwd}"
+    cd "${tempwd}" || exit 1
     cat > "${commit}" <<EOF
 #! /bin/bash
 
@@ -716,7 +716,7 @@ function error ()
 
 mkdir -p "${prefix}"
 mkdir -p "${prefix}/bin"
-cd "${tempwd}"
+cd "${tempwd}" || exit 1
 stop_server
 trap error ERR
 install_dependencies
@@ -729,7 +729,7 @@ install_cosyverif
 install_main
 install_configuration
 generate_package
-cd "${currentwd}"
+cd "${currentwd}" || exit 1
 
 echo "You can now try the following commands:"
 if [ "${mode}" == "server" ]; then
