@@ -23,6 +23,10 @@ if file then
   data       = loadstring ('return ' .. data) () \
   print (data.token)
 end")
+if [ "${token}" = "" ]; then
+  echo -n "Administration token? "
+  read token
+fi
 
 #echo "Stopping daemon:"
 #"${cosy}" daemon:stop --force
