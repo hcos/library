@@ -636,12 +636,7 @@ function install_configuration ()
   version=$("${prefix}/bin/cosy-version")
   mkdir -p "${prefix}/etc"
   cat > "${prefix}/etc/cosy.conf" <<EOL
-return {
-  dependencies = {
-    ["/setup/x86_64/gnu-inux/client.tar.gz"] =
-      "https://cosyverif.org/BUNDLESv2/cosy-client-${version}-gnu-linux-x86_64.tar.gz",
-  }
-}
+return {}
 EOL
 }
 
