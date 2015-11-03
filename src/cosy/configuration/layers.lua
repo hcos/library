@@ -1,20 +1,24 @@
-local Layer  = require "layeredata"
+return function (loader)
 
-local layers = {
-  default = Layer.new { name = "default" },
-  etc     = Layer.new { name = "etc"     },
-  home    = Layer.new { name = "home"    },
-  pwd     = Layer.new { name = "pwd"     },
-  app     = Layer.new { name = "app"     },
-  whole   = Layer.new { name = "whole"   },
-}
+  local Layer  = loader.require "layeredata"
 
-layers.whole.__refines__ = {
-  layers.default,
-  layers.etc,
-  layers.home,
-  layers.pwd,
-  layers.app,
-}
+  local layers = {
+    default = Layer.new { name = "default" },
+    etc     = Layer.new { name = "etc"     },
+    home    = Layer.new { name = "home"    },
+    pwd     = Layer.new { name = "pwd"     },
+    app     = Layer.new { name = "app"     },
+    whole   = Layer.new { name = "whole"   },
+  }
 
-return layers
+  layers.whole.__refines__ = {
+    layers.default,
+    layers.etc,
+    layers.home,
+    layers.pwd,
+    layers.app,
+  }
+
+  return layers
+
+end

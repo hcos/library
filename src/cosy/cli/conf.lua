@@ -1,9 +1,11 @@
-local Default = require "cosy.configuration.layers".default
+return function (loader)
 
-Default.cli = {
-  data      = os.getenv "HOME" .. "/.cosy/cli.data",
-  directory = os.getenv "HOME" .. "/.cosy",
-  locale    = (os.getenv "LANG" or "en"):match "[^%.]+":gsub ("_", "-"),
-  log       = os.getenv "HOME" .. "/.cosy/cli.log",
-  server    = "http://cosyverif.org/",
-}
+  local Default = loader.load "cosy.configuration.layers".default
+
+  Default.cli = {
+    directory = os.getenv "HOME" .. "/.cosy",
+    data      = os.getenv "HOME" .. "/.cosy/client.data",
+    locale    = (os.getenv "LANG" or "en"):match "[^%.]+":gsub ("_", "-"),
+  }
+
+end

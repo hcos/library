@@ -49,12 +49,12 @@ do
     ;;
     -h|--help)
       echo "Usage: "
-      echo "  install [--prefix=PREFIX] [--mode=server|client] [--sourcepath=PATH] [--in_ci]"
+      echo "  install [--prefix=PREFIX] [--mode=server|client] [--sourcepath=PATH] [--in-ci]"
       exit 1;
     ;;
     *)
       echo "Usage: "
-      echo "  install [--prefix=PREFIX] [--mode=server|client] [--sourcepath=PATH] [--in_ci]"
+      echo "  install [--prefix=PREFIX] [--mode=server|client] [--sourcepath=PATH] [--in-ci]"
       exit 1;
       # unknown option
     ;;
@@ -71,7 +71,11 @@ nc='\033[0m'
 ## Now cmd args have been parsed
 ##################################
 
-versions="5.2"
+if [ "${mode}" = "server" ]; then
+  versions="5.2"
+fi
+path=${prefix}/bin/cosy-path
+commit=${prefix}/bin/cosy-version
 cli=${prefix}/bin/cosy
 server=${prefix}/bin/cosy-server
 uninstall=${prefix}/bin/cosy-uninstall
@@ -79,39 +83,68 @@ check=${prefix}/bin/cosy-check
 rockspec=${prefix}/bin/cosy-rockspec
 rockstree=${prefix}/local/cosy
 currentwd=$(pwd)
-tempwd=$(mktemp -d)
-log=$(mktemp)
-dependencies="\
+tempwd=$(mktemp -d 2>/dev/null || mktemp -d -t cosy)
+log="${tempwd}/install.log"
+case "${mode}" in
+  "server")
+    dependencies="\
+      luasec \
+      ansicolors \
+      argparse \
+      bcrypt \
+      bit32 \
+      copas-ev \
+      coronest \
+      dkjson \
+      hotswap-ev \
+      hotswap-http \
+      i18n \
+      jwt \
+      layeredata \
+      lua-cjson \
+      lua-resty-http \
+      luacrypto \
+      luafilesystem \
+      lualogging \
+      luaposix \
+      luasec \
+      luasocket \
+      lustache \
+      md5 \
+      serpent \
+    ";;
+  "client")
+    dependencies=" \
+      ansicolors \
+      argparse \
+      copas-ev \
+      hotswap-ev \
+      hotswap-http \
+      i18n \
+      layeredata \
+      lua-cjson \
+      luafilesystem \
+      luaposix \
+      luasocket \
+      lustache \
+    ";;
+esac
+development="\
   ansicolors \
   argparse \
-  bcrypt \
-  bit32 \
-  copas-ev \
-  coronest \
-  dkjson \
-  hotswap \
-  hotswap-ev \
-  hotswap-http \
-  i18n \
-  jwt \
-  layeredata \
-  lua_cliargs \
-  lua-cjson \
-  lua-ev \
-  luacrypto \
+  busted \
+  luacheck \
+  luacov \
   luafilesystem \
-  lualogging \
-  luasec \
-  luasocket \
   lustache \
-  md5 \
-  serpent \
 "
+
+export CC="clang"
 
 echo -e "Temporary directory: ${green}${tempwd}${nc}"
 echo -e "Log file           : ${green}${log}${nc}"
-echo -e "Mode               :  ${green}${mode}${nc}"
-echo -e "Prefix             :  ${green}${prefix}${nc}"
+echo -e "Mode               : ${green}${mode}${nc}"
+echo -e "Prefix             : ${green}${prefix}${nc}"
 if [ -z "${sourcepath+x}" ]; then
   echo -e "Source             : ${green}not set${nc}"
 else
@@ -141,15 +174,18 @@ function install_dependencies ()
   fi >> "${log}" 2>&1
 
   if [ ! -z "${apt_available+x}" ]; then
-    echo "Installing packages required by both client and server."
-    sudo apt-get install --yes git perl build-essential make gcc diffutils patch wget unzip \
+    echo "Installing development packages."
+    sudo apt-get install --yes git make clang gcc diffutils patch curl unzip \
       >> "${log}" 2>&1
 
-    echo "Installing packages required only by the server."
-    sudo apt-get install --yes libev-dev libssl-dev \
-                               libreadline-dev libncurses5-dev libpcre3-dev \
-                               redis-server imagemagick \
-      >> "${log}" 2>&1
+    if [ "${mode}" == "server" ]; then
+      echo "Installing packages required by the server."
+      sudo apt-get install --yes perl build-essential \
+                                 libssl-dev libev-dev \
+                                 libreadline-dev libncurses5-dev libpcre3-dev \
+                                 redis-server imagemagick \
+        >> "${log}" 2>&1
+    fi
   else
     echo "Not installing packages as apt-get or sudo is not available."
   fi
@@ -173,6 +209,54 @@ function install_dependencies ()
   fi
 }
 
+# Install libev:
+function install_libev ()
+{
+  if [ "${mode}" != "client" ]; then
+    return
+  fi
+  if [ -e "${prefix}/lib/libev.a" ]; then
+    echo "Libev is already installed."
+    return
+  fi
+  echo "Installing libev."
+  (
+    git clone --depth=1 "https://github.com/enki/libev.git"
+    cd libev
+    ./configure --prefix="${prefix}"
+    make -j"$(nproc)"
+    make install
+  ) >> "${log}" 2>&1
+}
+
+# Install libssl:
+function install_libssl ()
+{
+  if [ "${mode}" != "client" ]; then
+    return
+  fi
+  if [ -e "${prefix}/lib/libssl.a" ]; then
+    echo "Libssl is already installed."
+    return
+  fi
+  echo "Installing libssl."
+  (
+    git clone --depth=1 "https://github.com/openssl/openssl.git"
+    cd openssl
+    git checkout "OpenSSL_1_0_2-stable"
+    case "$(uname -s)" in
+      "Linux")
+        ./config --prefix="${prefix}"
+        ;;
+      *)
+        exit 1
+        ;;
+    esac
+    make -j"$(nproc)" CFLAG="-fPIC"
+    make install_sw
+  ) >> "${log}" 2>&1
+}
+
 # Install LuaJIT with 5.2 compatibility:
 function install_luajit ()
 {
@@ -181,10 +265,10 @@ function install_luajit ()
     return
   fi
   echo "Installing luajit."
-  wget --quiet http://luajit.org/download/LuaJIT-2.1.0-beta1.tar.gz
+  curl --location --silent -O http://luajit.org/download/LuaJIT-2.1.0-beta1.tar.gz
   tar  xf LuaJIT-2.1.0-beta1.tar.gz
   cd   LuaJIT-2.1.0-beta1
-  cat > luajit.patch <<EOL
+  cat > "luajit.patch" <<EOL
 diff -rupN LuaJIT-2.0.4.back/Makefile LuaJIT-2.0.4/Makefile
 --- LuaJIT-2.0.4.back/Makefile	2015-10-02 17:19:16.774268017 +0200
 +++ LuaJIT-2.0.4/Makefile	2015-10-02 17:11:14.533865635 +0200
@@ -211,33 +295,36 @@ diff -rupN LuaJIT-2.0.4.back/src/Makefile LuaJIT-2.0.4/src/Makefile
  #XCFLAGS+= -DLUAJIT_DISABLE_JIT
 EOL
   {
-    patch -p1 -i luajit.patch
-    make
-    make install
+    patch -p1 -i "luajit.patch"
+    make -j"$(nproc)"
+    make install CC="clang"
   } >> "${log}" 2>&1
   cd   ..
-  ln -sf "${rockstree}/5.1/bin/luajit-2.1.0-beta1" "${rockstree}/5.1/bin/luajit"
-  ln -sf "${rockstree}/5.1/include/luajit-2.1"     "${rockstree}/5.1/include/luajit-2.0"
+  ln -sf "luajit-2.1.0-beta1" "${rockstree}/5.1/bin/luajit"
+  ln -sf "luajit-2.1"         "${rockstree}/5.1/include/luajit-2.0"
 }
 
 # Install openresty:
 function install_openresty ()
 {
-  if [ -e "${prefix}/bin/resty" ]; then
+  if [ "${mode}" != "server" ]; then
+    return
+  fi
+  if [ -e "${prefix}/local/openresty/bin/resty" ]; then
     echo "Openresty is already installed."
     return
   fi
   echo "Installing openresty."
   (
-    wget https://openresty.org/download/ngx_openresty-1.9.3.1.tar.gz
+    curl --location --silent -O https://openresty.org/download/ngx_openresty-1.9.3.1.tar.gz
     tar xf ngx_openresty-1.9.3.1.tar.gz
     cd ngx_openresty-1.9.3.1
-    ./configure --prefix="${prefix}" \
+    ./configure --prefix="${prefix}/local/openresty" \
                 --without-lua51 \
                 --with-luajit="${rockstree}/5.1" \
                 --with-ipv6 \
                 --with-pcre-jit
-    make
+    make -j"$(nproc)"
     make install
   ) >> "${log}" 2>&1
 }
@@ -249,7 +336,7 @@ function install_luarocks ()
   else
   (
     echo "Installing luarocks for Lua-5.1."
-    wget --quiet http://luarocks.org/releases/luarocks-2.2.2.tar.gz
+    curl --location --silent -O http://luarocks.org/releases/luarocks-2.2.2.tar.gz
     tar  xf luarocks-2.2.2.tar.gz
     cd   luarocks-2.2.2
     {
@@ -272,7 +359,7 @@ function install_luarocks ()
       (
         echo "Installing luarocks for lua-${version}."
         if [ ! -d luarocks-2.2.2 ]; then
-          wget --quiet http://luarocks.org/releases/luarocks-2.2.2.tar.gz
+          curl --location --silent -O http://luarocks.org/releases/luarocks-2.2.2.tar.gz
           tar  xf luarocks-2.2.2.tar.gz
         fi
         cd   luarocks-2.2.2
@@ -293,45 +380,43 @@ function install_luarocks ()
 # Install cosyverif:
 function install_cosyverif ()
 {
+  export CPATH="${prefix}/include:${C_INCLUDE_PATH}"
+  export LIBRARY_PATH="${prefix}/lib:${LD_LIBRARY_PATH}"
+  export LD_LIBRARY_PATH="${prefix}/lib:${LD_LIBRARY_PATH}"
   mkdir -p "${rockstree}/git"
-  if [ ! -d "${rockstree}/git/redis-lua" ]; then
-    git clone https://github.com/nrk/redis-lua.git \
-              "${rockstree}/git/redis-lua" \
-      >> "${log}" 2>&1
-  fi
-  (
-    cd "${rockstree}/git/redis-lua"
-    git pull \
-      >> "${log}" 2>&1
-  )
-  if [ ! -d "${rockstree}/git/lua-websockets" ]; then
-    git clone https://github.com/saucisson/lua-websockets.git \
-              "${rockstree}/git/lua-websockets" \
-      >> "${log}" 2>&1
-  fi
-  (
-    cd "${rockstree}/git/lua-websockets"
-    git pull \
-      >> "${log}" 2>&1
-  )
-  if [ -z "${sourcepath+x}" ]; then
-    if [ ! -d "${rockstree}/git/library" ]; then
-      rm -rf "${rockstree}/git/library"
-      git clone https://github.com/CosyVerif/library.git \
-                "${rockstree}/git/library" \
-        >> "${log}" 2>&1
-    fi
-    (
-      cd "${rockstree}/git/library"
-      git pull \
-        >> "${log}" 2>&1
+  {
+    ( if [ ! -d "${rockstree}/git/redis-lua" ]; then
+        git clone --depth=1 \
+                  https://github.com/nrk/redis-lua.git \
+                  "${rockstree}/git/redis-lua"
+      fi
+      cd "${rockstree}/git/redis-lua"
+      git pull
     )
-  else
-    rm -rf "${rockstree}/git/library"
-    ln -s  "${sourcepath}" \
-           "${rockstree}/git/library"
-
-  fi
+    ( if [ ! -d "${rockstree}/git/lua-websockets" ]; then
+        git clone --depth=1 \
+                  https://github.com/saucisson/lua-websockets.git \
+                  "${rockstree}/git/lua-websockets"
+      fi
+      cd "${rockstree}/git/lua-websockets"
+      git pull
+    )
+    if [ -z "${sourcepath+x}" ]; then
+      ( if [ ! -d "${rockstree}/git/library" ]; then
+          rm -rf "${rockstree}/git/library"
+          git clone --depth=1 \
+                    https://github.com/CosyVerif/library.git \
+                    "${rockstree}/git/library"
+        fi
+        cd "${rockstree}/git/library"
+        git pull
+      )
+    else
+      rm -rf "${rockstree}/git/library"
+      ln -s  "${sourcepath}" \
+             "${rockstree}/git/library"
+    fi
+  } >> "${log}" 2>&1
   for version in 5.1 ${versions}
   do
     echo "Installing rocks for lua-${version}."
@@ -341,103 +426,179 @@ function install_cosyverif ()
       rm -rf "${rockstree}/${version}/share/lua/${version}/websocket"*
       rm -rf "${rockstree}/${version}/share/lua/${version}/cosy"*
       # Install luasec before everything to allow the use of HTTPS in luarocks:
-      for dependency in luasec ${dependencies}; do
-        if "${rockstree}/${version}/bin/luarocks" list --porcelain | grep "${dependency}"; then
-          echo -n
+      case "${mode}" in
+        "server")
+          case "$(uname -s)" in
+            "Linux")
+              options=""
+              ;;
+            "Darwin")
+              # Install homebrew first
+              options=(OPENSSL_DIR="/usr/local/opt/openssl/")
+              ;;
+          esac
+          ;;
+        "client")
+          options=(OPENSSL_DIR="${prefix}" LIBEV_DIR="${prefix}")
+          ;;
+      esac
+      for dependency in ${dependencies}; do
+        if "${rockstree}/${version}/bin/luarocks" list \
+            --porcelain \
+            --tree="${rockstree}/${version}" \
+            | grep --silent "${dependency}"; then
+          echo "  Not installing ${dependency} as it is already installed."
         else
-          "${rockstree}/${version}/bin/luarocks" install "${dependency}"
+          echo "  Installing ${dependency} as it is not installed."
+          "${rockstree}/${version}/bin/luarocks" install "${dependency}" ${options[*]} \
+              >> "${log}" 2>&1
         fi
-      done >> "${log}" 2>&1
+      done
       # Create symlinks in rockstree:
       rm -rf "${rockstree}/${version}/share/lua/${version}/redis"*
-      ln -s  "${rockstree}/git/redis-lua/src/redis.lua" \
+      ln -s  "../../../../git/redis-lua/src/redis.lua" \
              "${rockstree}/${version}/share/lua/${version}/redis.lua"
       rm -rf "${rockstree}/${version}/share/lua/${version}/websocket"*
-      ln -s  "${rockstree}/git/lua-websockets/src/websocket.lua" \
+      ln -s  "../../../../git/lua-websockets/src/websocket.lua" \
              "${rockstree}/${version}/share/lua/${version}/websocket.lua"
-      ln -s  "${rockstree}/git/lua-websockets/src/websocket" \
+      ln -s  "../../../../git/lua-websockets/src/websocket" \
              "${rockstree}/${version}/share/lua/${version}/websocket"
-      ln -s  "${rockstree}/git/library/src/cosy" \
+      ln -s  "../../../../git/library/src/cosy" \
              "${rockstree}/${version}/share/lua/${version}/cosy"
     fi
-    if [ ! -z "${sourcepath+x}" ]; then
+    if [ ! -z "${sourcepath+x}" ] && [ "${mode}" != "client" ]; then
       echo "Installing development tools for lua-${version}."
-      for module in luacheck luacov busted; do
-        if "${rockstree}/${version}/bin/luarocks" list --porcelain | grep "${module}"; then
-          echo -n
+      for dependency in ${development}; do
+        if "${rockstree}/${version}/bin/luarocks" list \
+            --porcelain \
+            --tree="${rockstree}/${version}" \
+            | grep --silent "${dependency}"; then
+          echo "  Not installing ${dependency} as it is already installed."
         else
-          "${rockstree}/${version}/bin/luarocks" install "${module}"
+          echo "  Installing ${dependency} as it is not installed."
+          "${rockstree}/${version}/bin/luarocks" install "${dependency}" \
+            >> "${log}" 2>&1
         fi
-      done >> "${log}" 2>&1
+      done
     fi
   done
 }
 
 function install_main ()
 {
-  read -d '' paths <<EOF
-export PATH="${prefix}/bin:${rockstree}/5.1/bin:\${PATH}"
-export LUA_PATH="${rockstree}/5.1/share/lua/5.1/?.lua;${rockstree}/5.1/share/lua/5.1/?/init.lua"
-export LUA_CPATH="${rockstree}/5.1/lib/lua/5.1/?.so"
-EOF
+  base=$(basename "${path}")
+  cat > "${path}" <<EOF
+#! /bin/bash
 
-  cat > "${cli}" <<EOF
-#! /bin/sh
-
-${paths}
 export COSY_PREFIX="${prefix}"
 
-${rockstree}/5.1/bin/luajit ${rockstree}/5.1/share/lua/5.1/cosy/cli/runner.lua "\$@"
+export PATH="\${COSY_PREFIX}/bin:\${COSY_PREFIX}/local/cosy/5.1/bin:\${PATH}"
+export LUA_PATH="\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/?.lua;\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/?/init.lua"
+export LUA_CPATH="\${COSY_PREFIX}/local/cosy/5.1/lib/lua/5.1/?.so"
+
+export CPATH="\${COSY_PREFIX}/include:${C_INCLUDE_PATH}"
+export LIBRARY_PATH="\${COSY_PREFIX}/lib:${LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="\${COSY_PREFIX}/lib:${LD_LIBRARY_PATH}"
+export DYLD_LIBRARY_PATH="\${COSY_PREFIX}/lib:${DYLD_LIBRARY_PATH}"
+EOF
+  chmod a+x "${path}"
+
+  if [ -z "${sourcepath+x}" ]; then
+    cd "\${COSY_PREFIX}/local/cosy/git/library"
+    version=$(git describe)
+    cd "${tempwd}"
+    cat > "${commit}" <<EOF
+#! /bin/bash
+
+echo "${version}"
+EOF
+  else
+    cat > "${commit}" <<EOF
+#! /bin/bash
+
+root=\$(dirname "\$0")
+source "\${root}/${base}"
+(
+  cd "\${COSY_PREFIX}/local/cosy/git/library"
+  git describe
+)
+EOF
+  fi
+  chmod a+x "${commit}"
+
+  cat > "${cli}" <<EOF
+#! /bin/bash
+
+root=\$(dirname "\$0")
+source "\${root}/${base}"
+luajit "\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/cosy/cli/init.lua" "\$@"
 EOF
   chmod a+x "${cli}"
 
+if [ "${mode}" == "server" ]; then
   cat > "${server}" <<EOF
-#! /bin/sh
+#! /bin/bash
 
-${paths}
-export COSY_PREFIX="${prefix}"
-
-${rockstree}/5.1/bin/luajit ${rockstree}/5.1/share/lua/5.1/cosy/server/cli.lua "\$@"
+root=\$(dirname "\$0")
+source "\${root}/${base}"
+luajit "\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/cosy/server/cli.lua" "\$@"
 EOF
   chmod a+x "${server}"
+fi
 
   cat > "${uninstall}" <<EOF
 #! /bin/bash
 
-${paths}
-export COSY_PREFIX="${prefix}"
-${prefix}/bin/cosy-server stop --force
-rm -rf ${prefix}/bin/cosy* \
-       ${prefix}/bin/resty \
-       ${prefix}/etc/cosy* \
-       ${prefix}/lualib \
-       ${prefix}/nginx \
-       ${prefix}/local/cosy
-find ${prefix} -maxdepth 1 -empty -exec rm -rf {} \;
-find ${prefix} -maxdepth 0 -empty -exec rm -rf {} \;
+root=\$(dirname "\$0")
+source "\${root}/${base}"
+if [ -e "\${COSY_PREFIX}/bin/cosy-server" ]; then
+  "\${COSY_PREFIX}/bin/cosy-server" stop --force
+fi
+rm -rf "\${COSY_PREFIX}/bin/cosy"* \
+       "\${COSY_PREFIX}/etc/cosy"* \
+       "\${COSY_PREFIX}/local/cosy" \
+       "\${COSY_PREFIX}/local/openresty"*
+if [ "${mode}" == "client" ]; then
+  rm -rf "\${COSY_PREFIX}/bin/c_rehash" \
+         "\${COSY_PREFIX}/bin/openssl" \
+         "\${COSY_PREFIX}/include/ev"*.h \
+         "\${COSY_PREFIX}/include/openssl" \
+         "\${COSY_PREFIX}/lib/libcrypto"* \
+         "\${COSY_PREFIX}/lib/libssl"* \
+         "\${COSY_PREFIX}/lib/libev"* \
+         "\${COSY_PREFIX}/lib/engines" \
+         "\${COSY_PREFIX}/lib/pkgconfig/libcrypto.pc" \
+         "\${COSY_PREFIX}/lib/pkgconfig/libssl.pc" \
+         "\${COSY_PREFIX}/lib/pkgconfig/openssl.pc" \
+         "\${COSY_PREFIX}/share/man/man3/ev.3" \
+         "\${COSY_PREFIX}/ssl"
+fi
+for i in {1..10}; do
+  find "\${COSY_PREFIX}" -maxdepth 5 -empty -exec rm -rf {} \; \
+    > /dev/null 2>&1
+done
 echo -e "Cosy has been ${green}successfully uninstalled${nc}."
 EOF
   chmod a+x "${uninstall}"
 
-  if [ ! -z "${sourcepath+x}" ]; then
+  if [ ! -z "${sourcepath+x}" ] && [ "${mode}" != "client" ]; then
     cat > "${check}" <<EOF
 #! /bin/bash
 
-${paths}
-export COSY_PREFIX="${prefix}"
-
+root=\$(dirname "\$0")
+source "\${root}/${base}"
 (
   if [ \$# -ge 1 ]; then
     tmpdir=\${1}
   else
-    tmpdir=\$(mktemp -d)
+    tmpdir=\$(mktemp -d 2>/dev/null || mktemp -d -t cosy-check)
   fi
   if [ ! -d "\${tmpdir}" ]; then
     mkdir -p "\${tmpdir}"
   fi
   shift
   cd  "\${tmpdir}"
-  ${rockstree}/5.1/bin/luajit ${rockstree}/5.1/share/lua/5.1/cosy/check/init.lua "\$@"
+  luajit "\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/cosy/check/init.lua" "\$@"
   echo
   echo -e "Test and Coverage reports are in ${green}\${tmpdir}${nc}."
 )
@@ -447,21 +608,20 @@ EOF
     cat > "${rockspec}" <<EOF
 #! /bin/bash
 
-${paths}
-export COSY_PREFIX="${prefix}"
-
+root=\$(dirname "\$0")
+source "\${root}/${base}"
 (
   if [ \$# -ge 1 ]; then
     tmpdir=\${1}
   else
-    tmpdir=\$(mktemp -d)
+    tmpdir=\$(mktemp -d 2>/dev/null || mktemp -d -t cosy-rockspec)
   fi
   if [ ! -d "\${tmpdir}" ]; then
     mkdir -p "\${tmpdir}"
   fi
   shift
   cd  "\${tmpdir}"
-  ${rockstree}/5.1/bin/luajit ${rockstree}/5.1/share/lua/5.1/cosy/rockspec/init.lua "\$@"
+  luajit "\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/cosy/rockspec/init.lua" "\$@"
   echo
   echo -e "Rockspec is in ${green}\${tmpdir}${nc}."
 )
@@ -473,18 +633,75 @@ EOF
 function install_configuration ()
 {
   echo -e "Installing configuration in ${green}${prefix}/etc/cosy.conf${nc}."
+  version=$("${prefix}/bin/cosy-version")
   mkdir -p "${prefix}/etc"
   cat > "${prefix}/etc/cosy.conf" <<EOL
 return {
-  http  = {
-    nginx = "/usr/sbin/nginx",
-    port  = 8080,
-  },
-  cli = {
-    server = "http://127.0.0.1:8080/"
-  },
+  dependencies = {
+    ["/setup/x86_64/gnu-inux/client.tar.gz"] =
+      "https://cosyverif.org/BUNDLESv2/cosy-client-${version}-gnu-linux-x86_64.tar.gz",
+  }
 }
 EOL
+}
+
+function fix_string ()
+{
+  echo "$1" \
+    | sed -e 's/^[[:space:]]+/ /' \
+    | sed -e 's/^[[:space:]]*//' \
+    | sed -e 's/[[:space:]]*$//' \
+    | tr '/' '-' \
+    | tr '[:upper:]' '[:lower:]'
+}
+
+# Generate the package:
+function generate_package ()
+{
+  if [ "${mode}" != "client" ]; then
+    return
+  fi
+  parentdir=$(dirname "${prefix}")
+  version=$("${prefix}/bin/cosy-version")
+  version=$(fix_string "${version}")
+  os=$(fix_string "$(uname -s)")
+  arch=$(fix_string "$(uname -m)")
+  archive="cosy-${mode}-${version}-${os}-${arch}.tar.gz"
+  echo -e "Packaging in ${green}${parentdir}/${archive}${nc}."
+  cp -r  "${prefix}" "${tempwd}/cosy-${mode}"
+  # Clean:
+  {
+    if [ -s "${tempwd}/cosy-${mode}/local/cosy/git/library" ]; then
+      target=$(readlink "${tempwd}/cosy-${mode}/local/cosy/git/library")
+      rm -rf "${tempwd}/cosy-${mode}/local/cosy/git/library"
+      cp -r  "${target}" \
+             "${tempwd}/cosy-${mode}/local/cosy/git/library"
+    fi
+    "${tempwd}/cosy-${mode}/local/cosy/5.1/bin/luarocks" remove \
+       --tree="${tempwd}/cosy-${mode}/local/cosy/5.1/" luarocks
+    rm -rf  "${tempwd}/cosy-${mode}/local/cosy/5.1/lib/luarocks" \
+            "${tempwd}/cosy-${mode}/bin/c_rehash" \
+            "${tempwd}/cosy-${mode}/bin/openssl" \
+            "${tempwd}/cosy-${mode}/include/event.h" \
+            "${tempwd}/cosy-${mode}/include/ev.h" \
+            "${tempwd}/cosy-${mode}/include/ev++.h" \
+            "${tempwd}/cosy-${mode}/include/openssl"
+    sed -i  "s|export COSY_PREFIX=.*|export COSY_PREFIX=\"...\"|" \
+            "${tempwd}/cosy-${mode}/bin/cosy-path" \
+            >> "${log}" 2>&1
+  } >> "${log}" 2>&1
+  # Package:
+  case "$(uname -s)" in
+    "Linux")
+      {
+        rm -f   "${archive}"
+        tar czf "${archive}" "cosy-${mode}"
+        cp      "${archive}" "${parentdir}/"
+      } >> "${log}" 2>&1
+      ;;
+    *)
+    exit 1
+  esac
 }
 
 function error ()
@@ -503,20 +720,26 @@ cd "${tempwd}"
 stop_server
 trap error ERR
 install_dependencies
+install_libev
+# install_libssl
 install_luajit
 install_openresty
 install_luarocks
 install_cosyverif
 install_main
 install_configuration
+generate_package
 cd "${currentwd}"
 
 echo "You can now try the following commands:"
-echo "- ${prefix}/bin/cosy-server start [--clean] [--force]"
-echo "- ${prefix}/bin/cosy"
-echo "- ${prefix}/bin/cosy-server stop  [--force]"
-echo "- ${prefix}/bin/cosy-uninstall"
-if [ ! -z "${sourcepath+x}" ]; then
+if [ "${mode}" == "server" ]; then
+  echo "- ${prefix}/bin/cosy-server start [--clean] [--force]"
+  echo "- ${prefix}/bin/cosy-server stop  [--force]"
+fi
+echo "- ${prefix}/bin/cosy            : to run the cosy client"
+echo "- ${prefix}/bin/cosy-version    : to get version number"
+echo "- ${prefix}/bin/cosy-uninstall  : to uninstall cosy"
+if [ ! -z "${sourcepath+x}" ] && [ "${mode}" != "client" ]; then
   echo "This development environment also provides two commands:"
   echo "- ${prefix}/bin/cosy-check    : to run checks, tests and coverage"
   echo "- ${prefix}/bin/cosy-rockspec : to generate rockspec"

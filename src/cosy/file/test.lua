@@ -1,8 +1,9 @@
 -- These lines are required to correctly run tests:
-require "cosy.loader.busted"
 require "busted.runner" ()
-
-local File = require "cosy.file"
+local loader = require "cosy.loader.lua" {
+  logto = false,
+}
+local File   = loader.load "cosy.file"
 
 describe ("Module cosy.file", function ()
 
@@ -18,6 +19,12 @@ describe ("Module cosy.file", function ()
 
   after_each (function ()
     os.remove( filename )
+  end)
+
+  it ("should fail to save a file without write access", function ()
+    local file, err = File.encode ("/bad/luck/shouldnotexist/123", expected_data)
+    assert.is_nil (file)
+    assert.is_not_nil (err)
   end)
 
   it ("should save then read data into a file", function ()

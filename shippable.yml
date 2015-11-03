@@ -7,19 +7,20 @@ services:
 
 install:
   - sudo apt-get autoremove -y
-  - ./bin/install --prefix=$HOME --sourcepath=$(pwd) --in-ci
+  - ./bin/install --prefix=$HOME/cosy/server --mode=server --sourcepath=$(pwd) --in-ci
+  - ./bin/install --prefix=$HOME/cosy/client --mode=client --sourcepath=$(pwd) --in-ci
 
 before_script:
   - rm    -rf shippable/testresults
   - mkdir -p  shippable/testresults
   - rm    -rf output
-  - mkdir -p  output
+  - mkdir -p  output/server
 
 script:
-  - ${HOME}/bin/cosy-check output --test-format=junit
+  - ${HOME}/cosy/server/bin/cosy-check output/server --test-format=junit
 
 after_script:
-  - for file in output/test/*; do mv ${file} shippable/testresults/$(basename ${file}).xml; done
+  - for file in output/server/test/*; do mv ${file} shippable/testresults/$(basename ${file}).xml; done
 
 notifications:
   email:

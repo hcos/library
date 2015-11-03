@@ -1,9 +1,11 @@
-require "cosy.loader.busted"
-local Lfs       = require "lfs"
-local Lustache  = require "lustache"
-local Colors    = require 'ansicolors'
-local Reporter  = require "luacov.reporter"
-local Arguments = require "argparse"
+local loader    = require "cosy.loader.lua" {
+  logto = false,
+}
+local Lfs       = loader.require "lfs"
+local Lustache  = loader.require "lustache"
+local Colors    = loader.require 'ansicolors'
+local Reporter  = loader.require "luacov.reporter"
+local Arguments = loader.require "argparse"
 
 local prefix = os.getenv "COSY_PREFIX"
 local name   = prefix .. "/bin/cosy-check"
@@ -199,8 +201,6 @@ print ()
 -- ====
 
 do
-  local Loader   = require "cosy.loader"
-  Loader.nolog   = true
   local messages = {}
   local problems = 0
 
@@ -209,7 +209,7 @@ do
     if  module ~= "." and module ~= ".."
     and Lfs.attributes (path, "mode") == "directory" then
       if Lfs.attributes (path .. "/i18n.lua", "mode") == "file" then
-        local translations = require ("cosy.{{{module}}}.i18n" % {
+        local translations = loader.load ("cosy.{{{module}}}.i18n" % {
           module = module,
         })
         for key, t in pairs (translations) do
@@ -324,10 +324,10 @@ do
     local script = [[
 #! /bin/bash
 
-git_dir=$(readlink "{{{main}}}")
+git_dir=$(readlink --canonicalize "{{{main}}}")
 user_dir=$(dirname "${git_dir}")
 user_dir=$(dirname "${user_dir}")
-shellcheck --exclude=SC2024 "${user_dir}"/bin/*
+shellcheck --exclude=SC2024 "${user_dir}/bin/"*
     ]] % {
       main = main,
     }

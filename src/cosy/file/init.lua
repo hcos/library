@@ -1,21 +1,29 @@
-local Value = require "cosy.value"
+return function (loader)
 
-local File = {}
+  local Value = loader.load "cosy.value"
 
-function File.encode (filname, data)
-  local file = io.open (filname, "w")
-  file:write (Value.expression (data))
-  file:close ()
-end
+  local File = {}
 
-function File.decode (filename)
-  local file, err = io.open (filename, "r")
-  if not file then
-    return nil, err
+  function File.encode (filname, data)
+    local file, err = io.open (filname, "w")
+    if not file then
+      return nil, err
+    end
+    file:write (Value.expression (data))
+    file:close ()
+    return true
   end
-  local data = file:read "*all"
-  file:close ()
-  return Value.decode (data)
-end
 
-return File
+  function File.decode (filename)
+    local file, err = io.open (filename, "r")
+    if not file then
+      return nil, err
+    end
+    local data = file:read "*all"
+    file:close ()
+    return Value.decode (data)
+  end
+
+  return File
+
+end
