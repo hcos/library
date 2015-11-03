@@ -152,21 +152,27 @@ return function (loader)
     commands.methods = commands.client.server.list_methods {
       locale = Configuration.locale.default,
     }
-    for name, info in pairs (commands.methods) do
+    local method_names = {}
+    for name in pairs (commands.methods) do
+      method_names [#method_names+1] = name
+    end
+    table.sort (method_names)
+    for _, name in ipairs (method_names) do
+      local info = commands.methods [name]
       local command = commands.parser:command (name) {
         description = info.description,
       }
-      local optnam = {}
+      local optname  = {}
       local optinfos = {}
       for part, subt in pairs (info.parameters) do
         for parameter, x in pairs (subt) do
           x.part = part -- store field   optional / required
-          optnam [#optnam+1] = parameter
+          optname  [#optname+1] = parameter
           optinfos [parameter] = x
         end
       end
-      table.sort (optnam)
-      for _, parameter  in ipairs (optnam) do
+      table.sort (optname)
+      for _, parameter in ipairs (optname) do
          local x = optinfos [parameter]
          Options.set (command, x.part, parameter, x.type, x.description)
        end
