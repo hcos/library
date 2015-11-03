@@ -8,19 +8,10 @@ with the platform.
 Install
 -------
 
-CosyVerif can currently be installed on a Debian system easily:
+CosyVerif client can be installed from any CosyVerif server, using:
 
 ````bash
-    curl -s https://raw.githubusercontent.com/CosyVerif/library/master/bin/install | bash -s ${HOME}/cosyverif
+    curl -s http://<cosy-server>/setup | bash -s /dev/stdin --prefix=<target-directory>
+or
+    wget -q -O - http://<cosy-server>/setup | bash -s /dev/stdin --prefix=<target-directory>
 ````
-
-Note that installation still requires `sudo` privileges, as it needs
-to install some dependencies.
-
-Then, run the server:
-
-````bash
-  ${HOME}/cosyverif/bin/cosy server:start
-  ${HOME}/cosyverif/bin/cosy --help
-````
-
