@@ -9,7 +9,10 @@ fi
 cosy="$1"
 url="$2"
 
-passwords=$(mktemp)
+paths=$(dirname "${cosy}")
+source "${paths}/cosy-path"
+
+passwords=$(mktemp 2>/dev/null || mktemp -t cosy-user)
 echo "password" >> "${passwords}"
 echo "password" >> "${passwords}"
 
