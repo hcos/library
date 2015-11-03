@@ -499,6 +499,7 @@ export LUA_CPATH="\${COSY_PREFIX}/local/cosy/5.1/lib/lua/5.1/?.so"
 export CPATH="\${COSY_PREFIX}/include:${C_INCLUDE_PATH}"
 export LIBRARY_PATH="\${COSY_PREFIX}/lib:${LD_LIBRARY_PATH}"
 export LD_LIBRARY_PATH="\${COSY_PREFIX}/lib:${LD_LIBRARY_PATH}"
+export DYLD_LIBRARY_PATH="\${COSY_PREFIX}/lib:${DYLD_LIBRARY_PATH}"
 EOF
   chmod a+x "${path}"
 
