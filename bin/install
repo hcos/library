@@ -694,6 +694,13 @@ function generate_package ()
         cp      "${archive}" "${parentdir}/"
       } >> "${log}" 2>&1
       ;;
+    "Darwin")
+      {
+        rm -f   "${archive}"
+        tar czf "${archive}" "cosy-${mode}"
+        cp      "${archive}" "${parentdir}/"
+      } >> "${log}" 2>&1
+      ;;
     *)
     exit 1
   esac
