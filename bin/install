@@ -428,7 +428,15 @@ function install_cosyverif ()
       # Install luasec before everything to allow the use of HTTPS in luarocks:
       case "${mode}" in
         "server")
-          options=""
+          case "$(uname -s)" in
+            "Linux")
+              options=""
+              ;;
+            "Darwin")
+              # Install homebrew first
+              options=(OPENSSL_DIR="/usr/local/opt/openssl/")
+              ;;
+          esac
           ;;
         "client")
           options=(OPENSSL_DIR="${prefix}" LIBEV_DIR="${prefix}")
