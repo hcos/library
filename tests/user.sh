@@ -35,7 +35,7 @@ fi
 #echo "Starting server:"
 #"${cosy}" server:start --force --clean
 echo "Printing available methods:"
-"${cosy}" --server="${url}"
+"${cosy}" --server="${url}" --help
 echo "Server information:"
 "${cosy}" server:information
 echo "Terms of Service:"
