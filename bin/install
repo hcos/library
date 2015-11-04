@@ -61,6 +61,8 @@ do
   esac
 done
 
+parallel=$(nproc 2> /devl/null || sysctl -n hw.ncpu 2> /dev/null)
+
 prefix=${prefix:-/usr/local}
 mode=${mode:-server}
 
@@ -224,7 +226,7 @@ function install_libev ()
     git clone --depth=1 "https://github.com/enki/libev.git"
     cd libev || exit 1
     ./configure --prefix="${prefix}"
-    make -j"$(nproc)"
+    make -j"${parallel}"
     make install
   ) >> "${log}" 2>&1
 }
@@ -252,7 +254,7 @@ function install_libssl ()
         exit 1
         ;;
     esac
-    make -j"$(nproc)" CFLAG="-fPIC"
+    make -j"${parallel}" CFLAG="-fPIC"
     make install_sw
   ) >> "${log}" 2>&1
 }
@@ -296,7 +298,7 @@ diff -rupN LuaJIT-2.0.4.back/src/Makefile LuaJIT-2.0.4/src/Makefile
 EOL
   {
     patch -p1 -i "luajit.patch"
-    make -j"$(nproc)"
+    make -j"${parallel}"
     make install CC="clang"
   } >> "${log}" 2>&1
   cd   ..
@@ -324,7 +326,7 @@ function install_openresty ()
                 --with-luajit="${rockstree}/5.1" \
                 --with-ipv6 \
                 --with-pcre-jit
-    make -j"$(nproc)"
+    make -j"${parallel}"
     make install
   ) >> "${log}" 2>&1
 }
