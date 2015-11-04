@@ -538,10 +538,6 @@ export LUA_CPATH="\${COSY_PREFIX}/local/cosy/5.1/lib/lua/5.1/?.so"
 export LIBRARY_PATH="\${COSY_PREFIX}/lib:${LIBRARY_PATH}"
 export LD_LIBRARY_PATH="\${COSY_PREFIX}/lib:${LD_LIBRARY_PATH}"
 export DYLD_LIBRARY_PATH="\${COSY_PREFIX}/lib:${DYLD_LIBRARY_PATH}"
-
-luajit -e 'print (package.path)'
-luajit -e 'print (package.cpath)'
-ls -lh \${COSY_PREFIX}/local/cosy/5.1/lib/lua/5.1/
 EOF
   chmod a+x "${path}"
 
@@ -783,6 +779,12 @@ install_luarocks
 install_cosyverif
 install_main
 install_configuration
+
+source "${prefix}/bin/cosy-path"
+luajit -e 'print (package.path)'
+luajit -e 'print (package.cpath)'
+ls -lh "${prefix}/local/cosy/5.1/lib/lua/5.1/"
+
 generate_package
 cd "${currentwd}" || exit 1
 
