@@ -649,8 +649,10 @@ source "\${root}/${base}"
     mkdir -p "\${tmpdir}"
   fi
   shift
-  cd  "\${tmpdir}"
+  cd  "\${tmpdir}" || exit 1
+  "\${COSY_PREFIX}/bin/cosy-server" start --force --clean
   luajit "\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/cosy/check/init.lua" "\$@"
+  "\${COSY_PREFIX}/bin/cosy-server" stop  --force
   echo
   echo -e "Test and Coverage reports are in ${green}\${tmpdir}${nc}."
 )
