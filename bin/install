@@ -632,6 +632,11 @@ EOF
 root=\$(dirname "\$0")
 # shellcheck source=/dev/null
 source "\${root}/${base}"
+
+luajit -e 'print (package.path)'
+luajit -e 'print (package.cpath)'
+ls -lh "\${COSY_PREFIX}/local/cosy/5.1/lib/lua/5.1/"
+
 (
   if [ \$# -ge 1 ]; then
     tmpdir=\${1}
@@ -779,12 +784,6 @@ install_luarocks
 install_cosyverif
 install_main
 install_configuration
-
-source "${prefix}/bin/cosy-path"
-luajit -e 'print (package.path)'
-luajit -e 'print (package.cpath)'
-ls -lh "${prefix}/local/cosy/5.1/lib/lua/5.1/"
-
 generate_package
 cd "${currentwd}" || exit 1
 
