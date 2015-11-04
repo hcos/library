@@ -168,46 +168,75 @@ function stop_server ()
 # Install dependencies:
 function install_dependencies ()
 {
-  # check if apt is available:
+  # check if apt or brew is available:
   if command -v apt-get; then
     if sudo apt-get update; then
       apt_available=true
     fi
   fi >> "${log}" 2>&1
+  if command -v brew; then
+    brew_available=true
+  fi >> "${log}" 2>&1
 
-  if [ ! -z "${apt_available+x}" ]; then
-    echo "Installing development packages."
-    sudo apt-get install --yes git make clang gcc diffutils patch curl unzip \
-      >> "${log}" 2>&1
-
-    if [ "${mode}" == "server" ]; then
-      echo "Installing packages required by the server."
-      sudo apt-get install --yes perl build-essential \
-                                 libssl-dev libev-dev \
-                                 libreadline-dev libncurses5-dev libpcre3-dev \
-                                 redis-server imagemagick \
-        >> "${log}" 2>&1
-    fi
-  else
-    echo "Not installing packages as apt-get or sudo is not available."
-  fi
-
-  if [ ! -z "${sourcepath+x}" ]; then
-    if [ -z "${apt_available+x}" ]; then
-      echo "Developper mode requires a working version of apt and sudo."
-    else
-      for version in ${versions}
-      do
-        echo "Installing lua-${version}."
-        sudo apt-get install --yes lua${versions} liblua${version}-dev \
-          >> "${log}" 2>&1
-      done
-      echo "Installing developper tools."
-      if [ "$(apt-cache search shellcheck | grep shellcheck)" != "" ]; then
-        sudo apt-get install --yes shellcheck \
-          >> "${log}" 2>&1
+  echo "Installing development packages."
+  case "$(uname -s)" in
+    "Linux")
+      if [ ! -z "${apt_available+x}" ]; then
+        sudo apt-get install --yes git make clang gcc diffutils patch curl unzip
       fi
-    fi
+      ;;
+    "Darwin")
+      ;;
+    *)
+      echo -e "Error: unknown OS: ${red}$(uname -s)${nc}."
+      exit 1
+      ;;
+  esac >> "${log}" 2>&1
+  if [ "${mode}" == "server" ]; then
+    echo "Installing packages required by the server."
+    case "$(uname -s)" in
+      "Linux")
+        if [ ! -z "${apt_available+x}" ]; then
+          sudo apt-get install --yes perl build-essential \
+                                     libssl-dev libev-dev \
+                                     libreadline-dev libncurses5-dev libpcre3-dev \
+                                     redis-server imagemagick
+        fi
+        ;;
+      "Darwin")
+        if [ ! -z "${brew_available}" ]; then
+          brew install openssl libev pcre redis imagemagick
+          brew link --force openssl
+        fi
+        ;;
+      *)
+        exit 1
+        ;;
+    esac >> "${log}" 2>&1
+  fi
+  if [ ! -z "${sourcepath+x}" ]; then
+    echo "Installing developper tools."
+    case "$(uname -s)" in
+      "Linux")
+        if [ ! -z "${apt_available+x}" ]; then
+          for version in ${versions}
+          do
+            sudo apt-get install --yes lua${versions} liblua${version}-dev
+          done
+          if [ "$(apt-cache search shellcheck | grep shellcheck)" != "" ]; then
+            sudo apt-get install --yes shellcheck
+          fi
+        fi
+        ;;
+      "Darwin")
+        if [ ! -z "${brew_available}" ]; then
+          brew install lua shellcheck
+        fi
+        ;;
+      *)
+        exit 1
+        ;;
+    esac >> "${log}" 2>&1
   fi
 }
 
@@ -382,9 +411,17 @@ function install_luarocks ()
 # Install cosyverif:
 function install_cosyverif ()
 {
-  export CPATH="${prefix}/include:${C_INCLUDE_PATH}"
-  export LIBRARY_PATH="${prefix}/lib:${LD_LIBRARY_PATH}"
+  if [ ! -z "${brew_available}" ]; then
+    HOMEBREW_PREFIX=$(brew config | grep "HOMEBREW_PREFIX" | tr -d ' \t' | cut -d ":" -f 2)
+    export CPATH="${HOMEBREW_PREFIX}/include:${CPATH}"
+    export LIBRARY_PATH="${HOMEBREW_PREFIX}/lib:${LIBRARY_PATH}"
+    export LD_LIBRARY_PATH="${HOMEBREW_PREFIX}/lib:${LD_LIBRARY_PATH}"
+    export DYLD_LIBRARY_PATH="${HOMEBREW_PREFIX}/lib:${DYLD_LIBRARY_PATH}"
+  fi
+  export CPATH="${prefix}/include:${CPATH}"
+  export LIBRARY_PATH="${prefix}/lib:${LIBRARY_PATH}"
   export LD_LIBRARY_PATH="${prefix}/lib:${LD_LIBRARY_PATH}"
+  export DYLD_LIBRARY_PATH="${prefix}/lib:${DYLD_LIBRARY_PATH}"
   mkdir -p "${rockstree}/git"
   {
     ( if [ ! -d "${rockstree}/git/redis-lua" ]; then
@@ -494,12 +531,18 @@ function install_main ()
 
 export COSY_PREFIX="${prefix}"
 
+if [ ! -z "${brew_available}" ]; then
+  HOMEBREW_PREFIX=$(brew config | grep "HOMEBREW_PREFIX" | tr -d ' \t' | cut -d ":" -f 2)
+  export LIBRARY_PATH="\${HOMEBREW_PREFIX}/lib:${LIBRARY_PATH}"
+  export LD_LIBRARY_PATH="\${HOMEBREW_PREFIX}/lib:${LD_LIBRARY_PATH}"
+  export DYLD_LIBRARY_PATH="\${HOMEBREW_PREFIX}/lib:${DYLD_LIBRARY_PATH}"
+fi
+
 export PATH="\${COSY_PREFIX}/bin:\${COSY_PREFIX}/local/cosy/5.1/bin:\${PATH}"
 export LUA_PATH="\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/?.lua;\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/?/init.lua"
 export LUA_CPATH="\${COSY_PREFIX}/local/cosy/5.1/lib/lua/5.1/?.so"
 
-export CPATH="\${COSY_PREFIX}/include:${C_INCLUDE_PATH}"
-export LIBRARY_PATH="\${COSY_PREFIX}/lib:${LD_LIBRARY_PATH}"
+export LIBRARY_PATH="\${COSY_PREFIX}/lib:${LIBRARY_PATH}"
 export LD_LIBRARY_PATH="\${COSY_PREFIX}/lib:${LD_LIBRARY_PATH}"
 export DYLD_LIBRARY_PATH="\${COSY_PREFIX}/lib:${DYLD_LIBRARY_PATH}"
 EOF
