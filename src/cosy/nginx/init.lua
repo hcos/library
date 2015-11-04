@@ -46,7 +46,7 @@ http {
     listen        {{{host}}}:{{{port}}};
     charset       utf-8;
     index         index.html;
-    include       /etc/nginx/mime.types;
+    include       {{{nginx}}}/conf/mime.types;
     default_type  application/octet-stream;
     access_log    access.log;
 
@@ -244,6 +244,7 @@ fi
       sethostname ()
     end
     local configuration = configuration_template % {
+      nginx          = Configuration.http.nginx,
       host           = Configuration.http.interface,
       port           = Configuration.http.port,
       www            = Configuration.http.www,
@@ -269,7 +270,7 @@ fi
     os.execute ([[
       {{{nginx}}} -p {{{directory}}} -c {{{configuration}}} 2> {{{error}}}
     ]] % {
-      nginx         = Configuration.http.nginx,
+      nginx         = Configuration.http.nginx .. "/sbin/nginx",
       directory     = Configuration.http.directory,
       configuration = Configuration.http.configuration,
       error         = Configuration.http.error,
