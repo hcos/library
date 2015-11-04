@@ -185,7 +185,7 @@ function Cli.start (cli)
         file:close ()
         print ("See error file " .. Colors ("%{white redbg}" .. errorfile) .. " for more information.")
       end
-      os.exit (1)
+      return false
     end
   end
 
@@ -225,7 +225,7 @@ function Cli.start (cli)
   if not client then
     print (Colors ("%{white redbg}" .. i18n ["failure"] % {}),
            Colors ("%{white redbg}" .. i18n ["server:unreachable"] % {}))
-    os.exit (1)
+    return false
   end
 
   local data = File.decode (Configuration.cli.data) or {}
@@ -254,7 +254,7 @@ function Cli.start (cli)
     print (Colors ("%{red blackbg}" .. i18n ["failure"] % {}))
     print (Colors ("%{white redbg}" .. i18n (result.error).message))
   end
-  os.exit (ok and 0 or 1)
+  return ok
 end
 
 function Cli.stop (cli)
@@ -263,7 +263,11 @@ end
 
 if not _G._TEST then
   local cli = Cli.new ()
-  cli:start ()
+  if cli:start () then
+    os.exit (0)
+  else
+    os.exit (1)
+  end
 end
 
 return Cli

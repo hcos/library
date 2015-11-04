@@ -1,3 +1,5 @@
+_G._TEST = true
+
 -- These lines are required to correctly run tests:
 require "busted.runner" ()
 local loader = require "cosy.loader.lua" {
@@ -6,21 +8,24 @@ local loader = require "cosy.loader.lua" {
 local Configuration = loader.load "cosy.configuration"
 local Cli           = loader.require "cosy.cli"
 
+Cli.default_server = "http://127.0.0.1:8080"
+Cli.default_locale = "en"
+
 Configuration.load {
   "cosy.cli",
+}
+Configuration.library = {
+  timeout = 1,
 }
 
 describe ("Module cosy.cli", function ()
 
   before_each (function ()
-    _G._TEST = true
-    Configuration.cli.data   = os.tmpname()
-    Configuration.cli.server = "dummy_default"  -- override to a known default value
+    Configuration.cli.data = os.tmpname()
   end)
 
   after_each (function ()
     os.remove (Configuration.cli.data)
-    _G._TEST = false
   end)
 
   describe ("parsing options by method configure", function ()
@@ -28,24 +33,24 @@ describe ("Module cosy.cli", function ()
     it ("should set the server if the --server option is set", function ()
       local cli = Cli.new ()
       cli:configure {
-        "--server=http://public.cosyverif.org",
+        "--server=http://127.0.0.1:8080",
       }
-      assert.are.equal (cli.server, "http://public.cosyverif.org")
+      assert.are.equal (cli.server, "http://127.0.0.1:8080")
     end)
 
     it ("should use a default server if the --server option is missing", function ()
       local cli = Cli.new ()
       cli:configure {}
-      assert.is.not_nil (cli.server)
+      assert.are.equal (cli.server, Cli.default_server)
     end)
 
     it ("should pick the last one if several --server options are set", function ()
       local cli = Cli.new ()
       cli:configure {
-        "--server=http://public.cosyverif.org",
-        "--server=http://private.cosyverif.org",
+        "--server=http://127.0.0.1:8090",
+        "--server=http://127.0.0.1:8080",
       }
-      assert.are.equal (cli.server, "http://private.cosyverif.org")
+      assert.are.equal (cli.server, "http://127.0.0.1:8080")
     end)
 
     it ("should fail if the --server option is not a HTTP(s) URL", function ()
@@ -65,16 +70,16 @@ describe ("Module cosy.cli", function ()
       do
         local cli = Cli.new ()
         cli:configure {
-          "--server=http://my.server.org",
+          "--server=http://127.0.0.1:8080",
         }
         -- assert server was found and set
-        assert.are.equal (cli.server, "http://my.server.org")
+        assert.are.equal (cli.server, "http://127.0.0.1:8080")
       end
       do
         local cli = Cli.new ()
         cli:configure {}
         -- assert config was saved to config file
-        assert.are.equal (cli.server, "http://my.server.org")
+        assert.are.equal (cli.server, "http://127.0.0.1:8080")
       end
     end)
 
