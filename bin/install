@@ -481,6 +481,7 @@ function install_cosyverif ()
           echo "  Not installing ${dependency} as it is already installed."
         else
           echo "  Installing ${dependency} as it is not installed."
+          # shellcheck disable=SC2086
           "${rockstree}/${version}/bin/luarocks" install "${dependency}" ${options[*]} \
               >> "${log}" 2>&1
         fi
