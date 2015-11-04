@@ -61,7 +61,7 @@ do
   esac
 done
 
-parallel=$(nproc 2> /devl/null || sysctl -n hw.ncpu 2> /dev/null)
+parallel=$(nproc 2> /dev/null || sysctl -n hw.ncpu 2> /dev/null)
 
 prefix=${prefix:-/usr/local}
 mode=${mode:-server}
