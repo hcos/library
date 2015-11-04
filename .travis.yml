@@ -5,7 +5,7 @@ os:
 language: C
 
 services:
- - redis
+ - redis-server
 
 install:
   - ./bin/install --prefix=$HOME/cosy/server --mode=server --sourcepath=$(pwd) --in-ci
@@ -16,7 +16,7 @@ before_script:
   - mkdir -p  output/server
 
 script:
-  - ${HOME}/cosy/server/bin/cosy-check output/server --test-format=junit
+  - ${HOME}/cosy/server/bin/cosy-check  output/server --test-format=junit
   - ${HOME}/cosy/server/bin/cosy-server start --clean
   - ./tests/user.sh ${HOME}/cosy/server/bin/cosy
   - ${HOME}/cosy/server/bin/cosy-server stop
