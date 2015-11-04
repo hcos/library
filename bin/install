@@ -524,7 +524,7 @@ function install_main ()
 
 export COSY_PREFIX="${prefix}"
 
-if command -v "brew" > /dev/null 2&>1; then
+if command -v "brew" > /dev/null 2>&1; then
   HOMEBREW_PREFIX=\$(brew config | grep "HOMEBREW_PREFIX" | tr -d ' \t' | cut -d ":" -f 2)
   export LIBRARY_PATH="\${HOMEBREW_PREFIX}/lib:${LIBRARY_PATH}"
   export LD_LIBRARY_PATH="\${HOMEBREW_PREFIX}/lib:${LD_LIBRARY_PATH}"
