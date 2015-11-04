@@ -4,9 +4,6 @@ os:
 
 language: C
 
-services:
- - redis-server
-
 install:
   - ./bin/install --prefix=$HOME/cosy/server --mode=server --sourcepath=$(pwd) --in-ci
   - ./bin/install --prefix=$HOME/cosy/client --mode=client --sourcepath=$(pwd) --in-ci
@@ -14,6 +11,7 @@ install:
 before_script:
   - rm    -rf output
   - mkdir -p  output/server
+  - redis-server &
 
 script:
   - ${HOME}/cosy/server/bin/cosy-check  output/server --test-format=junit
