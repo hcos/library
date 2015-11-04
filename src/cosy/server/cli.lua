@@ -56,7 +56,7 @@ if arguments.start then
         administration = data.token,
       }
       if not result then
-        os.execute ([[ kill -9 {{{pid}}} 2> /dev/null ]] % {
+        os.execute ([[ kill -s KILL {{{pid}}} 2> /dev/null ]] % {
           pid = data.pid,
         })
       end
@@ -120,7 +120,7 @@ elseif arguments.stop then
   end
   if not client then
     if arguments.force and data then
-      os.execute ([[ kill -9 {{{pid}}} 2> /dev/null ]] % {
+      os.execute ([[ kill -s KILL {{{pid}}} 2> /dev/null ]] % {
         pid = data.pid,
       })
       print (Colors ("%{black greenbg}" .. i18n ["success"] % {}))

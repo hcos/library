@@ -280,7 +280,7 @@ fi
   function Nginx.stop ()
     os.execute ([[
       [ -f {{{pid}}} ] && {
-        kill -QUIT $(cat {{{pid}}})
+        kill -s QUIT $(cat {{{pid}}})
       }
       rm -rf {{{directory}}} {{{pid}}} {{{error}}} {{{configuration}}}
     ]] % {
@@ -297,7 +297,7 @@ fi
     Nginx.configure ()
     os.execute ([[
       [ -f {{{pidfile}}} ] && {
-        kill -HUP $(cat {{{pidfile}}})
+        kill -s HUP $(cat {{{pidfile}}})
       }
     ]] % {
       pidfile = Configuration.http.pid,
