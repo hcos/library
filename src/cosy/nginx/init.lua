@@ -49,6 +49,7 @@ http {
     include       {{{nginx}}}/conf/mime.types;
     default_type  application/octet-stream;
     access_log    access.log;
+    open_file_cache off;
 
     location / {
       add_header  Access-Control-Allow-Origin *;
