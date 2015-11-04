@@ -20,6 +20,9 @@ end
 --  2. ~/.cosy/cli.data config file (ie last server used)
 --  3. configuration
 
+Cli.default_server = "http://public.cosyverif.lsv.fr"
+Cli.default_locale = (os.getenv "LANG" or "en"):match "[^%.]+":gsub ("_", "-")
+
 function Cli.configure (cli, arguments)
   assert (getmetatable (cli) == Cli)
 
@@ -31,8 +34,8 @@ function Cli.configure (cli, arguments)
   local Request = require "socket.http".request
   local Hotswap = require "hotswap.http"
 
-  local default_server = "http://public.cosyverif.lsv.fr"
-  local default_locale = (os.getenv "LANG" or "en"):match "[^%.]+":gsub ("_", "-")
+  local default_server = Cli.default_server
+  local default_locale = Cli.default_locale
 
   local cosy_dir = os.getenv "HOME" .. "/.cosy"
     -- reads the config
