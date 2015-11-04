@@ -1,43 +1,25 @@
-language: erlang
-sudo: false
+os:
+  - linux
+  - osx
 
-addons:
-  apt:
-    packages:
-    - diffutils
-    - gcc
-    - git
-    - make
-    - patch
-    - unzip
-    - wget
-    - libev-dev
-    - libgeoip-dev
-    - libssl-dev
-    - nginx-extras
-    - lua-nginx-redis
-    - redis-server
+language: C
 
-cache:
-  directories:
-  - $HOME/bin
-  - $HOME/etc
-  - $HOME/local
-
-before_install:
-  - > if [ ! -d $HOME/local ]
-      then
-        ./bin/install $HOME
-      fi
+services:
+ - redis
 
 install:
-before_script:
-script:
-  - ./bin/make-check
+  - ./bin/install --prefix=$HOME/cosy/server --mode=server --sourcepath=$(pwd) --in-ci
+  - ./bin/install --prefix=$HOME/cosy/client --mode=client --sourcepath=$(pwd) --in-ci
 
-after_success:
-after_failure:
-after_script:
+before_script:
+  - rm    -rf output
+  - mkdir -p  output/server
+
+script:
+  - ${HOME}/cosy/server/bin/cosy-check output/server --test-format=junit
+  - ${HOME}/cosy/server/bin/cosy-server start --clean
+  - ./tests/user.sh ${HOME}/cosy/server/bin/cosy
+  - ${HOME}/cosy/server/bin/cosy-server stop
 
 notifications:
   recipients:
