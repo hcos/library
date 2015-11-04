@@ -206,6 +206,9 @@ http {
       for line in file:lines () do
         local address = line:match "nameserver%s+(%S+)"
         if address then
+          if address:find ":" then
+            address = "[{{{address}}}]" % { address = address }
+          end
           result [#result+1] = address
         end
       end
