@@ -153,6 +153,28 @@ else
   echo -e "Source             : ${green}${sourcepath}${nc}"
 fi
 
+# check if apt or brew is available:
+if command -v apt-get; then
+  if sudo apt-get update; then
+    apt_available=true
+  fi
+fi >> "${log}" 2>&1
+if command -v brew; then
+  brew_available=true
+fi >> "${log}" 2>&1
+
+if [ ! -z "${brew_available}" ]; then
+  HOMEBREW_PREFIX=$(brew config | grep "HOMEBREW_PREFIX" | tr -d ' \t' | cut -d ":" -f 2)
+  export CPATH="${HOMEBREW_PREFIX}/include:${CPATH}"
+  export LIBRARY_PATH="${HOMEBREW_PREFIX}/lib:${LIBRARY_PATH}"
+  export LD_LIBRARY_PATH="${HOMEBREW_PREFIX}/lib:${LD_LIBRARY_PATH}"
+  export DYLD_LIBRARY_PATH="${HOMEBREW_PREFIX}/lib:${DYLD_LIBRARY_PATH}"
+fi
+export CPATH="${prefix}/include:${CPATH}"
+export LIBRARY_PATH="${prefix}/lib:${LIBRARY_PATH}"
+export LD_LIBRARY_PATH="${prefix}/lib:${LD_LIBRARY_PATH}"
+export DYLD_LIBRARY_PATH="${prefix}/lib:${DYLD_LIBRARY_PATH}"
+
 # Stop existing server:
 function stop_server ()
 {
@@ -168,16 +190,6 @@ function stop_server ()
 # Install dependencies:
 function install_dependencies ()
 {
-  # check if apt or brew is available:
-  if command -v apt-get; then
-    if sudo apt-get update; then
-      apt_available=true
-    fi
-  fi >> "${log}" 2>&1
-  if command -v brew; then
-    brew_available=true
-  fi >> "${log}" 2>&1
-
   echo "Installing development packages."
   case "$(uname -s)" in
     "Linux")
@@ -411,17 +423,6 @@ function install_luarocks ()
 # Install cosyverif:
 function install_cosyverif ()
 {
-  if [ ! -z "${brew_available}" ]; then
-    HOMEBREW_PREFIX=$(brew config | grep "HOMEBREW_PREFIX" | tr -d ' \t' | cut -d ":" -f 2)
-    export CPATH="${HOMEBREW_PREFIX}/include:${CPATH}"
-    export LIBRARY_PATH="${HOMEBREW_PREFIX}/lib:${LIBRARY_PATH}"
-    export LD_LIBRARY_PATH="${HOMEBREW_PREFIX}/lib:${LD_LIBRARY_PATH}"
-    export DYLD_LIBRARY_PATH="${HOMEBREW_PREFIX}/lib:${DYLD_LIBRARY_PATH}"
-  fi
-  export CPATH="${prefix}/include:${CPATH}"
-  export LIBRARY_PATH="${prefix}/lib:${LIBRARY_PATH}"
-  export LD_LIBRARY_PATH="${prefix}/lib:${LD_LIBRARY_PATH}"
-  export DYLD_LIBRARY_PATH="${prefix}/lib:${DYLD_LIBRARY_PATH}"
   mkdir -p "${rockstree}/git"
   {
     ( if [ ! -d "${rockstree}/git/redis-lua" ]; then
