@@ -13,7 +13,7 @@ install:
 before_script:
   - rm    -rf output
   - mkdir -p  output/server
-  - redis-server &
+  - redis-server --save "" &
   - sleep 1
 
 script:
