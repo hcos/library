@@ -219,6 +219,18 @@ function install_dependencies ()
         if [ ! -z "${brew_available}" ]; then
           brew install openssl libev pcre redis imagemagick
           brew link --force openssl
+          HOMEBREW_PREFIX=$(brew config | grep "HOMEBREW_PREFIX" | tr -d ' \t' | cut -d ":" -f 2)
+          curl -O "https://raw.githubusercontent.com/BelledonneCommunications/belle-sip/master/src/clock_gettime.h"
+          curl -O "https://raw.githubusercontent.com/BelledonneCommunications/belle-sip/master/src/clock_gettime.c"
+          gcc -dynamiclib clock_gettime.c \
+              -install_name "${HOMEBREW_PREFIX}/lib/librt.dylib" \
+              -compatibility_version 1.0 \
+              -current_version 1.0 \
+              -o librt.dylib
+          install -g "admin" \
+                  -o "${USER}" \
+                  -m 644 \
+                  librt.dylib "${HOMEBREW_PREFIX}/lib/librt.dylib"
         fi
         ;;
       *)
