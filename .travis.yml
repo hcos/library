@@ -19,7 +19,7 @@ before_script:
 script:
   - ${HOME}/cosy/server/bin/cosy-check  output/server --test-format=junit
   - ${HOME}/cosy/server/bin/cosy-server start --clean
-  - ./tests/user.sh ${HOME}/cosy/server/bin/cosy
+  - ./tests/user.sh ${HOME}/cosy/server/bin/cosy http://127.0.0.1:8080/
   - ${HOME}/cosy/server/bin/cosy-server stop
 
 notifications:
