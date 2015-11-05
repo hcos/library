@@ -14,6 +14,7 @@ before_script:
   - rm    -rf output
   - mkdir -p  output/server
   - redis-server &
+  - sleep 1
 
 script:
   - ${HOME}/cosy/server/bin/cosy-check  output/server --test-format=junit
