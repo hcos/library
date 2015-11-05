@@ -163,7 +163,7 @@ if command -v brew; then
   brew_available=true
 fi >> "${log}" 2>&1
 
-if [ ! -z "${brew_available}" ]; then
+if [ ! -z "${brew_available+x}" ]; then
   HOMEBREW_PREFIX=$(brew config | grep "HOMEBREW_PREFIX" | tr -d ' \t' | cut -d ":" -f 2)
   export CPATH="${HOMEBREW_PREFIX}/include:${CPATH}"
   export LIBRARY_PATH="${HOMEBREW_PREFIX}/lib:${LIBRARY_PATH}"
@@ -216,7 +216,7 @@ function install_dependencies ()
         fi
         ;;
       "Darwin")
-        if [ ! -z "${brew_available}" ]; then
+        if [ ! -z "${brew_available+x}" ]; then
           brew install openssl libev pcre redis imagemagick
           brew link --force openssl
           HOMEBREW_PREFIX=$(brew config | grep "HOMEBREW_PREFIX" | tr -d ' \t' | cut -d ":" -f 2)
@@ -253,7 +253,7 @@ function install_dependencies ()
         fi
         ;;
       "Darwin")
-        if [ ! -z "${brew_available}" ]; then
+        if [ ! -z "${brew_available+x}" ]; then
           brew install lua shellcheck
         fi
         ;;
