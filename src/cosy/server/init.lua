@@ -113,9 +113,7 @@ function Server.start ()
       cosy = function (ws)
         ws.ip, ws.port = ws.sock:getpeername ()
         -- FIXME: geolocation is missing
---        print (Configuration.geodb.position, type (Configuration.geodb.position), getmetatable (Configuration.geodb.position))
---        local geo = Layer.export (Layer.flatten (Configuration.geodb.position))
-        local geo   = {}
+        local geo = Layer.export (Layer.flatten (Configuration.geodb.position))
         geo.country = geo.country_name
         local message
         local function send (t)
