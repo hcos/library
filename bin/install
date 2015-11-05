@@ -636,6 +636,7 @@ source "\${root}/${base}"
 luajit -e 'print (package.path)'
 luajit -e 'print (package.cpath)'
 ls -lh "\${COSY_PREFIX}/local/cosy/5.1/lib/lua/5.1/"
+luajit -e 'print (require "bcrypt")'
 
 (
   if [ \$# -ge 1 ]; then
