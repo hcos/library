@@ -13,3 +13,6 @@
 [submodule "openssl"]
 	path = openssl
 	url = https://github.com/openssl/openssl.git
+[submodule "openresty"]
+	path = openresty
+	url = https://github.com/openresty/ngx_openresty
