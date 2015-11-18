@@ -61,6 +61,8 @@ do
   esac
 done
 
+parallel=$(nproc 2> /dev/null || sysctl -n hw.ncpu 2> /dev/null)
+
 prefix=${prefix:-/usr/local}
 mode=${mode:-server}
 
@@ -151,6 +153,28 @@ else
   echo -e "Source             : ${green}${sourcepath}${nc}"
 fi
 
+# check if apt or brew is available:
+if command -v apt-get; then
+  if sudo apt-get update; then
+    apt_available=true
+  fi
+fi >> "${log}" 2>&1
+if command -v brew; then
+  brew_available=true
+fi >> "${log}" 2>&1
+
+if [ ! -z "${brew_available+x}" ]; then
+  HOMEBREW_PREFIX=$(brew config | grep "HOMEBREW_PREFIX" | tr -d ' \t' | cut -d ":" -f 2)
+  export CPATH="${HOMEBREW_PREFIX}/include:${CPATH}"
+  export LIBRARY_PATH="${HOMEBREW_PREFIX}/lib:${LIBRARY_PATH}"
+  export LD_LIBRARY_PATH="${HOMEBREW_PREFIX}/lib:${LD_LIBRARY_PATH}"
+  export DYLD_LIBRARY_PATH="${HOMEBREW_PREFIX}/lib:${DYLD_LIBRARY_PATH}"
+fi
+export CPATH="${prefix}/include:${CPATH}"
+export LIBRARY_PATH="${prefix}/lib:${LIBRARY_PATH}"
+export LD_LIBRARY_PATH="${prefix}/lib:${LD_LIBRARY_PATH}"
+export DYLD_LIBRARY_PATH="${prefix}/lib:${DYLD_LIBRARY_PATH}"
+
 # Stop existing server:
 function stop_server ()
 {
@@ -166,46 +190,65 @@ function stop_server ()
 # Install dependencies:
 function install_dependencies ()
 {
-  # check if apt is available:
-  if command -v apt-get; then
-    if sudo apt-get update; then
-      apt_available=true
-    fi
-  fi >> "${log}" 2>&1
-
-  if [ ! -z "${apt_available+x}" ]; then
-    echo "Installing development packages."
-    sudo apt-get install --yes git make clang gcc diffutils patch curl unzip \
-      >> "${log}" 2>&1
-
-    if [ "${mode}" == "server" ]; then
-      echo "Installing packages required by the server."
-      sudo apt-get install --yes perl build-essential \
-                                 libssl-dev libev-dev \
-                                 libreadline-dev libncurses5-dev libpcre3-dev \
-                                 redis-server imagemagick \
-        >> "${log}" 2>&1
-    fi
-  else
-    echo "Not installing packages as apt-get or sudo is not available."
-  fi
-
-  if [ ! -z "${sourcepath+x}" ]; then
-    if [ -z "${apt_available+x}" ]; then
-      echo "Developper mode requires a working version of apt and sudo."
-    else
-      for version in ${versions}
-      do
-        echo "Installing lua-${version}."
-        sudo apt-get install --yes lua${versions} liblua${version}-dev \
-          >> "${log}" 2>&1
-      done
-      echo "Installing developper tools."
-      if [ "$(apt-cache search shellcheck | grep shellcheck)" != "" ]; then
-        sudo apt-get install --yes shellcheck \
-          >> "${log}" 2>&1
+  echo "Installing development packages."
+  case "$(uname -s)" in
+    "Linux")
+      if [ ! -z "${apt_available+x}" ]; then
+        sudo apt-get install --yes git make clang gcc diffutils patch curl unzip
       fi
-    fi
+      ;;
+    "Darwin")
+      ;;
+    *)
+      echo -e "Error: unknown OS: ${red}$(uname -s)${nc}."
+      exit 1
+      ;;
+  esac >> "${log}" 2>&1
+  if [ "${mode}" == "server" ]; then
+    echo "Installing packages required by the server."
+    case "$(uname -s)" in
+      "Linux")
+        if [ ! -z "${apt_available+x}" ]; then
+          sudo apt-get install --yes perl build-essential \
+                                     libc6-dev libssl-dev libev-dev \
+                                     libreadline-dev libncurses5-dev libpcre3-dev \
+                                     redis-server imagemagick
+        fi
+        ;;
+      "Darwin")
+        if [ ! -z "${brew_available+x}" ]; then
+          brew install openssl libev pcre redis imagemagick
+          brew link --force openssl
+        fi
+        ;;
+      *)
+        exit 1
+        ;;
+    esac >> "${log}" 2>&1
+  fi
+  if [ ! -z "${sourcepath+x}" ]; then
+    echo "Installing developper tools."
+    case "$(uname -s)" in
+      "Linux")
+        if [ ! -z "${apt_available+x}" ]; then
+          for version in ${versions}
+          do
+            sudo apt-get install --yes lua${versions} liblua${version}-dev
+          done
+          if [ "$(apt-cache search shellcheck | grep shellcheck)" != "" ]; then
+            sudo apt-get install --yes shellcheck
+          fi
+        fi
+        ;;
+      "Darwin")
+        if [ ! -z "${brew_available+x}" ]; then
+          brew install lua shellcheck
+        fi
+        ;;
+      *)
+        exit 1
+        ;;
+    esac >> "${log}" 2>&1
   fi
 }
 
@@ -224,7 +267,7 @@ function install_libev ()
     git clone --depth=1 "https://github.com/enki/libev.git"
     cd libev || exit 1
     ./configure --prefix="${prefix}"
-    make -j"$(nproc)"
+    make -j"${parallel}"
     make install
   ) >> "${log}" 2>&1
 }
@@ -252,7 +295,7 @@ function install_libssl ()
         exit 1
         ;;
     esac
-    make -j"$(nproc)" CFLAG="-fPIC"
+    make -j"${parallel}" CFLAG="-fPIC"
     make install_sw
   ) >> "${log}" 2>&1
 }
@@ -296,7 +339,7 @@ diff -rupN LuaJIT-2.0.4.back/src/Makefile LuaJIT-2.0.4/src/Makefile
 EOL
   {
     patch -p1 -i "luajit.patch"
-    make -j"$(nproc)"
+    make -j"${parallel}"
     make install CC="clang"
   } >> "${log}" 2>&1
   cd   ..
@@ -324,7 +367,7 @@ function install_openresty ()
                 --with-luajit="${rockstree}/5.1" \
                 --with-ipv6 \
                 --with-pcre-jit
-    make -j"$(nproc)"
+    make -j"${parallel}"
     make install
   ) >> "${log}" 2>&1
 }
@@ -380,9 +423,6 @@ function install_luarocks ()
 # Install cosyverif:
 function install_cosyverif ()
 {
-  export CPATH="${prefix}/include:${C_INCLUDE_PATH}"
-  export LIBRARY_PATH="${prefix}/lib:${LD_LIBRARY_PATH}"
-  export LD_LIBRARY_PATH="${prefix}/lib:${LD_LIBRARY_PATH}"
   mkdir -p "${rockstree}/git"
   {
     ( if [ ! -d "${rockstree}/git/redis-lua" ]; then
@@ -428,15 +468,6 @@ function install_cosyverif ()
       # Install luasec before everything to allow the use of HTTPS in luarocks:
       case "${mode}" in
         "server")
-          case "$(uname -s)" in
-            "Linux")
-              options=""
-              ;;
-            "Darwin")
-              # Install homebrew first
-              options=(OPENSSL_DIR="/usr/local/opt/openssl/")
-              ;;
-          esac
           ;;
         "client")
           options=(OPENSSL_DIR="${prefix}" LIBEV_DIR="${prefix}")
@@ -450,6 +481,7 @@ function install_cosyverif ()
           echo "  Not installing ${dependency} as it is already installed."
         else
           echo "  Installing ${dependency} as it is not installed."
+          # shellcheck disable=SC2086
           "${rockstree}/${version}/bin/luarocks" install "${dependency}" ${options[*]} \
               >> "${log}" 2>&1
         fi
@@ -492,12 +524,18 @@ function install_main ()
 
 export COSY_PREFIX="${prefix}"
 
+if command -v "brew" > /dev/null 2>&1; then
+  HOMEBREW_PREFIX=\$(brew config | grep "HOMEBREW_PREFIX" | tr -d ' \t' | cut -d ":" -f 2)
+  export LIBRARY_PATH="\${HOMEBREW_PREFIX}/lib:${LIBRARY_PATH}"
+  export LD_LIBRARY_PATH="\${HOMEBREW_PREFIX}/lib:${LD_LIBRARY_PATH}"
+  export DYLD_LIBRARY_PATH="\${HOMEBREW_PREFIX}/lib:${DYLD_LIBRARY_PATH}"
+fi
+
 export PATH="\${COSY_PREFIX}/bin:\${COSY_PREFIX}/local/cosy/5.1/bin:\${PATH}"
 export LUA_PATH="\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/?.lua;\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/?/init.lua"
 export LUA_CPATH="\${COSY_PREFIX}/local/cosy/5.1/lib/lua/5.1/?.so"
 
-export CPATH="\${COSY_PREFIX}/include:${C_INCLUDE_PATH}"
-export LIBRARY_PATH="\${COSY_PREFIX}/lib:${LD_LIBRARY_PATH}"
+export LIBRARY_PATH="\${COSY_PREFIX}/lib:${LIBRARY_PATH}"
 export LD_LIBRARY_PATH="\${COSY_PREFIX}/lib:${LD_LIBRARY_PATH}"
 export DYLD_LIBRARY_PATH="\${COSY_PREFIX}/lib:${DYLD_LIBRARY_PATH}"
 EOF
@@ -517,9 +555,10 @@ EOF
 #! /bin/bash
 
 root=\$(dirname "\$0")
+# shellcheck source=/dev/null
 source "\${root}/${base}"
 (
-  cd "\${COSY_PREFIX}/local/cosy/git/library"
+  cd "\${COSY_PREFIX}/local/cosy/git/library" || exit 1
   git describe
 )
 EOF
@@ -530,6 +569,7 @@ EOF
 #! /bin/bash
 
 root=\$(dirname "\$0")
+# shellcheck source=/dev/null
 source "\${root}/${base}"
 luajit "\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/cosy/cli/init.lua" "\$@"
 EOF
@@ -540,6 +580,7 @@ if [ "${mode}" == "server" ]; then
 #! /bin/bash
 
 root=\$(dirname "\$0")
+# shellcheck source=/dev/null
 source "\${root}/${base}"
 luajit "\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/cosy/server/cli.lua" "\$@"
 EOF
@@ -550,6 +591,7 @@ fi
 #! /bin/bash
 
 root=\$(dirname "\$0")
+# shellcheck source=/dev/null
 source "\${root}/${base}"
 if [ -e "\${COSY_PREFIX}/bin/cosy-server" ]; then
   "\${COSY_PREFIX}/bin/cosy-server" stop --force
@@ -558,6 +600,7 @@ rm -rf "\${COSY_PREFIX}/bin/cosy"* \
        "\${COSY_PREFIX}/etc/cosy"* \
        "\${COSY_PREFIX}/local/cosy" \
        "\${COSY_PREFIX}/local/openresty"*
+# shellcheck disable=SC2050
 if [ "${mode}" == "client" ]; then
   rm -rf "\${COSY_PREFIX}/bin/c_rehash" \
          "\${COSY_PREFIX}/bin/openssl" \
@@ -573,6 +616,7 @@ if [ "${mode}" == "client" ]; then
          "\${COSY_PREFIX}/share/man/man3/ev.3" \
          "\${COSY_PREFIX}/ssl"
 fi
+# shellcheck disable=SC2034
 for i in {1..10}; do
   find "\${COSY_PREFIX}" -maxdepth 5 -empty -exec rm -rf {} \; \
     > /dev/null 2>&1
@@ -586,6 +630,7 @@ EOF
 #! /bin/bash
 
 root=\$(dirname "\$0")
+# shellcheck source=/dev/null
 source "\${root}/${base}"
 (
   if [ \$# -ge 1 ]; then
@@ -597,8 +642,10 @@ source "\${root}/${base}"
     mkdir -p "\${tmpdir}"
   fi
   shift
-  cd  "\${tmpdir}"
+  cd  "\${tmpdir}" || exit 1
+  "\${COSY_PREFIX}/bin/cosy-server" start --force --clean
   luajit "\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/cosy/check/init.lua" "\$@"
+  "\${COSY_PREFIX}/bin/cosy-server" stop  --force
   echo
   echo -e "Test and Coverage reports are in ${green}\${tmpdir}${nc}."
 )
@@ -609,6 +656,7 @@ EOF
 #! /bin/bash
 
 root=\$(dirname "\$0")
+# shellcheck source=/dev/null
 source "\${root}/${base}"
 (
   if [ \$# -ge 1 ]; then
@@ -620,7 +668,7 @@ source "\${root}/${base}"
     mkdir -p "\${tmpdir}"
   fi
   shift
-  cd  "\${tmpdir}"
+  cd  "\${tmpdir}" || exit 1
   luajit "\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/cosy/rockspec/init.lua" "\$@"
   echo
   echo -e "Rockspec is in ${green}\${tmpdir}${nc}."
@@ -718,6 +766,7 @@ function error ()
 
 mkdir -p "${prefix}"
 mkdir -p "${prefix}/bin"
+mkdir -p "${prefix}/lib"
 cd "${tempwd}" || exit 1
 stop_server
 trap error ERR

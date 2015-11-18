@@ -97,7 +97,6 @@ do
       end
     end
   end
-
   print ()
 end
 
@@ -324,12 +323,10 @@ do
     local script = [[
 #! /bin/bash
 
-git_dir=$(readlink --canonicalize "{{{main}}}")
-user_dir=$(dirname "${git_dir}")
-user_dir=$(dirname "${user_dir}")
+user_dir=$(readlink "{{{prefix}}}/local/cosy/git/library")
 shellcheck --exclude=SC2024 "${user_dir}/bin/"*
     ]] % {
-      main = main,
+      prefix = os.getenv "COSY_PREFIX",
     }
     local file = io.open ("sc-script", "w")
     file:write (script)

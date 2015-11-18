@@ -318,7 +318,7 @@ return function (loader)
     }
     Scheduler.addserver = addserver
     os.execute ([[
-      xdg-open {{{url}}} || open {{{url}}} &
+      xdg-open {{{url}}} 2> /dev/null || open {{{url}}} /dev/null &
     ]] % {
       url = "{{{server}}}/html/captchacli.html?port={{{port}}}" % {
         server = args.server,

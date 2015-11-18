@@ -69,7 +69,7 @@ if [ -z "${package_uri}" ]; then
   arch=$(fix_string "$(uname -m)")
   get "https://api.github.com/repos/cosyverif/library/releases/latest" \
       "latest-release.json"
-  version=$(grep "tag_name" "latest-release.json" | tr '",' ' ' | tr -d '[[:space:]]' | cut -d ":" -f 2)
+  version=$(grep "tag_name" "latest-release.json" | tr '",' ' ' | tr -d ' \t' | cut -d ":" -f 2)
   package_uri="https://github.com/CosyVerif/library/releases/download/${version}/cosy-client-${os}-${arch}.tar.gz"
 fi
 

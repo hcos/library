@@ -46,9 +46,10 @@ http {
     listen        {{{host}}}:{{{port}}};
     charset       utf-8;
     index         index.html;
-    include       /etc/nginx/mime.types;
+    include       {{{nginx}}}/conf/mime.types;
     default_type  application/octet-stream;
     access_log    access.log;
+    open_file_cache off;
 
     location / {
       add_header  Access-Control-Allow-Origin *;
@@ -205,6 +206,9 @@ http {
       for line in file:lines () do
         local address = line:match "nameserver%s+(%S+)"
         if address then
+          if address:find ":" then
+            address = "[{{{address}}}]" % { address = address }
+          end
           result [#result+1] = address
         end
       end
@@ -244,6 +248,7 @@ fi
       sethostname ()
     end
     local configuration = configuration_template % {
+      nginx          = Configuration.http.nginx,
       host           = Configuration.http.interface,
       port           = Configuration.http.port,
       www            = Configuration.http.www,
@@ -269,7 +274,7 @@ fi
     os.execute ([[
       {{{nginx}}} -p {{{directory}}} -c {{{configuration}}} 2> {{{error}}}
     ]] % {
-      nginx         = Configuration.http.nginx,
+      nginx         = Configuration.http.nginx .. "/sbin/nginx",
       directory     = Configuration.http.directory,
       configuration = Configuration.http.configuration,
       error         = Configuration.http.error,
@@ -280,7 +285,7 @@ fi
   function Nginx.stop ()
     os.execute ([[
       [ -f {{{pid}}} ] && {
-        kill -QUIT $(cat {{{pid}}})
+        kill -s QUIT $(cat {{{pid}}})
       }
       rm -rf {{{directory}}} {{{pid}}} {{{error}}} {{{configuration}}}
     ]] % {
@@ -297,7 +302,7 @@ fi
     Nginx.configure ()
     os.execute ([[
       [ -f {{{pidfile}}} ] && {
-        kill -HUP $(cat {{{pidfile}}})
+        kill -s HUP $(cat {{{pidfile}}})
       }
     ]] % {
       pidfile = Configuration.http.pid,

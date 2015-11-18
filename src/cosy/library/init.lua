@@ -203,7 +203,8 @@ return function (loader)
         end
       elseif operator == "user:authenticate" then
         result, err = nil, result.error
-      elseif  result.error
+      elseif  result
+      and     result.error
       and (   result.error._ == "user:authenticate:failure"
           or  result.error._ == "check:error"
           and result.error.reasons

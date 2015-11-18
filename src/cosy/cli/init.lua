@@ -20,6 +20,9 @@ end
 --  2. ~/.cosy/cli.data config file (ie last server used)
 --  3. configuration
 
+Cli.default_server = "http://public.cosyverif.lsv.fr"
+Cli.default_locale = (os.getenv "LANG" or "en"):match "[^%.]+":gsub ("_", "-")
+
 function Cli.configure (cli, arguments)
   assert (getmetatable (cli) == Cli)
 
@@ -31,8 +34,8 @@ function Cli.configure (cli, arguments)
   local Request = require "socket.http".request
   local Hotswap = require "hotswap.http"
 
-  local default_server = "http://public.cosyverif.lsv.fr"
-  local default_locale = (os.getenv "LANG" or "en"):match "[^%.]+":gsub ("_", "-")
+  local default_server = Cli.default_server
+  local default_locale = Cli.default_locale
 
   local cosy_dir = os.getenv "HOME" .. "/.cosy"
     -- reads the config
@@ -179,7 +182,7 @@ function Cli.start (cli)
         file:close ()
         print ("See error file " .. Colors ("%{white redbg}" .. errorfile) .. " for more information.")
       end
-      os.exit (1)
+      return false
     end
   end
 
@@ -219,7 +222,7 @@ function Cli.start (cli)
   if not client then
     print (Colors ("%{white redbg}" .. i18n ["failure"] % {}),
            Colors ("%{white redbg}" .. i18n ["server:unreachable"] % {}))
-    os.exit (1)
+    return false
   end
 
   local data = File.decode (Configuration.cli.data) or {}
@@ -248,7 +251,7 @@ function Cli.start (cli)
     print (Colors ("%{red blackbg}" .. i18n ["failure"] % {}))
     print (Colors ("%{white redbg}" .. i18n (result.error).message))
   end
-  os.exit (ok and 0 or 1)
+  return ok
 end
 
 function Cli.stop (cli)
@@ -257,7 +260,11 @@ end
 
 if not _G._TEST then
   local cli = Cli.new ()
-  cli:start ()
+  if cli:start () then
+    os.exit (0)
+  else
+    os.exit (1)
+  end
 end
 
 return Cli
