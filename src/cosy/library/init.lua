@@ -28,72 +28,74 @@ return function (loader)
 
   Client.coroutine = Coromake ()
 
+  local JsWs = {}
+
+  function JsWs.new (t)
+    return setmetatable ({
+      timeout = t.timeout or 5,
+    }, JsWs)
+  end
+
+  function JsWs.connect (ws, url, protocol)
+    ws.ws     = _G.js.new (_G.window.WebSocket, url, protocol)
+    ws.co     = coroutine.running ()
+    ws.status = "closed"
+    ws.ws:on_open    (function ()
+      ws.status = "opened"
+    end)
+    ws.ws:on_close   (function ()
+      ws.status = "closed"
+    end)
+    ws.ws:on_message (function (_, event)
+      ws.message = event.data
+      Scheduler.wakeup (ws.co)
+    end)
+    ws.ws:on_error   (function ()
+      ws.status = "closed"
+    end)
+    Scheduler.sleep (ws.timeout)
+    if ws.status == "opened" then
+      return ws
+    else
+      return nil, ws.state
+    end
+  end
+
+  function JsWs:receive ()
+    self.message = nil
+    self.co      = coroutine.running ()
+    Scheduler.sleep (self.timeout)
+    return self.message
+  end
+
+  function JsWs:send (message)
+    self.ws:send (message)
+  end
+
+  function JsWs:close ()
+    self.ws:close ()
+  end
+
   function Client.connect (client)
     local data = client._data
     local url = "ws://{{{host}}}:{{{port}}}/ws" % {
       host = data.host,
       port = data.port,
     }
-    if _G.js then
-      client._ws = _G.js.new (_G.window.WebSocket, url, "cosy")
-    else
-      local Websocket = loader.require "websocket"
-      client._ws = Websocket.client.ev {
-        timeout = Configuration.library.timeout,
-        loop    = Scheduler._loop,
-      }
-    end
-    client._ws.onopen     = function ()
-      client._status = "opened"
-      Scheduler.wakeup (client._co)
-    end
-    client._ws.onclose    = function ()
-      client._status = "closed"
-      Scheduler.wakeup (client._co)
-    end
-    client._ws.onmessage  = function (_, event)
-      local message
+    threadof (function ()
       if _G.js then
-        message = event.data
+        client._ws = JsWs.new {
+          timeout = Configuration.library.timeout,
+        }
       else
-        message = event
+        local Websocket = loader.require "websocket"
+        client._ws = Websocket.client.copas {
+          timeout = Configuration.library.timeout,
+        }
       end
-      message = Value.decode (message)
-      local identifier = message.identifier
-      if identifier then
-        local results = client._results [identifier]
-        assert (results)
-        results [#results+1] = message
-        if coroutine.status (client._waiting [identifier]) == "suspended" then
-          Scheduler.wakeup (client._waiting [identifier])
-        end
-      end
-    end
-    client._ws.onerror    = function (_, err)
-      client._status = "closed"
-      client._error  = err
-      if coroutine.status (client._co) == "suspended" then
-        Scheduler.wakeup (client._co)
-      end
-    end
-    if not _G.js then
-      client._ws:on_open    (client._ws.onopen   )
-      client._ws:on_close   (client._ws.onclose  )
-      client._ws:on_message (client._ws.onmessage)
-      client._ws:on_error   (client._ws.onerror  )
-    end
-    if _G.js then
-      client._co = coroutine.running ()
-      Scheduler.sleep (-math.huge)
-    else
-      threadof (function ()
-        client._status = "closed"
-        client._ws:connect (url, "cosy")
-        client._co = coroutine.running ()
-        Scheduler.sleep (-math.huge)
-      end)
-    end
-    if  client._status == "opened"
+      client._ws:connect (url, "cosy")
+    end)
+    if  client._ws.status == "opened"
     and data.identifier and data.identifier ~= ""
     and data.password   and data.password   ~= "" then
       client.user.authenticate {}
@@ -119,13 +121,32 @@ return function (loader)
     -- Automatic reconnect:
     local client = operation._client
     local data   = client._data
-    if client._status ~= "opened" then
+    if client._ws.status ~= "opened" then
       Client.connect (client)
     end
-    if client._status ~= "opened" then
+    if client._ws.status ~= "opened" then
       return nil, i18n {
         _ = i18n ["server:unreachable"],
       }
+    end
+    local function receive_messages ()
+      while true do
+        local message = client._ws:receive ()
+        if not message then
+          return
+        end
+        message = Value.decode (message)
+        local identifier = message.identifier
+        if identifier then
+          local results = client._results [identifier]
+          assert (results)
+          results [#results+1] = message
+          if coroutine.status (client._waiting [identifier]) == "suspended" then
+            Scheduler.wakeup (client._waiting [identifier])
+            Scheduler.sleep (0)
+          end
+        end
+      end
     end
     -- Call special cases:
     local result, err
@@ -148,6 +169,7 @@ return function (loader)
         parameters = parameters,
         try_only   = try_only,
       })
+      local thread = Scheduler.addthread (receive_messages)
       Scheduler.sleep (Configuration.library.timeout)
       local results = client._results [identifier]
       if results [1] == nil then
@@ -229,6 +251,7 @@ return function (loader)
       else
         result, err = nil, result.error
       end
+      Scheduler.removethread (thread)
     end)
     return result, err
   end

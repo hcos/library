@@ -26,7 +26,7 @@ Cli.default_locale = (os.getenv "LANG" or "en"):match "[^%.]+":gsub ("_", "-")
 function Cli.configure (cli, arguments)
   assert (getmetatable (cli) == Cli)
 
-  local _       = require "copas"  ---- WARNING WE CANNOT WAIT TO GET IT FROM THE SERVER
+  local Copas   = require "copas"  ---- WARNING WE CANNOT WAIT TO GET IT FROM THE SERVER
   local Lfs     = require "lfs"  -- C module : won't be reloaded from server
   local Json    = require "cjson"  -- lua tables are transcoded into json for server  (pkg comes with lua socket)
   local Ltn12   = require "ltn12"  -- to store the content of the requests ( pkgcomes with lua socket)
@@ -155,8 +155,9 @@ function Cli.configure (cli, arguments)
 -- we replace the Lua require function
 --      by the hotswap.require which will also save lua packages into "server_dir"
   cli.loader = hotswap.require "cosy.loader.lua" {
-    hotswap = hotswap,
-    logto   = os.getenv "HOME" .. "/.cosy/client.log",
+    hotswap   = hotswap,
+    scheduler = Copas,
+    logto     = os.getenv "HOME" .. "/.cosy/client.log",
   }
 end
 
