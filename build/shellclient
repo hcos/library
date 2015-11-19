@@ -42,6 +42,7 @@ cosy_dependencies=(
   i18n
   layeredata
   lua-cjson
+  lua-websockets
   luafilesystem
   luaposix
   luasocket
