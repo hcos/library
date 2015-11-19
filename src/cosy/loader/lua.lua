@@ -33,6 +33,11 @@ return function (t)
   loader.request   = t.request
                   or loader.require "socket.http".request
   loader.load "cosy.string"
-  loader.hotswap.preload ["websocket.server_copas"] = loader.require "cosy.loader.patches.server_copas"
+  loader.hotswap.preload ["websocket.bit"         ] = function ()
+    return loader.require "cosy.loader.patches.bit"
+  end
+  loader.hotswap.preload ["websocket.server_copas"] = function ()
+    return loader.require "cosy.loader.patches.server_copas"
+  end
   return loader
 end
