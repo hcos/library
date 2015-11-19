@@ -1,6 +1,3 @@
-[submodule "libev"]
-	path = libev
-	url = https://github.com/enki/libev.git
 [submodule "luajit"]
 	path = luajit
 	url = http://luajit.org/git/luajit-2.0.git
