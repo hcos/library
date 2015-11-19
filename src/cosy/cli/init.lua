@@ -54,10 +54,12 @@ function Cli.configure (cli, arguments)
       end
     end
   end)
-
   local parser = Arguments () {
     name        = name,
     description = "cosy command-line interface",
+    add_help    = {
+      action = function () end
+    },
   }
   parser:require_command (false)
   parser:option "-s" "--server" {
@@ -76,15 +78,10 @@ function Cli.configure (cli, arguments)
   -- `argparse` stops execution when `pparse` is used with a `--help` option.
   -- But we want to continue to get the full help message from `Cli.start`.
   -- Thus, we redefine temporarily `os.exit` to do nothing.
-  -- Moreover, with `--help`, it also shows the help message, so we
-  -- redefine `print` to do nothing.
-  local _exit  = _G.os.exit
-  local _print = _G.print
-  _G.os.exit = function () end
-  _G.print   = function () end
+  local _exit    = _G.os.exit
+  _G.os.exit     = function () end
   local ok, args = parser:pparse (arguments)
-  _G.os.exit = _exit
-  _G.print   = _print
+  _G.os.exit     = _exit
   -- End of UGLY hack.
   if ok then
     cli.server = args.server
