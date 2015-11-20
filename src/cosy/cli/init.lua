@@ -186,10 +186,12 @@ function Cli.start (cli)
   Configuration.load {
     "cosy.cli",
   }
+
   local i18n = I18n.load {
     "cosy.cli",
   }
   i18n._locale = Configuration.cli.locale
+
   print (Colors ("%{green blackbg}" .. i18n ["client:server"] % {
     server = cli.server,
   }))
