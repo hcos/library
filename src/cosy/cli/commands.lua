@@ -5,7 +5,6 @@ return function (loader)
   local I18n          = loader.load "cosy.i18n"
   local Scheduler     = loader.load "cosy.scheduler"
   local Value         = loader.load "cosy.value"
-  Scheduler.make_default ()
   local Colors        = loader.require "ansicolors"
   local Websocket     = loader.require "websocket"
   local Http          = loader.require "socket.http"

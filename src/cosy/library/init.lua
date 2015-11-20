@@ -22,7 +22,9 @@ return function (loader)
       f (...)
     else
       Scheduler.addthread (f, ...)
+      Scheduler._running = true
       Scheduler.loop ()
+      Scheduler._running = false
     end
   end
 
@@ -129,8 +131,9 @@ return function (loader)
         _ = i18n ["server:unreachable"],
       }
     end
+    local done = false
     local function receive_messages ()
-      while true do
+      while not done do
         local message = client._ws:receive ()
         if not message then
           return
@@ -169,7 +172,7 @@ return function (loader)
         parameters = parameters,
         try_only   = try_only,
       })
-      local thread = Scheduler.addthread (receive_messages)
+      Scheduler.addthread (receive_messages)
       Scheduler.sleep (Configuration.library.timeout)
       local results = client._results [identifier]
       if results [1] == nil then
@@ -248,10 +251,10 @@ return function (loader)
         else
           result, err = nil, result.error
         end
-      else
+      elseif result then
         result, err = nil, result.error
       end
-      Scheduler.removethread (thread)
+      done = true
     end)
     return result, err
   end
