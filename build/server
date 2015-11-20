@@ -222,7 +222,7 @@ function install_cosyverif ()
     if [ "${version}" = "5.1" ]; then
       more_dependencies=( luabitop )
     fi
-    for dependency in ${cosy_dependencies[*]} ${more_dependencies}; do
+    for dependency in ${cosy_dependencies[*]} ${more_dependencies[*]}; do
       if "${cosy_rockstree}/${version}/bin/luarocks" list \
           --porcelain \
           --tree="${cosy_rockstree}/${version}" \
