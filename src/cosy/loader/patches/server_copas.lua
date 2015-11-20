@@ -1,4 +1,3 @@
-
 local socket = require'socket'
 local handshake = require'websocket.handshake'
 local sync = require'websocket.sync'
