@@ -115,7 +115,7 @@ function Cli.configure (cli, arguments)
   cli.server = cli.server:gsub ("/+$","")
   if not cli.server:match "^https?://" then
     error {
-      _      = "server:not-url",
+      _      = i18n ["server:not-url"],
       server = cli.server,
     }
   end
@@ -124,7 +124,7 @@ function Cli.configure (cli, arguments)
   local _, code = Request (cli.server .. "/lua/cosy.loader.lua")
   if code ~= 200 then
     error {
-      _      = "server:not-cosy",
+      _      = i18n ["server:not-cosy"],
       server = cli.server,
     }
   end
