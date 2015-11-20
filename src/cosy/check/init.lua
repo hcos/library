@@ -323,8 +323,8 @@ do
     local script = [[
 #! /bin/bash
 
-user_dir=$(readlink "{{{prefix}}}/local/cosy/git/library")
-shellcheck --exclude=SC2024 "${user_dir}/bin/"*
+sourcedirectory=$(readlink "{{{prefix}}}/local/cosy/5.1/share/lua/5.1/cosy")
+shellcheck --exclude=SC2024 "${sourcedirectory}/../../bin/"*
     ]] % {
       prefix = os.getenv "COSY_PREFIX",
     }
