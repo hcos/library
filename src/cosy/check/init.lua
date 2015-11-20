@@ -282,7 +282,7 @@ do
       local modules = {}
       for m in pairs (t.defined) do
         local module_name = "cosy." .. m
-        -- the three modules below define translations for the user only,
+        -- the modules below define translations for the user only,
         -- so we do not want to take them into account.
         if  module_name ~= "cosy.methods"
         and module_name ~= "cosy.parameters" then
