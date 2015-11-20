@@ -7,8 +7,8 @@ dist: trusty
 language: C
 
 install:
-  - ./bin/install --prefix=$HOME/cosy/server --mode=server --sourcepath=$(pwd) --in-ci
-  - ./bin/install --prefix=$HOME/cosy/client --mode=client --sourcepath=$(pwd) --in-ci
+  - ./bin/build-client --in-ci
+  - ./bin/build-server --prefix=$HOME/cosy/server --in-ci
 
 before_script:
   - rm    -rf output
