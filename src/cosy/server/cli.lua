@@ -25,7 +25,7 @@ local parser = Arguments () {
   name        = name,
   description = i18n ["server:command"] % {},
 }
-local start  = parser:command "start" {
+local start = parser:command "start" {
   description = i18n ["server:start"] % {},
 }
 start:flag "-f" "--force" {
@@ -34,7 +34,7 @@ start:flag "-f" "--force" {
 start:flag "-c" "--clean" {
   description = i18n ["flag:clean"] % {},
 }
-local stop   = parser:command "stop" {
+local stop = parser:command "stop" {
   description = i18n ["server:stop"] % {},
 }
 stop:flag "-f" "--force" {
@@ -110,7 +110,7 @@ elseif arguments.stop then
     local result = client.server.stop {
       administration = data.token,
     }
-    if result  then
+    if result then
       print (Colors ("%{black greenbg}" .. i18n ["success"] % {}))
       os.exit (0)
     end
