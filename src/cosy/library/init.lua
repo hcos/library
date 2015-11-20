@@ -84,18 +84,25 @@ return function (loader)
       host = data.host,
       port = data.port,
     }
+    if _G.js then
+      client._ws = assert (JsWs.new {
+        timeout = Configuration.library.timeout,
+      })
+    else
+      local Websocket = loader.require "websocket"
+      client._ws = assert (Websocket.client.copas {
+        timeout = Configuration.library.timeout,
+      })
+    end
+    client._ws.status = "closed"
     threadof (function ()
-      if _G.js then
-        client._ws = JsWs.new {
-          timeout = Configuration.library.timeout,
-        }
+      local ok, err = client._ws:connect (url, "cosy")
+      if ok then
+        client._ws.status = "opened"
       else
-        local Websocket = loader.require "websocket"
-        client._ws = Websocket.client.copas {
-          timeout = Configuration.library.timeout,
-        }
+        client._ws.status = "closed"
+        client._ws.error  = err
       end
-      client._ws:connect (url, "cosy")
     end)
     if  client._ws.status == "opened"
     and data.identifier and data.identifier ~= ""
@@ -135,18 +142,17 @@ return function (loader)
     local function receive_messages ()
       while not done do
         local message = client._ws:receive ()
-        if not message then
-          return
-        end
-        message = Value.decode (message)
-        local identifier = message.identifier
-        if identifier then
-          local results = client._results [identifier]
-          assert (results)
-          results [#results+1] = message
-          if coroutine.status (client._waiting [identifier]) == "suspended" then
-            Scheduler.wakeup (client._waiting [identifier])
-            Scheduler.sleep (0)
+        if message then
+          message = Value.decode (message)
+          local identifier = message.identifier
+          if identifier then
+            local results = client._results [identifier]
+            assert (results)
+            results [#results+1] = message
+            if coroutine.status (client._waiting [identifier]) == "suspended" then
+              Scheduler.wakeup (client._waiting [identifier])
+              Scheduler.sleep (0)
+            end
           end
         end
       end
@@ -161,7 +167,9 @@ return function (loader)
       local operator   = table.concat (operation._keys, ":")
       local wrapper    = Client.methods [operator]
       local wrapperco  = wrapper and Client.coroutine.create (wrapper) or nil
-      client._waiting [identifier] = Scheduler.running ()
+      client._waiting [identifier] = Scheduler.running
+                                 and Scheduler.running ()
+                                  or coroutine.running ()
       client._results [identifier] = {}
       if wrapperco then
         Client.coroutine.resume (wrapperco, operation, parameters, try_only)
@@ -365,10 +373,10 @@ return function (loader)
     client._data.hashed     = false
     client._data.token      = false
     Client.connect (client)
-    if client._status == "opened" then
+    if client._ws.status == "opened" then
       return client
-    elseif client._status == "closed" then
-      return nil, client._error
+    elseif client._ws.status == "closed" then
+      return nil, client._ws.error
     else
       assert (false)
     end
