@@ -79,12 +79,9 @@ if arguments.start then
     package.loaded ["redis"] = nil
   end
 
-  os.execute ([==[
-    rm -f {{{log}}} {{{data}}}
-    luajit -e 'require "cosy.server".start ()' &
-  ]==] % {
-    data = Configuration.server.data,
-  })
+  os.remove (Configuration.server.log )
+  os.remove (Configuration.server.data)
+  os.execute [[ luajit -e 'require "cosy.server".start ()' & ]]
   local tries = 0
   local serverdata, nginxdata
   repeat

@@ -1,10 +1,7 @@
-os.remove (os.getenv "HOME" .. "/.cosy/server.log")
-
 local Scheduler = require "copas.ev"
 local Hotswap   = require "hotswap.ev".new {
   loop = Scheduler._loop,
 }
-
 local loader = require "cosy.loader.lua" {
   logto     = os.getenv "HOME" .. "/.cosy/server.log",
   hotswap   = Hotswap,
