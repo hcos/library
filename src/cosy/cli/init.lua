@@ -1,5 +1,3 @@
-os.remove (os.getenv "HOME" .. "/.cosy/client.log")
-
 local Arguments = require "argparse"
 
 local name = os.getenv "COSY_PREFIX" .. "/bin/cosy"
@@ -26,34 +24,55 @@ Cli.default_locale = (os.getenv "LANG" or "en"):match "[^%.]+":gsub ("_", "-")
 function Cli.configure (cli, arguments)
   assert (getmetatable (cli) == Cli)
 
-  local Copas   = require "copas"  ---- WARNING WE CANNOT WAIT TO GET IT FROM THE SERVER
-  local Lfs     = require "lfs"  -- C module : won't be reloaded from server
-  local Json    = require "cjson"  -- lua tables are transcoded into json for server  (pkg comes with lua socket)
-  local Ltn12   = require "ltn12"  -- to store the content of the requests ( pkgcomes with lua socket)
-  local Mime    = require "mime"
-  local Request = require "socket.http".request
-  local Hotswap = require "hotswap.http"
+  local Loader = require "cosy.loader.lua"
+  local loader = Loader {
+    logto = false,
+  }
+
+  local Colors  = loader.require "ansicolors"
+  local Lfs     = loader.require "lfs"  -- C module : won't be reloaded from server
+  local Json    = loader.require "cjson"  -- lua tables are transcoded into json for server  (pkg comes with lua socket)
+  local Ltn12   = loader.require "ltn12"  -- to store the content of the requests ( pkgcomes with lua socket)
+  local Mime    = loader.require "mime"
+  local Request = loader.require "socket.http".request
+  local Hotswap = loader.require "hotswap.http"
+
+  local Configuration = loader.load "cosy.configuration"
+  local File          = loader.load "cosy.file"
+  local I18n          = loader.load "cosy.i18n"
+
+  Configuration.load {
+    "cosy.cli",
+  }
+  local i18n = I18n.load {
+    "cosy.cli",
+  }
+
+  local _error = error
+  local function error (err)
+    if type (err) == "table" and err._ then
+      print (Colors ("%{red blackbg}" .. i18n ["failure"] % {}))
+      print (Colors ("%{white redbg}" .. err._ % err))
+    else
+      print ("An error happened. Maybe the client was unable to download sources from " .. (cli.server or "no server") .. ".")
+      local errorfile = os.tmpname ()
+      local file      = io.open (errorfile, "w")
+      file:write (tostring (err) .. "\n")
+      file:write (debug.traceback () .. "\n")
+      file:close ()
+      print ("See error file " .. Colors ("%{white redbg}" .. errorfile) .. " for more information.")
+    end
+    _error (err)
+  end
 
   local default_server = Cli.default_server
   local default_locale = Cli.default_locale
 
-  local cosy_dir = os.getenv "HOME" .. "/.cosy"
-    -- reads the config
-  local data_filename = cosy_dir .. "/cli.txt"
-  pcall (function ()
-    for line in io.lines (data_filename) do
-      local value = line:match "^server:(.*)"
-      if value then
-        default_server = value
-      end
-    end
-    for line in io.lines (data_filename) do
-      local value = line:match "^locale:(.*)"
-      if value then
-        default_locale = value
-      end
-    end
-  end)
+  -- reads the config
+  local data = File.decode (Configuration.cli.data) or {}
+  default_server = data.server or default_server
+  default_locale = data.locale or default_locale
+
   local parser = Arguments () {
     name        = name,
     description = "cosy command-line interface",
@@ -110,35 +129,28 @@ function Cli.configure (cli, arguments)
     }
   end
 
-  do -- save server name for next cli launch
-    Lfs.mkdir (cosy_dir)
-    local file, err = io.open (data_filename, "w")
-    if file then
-      file:write ("server:" .. cli.server .. "\n")
-      file:write ("locale:" .. cli.locale .. "\n")
-      file:close ()
-    else
-      print (err)
-    end
-  end -- save server name for next cli launch
+  Lfs.mkdir (Configuration.cli.directory)
+  File.encode (Configuration.cli.data, {
+    server = cli.server,
+    locale = cli.locale,
+  })
 
   --  every dowloaded lua package will be saved in ~/.cosy/lua/base64(server_name)
-  local package_dir = cosy_dir .. "/lua/"
-  local server_dir  = package_dir .. Mime.b64 (cli.server)
-  Lfs.mkdir (package_dir)
+  local server_dir = Configuration.cli.lua .. "/" .. Mime.b64 (cli.server)
+  Lfs.mkdir (Configuration.cli.lua)
   Lfs.mkdir (server_dir)
 
   local hotswap = Hotswap {
     storage = server_dir, -- where to save the lua files
     encode = function (t)
-      local data = Json.encode (t)
+      local s = Json.encode (t)
       return {
         url     = cli.server .. "/luaset",
         method  = "POST",
         headers = {
-          ["Content-Length"] = #data,
+          ["Content-Length"] = #s,
         },
-        source  = Ltn12.source.string (data),
+        source  = Ltn12.source.string (s),
       }
     end,
     decode = function (t)
@@ -152,41 +164,17 @@ function Cli.configure (cli, arguments)
 -- we replace the Lua require function
 --      by the hotswap.require which will also save lua packages into "server_dir"
   cli.loader = hotswap.require "cosy.loader.lua" {
-    hotswap   = hotswap,
-    scheduler = Copas,
-    logto     = os.getenv "HOME" .. "/.cosy/client.log",
+    hotswap = hotswap,
+    logto   = os.getenv "HOME" .. "/.cosy/client.log",
   }
 end
 
 function Cli.start (cli)
   assert (getmetatable (cli) == Cli)
 
-  do
-    local ok, err = pcall (cli.configure, cli, _G.arg)
-    if not ok then
-      local Loader = require "cosy.loader.lua"
-      local loader = Loader ()
-      local Colors = loader.require "ansicolors"
-      local I18n   = loader.load "cosy.i18n"
-      local i18n   = I18n.load {
-        "cosy.cli",
-      }
-      if type (err) == "table" and err._ then
-        print (Colors ("%{red blackbg}" .. i18n ["failure"] % {}))
-        print (Colors ("%{white redbg}" .. i18n [err._] % err))
-      else
-        print ("An error happened. Maybe the client was unable to download sources from " .. (cli.server or "no server") .. ".")
-        local errorfile = os.tmpname ()
-        local file      = io.open (errorfile, "w")
-        file:write (tostring (err) .. "\n")
-        file:write (debug.traceback () .. "\n")
-        file:close ()
-        print ("See error file " .. Colors ("%{white redbg}" .. errorfile) .. " for more information.")
-      end
-      return false
-    end
+  if not pcall (cli.configure, cli, _G.arg) then
+    return false
   end
-
   local loader = cli.loader
 
   local Configuration = loader.load "cosy.configuration"
