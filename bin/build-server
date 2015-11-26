@@ -87,6 +87,7 @@ function install_dependencies ()
   echo "Installing development packages."
   case "$(uname -s)" in
     "Linux")
+      sudo apt-get update  --yes
       sudo apt-get install --yes git make clang gcc diffutils patch curl unzip \
                                  perl build-essential wget \
                                  libc6-dev libssl-dev libev-dev \
@@ -100,6 +101,7 @@ function install_dependencies ()
       export LIBRARY_PATH="${HOMEBREW_PREFIX}/lib:${LIBRARY_PATH}"
       export LD_LIBRARY_PATH="${HOMEBREW_PREFIX}/lib:${LD_LIBRARY_PATH}"
       export DYLD_LIBRARY_PATH="${HOMEBREW_PREFIX}/lib:${DYLD_LIBRARY_PATH}"
+      brew update
       brew install openssl libev pcre redis imagemagick wget lua
       brew link --force openssl
       ;;
