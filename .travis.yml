@@ -11,6 +11,8 @@ install:
   - ./bin/build-server --prefix=$HOME/cosy/server --in-ci
 
 before_script:
+  - ${HOME}/cosy/server/local/cosy/5.1/bin/luarocks list
+  - ${HOME}/cosy/server/local/cosy/5.2/bin/luarocks list
   - rm    -rf output
   - mkdir -p  output/server
   - redis-server --save "" &
