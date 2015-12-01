@@ -127,7 +127,7 @@ EOL
     patch -p1 -i "${cosy_temp}/luajit.patch"
     make -j"${parallel}"
     make install CC="clang"
-#    make clean
+    make clean
     git checkout Makefile
     git checkout src/Makefile
     ln -sf "luajit-2.1.0-beta1" "${cosy_rockstree}/bin/luajit"
@@ -148,7 +148,7 @@ function install_luarocks ()
                 --with-lua-include="${cosy_rockstree}/include/luajit-2.0/" \
                 --with-lua-lib="${cosy_rockstree}/lib/"
     make bootstrap
-#    make clean
+    make clean
   ) >> "${cosy_log}" 2>&1
 }
 

@@ -150,7 +150,7 @@ EOL
     patch -p1 -i "${cosy_temp}/luajit.patch"
     make -j"${parallel}"
     make install CC="clang"
-#    make clean
+    make clean
     git checkout Makefile
     git checkout src/Makefile
     ln -sf "luajit-2.1.0-beta1" "${cosy_rockstree}/5.1/bin/luajit"
@@ -173,6 +173,7 @@ function install_openresty ()
                 --with-pcre-jit
     make -j"${parallel}"
     make install
+    make clean
   ) >> "${cosy_log}" 2>&1
 }
 
@@ -190,7 +191,7 @@ function install_luarocks ()
                 --with-lua-include="${cosy_rockstree}/5.1/include/luajit-2.0/" \
                 --with-lua-lib="${cosy_rockstree}/5.1/lib/"
     make bootstrap
-#    make clean
+    make clean
   ) >> "${cosy_log}" 2>&1
   for version in "5.2"; do
     echo "Installing luarocks for lua-${version}."
@@ -204,7 +205,7 @@ function install_luarocks ()
                   --lua-version="${version}" \
                   --lua-suffix="${version}"
       make bootstrap
-  #    make clean
+      make clean
     ) >> "${cosy_log}" 2>&1
   done
 }
