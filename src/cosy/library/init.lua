@@ -32,6 +32,8 @@ return function (loader)
 
   local JsWs = {}
 
+  JsWs.__index = JsWs
+
   function JsWs.new (t)
     return setmetatable ({
       timeout = t.timeout or 5,
@@ -40,21 +42,24 @@ return function (loader)
 
   function JsWs.connect (ws, url, protocol)
     ws.ws     = _G.js.new (_G.window.WebSocket, url, protocol)
-    ws.co     = coroutine.running ()
+    ws.co     = Scheduler.running ()
     ws.status = "closed"
-    ws.ws:on_open    (function ()
+    ws.ws.onopen    = function ()
       ws.status = "opened"
-    end)
-    ws.ws:on_close   (function ()
+      Scheduler.wakeup (ws.co)
+    end
+    ws.ws.onclose   = function ()
       ws.status = "closed"
-    end)
-    ws.ws:on_message (function (_, event)
+      Scheduler.wakeup (ws.co)
+    end
+    ws.ws.onmessage = function (_, event)
       ws.message = event.data
       Scheduler.wakeup (ws.co)
-    end)
-    ws.ws:on_error   (function ()
+    end
+    ws.ws.onerror   = function ()
       ws.status = "closed"
-    end)
+      Scheduler.wakeup (ws.co)
+    end
     Scheduler.sleep (ws.timeout)
     if ws.status == "opened" then
       return ws
@@ -65,7 +70,7 @@ return function (loader)
 
   function JsWs:receive ()
     self.message = nil
-    self.co      = coroutine.running ()
+    self.co      = Scheduler.running ()
     Scheduler.sleep (self.timeout)
     return self.message
   end
@@ -126,6 +131,24 @@ return function (loader)
     }, Operation)
   end
 
+  Operation.receives = {}
+  function Operation.receive (client)
+    if not Operation.receives [client] then
+      Operation.receives [client] = function ()
+        local message = client._ws:receive ()
+        if message then
+          message = Value.decode (message)
+          local identifier = message.identifier
+          local results    = client._results [identifier]
+          assert (results)
+          results [#results+1] = message
+          Scheduler.wakeup (client._waiting [identifier])
+        end
+      end
+    end
+    Operation.receives [client] ()
+  end
+
   function Operation.__call (operation, parameters, try_only, no_redo)
     -- Automatic reconnect:
     local client = operation._client
@@ -137,25 +160,6 @@ return function (loader)
       return nil, i18n {
         _ = i18n ["server:unreachable"],
       }
-    end
-    local done = false
-    local function receive_messages ()
-      while not done do
-        local message = client._ws:receive ()
-        if message then
-          message = Value.decode (message)
-          local identifier = message.identifier
-          if identifier then
-            local results = client._results [identifier]
-            assert (results)
-            results [#results+1] = message
-            if coroutine.status (client._waiting [identifier]) == "suspended" then
-              Scheduler.wakeup (client._waiting [identifier])
-              Scheduler.sleep (0)
-            end
-          end
-        end
-      end
     end
     -- Call special cases:
     local result, err
@@ -180,9 +184,10 @@ return function (loader)
         parameters = parameters,
         try_only   = try_only,
       })
-      Scheduler.addthread (receive_messages)
-      Scheduler.sleep (Configuration.library.timeout)
       local results = client._results [identifier]
+      while client._ws.status == "opened" and not results [1] do
+        Operation.receive (client)
+      end
       if results [1] == nil then
         result, err = nil, {
           _ = i18n ["server:timeout"],
@@ -262,7 +267,6 @@ return function (loader)
       elseif result then
         result, err = nil, result.error
       end
-      done = true
     end)
     return result, err
   end
