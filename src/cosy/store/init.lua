@@ -295,6 +295,10 @@ return function (loader)
     local field = View.field (view)
     if type (value) == "table" then
       local subview = view [key]
+      if not subview then
+        field [key] = {}
+        subview     = view [key]
+      end
       field [key] = {}
       for k, v in pairs (value) do
         subview [k] = v
