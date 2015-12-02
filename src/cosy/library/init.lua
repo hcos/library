@@ -84,10 +84,10 @@ return function (loader)
   end
 
   function Client.connect (client)
-    local data = client._data
-    local url = "ws://{{{host}}}:{{{port}}}/ws" % {
-      host = data.host,
-      port = data.port,
+    local session = client._session
+    local url     = "ws://{{{host}}}:{{{port}}}/ws" % {
+      host = session.host,
+      port = session.port,
     }
     if _G.js then
       client._ws = assert (JsWs.new {
@@ -110,8 +110,8 @@ return function (loader)
       end
     end)
     if  client._ws.status == "opened"
-    and data.identifier and data.identifier ~= ""
-    and data.password   and data.password   ~= "" then
+    and session.identifier and session.identifier ~= ""
+    and session.password   and session.password   ~= "" then
       client.user.authenticate {}
     end
   end
@@ -142,7 +142,6 @@ return function (loader)
           local results    = client._results [identifier]
           assert (results)
           results [#results+1] = message
-          Scheduler.wakeup (client._waiting [identifier])
         end
       end
     end
@@ -151,8 +150,9 @@ return function (loader)
 
   function Operation.__call (operation, parameters, try_only, no_redo)
     -- Automatic reconnect:
-    local client = operation._client
-    local data   = client._data
+    local client  = operation._client
+    local session = client._session
+    local data    = client._data [session.url]
     if client._ws.status ~= "opened" then
       Client.connect (client)
     end
@@ -164,16 +164,17 @@ return function (loader)
     -- Call special cases:
     local result, err
     threadof (function ()
-      if data.token and parameters and not parameters.authentication then
-        parameters.authentication = data.token
+      if not parameters then
+        parameters = {}
       end
-      local identifier = #client._waiting + 1
+      if not parameters.authentication then
+        parameters.authentication = session.authentication
+                                 or data   .authentication
+      end
+      local identifier = #client._results + 1
       local operator   = table.concat (operation._keys, ":")
       local wrapper    = Client.methods [operator]
       local wrapperco  = wrapper and Client.coroutine.create (wrapper) or nil
-      client._waiting [identifier] = Scheduler.running
-                                 and Scheduler.running ()
-                                  or coroutine.running ()
       client._results [identifier] = {}
       if wrapperco then
         Client.coroutine.resume (wrapperco, operation, parameters, try_only)
@@ -192,7 +193,6 @@ return function (loader)
         result, err = nil, {
           _ = i18n ["server:timeout"],
         }
-        client._waiting [identifier] = nil
         client._results [identifier] = nil
       elseif results [1].iterator then
         local coroutine = Coromake ()
@@ -200,22 +200,26 @@ return function (loader)
         table.remove (results, 1)
         result.iterator = coroutine.wrap (function ()
           repeat
+            while client._ws.status == "opened" and not results [1] do
+              Operation.receive (client)
+            end
             local subresult = results [1]
             if subresult == nil then
-              Scheduler.sleep (Configuration.library.timeout)
+              client._results [identifier] = nil
+              error {
+                _ = i18n ["server:timeout"],
+              }
             else
               if subresult.finished then
-                client._waiting [identifier] = nil
                 client._results [identifier] = nil
               end
               coroutine.yield (subresult)
               table.remove (results, 1)
             end
-          until subresult and subresult.finished
+          until subresult.finished
         end)
       else
         result = results [1]
-        client._waiting [identifier] = nil
         client._results [identifier] = nil
       end
       if result and result.success then
@@ -227,7 +231,6 @@ return function (loader)
           result, err = function ()
             local r
             threadof (function ()
-              client._waiting [identifier] = Scheduler.running ()
               r = iterator ()
             end)
             if r.success then
@@ -250,14 +253,15 @@ return function (loader)
           and result.error.reasons [1].key == "authentication"
           )
       then
-        if (data.identifier and data.hashed and not client.user.authenticate {})
-        or not data.identifier
-        or not data.hashed
+        if (session.identifier and session.hashed and not client.user.authenticate {})
+        or not session.identifier
+        or not session.hashed
         then
-          data.identifier           = nil
-          data.hashed               = nil
-          data.token                = nil
+          session.identifier        = nil
+          session.hashed            = nil
+          session.authentication    = nil
           parameters.authentication = nil
+          data      .authentication = nil
         end
         if not no_redo then
           result, err = operation (parameters, try_only, true)
@@ -274,79 +278,82 @@ return function (loader)
   Client.methods = {}
 
   Client.methods ["user:create"] = function (operation, parameters)
-    local client        = operation._client
-    local data          = client._data
-    data.identifier     = nil
-    data.hashed         = nil
-    data.token          = nil
-    data.token          = nil
-    parameters.password = Digest (parameters.password)
-    local result        = Client.coroutine.yield ()
+    local client           = operation._client
+    local session          = client._session
+    local data             = client._data [session.url]
+    session.identifier     = nil
+    session.hashed         = nil
+    session.token          = nil
+    session.authentication = nil
+    parameters.password    = Digest (parameters.password)
+    local result           = Client.coroutine.yield ()
     if result.success then
-      data.identifier = parameters.identifier
-      data.hashed     = parameters.password
-      data.token      = result.response.authentication
+      session.identifier     = parameters.identifier
+      session.hashed         = parameters.password
+      session.authentication = result.response.authentication
+      data   .authentication = result.response.authentication
       client.user.update {
-        authentication = data.token,
+        authentication = session.authentication,
         position       = true,
       }
     end
   end
 
   Client.methods ["user:authenticate"] = function (operation, parameters)
-    local client = operation._client
-    local data   = client._data
-    data.token   = nil
-    parameters.user = parameters.user or data.identifier
+    local client  = operation._client
+    local session = client._session
+    local data    = client._data [session.url]
+    session.authentication = nil
+    parameters.user        = parameters.user or session.identifier
     if parameters.password then
       parameters.password = Digest (parameters.password)
-    elseif data.hashed then
-      parameters.password = data.hashed
+    elseif session.hashed then
+      parameters.password = session.hashed
     end
     local result = Client.coroutine.yield ()
     if result.success then
-      data.identifier = parameters.user
-      data.hashed     = parameters.password
-      data.token      = result.response.authentication
+      session.identifier     = parameters.user
+      session.hashed         = parameters.password
+      session.authentication = result.response.authentication
+      data   .authentication = result.response.authentication
     end
   end
 
   Client.methods ["user:delete"] = function (operation)
     local client    = operation._client
-    local data      = client._data
-    data.identifier = nil
-    data.hashed     = nil
-    data.token      = nil
+    local session   = client._session
+    local data      = client._data [session.url]
+    session.identifier     = nil
+    session.hashed         = nil
+    session.authentication = nil
+    data   .authentication = nil
     Client.coroutine.yield ()
   end
 
   Client.methods ["user:update"] = function (operation, parameters)
-    local client = operation._client
-    local data   = client._data
+    local client  = operation._client
+    local session = client._session
     if parameters.password then
       parameters.password = Digest (parameters.password)
     end
     if  type (parameters.position) == "table"
     and parameters.position.longitude == ""
     and parameters.position.latitude  == "" then
-      -- FIXME: should not be wrapped
-      coroutine.wrap (function ()
-        local url = data.url .. "/ext/maps?address={{{country}}},{{{city}}}" % {
-          country = parameters.position.country,
-          city    = parameters.position.city,
-        }
-        local response, status = loader.request (url)
-        if status == 200 then
-          local coordinate   = Json.decode (response)
-          local position     = parameters.position
-          position.latitude  = coordinate.results [1].geometry.location.lat
-          position.longitude = coordinate.results [1].geometry.location.lng
-        end
-      end) ()
+      local url = session.url .. "/ext/maps?address={{{country}}},{{{city}}}" % {
+        country = parameters.position.country,
+        city    = parameters.position.city,
+      }
+      local response, status = loader.request (url)
+      if status == 200 then
+        local coordinate   = Json.decode (response)
+        local position     = parameters.position
+        position.latitude  = coordinate.results [1].geometry.location.lat
+        position.longitude = coordinate.results [1].geometry.location.lng
+      end
     end
     local result = Client.coroutine.yield ()
     if result.success and parameters.password then
-      data.hashed = parameters.password
+      session.hashed = parameters.password
     end
   end
 
@@ -366,18 +373,22 @@ return function (loader)
       _ws      = false,
       _co      = coroutine.running (),
       _results = {},
-      _waiting = {},
-      _data    = {},
+      _session = {},
+      _data    = t.data or {},
     }, Client)
-    client._data.url        = t.url        or false
-    client._data.host       = t.host       or false
-    client._data.port       = t.port       or 80
-    client._data.identifier = t.identifier or false
-    client._data.password   = t.password   or false
-    client._data.hashed     = false
-    client._data.token      = false
+    t.url = t.url
+        and t.url:gsub ("^%s*(.-)/*%s*$", "%1")
+         or t.url
+    client._session.url        = t.url        or false
+    client._session.host       = t.host       or false
+    client._session.port       = t.port       or 80
+    client._session.identifier = t.identifier or false
+    client._session.password   = t.password   or false
+    client._session.hashed     = false
+    client._session.token      = false
     Client.connect (client)
     if client._ws.status == "opened" then
+      client._data [t.url] = client._data [t.url] or {}
       return client
     elseif client._ws.status == "closed" then
       return nil, client._ws.error
@@ -387,7 +398,7 @@ return function (loader)
   end
 
   if _G.js then
-    function Library.connect (url)
+    function Library.connect (url, data)
       local parser   = _G.window.document:createElement "a";
       parser.href    = url;
       return Library.client {
@@ -396,11 +407,12 @@ return function (loader)
         port       = parser.port,
         identifier = parser.username,
         password   = parser.password,
+        data       = data,
       }
     end
   else
     local Url = loader.require "socket.url"
-    function Library.connect (url)
+    function Library.connect (url, data)
       local parsed = Url.parse (url)
       return Library.client {
         url        = url,
@@ -408,6 +420,7 @@ return function (loader)
         port       = parsed.port,
         identifier = parsed.user,
         password   = parsed.password,
+        data       = data,
       }
     end
   end

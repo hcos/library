@@ -130,10 +130,9 @@ function Cli.configure (cli, arguments)
   end
 
   Lfs.mkdir (Configuration.cli.directory)
-  File.encode (Configuration.cli.data, {
-    server = cli.server,
-    locale = cli.locale,
-  })
+  data.server = cli.server
+  data.locale = cli.locale
+  File.encode (Configuration.cli.data, data)
 
   --  every dowloaded lua package will be saved in ~/.cosy/lua/base64(server_name)
   local server_dir = Configuration.cli.lua .. "/" .. Mime.b64 (cli.server)
@@ -209,17 +208,15 @@ function Cli.start (cli)
     default     = Configuration.cli.locale,
   }
 
-  local client = Library.connect (cli.server)
+  local data   = File.decode (Configuration.cli.data) or {}
+  local client = Library.connect (cli.server, data)
   if not client then
     print (Colors ("%{white redbg}" .. i18n ["failure"] % {}),
            Colors ("%{white redbg}" .. i18n ["server:unreachable"] % {}))
     return false
   end
 
-  local data = File.decode (Configuration.cli.data) or {}
-  local who  = client.user.authentified_as {
-    authentication = data.authentication,
-  }
+  local who  = client.user.authentified_as {}
   if who.identifier then
     print (Colors ("%{green blackbg}" .. i18n ["client:identified"] % {
       user = who.identifier,
@@ -230,9 +227,11 @@ function Cli.start (cli)
   local commands = Commands.new {
     parser = parser,
     client = client,
+    data   = data,
   }
   local ok, result = xpcall (function ()
       Commands.parse (commands)
+      File.encode (Configuration.cli.data, data)
     end, function (err)
       print (Colors ("%{white redbg}" .. i18n ["error:unexpected"] % {}))
       print (err)

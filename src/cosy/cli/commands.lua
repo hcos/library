@@ -189,12 +189,11 @@ return function (loader)
       end
     end
     assert (key)
-    local data = File.decode (Configuration.cli.data) or {}
     if Prepares [key] then
       Prepares [key] (commands, args)
     end
     local parameters = {
-      authentication = data.authentication,
+      authentication = commands.data.authentication,
     }
     for _, x in pairs (commands.methods [key].parameters) do
       for name, t in pairs (x) do
