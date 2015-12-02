@@ -97,21 +97,33 @@ function Cli.configure (cli, arguments)
   -- `argparse` stops execution when `pparse` is used with a `--help` option.
   -- But we want to continue to get the full help message from `Cli.start`.
   -- Thus, we redefine temporarily `os.exit` to do nothing.
-  local _exit    = _G.os.exit
-  _G.os.exit     = function () end
-  local ok, args = parser:pparse (arguments)
-  _G.os.exit     = _exit
+  local _exit = _G.os.exit
+  _G.os.exit  = function () end
+  cli.server  = default_server
+  cli.locale  = default_locale
+  local carguments = { (table.unpack or unpack) (arguments) }
+  repeat
+    local ok, args = parser:pparse (carguments)
+    if ok then
+      cli.server = args.server
+      cli.locale = args.locale
+    elseif args:match "^unknown option" then
+      local option = args:match "^unknown option '(.*)'$"
+      for i = 1, # carguments do
+        if carguments [i]:find (option) == 1 then
+          table.remove (carguments, i)
+          break
+        end
+      end
+    else
+      break
+    end
+  until ok
   -- End of UGLY hack.
-  if ok then
-    cli.server = args.server
-    cli.locale = args.locale
-  else
-    cli.server = default_server
-    cli.locale = default_locale
-  end
+  _G.os.exit = _exit
   assert (cli.server)
 
-  -- trim eventuel trailing /   http://server/
+  -- trim eventuel trailing /
   cli.server = cli.server:gsub ("/+$","")
   if not cli.server:match "^https?://" then
     error {
