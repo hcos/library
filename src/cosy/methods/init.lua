@@ -143,7 +143,7 @@ return function (loader)
       interface = Configuration.server.interface,
       port      = 0,
       protocols = {
-        ["cosyfilter"] = function (ws)
+        ["cosy:filter"] = function (ws)
           ws:send (Value.expression (back_request))
           while ws.state == "OPEN" do
             local message = ws:receive ()
