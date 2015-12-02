@@ -248,7 +248,7 @@ return function (loader)
     assert (type (key) == "string")
     local rawview = assert (Hidden [view])
     if not rawview.is_iterator then
-      local document  = View.document (view)
+      local document = View.document (view)
       assert (document ~= nil and document.data ~= nil)
     end
     local result    = View.copy (view)
