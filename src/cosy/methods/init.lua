@@ -14,7 +14,6 @@ return function (loader)
   local Time          = loader.load "cosy.time"
   local Token         = loader.load "cosy.token"
   local Value         = loader.load "cosy.value"
-  local Http          = loader.require "copas.http"
   local Layer         = loader.require "layeredata"
   local Websocket     = loader.require "websocket"
 
@@ -218,7 +217,7 @@ return function (loader)
       local body = "secret="    .. Configuration.recaptcha.private_key
                 .. "&response=" .. request.captcha
                 .. "&remoteip=" .. request.ip
-      local response, status = Http.request (url, body)
+      local response, status = loader.request (url, body)
       assert (status == 200)
       response = Json.decode (response)
       assert (response)

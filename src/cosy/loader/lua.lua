@@ -37,7 +37,7 @@ return function (t)
                   or loader.require "coroutine.make" ()
   _G.coroutine     = loader.coroutine
   loader.request   = t.request
-                  or loader.require "socket.http".request
+                  or loader.require "copas.http".request
   loader.load "cosy.string"
   loader.hotswap.preload ["websocket.bit"         ] = function ()
     return loader.require "cosy.loader.patches.bit"
