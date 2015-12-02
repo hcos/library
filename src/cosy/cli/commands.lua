@@ -279,7 +279,7 @@ return function (loader)
     if Results [key]
     and (  type (result) == "function"
         or type (result) == "table") then
-      result, err = pcall (Results [key], result, result)
+      result, err = pcall (Results [key], commands, result)
     end
     show_status (result, err)
     return result
@@ -326,7 +326,7 @@ return function (loader)
     Scheduler.loop()
   end
 
-  Results ["server:information"] = function (response)
+  Results ["server:information"] = function (_, response)
     local max  = 0
     local keys = {}
     for key in pairs (response) do
@@ -347,7 +347,7 @@ return function (loader)
     end
   end
 
-  Results ["server:tos"] = function (response)
+  Results ["server:tos"] = function (_, response)
     print (response.tos)
     print (Colors ("%{black yellowbg}" .. "digest") ..
            Colors ("%{reset}" .. " => ") ..
@@ -397,23 +397,14 @@ return function (loader)
     end
   end
 
-  Results ["user:authenticate"] = function (response)
-    local data = File.decode (Configuration.cli.data) or {}
-    data.authentication = response.authentication
-    File.encode (Configuration.cli.data, data)
-  end
-
-  Results ["user:update"] = function (response)
-    Results ["user:information"] (response)
-  end
-
-  Results ["user:is_authentified"] = function (response)
+  Results ["user:authentified-as"] = function (_, response)
+    print (Value.expression (response))
     print (Colors ("%{black yellowbg}" .. "username") ..
            Colors ("%{reset}" .. " => ") ..
            Colors ("%{yellow blackbg}" .. response.username))
   end
 
-  Results ["user:information"] = function (response)
+  Results ["user:information"] = function (_, response)
     if response.avatar then
       local avatar     = response.avatar
       local inputname  = os.tmpname ()
@@ -460,11 +451,7 @@ return function (loader)
     end
   end
 
-  Results ["user:list"] = function (response)
-    for i = 1, #response do
-      print (Colors ("%{yellow blackbg}" .. tostring (response [i])))
-    end
-  end
+  Results ["user:update"] = Results ["user:information"]
 
   return Commands
 
