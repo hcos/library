@@ -199,11 +199,19 @@ function Cli.start (cli)
   }
   local i18n = I18n.load {
     "cosy.cli",
+    "cosy.library",
   }
   i18n._locale = Configuration.cli.locale
   print (Colors ("%{green blackbg}" .. i18n ["client:server"] % {
     server = cli.server,
   }))
+
+  -- The following lines are only here to avoid a check warning.
+  -- These translation keys are used in Cli.configuration,
+  -- but without the `i18n` object, and thus cannot be detected by the
+  -- check script.
+  local _ = i18n ["server:not-cosy"]
+  local _ = i18n ["server:not-url" ]
 
   local parser = Arguments () {
     name        = name,
