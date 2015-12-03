@@ -218,7 +218,7 @@ do
               used    = {},
             }
           end
-          messages [key].defined [module] = (messages [key].defined [module] or 0) + 1
+          messages [key].defined [module] = true
           if not t.en then
             print (Colors ("Translation key %{red}{{{key}}}%{reset} defined in %{blue}{{{module}}}%{reset} does not have an 'en' translation." % {
               key    = key,
@@ -264,12 +264,20 @@ do
   end
 
   for key, t in pairs (messages) do
-    for module, times in pairs (t.defined) do
-      if times > 1 then
-        print (Colors ("Translation key %{red}{{{key}}}%{reset} is defined {{{n}}} times in {{{module}}}." % {
-          key    = key,
+    do
+      local times   = 0
+      local modules = {}
+      for module in pairs (t.defined) do
+        times = times + 1
+        modules [#modules+1] = "%{blue}{{{module}}}%{reset}" % {
           module = module,
-          n      = times,
+        }
+      end
+      if times > 1 then
+        print (Colors ("Translation key %{red}{{{key}}}%{reset} is defined {{{n}}} times in modules {{{modules}}}." % {
+          key     = key,
+          modules = table.concat (modules, ", "),
+          n       = times,
         }))
         problems = problems + 1
       end
