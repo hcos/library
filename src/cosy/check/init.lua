@@ -226,6 +226,28 @@ do
             }))
             problems = problems + 1
           end
+          local linen = 1
+          local times = 0
+          local lines = {}
+          for line in io.lines (path .. "/i18n.lua") do
+            if line:match ('%["{{{key}}}"%]' % {
+              key = key,
+            }) then
+              lines [#lines+1] = "%{blue}{{{line}}}%{reset}" % {
+                line = linen,
+              }
+              times = times + 1
+            end
+            linen = linen + 1
+          end
+          if times > 1 then
+            print (Colors ("Translation key %{red}{{{key}}}%{reset} is defined several times in %{blue}{{{module}}}%{reset}, lines {{{lines}}}." % {
+              key    = key,
+              module = module,
+              lines  = table.concat (lines, ", "),
+            }))
+            problems = problems + 1
+          end
         end
       end
     end
