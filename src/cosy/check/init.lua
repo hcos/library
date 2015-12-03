@@ -267,7 +267,6 @@ do
                      or line:match "i18n%s*%[%s*'([%w%:%-%_]+)'%s*%]"
                      or line:match 'methods%s*%[%s*"([%w%:%-%_]+)"%s*%]'
                      or line:match "methods%s*%[%s*'([%w%:%-%_]+)'%s*%]"
---                     or line:match [[i18n%s*%.([_%a][_%w]*)]]
             if key and key:find "_" ~= 1 then
               if messages [key] then
                 messages [key].used [module .. "." .. submodule] = true
