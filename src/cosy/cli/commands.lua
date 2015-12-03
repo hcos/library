@@ -1,7 +1,6 @@
 return function (loader)
 
   local Configuration = loader.load "cosy.configuration"
-  local File          = loader.load "cosy.file"
   local I18n          = loader.load "cosy.i18n"
   local Scheduler     = loader.load "cosy.scheduler"
   local Value         = loader.load "cosy.value"
