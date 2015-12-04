@@ -218,11 +218,33 @@ do
               used    = {},
             }
           end
-          messages [key].defined [module] = (messages [key].defined [module] or 0) + 1
+          messages [key].defined [module] = true
           if not t.en then
             print (Colors ("Translation key %{red}{{{key}}}%{reset} defined in %{blue}{{{module}}}%{reset} does not have an 'en' translation." % {
               key    = key,
               module = "cosy." .. module,
+            }))
+            problems = problems + 1
+          end
+          local linen = 1
+          local times = 0
+          local lines = {}
+          for line in io.lines (path .. "/i18n.lua") do
+            if line:match ('%["{{{key}}}"%]' % {
+              key = key,
+            }) then
+              lines [#lines+1] = "%{blue}{{{line}}}%{reset}" % {
+                line = linen,
+              }
+              times = times + 1
+            end
+            linen = linen + 1
+          end
+          if times > 1 then
+            print (Colors ("Translation key %{red}{{{key}}}%{reset} is defined several times in %{blue}{{{module}}}%{reset}, lines {{{lines}}}." % {
+              key    = key,
+              module = module,
+              lines  = table.concat (lines, ", "),
             }))
             problems = problems + 1
           end
@@ -245,7 +267,6 @@ do
                      or line:match "i18n%s*%[%s*'([%w%:%-%_]+)'%s*%]"
                      or line:match 'methods%s*%[%s*"([%w%:%-%_]+)"%s*%]'
                      or line:match "methods%s*%[%s*'([%w%:%-%_]+)'%s*%]"
---                     or line:match [[i18n%s*%.([_%a][_%w]*)]]
             if key and key:find "_" ~= 1 then
               if messages [key] then
                 messages [key].used [module .. "." .. submodule] = true
@@ -264,12 +285,20 @@ do
   end
 
   for key, t in pairs (messages) do
-    for module, times in pairs (t.defined) do
-      if times > 1 then
-        print (Colors ("Translation key %{red}{{{key}}}%{reset} is defined {{{n}}} times in {{{module}}}." % {
-          key    = key,
+    do
+      local times   = 0
+      local modules = {}
+      for module in pairs (t.defined) do
+        times = times + 1
+        modules [#modules+1] = "%{blue}{{{module}}}%{reset}" % {
           module = module,
-          n      = times,
+        }
+      end
+      if times > 1 then
+        print (Colors ("Translation key %{red}{{{key}}}%{reset} is defined {{{n}}} times in modules {{{modules}}}." % {
+          key     = key,
+          modules = table.concat (modules, ", "),
+          n       = times,
         }))
         problems = problems + 1
       end

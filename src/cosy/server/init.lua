@@ -33,7 +33,9 @@ local Ffi           = loader.require "ffi"
 
 Configuration.load "cosy.server"
 
-local i18n   = I18n.load "cosy.server"
+local i18n   = I18n.load {
+  "cosy.server",
+}
 i18n._locale = Configuration.locale
 
 local Server = {}
