@@ -366,6 +366,8 @@ function error ()
   exit 1
 }
 
+git submodule init
+git submodule update
 mkdir -p "${cosy_prefix}"
 mkdir -p "${cosy_prefix}/bin"
 mkdir -p "${cosy_prefix}/lib"
