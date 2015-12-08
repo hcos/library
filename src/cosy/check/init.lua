@@ -72,6 +72,8 @@ do
         print ("Testing {{{module}}} module:" % {
           module = module,
         })
+        print ("luapath", package.path)
+        print ("luacpath", package.cpath)
         status = os.execute ([[{{{lua}}} {{{path}}}/test.lua --verbose]] % {
           lua  = prefix .. "/local/cosy/5.1/bin/luajit",
           path = path,
@@ -79,6 +81,8 @@ do
         for _, version in ipairs {
           "5.2",
         } do
+          print ("luapath", package.path :gsub ("5%.1", version))
+          print ("luacpath", package.cpath:gsub ("5%.1", version))
           status = os.execute ([[
             export LUA_PATH="{{{luapath}}}"
             export LUA_CPATH="{{{luacpath}}}"

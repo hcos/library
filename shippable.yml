@@ -20,7 +20,8 @@ before_script:
   - mkdir -p  output/server
 
 script:
-  - source ${HOME}/cosy/server/bin/cosy-path && echo $LUA_PATH && echo $LUA_CPATH && tree ${HOME}/cosy/
+  - source ${HOME}/cosy/server/bin/cosy-path && echo $LUA_PATH && echo $LUA_CPATH
+  - source ${HOME}/cosy/server/bin/cosy-path && luajit -e 'require "bcrypt"'
   - ${HOME}/cosy/server/bin/cosy-check output/server --test-format=junit
 
 after_script:
