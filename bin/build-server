@@ -221,7 +221,7 @@ function install_cosyverif ()
     rm -rf "${cosy_rockstree}/${version}/share/lua/${version}/redis.lua"
     rm -rf "${cosy_rockstree}/${version}/share/lua/${version}/cosy"
     # Install luasec before everything to allow the use of HTTPS in luarocks:
-    options=()
+    options=(LDFLAGS="-lrt")
     if [ "${version}" = "5.1" ]; then
       more_dependencies=( luabitop )
     fi
