@@ -7,6 +7,7 @@ services:
 
 install:
   - sudo apt-get autoremove -y
+  - sudo apt-get install tree
   - ./bin/build-client --in-ci
   - ./bin/build-server --prefix=$HOME/cosy/server --in-ci
 
@@ -19,6 +20,7 @@ before_script:
   - mkdir -p  output/server
 
 script:
+  - source ${HOME}/cosy/server/bin/cosy-path && echo $LUA_PATH && echo $LUA_CPATH && tree ${HOME}/cosy/
   - ${HOME}/cosy/server/bin/cosy-check output/server --test-format=junit
 
 after_script:
