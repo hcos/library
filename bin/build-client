@@ -165,7 +165,9 @@ function install_cosyverif ()
   options=(
     LUA="${cosy_rockstree}/bin/luajit"
   )
-  for dependency in ${cosy_dependencies[*]}; do
+  more_dependencies=( luabitop )
+  export CC=clang
+  for dependency in ${cosy_dependencies[*]} ${more_dependencies[*]}; do
     if "${cosy_rockstree}/bin/luarocks" list \
         --porcelain \
         --tree="${cosy_rockstree}" \
