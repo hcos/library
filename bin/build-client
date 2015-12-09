@@ -9,7 +9,7 @@ do
     ;;
     *)
       echo "Usage: "
-      echo "  install [--prefix=PREFIX] [--in-ci]"
+      echo "  install [--in-ci]"
       exit 1;
     ;;
   esac
