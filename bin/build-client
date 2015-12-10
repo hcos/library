@@ -165,7 +165,7 @@ function install_cosyverif ()
   options=(
     LUA="${cosy_rockstree}/bin/luajit"
   )
-  more_dependencies=( luabitop )
+  more_dependencies=()
   export CC=clang
   for dependency in ${cosy_dependencies[*]} ${more_dependencies[*]}; do
     if "${cosy_rockstree}/bin/luarocks" list \
@@ -248,8 +248,8 @@ function generate_package ()
     "${cosy_prefix}/local/cosy/bin/luarocks" remove \
        --tree="${cosy_prefix}/local/cosy" luarocks
     rm -rf  "${cosy_prefix}/local/cosy/lib/luarocks"
-    sed -i  "s|export COSY_PREFIX=.*|export COSY_PREFIX=\"...\"|" \
-            "${cosy_prefix}/bin/cosy-path"
+    sed -i -e "s/export COSY_PREFIX=.*/export COSY_PREFIX=\"...\"/" \
+              "${cosy_prefix}/bin/cosy-path"
   } >> "${cosy_log}" 2>&1
   # Package:
   (
