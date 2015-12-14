@@ -255,8 +255,9 @@ function generate_package ()
     "${cosy_prefix}/local/cosy/bin/luarocks" remove \
        --tree="${cosy_prefix}/local/cosy" luarocks
     rm -rf  "${cosy_prefix}/local/cosy/lib/luarocks"
-    sed -i -e "s/export COSY_PREFIX=.*/export COSY_PREFIX=\"...\"/" \
-              "${cosy_prefix}/bin/cosy-path"
+    sed -i "" \
+        -e "s/export COSY_PREFIX=.*/export COSY_PREFIX=\"...\"/" \
+        "${cosy_prefix}/bin/cosy-path"
   } >> "${cosy_log}" 2>&1
   # Package:
   (
