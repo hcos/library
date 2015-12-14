@@ -262,7 +262,7 @@ function install_bin ()
   cat > "${cosy_bin_path}" <<EOF
 #! /bin/bash
 
-export COSY_PREFIX="${cosy_prefix}"
+export COSY_PREFIX=\$(dirname "\${0}")/..
 
 if command -v "brew" > /dev/null 2>&1; then
   HOMEBREW_PREFIX=\$(brew config | grep "HOMEBREW_PREFIX" | tr -d ' \t' | cut -d ":" -f 2)
