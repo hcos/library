@@ -16,9 +16,16 @@ do
 done
 
 parallel=$(nproc 2> /dev/null || sysctl -n hw.ncpu 2> /dev/null)
-red='\033[0;31m'
-green='\033[0;32m'
-nc='\033[0m'
+
+if [ ! -z "${in_ci+x}" ]; then
+  red=''
+  green=''
+  nc=''
+else
+  red='\033[0;31m'
+  green='\033[0;32m'
+  nc='\033[0m'
+fi
 
 ## Now cmd args have been parsed
 ##################################

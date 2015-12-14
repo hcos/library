@@ -23,9 +23,16 @@ done
 cosy_prefix=${cosy_prefix:-/usr/local}
 
 parallel=$(nproc 2> /dev/null || sysctl -n hw.ncpu 2> /dev/null)
-red='\033[0;31m'
-green='\033[0;32m'
-nc='\033[0m'
+
+if [ ! -z "${in_ci+x}" ]; then
+  red=''
+  green=''
+  nc=''
+else
+  red='\033[0;31m'
+  green='\033[0;32m'
+  nc='\033[0m'
+fi
 
 # Useful variables:
 cosy_temp=$(mktemp -d 2>/dev/null || mktemp -d -t cosy)
