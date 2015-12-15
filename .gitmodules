@@ -10,3 +10,6 @@
 [submodule "openresty"]
 	path = openresty
 	url = https://github.com/openresty/ngx_openresty
+[submodule "sh-realpath"]
+	path = sh-realpath
+	url = https://github.com/mkropat/sh-realpath
