@@ -202,7 +202,12 @@ function install_bin ()
   cat > "${cosy_bin_path}" <<EOF
 #! /bin/bash
 
-export COSY_PREFIX=\$(dirname "\${0}")/..
+$(cat "sh-realpath/realpath.sh" | grep -v "#!")
+
+cosy_where=\$(realpath "\${BASH_SOURCE}")
+cosy_where=\$(dirname  "\${cosy_where}")
+cosy_where=\$(dirname  "\${cosy_where}")
+export COSY_PREFIX="\${cosy_where}"
 
 export PATH="\${COSY_PREFIX}/bin:\${COSY_PREFIX}/local/cosy/bin:\${PATH}"
 export LUA_PATH="\${COSY_PREFIX}/local/cosy/share/lua/5.1/?.lua;\${COSY_PREFIX}/local/cosy/share/lua/5.1/?/init.lua"
