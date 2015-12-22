@@ -1,6 +1,3 @@
-[submodule "luajit"]
-	path = luajit
-	url = http://luajit.org/git/luajit-2.0.git
 [submodule "luarocks"]
 	path = luarocks
 	url = https://github.com/keplerproject/luarocks.git
