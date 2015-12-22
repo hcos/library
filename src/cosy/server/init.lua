@@ -20,8 +20,8 @@ local Token         = loader.load "cosy.token"
 local Value         = loader.load "cosy.value"
 local App           = loader.load "cosy.configuration.layers".app
 local Layer         = loader.require "layeredata"
+local Posix         = loader.require "posix"
 local Websocket     = loader.require "websocket"
-local Ffi           = loader.require "ffi"
 
 Configuration.load "cosy.server"
 
@@ -247,12 +247,11 @@ function Server.start ()
   Nginx.start ()
 
   do
-    Ffi.cdef [[ unsigned int getpid (); ]]
     File.encode (Configuration.server.data, {
       token     = Configuration.server.token,
       interface = Configuration.server.interface,
       port      = Configuration.server.port,
-      pid       = Ffi.C.getpid (),
+      pid       = Posix.getpid (),
     })
     os.execute ([[ chmod 0600 {{{file}}} ]] % {
       file = Configuration.server.data,
