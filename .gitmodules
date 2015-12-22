@@ -13,3 +13,6 @@
 [submodule "sh-realpath"]
 	path = sh-realpath
 	url = https://github.com/mkropat/sh-realpath
+[submodule "lua"]
+	path = lua
+	url = https://github.com/lua/lua.git
