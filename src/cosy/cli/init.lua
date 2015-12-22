@@ -1,3 +1,5 @@
+#! /usr/bin/env lua
+
 local Arguments = require "argparse"
 
 local name = os.getenv "COSY_PREFIX" .. "/bin/cosy"

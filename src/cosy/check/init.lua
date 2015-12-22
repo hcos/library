@@ -1,3 +1,5 @@
+#! /usr/bin/env lua
+
 local loader    = require "cosy.loader.lua" {
   logto = false,
 }
