@@ -1,6 +1,6 @@
 if #setmetatable ({}, { __len = function () return 1 end }) ~= 1
 then
-  error "Cosy requires Lua >= 5.2 or Luajit with 5.2 compatibility to run."
+  error "Cosy requires Lua >= 5.2 to run."
 end
 
 return function (t)
