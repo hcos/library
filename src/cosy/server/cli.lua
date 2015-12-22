@@ -9,7 +9,7 @@ local Arguments     = loader.require "argparse"
 local Colors        = loader.require "ansicolors"
 
 Configuration.load {
-  "cosy.nginx",
+  "cosy.nginx", -- TODO: check
   "cosy.server",
 }
 
