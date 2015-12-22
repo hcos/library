@@ -50,11 +50,15 @@ local status = true
 
 do
   status = os.execute ([[
-    cd {{{path}}}/..
-    {{{luacheck}}} --std max --std +busted cosy/*/*.lua
+#! /bin/bash
+
+cosy="{{{path}}}"
+cosy=$(dirname "${cosy}")
+cosy=$(dirname "${cosy}")
+sourcedirectory=$(readlink "${cosy}")
+luacheck --std max --std +busted "${sourcedirectory}"/*/*.lua
   ]] % {
-    luacheck = prefix .. "/local/cosy/5.1/bin/luacheck",
-    path     = main,
+    path = package.searchpath ("cosy.check", package.path),
   }) and status
 end
 
@@ -72,32 +76,15 @@ do
         print ("Testing {{{module}}} module:" % {
           module = module,
         })
-        print ("luapath", package.path)
-        print ("luacpath", package.cpath)
-        status = os.execute ([[{{{lua}}} {{{path}}}/test.lua --verbose]] % {
-          lua  = prefix .. "/local/cosy/5.1/bin/luajit",
+        status = os.execute ([[ lua {{{path}}}/test.lua --verbose ]] % {
           path = path,
         }) and status
-        for _, version in ipairs {
-          "5.2",
-        } do
-          print ("luapath", package.path :gsub ("5%.1", version))
-          print ("luacpath", package.cpath:gsub ("5%.1", version))
-          status = os.execute ([[
-            export LUA_PATH="{{{luapath}}}"
-            export LUA_CPATH="{{{luacpath}}}"
-            {{{lua}}} {{{path}}}/test.lua --verbose --coverage --output={{{format}}} >> {{{output}}}
-          ]] % {
-            lua      = "lua" .. version,
-            path     = path:gsub ("5%.1", version),
-            format   = arguments.test_format,
-            output   = "test/" .. tostring (test_id),
-            luapath  = package.path :gsub ("5%.1", version),
-            luacpath = package.cpath:gsub ("5%.1", version),
-          }) and status
-          test_id = test_id + 1
-        end
-        print ()
+        status = os.execute ([[ lua {{{path}}}/test.lua --verbose --coverage --output={{{format}}} >> {{{output}}} ]] % {
+          path     = path,
+          format   = arguments.test_format,
+          output   = "test/" .. tostring (test_id),
+        }) and status
+        test_id = test_id + 1
       end
     end
   end
@@ -327,15 +314,18 @@ do
     local script = [[
 #! /bin/bash
 
-sourcedirectory=$(readlink "{{{prefix}}}/local/cosy/5.1/share/lua/5.1/cosy")
+cosy="{{{path}}}"
+cosy=$(dirname "${cosy}")
+cosy=$(dirname "${cosy}")
+sourcedirectory=$(readlink "${cosy}")
 shellcheck --exclude=SC2024 "${sourcedirectory}/../../bin/"*
     ]] % {
-      prefix = os.getenv "COSY_PREFIX",
+      path = package.searchpath ("cosy.check", package.path),
     }
     local file = io.open ("sc-script", "w")
     file:write (script)
     file:close ()
-    status = (os.execute [[bash sc-script]]) and status
+    status = (os.execute [[ bash sc-script ]]) and status
   end
 end
 
