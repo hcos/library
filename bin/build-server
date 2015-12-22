@@ -21,7 +21,6 @@ do
 done
 
 cosy_prefix=${cosy_prefix:-/usr/local}
-
 parallel=$(nproc 2> /dev/null || sysctl -n hw.ncpu 2> /dev/null)
 
 if [ ! -z "${in_ci+x}" ]; then
@@ -45,7 +44,6 @@ cosy_bin_uninstall="${cosy_prefix}/bin/cosy-uninstall"
 cosy_rockstree="${cosy_prefix}/local/cosy"
 cosy_log="${cosy_temp}/install.log"
 cosy_dependencies=(
-  luasec
   ansicolors
   argparse
   bcrypt
@@ -99,8 +97,7 @@ function install_dependencies ()
                                  perl build-essential wget \
                                  libc6-dev libssl-dev libev-dev \
                                  libreadline-dev libncurses5-dev libpcre3-dev \
-                                 redis-server imagemagick \
-                                 lua5.2 liblua5.2-dev
+                                 redis-server imagemagick
       ;;
     "Darwin")
       HOMEBREW_PREFIX=$(brew config | grep "HOMEBREW_PREFIX" | tr -d ' \t' | cut -d ":" -f 2)
@@ -109,7 +106,7 @@ function install_dependencies ()
       export LD_LIBRARY_PATH="${HOMEBREW_PREFIX}/lib:${LD_LIBRARY_PATH}"
       export DYLD_LIBRARY_PATH="${HOMEBREW_PREFIX}/lib:${DYLD_LIBRARY_PATH}"
       brew update
-      brew install openssl libev pcre redis imagemagick wget lua
+      brew install openssl libev pcre redis imagemagick wget
       brew link --force openssl
       ;;
     *)
@@ -122,46 +119,64 @@ function install_dependencies ()
   export LD_LIBRARY_PATH="${cosy_prefix}/lib:${LD_LIBRARY_PATH}"
 }
 
-# Install LuaJIT with 5.2 compatibility:
-function install_luajit ()
+# Install latest lua:
+function install_lua ()
 {
-  echo "Installing luajit."
+  echo "Installing lua."
   (
-    cd luajit || exit 1
-    cat > "${cosy_temp}/luajit.patch" <<EOL
-diff -rupN LuaJIT-2.0.4.back/Makefile LuaJIT-2.0.4/Makefile
---- LuaJIT-2.0.4.back/Makefile	2015-10-02 17:19:16.774268017 +0200
-+++ LuaJIT-2.0.4/Makefile	2015-10-02 17:11:14.533865635 +0200
-@@ -24,7 +24,7 @@ ABIVER=  5.1
- # Change the installation path as needed. This automatically adjusts
- # the paths in src/luaconf.h, too. Note: PREFIX must be an absolute path!
- #
--export PREFIX= /usr/local
-+export PREFIX= ${cosy_rockstree}/5.1
- export MULTILIB= lib
- ##############################################################################
-
-diff -rupN LuaJIT-2.0.4.back/src/Makefile LuaJIT-2.0.4/src/Makefile
---- LuaJIT-2.0.4.back/src/Makefile	2015-10-02 17:19:06.294172164 +0200
-+++ LuaJIT-2.0.4/src/Makefile	2015-10-02 17:18:50.882031189 +0200
-@@ -100,7 +100,7 @@ XCFLAGS=
- # enabled by default. Some other features that *might* break some existing
- # code (e.g. __pairs or os.execute() return values) can be enabled here.
- # Note: this does not provide full compatibility with Lua 5.2 at this time.
--#XCFLAGS+= -DLUAJIT_ENABLE_LUA52COMPAT
-+XCFLAGS+= -DLUAJIT_ENABLE_LUA52COMPAT
- #
- # Disable the JIT compiler, i.e. turn LuaJIT into a pure interpreter.
- #XCFLAGS+= -DLUAJIT_DISABLE_JIT
+    cd lua || exit 1
+    cat > "${cosy_temp}/lua.patch" <<EOL
+--- Makefile.back	2015-12-22 09:51:51.000000000 +0100
++++ Makefile	2015-12-22 09:52:26.000000000 +0100
+@@ -10,7 +10,7 @@
+ # so take care if INSTALL_TOP is not an absolute path. See the local target.
+ # You may want to make INSTALL_LMOD and INSTALL_CMOD consistent with
+ # LUA_ROOT, LUA_LDIR, and LUA_CDIR in luaconf.h.
+-INSTALL_TOP= /usr/local
++INSTALL_TOP= ${cosy_rockstree}
+ INSTALL_BIN= \$(INSTALL_TOP)/bin
+ INSTALL_INC= \$(INSTALL_TOP)/include
+ INSTALL_LIB= \$(INSTALL_TOP)/lib
 EOL
-    patch -p1 -i "${cosy_temp}/luajit.patch"
-    make -j"${parallel}"
+    patch -i "${cosy_temp}/lua.patch" Makefile
+    case "$(uname -s)" in
+      "Linux")
+        make linux -j"${parallel}"
+        ;;
+      "Darwin")
+        make macosx -j"${parallel}"
+        ;;
+      *)
+        echo -e "Error: unknown OS: ${red}$(uname -s)${nc}."
+        exit 1
+        ;;
+    esac >> "${cosy_log}" 2>&1
     make install CC="clang"
     make clean
     git checkout Makefile
-    git checkout src/Makefile
-    ln -sf "luajit-2.1.0-beta1" "${cosy_rockstree}/5.1/bin/luajit"
-    ln -sf "luajit-2.1"         "${cosy_rockstree}/5.1/include/luajit-2.0"
+  ) >> "${cosy_log}" 2>&1
+  {
+    lua_version=$("${cosy_rockstree}/bin/lua" -e 'print (_VERSION:match "Lua%s+(%d%.%d).*")')
+    lua_sversion=${lua_version//./}
+    ln -sF "lua"       "${cosy_rockstree}/bin/lua${lua_sversion}"
+    ln -sF "lua.h"     "${cosy_rockstree}/include/lua${lua_sversion}.h"
+    ln -sF "liblua.a"  "${cosy_rockstree}/lib/liblua${lua_sversion}.a"
+  } >> "${cosy_log}" 2>&1
+}
+
+function install_luarocks ()
+{
+  echo "Installing luarocks."
+  (
+    cd luarocks || exit 1
+    # shellcheck disable=SC2030
+    export PATH="${cosy_rockstree}/bin:${PATH}"
+    ./configure --prefix="${cosy_rockstree}" \
+                --with-lua-bin="${cosy_rockstree}/bin/" \
+                --with-lua-include="${cosy_rockstree}/include/" \
+                --with-lua-lib="${cosy_rockstree}/lib/"
+    make bootstrap
+    make clean
   ) >> "${cosy_log}" 2>&1
 }
 
@@ -175,7 +190,6 @@ function install_openresty ()
     cd ngx_openresty-1.9.3.2rc3 || exit 1
     ./configure --prefix="${cosy_prefix}/local/openresty" \
                 --without-lua51 \
-                --with-luajit="${cosy_rockstree}/5.1" \
                 --with-ipv6 \
                 --with-pcre-jit
     make -j"${parallel}"
@@ -184,76 +198,39 @@ function install_openresty ()
   ) >> "${cosy_log}" 2>&1
 }
 
-function install_luarocks ()
-{
-  echo "Installing luarocks."
-  (
-    cd luarocks || exit 1
-    # shellcheck disable=SC2030
-    export PATH="${cosy_rockstree}/5.1/bin:${PATH}"
-    ./configure --prefix="${cosy_rockstree}/5.1" \
-                --lua-version="5.1" \
-                --lua-suffix="jit" \
-                --with-lua-bin="${cosy_rockstree}/5.1/bin/" \
-                --with-lua-include="${cosy_rockstree}/5.1/include/luajit-2.0/" \
-                --with-lua-lib="${cosy_rockstree}/5.1/lib/"
-    make bootstrap
-    make clean
-  ) >> "${cosy_log}" 2>&1
-  for version in "5.2"; do
-    echo "Installing luarocks for lua-${version}."
-    (
-      cd luarocks || exit 1
-      # shellcheck disable=SC2030
-      # shellcheck disable=SC2031
-      export PATH="${cosy_rockstree}/${version}/bin:${PATH}"
-      make clean
-      ./configure --prefix="${cosy_rockstree}/${version}" \
-                  --lua-version="${version}" \
-                  --lua-suffix="${version}"
-      make bootstrap
-      make clean
-    ) >> "${cosy_log}" 2>&1
-  done
-}
-
 # Install cosyverif:
 function install_cosyverif ()
 {
-  for version in "5.1" "5.2"; do
-    echo "Installing rocks for lua-${version}."
-    # shellcheck disable=SC2031
-    export PATH="${cosy_rockstree}/${version}/bin:${PATH}"
-    # Remove symlink to cosy to avoid modification of sources files by luarocks:
-    rm -rf "${cosy_rockstree}/${version}/share/lua/${version}/redis.lua"
-    rm -rf "${cosy_rockstree}/${version}/share/lua/${version}/cosy"
-    # Install luasec before everything to allow the use of HTTPS in luarocks:
-    options=(LDFLAGS="-lrt")
-    if [ "${version}" = "5.1" ]; then
-      more_dependencies=( luabitop )
-    fi
-    export CC=clang
-    for dependency in ${cosy_dependencies[*]} ${more_dependencies[*]}; do
-      if "${cosy_rockstree}/${version}/bin/luarocks" list \
-          --porcelain \
-          --tree="${cosy_rockstree}/${version}" \
-          | grep --silent "${dependency}"; then
-        echo "  Not installing ${dependency} as it is already installed."
+  echo "Installing rocks."
+  # Remove symlink to cosy to avoid modification of sources files by luarocks:
+  rm -rf "${cosy_rockstree}/share/lua/${lua_version}/redis.lua"
+  rm -rf "${cosy_rockstree}/share/lua/${lua_version}/cosy"
+  # Install rocks:
+  export CC=clang
+  for dependency in luasec ${cosy_dependencies[*]}; do
+    if "${cosy_rockstree}/bin/luarocks" list \
+        --porcelain \
+        --tree="${cosy_rockstree}" \
+        | grep --silent "${dependency}"; then
+      echo "  Not installing ${dependency} as it is already installed."
+    else
+      echo -n "  Installing ${dependency} as it is not installed... "
+      # shellcheck disable=SC2086
+      if "${cosy_rockstree}/bin/luarocks" install "${dependency}" \
+          >> "${cosy_log}" 2>&1; then
+        echo -e "${green}success${nc}"
       else
-        echo "  Installing ${dependency} as it is not installed."
-        # shellcheck disable=SC2086
-        "${cosy_rockstree}/${version}/bin/luarocks" install "${dependency}" ${options[*]} \
-            >> "${cosy_log}" 2>&1
+        echo -e "${red}failure${nc}"
       fi
-    done
-    # Create symlinks in rockstree:
-    rm -rf "${cosy_rockstree}/${version}/share/lua/${version}/redis.lua"
-    ln -s  "$(pwd)/redis-lua/src/redis.lua" \
-           "${cosy_rockstree}/${version}/share/lua/${version}/redis.lua"
-    rm -rf "${cosy_rockstree}/${version}/share/lua/${version}/cosy"
-    ln -s  "$(pwd)/src/cosy" \
-           "${cosy_rockstree}/${version}/share/lua/${version}/cosy"
+    fi
   done
+  # Create symlinks in rockstree:
+  rm -rf "${cosy_rockstree}/share/lua/${lua_version}/redis.lua"
+  ln -s  "$(pwd)/redis-lua/src/redis.lua" \
+         "${cosy_rockstree}/share/lua/${lua_version}/redis.lua"
+  rm -rf "${cosy_rockstree}/share/lua/${lua_version}/cosy"
+  ln -s  "$(pwd)/src/cosy" \
+         "${cosy_rockstree}/share/lua/${lua_version}/cosy"
 }
 
 function install_bin ()
@@ -262,7 +239,7 @@ function install_bin ()
   cat > "${cosy_bin_path}" <<EOF
 #! /bin/bash
 
-$(cat "sh-realpath/realpath.sh" | grep -v "#!")
+$(grep -v "#!" < "sh-realpath/realpath.sh")
 
 cosy_where=\$(realpath "\${BASH_SOURCE}")
 cosy_where=\$(dirname  "\${cosy_where}")
@@ -276,9 +253,13 @@ if command -v "brew" > /dev/null 2>&1; then
   export DYLD_LIBRARY_PATH="\${HOMEBREW_PREFIX}/lib:${DYLD_LIBRARY_PATH}"
 fi
 
-export PATH="\${COSY_PREFIX}/bin:\${COSY_PREFIX}/local/cosy/5.1/bin:\${PATH}"
-export LUA_PATH="\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/?.lua;\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/?/init.lua"
-export LUA_CPATH="\${COSY_PREFIX}/local/cosy/5.1/lib/lua/5.1/?.so"
+export PATH="\${COSY_PREFIX}/bin:\${COSY_PREFIX}/local/cosy/bin:\${PATH}"
+
+lua_version=\$(lua -e 'print (_VERSION:match "Lua%s+(%d%.%d).*")')
+lua_sversion=\${lua_version//./}
+
+export LUA_PATH="\${COSY_PREFIX}/local/cosy/share/lua/\${lua_version}/?.lua;\${COSY_PREFIX}/local/cosy/share/lua/\${lua_version}/?/init.lua"
+export LUA_CPATH="\${COSY_PREFIX}/local/cosy/lib/lua/\${lua_version}/?.so"
 
 export LIBRARY_PATH="\${COSY_PREFIX}/lib:${LIBRARY_PATH}"
 export LD_LIBRARY_PATH="\${COSY_PREFIX}/lib:${LD_LIBRARY_PATH}"
@@ -305,7 +286,7 @@ EOF
 root=\$(dirname "\$0")
 # shellcheck source=/dev/null
 source "\${root}/${base}"
-luajit "\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/cosy/cli/init.lua" "\$@"
+\$(lua -e "print (package.searchpath ('cosy.cli', package.path))") "\$@"
 EOF
   chmod a+x "${cosy_bin_cli}"
 
@@ -315,7 +296,7 @@ EOF
 root=\$(dirname "\$0")
 # shellcheck source=/dev/null
 source "\${root}/${base}"
-luajit "\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/cosy/server/cli.lua" "\$@"
+\$(lua -e "print (package.searchpath ('cosy.server.cli', package.path))") "\$@"
 EOF
   chmod a+x "${cosy_bin_server}"
 
@@ -359,7 +340,7 @@ source "\${root}/${base}"
   shift
   cd  "\${tmpdir}" || exit 1
   "\${COSY_PREFIX}/bin/cosy-server" start --force --clean
-  luajit "\${COSY_PREFIX}/local/cosy/5.1/share/lua/5.1/cosy/check/init.lua" "\$@"
+  \$(lua -e "print (package.searchpath ('cosy.check', package.path))") "\$@"
   "\${COSY_PREFIX}/bin/cosy-server" stop  --force
   echo
   echo -e "Test and Coverage reports are in ${green}\${tmpdir}${nc}."
@@ -385,9 +366,9 @@ mkdir -p "${cosy_prefix}/bin"
 mkdir -p "${cosy_prefix}/lib"
 trap error ERR
 install_dependencies
-install_luajit
-install_openresty
+install_lua
 install_luarocks
+install_openresty
 install_cosyverif
 install_bin
 
