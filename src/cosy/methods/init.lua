@@ -157,7 +157,7 @@ return function (loader)
       }
     }
     Scheduler.addserver = addserver
-    os.execute ([[luajit -e '_G.port = {{{port}}}; require "cosy.methods.filter"' &]] % {
+    os.execute ([[lua -e '_G.port = {{{port}}}; require "cosy.methods.filter"' &]] % {
       port = server_port,
     })
     return function ()

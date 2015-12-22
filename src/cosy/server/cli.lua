@@ -83,7 +83,7 @@ if arguments.start then
 
   os.remove (Configuration.server.log )
   os.remove (Configuration.server.data)
-  os.execute [[ luajit -e 'require "cosy.server".start ()' & ]]
+  os.execute [[ lua -e 'require "cosy.server".start ()' & ]]
   local tries = 0
   local serverdata, nginxdata
   repeat
