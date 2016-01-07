@@ -83,6 +83,11 @@ if arguments.start then
   os.remove (Configuration.server.data)
 
   if Posix.fork () == 0 then
+    package.loaded ["copas"     ] = nil
+    package.loaded ["copas.ev"  ] = nil
+    package.loaded ["ev"        ] = nil
+    package.loaded ["hotswap.ev"] = nil
+    package.loaded ["hotswap"   ] = nil
     local Server = loader.require "cosy.server"
     Server.start ()
     os.exit (0)

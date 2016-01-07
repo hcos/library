@@ -1,9 +1,3 @@
-package.loaded ["copas"     ] = nil
-package.loaded ["copas.ev"  ] = nil
-package.loaded ["ev"        ] = nil
-package.loaded ["hotswap.ev"] = nil
-package.loaded ["hotswap"   ] = nil
-
 local Scheduler = require "copas.ev"
 local Hotswap   = require "hotswap.ev".new {
   loop = Scheduler._loop,
