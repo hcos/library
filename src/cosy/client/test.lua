@@ -6,19 +6,19 @@ local loader = require "cosy.loader.lua" {
   logto = false,
 }
 local Configuration = loader.load "cosy.configuration"
-local Cli           = loader.require "cosy.cli"
+local Cli           = loader.require "cosy.client.cli"
 
 Cli.default_server = "http://127.0.0.1:8080"
 Cli.default_locale = "en"
 
 Configuration.load {
-  "cosy.cli",
+  "cosy.client",
 }
 Configuration.library = {
   timeout = 1,
 }
 
-describe ("Module cosy.cli", function ()
+describe ("Module cosy.client", function ()
 
   before_each (function ()
     Configuration.cli.data = os.tmpname()

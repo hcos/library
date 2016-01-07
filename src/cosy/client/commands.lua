@@ -10,11 +10,11 @@ return function (loader)
   local Ltn12         = loader.require "ltn12"
 
   Configuration.load {
-    "cosy.cli",
+    "cosy.client",
   }
 
   local i18n   = I18n.load {
-    "cosy.cli",
+    "cosy.client",
   }
   i18n._locale = Configuration.cli.locale
 
@@ -24,7 +24,16 @@ return function (loader)
     if stty_ret ~= 0 then
       io.write("\027[08m") -- ANSI 'hidden' text attribute
     end
-    local ok, pass = pcall (io.read, "*l")
+    local password = ""
+    while true do
+      local char = io.read (1)
+      if char == "\r" or char == "\n" then
+        break
+      end
+      password = password .. char
+      io.write "*"
+      io.flush ()
+    end
     if stty_ret == 0 then
       os.execute("stty sane")
     else
@@ -32,9 +41,7 @@ return function (loader)
     end
     io.write("\n")
     os.execute("stty sane")
-    if ok then
-      return pass
-    end
+    return password
   end
 
   local function show_status (result, err)

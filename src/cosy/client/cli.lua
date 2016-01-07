@@ -1,9 +1,4 @@
-#! /usr/bin/env lua
-
 local Arguments = require "argparse"
-
-local name = os.getenv "COSY_PREFIX" .. "/bin/cosy"
-name = name:gsub (os.getenv "HOME", "~")
 
 local Cli = {}
 
@@ -44,10 +39,10 @@ function Cli.configure (cli, arguments)
   local I18n          = loader.load "cosy.i18n"
 
   Configuration.load {
-    "cosy.cli",
+    "cosy.client",
   }
   local i18n = I18n.load {
-    "cosy.cli",
+    "cosy.client",
   }
 
   local _error = error
@@ -76,7 +71,7 @@ function Cli.configure (cli, arguments)
   default_locale = data.locale or default_locale
 
   local parser = Arguments () {
-    name        = name,
+    name        = "cosy",
     description = "cosy command-line interface",
     add_help    = {
       action = function () end
@@ -197,11 +192,11 @@ function Cli.start (cli)
   local Colors        = loader.require "ansicolors"
 
   Configuration.load {
-    "cosy.cli",
+    "cosy.client",
   }
 
   local i18n = I18n.load {
-    "cosy.cli",
+    "cosy.client",
   }
   i18n._locale = Configuration.cli.locale
 
@@ -210,7 +205,7 @@ function Cli.start (cli)
   }))
 
   local parser = Arguments () {
-    name        = name,
+    name        = "cosy",
     description = i18n ["client:command"] % {},
   }
   parser:option "-s" "--server" {
@@ -237,7 +232,7 @@ function Cli.start (cli)
     }))
   end
 
-  local Commands = loader.load "cosy.cli.commands"
+  local Commands = loader.load "cosy.client.commands"
   local commands = Commands.new {
     parser = parser,
     client = client,
