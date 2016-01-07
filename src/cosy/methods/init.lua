@@ -156,9 +156,18 @@ return function (loader)
       }
     }
     Scheduler.addserver = addserver
-    local pid = Posix.fork ()
-    if pid == 0 then
-      loader.require "cosy.methods.filter"
+    if Posix.fork () == 0 then
+      package.loaded ["copas"     ] = nil
+      package.loaded ["copas.ev"  ] = nil
+      package.loaded ["ev"        ] = nil
+      package.loaded ["hotswap.ev"] = nil
+      package.loaded ["hotswap"   ] = nil
+      local Filter = loader.require "cosy.methods.filter"
+      local _, port = server_socket:getsockname ()
+      Filter.new ("ws://{{{interface}}}:{{{port}}}" % {
+        interface = Configuration.server.interface,
+        port      = port,
+      })
       os.exit (0)
     end
     return function ()
