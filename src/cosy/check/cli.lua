@@ -1,5 +1,3 @@
-#! /usr/bin/env lua
-
 local loader    = require "cosy.loader.lua" {
   logto = false,
 }
@@ -9,12 +7,28 @@ local Colors    = loader.require 'ansicolors'
 local Reporter  = loader.require "luacov.reporter"
 local Arguments = loader.require "argparse"
 
-local prefix = os.getenv "COSY_PREFIX"
-local name   = prefix .. "/bin/cosy-check"
-name         = name:gsub (os.getenv "HOME", "~")
+local prefix = loader.prefix
+os.execute (prefix .. [[/bin/cosy-server start --force --clean ]])
+
+local source
+do
+  local path    = package.searchpath ("cosy.check.cli", package.path)
+  local handler = assert (io.popen ([[
+    source "{{{prefix}}}/bin/realpath.sh"
+    path="{{{path}}}"
+    path=$(dirname "${path}")
+    path=$(dirname "${path}")
+    realpath "${path}"
+  ]] % {
+    prefix = loader.prefix,
+    path   = path,
+  }, "r"))
+  source = assert (handler:read "*l")
+  handler:close ()
+end
 
 local parser = Arguments () {
-  name        = name,
+  name        = "cosy-check",
   description = "Perform various checks on the cosy sources",
 }
 parser:option "--test-format" {
@@ -39,11 +53,11 @@ function _G.string.split (s, delimiter)
 end
 
 -- Compute path:
-local main = package.searchpath ("cosy.check", package.path)
+local main = package.searchpath ("cosy.check.cli", package.path)
 if main:sub (1, 2) == "./" then
   main = Lfs.currentdir () .. "/" .. main:sub (3)
 end
-main = main:gsub ("/check/init.lua", "")
+main = main:gsub ("/check/cli.lua", "")
 
 local status = true
 
@@ -52,15 +66,10 @@ local status = true
 
 do
   status = os.execute ([[
-#! /bin/bash
-
-cosy="{{{path}}}"
-cosy=$(dirname "${cosy}")
-cosy=$(dirname "${cosy}")
-sourcedirectory=$(readlink "${cosy}")
-luacheck --std max --std +busted "${sourcedirectory}"/*/*.lua
+    "{{{prefix}}}/bin/luacheck" --std max --std +busted "{{{source}}}"
   ]] % {
-    path = package.searchpath ("cosy.check", package.path),
+    prefix = prefix,
+    source = source,
   }) and status
 end
 
@@ -78,10 +87,12 @@ do
         print ("Testing {{{module}}} module:" % {
           module = module,
         })
-        status = os.execute ([[ lua {{{path}}}/test.lua --verbose ]] % {
-          path = path,
+        status = os.execute ([[ "{{{prefix}}}/bin/lua" {{{path}}}/test.lua --verbose ]] % {
+          prefix = prefix,
+          path   = path,
         }) and status
-        status = os.execute ([[ lua {{{path}}}/test.lua --verbose --coverage --output={{{format}}} >> {{{output}}} ]] % {
+        status = os.execute ([[ "{{{prefix}}}/bin/lua" {{{path}}}/test.lua --verbose --coverage --output={{{format}}} >> {{{output}}} ]] % {
+          prefix   = prefix,
           path     = path,
           format   = arguments.test_format,
           output   = "test/" .. tostring (test_id),
@@ -123,7 +134,7 @@ do
     then
       current = line
       if current ~= "Summary" then
-        local filename = line:match (prefix .. "/local/cosy/[^/]+/share/lua/[^/]+/(.*)")
+        local filename = line:match "/(cosy/.-%.lua)$"
         if filename and filename:match "^cosy" then
           local parts = {}
           for part in filename:gmatch "[^/]+" do
@@ -138,7 +149,7 @@ do
     elseif output then
       output:write (line .. "\n")
     else
-      local filename = line:match (prefix .. "/local/cosy/[^/]+/share/lua/[^/]+/(.*)")
+      local filename = line:match "/(cosy/.-%.lua)$"
       if filename and filename:match "^cosy" then
         line = line:gsub ("\t", " ")
         local parts = line:split " "
@@ -313,22 +324,16 @@ do
   -- We know that we are in developper mode. Thus, there is a link to the user
   -- sources of cosy library.
   if os.execute "command -v shellcheck > /dev/null 2>&1" then
-    local script = [[
-#! /bin/bash
-
-cosy="{{{path}}}"
-cosy=$(dirname "${cosy}")
-cosy=$(dirname "${cosy}")
-sourcedirectory=$(readlink "${cosy}")
-shellcheck --exclude=SC2024 "${sourcedirectory}/../../bin/"*
+    status = os.execute ([[
+source "{{{prefix}}}/bin/realpath.sh"
+shellcheck --exclude=SC2024 $(realpath "{{{path}}}")/../../bin/*
     ]] % {
-      path = package.searchpath ("cosy.check", package.path),
-    }
-    local file = io.open ("sc-script", "w")
-    file:write (script)
-    file:close ()
-    status = (os.execute [[ bash sc-script ]]) and status
+      prefix = loader.prefix,
+      path   = source,
+    }) and status
   end
 end
+
+os.execute (prefix .. [[/bin/cosy-server stop --force ]])
 
 os.exit (status and 0 or 1)
