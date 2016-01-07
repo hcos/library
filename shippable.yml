@@ -13,11 +13,8 @@ before_script:
   - mkdir -p  output
 
 install:
-  - luarocks install luacheck
-  - luarocks install busted
-  - luarocks install luacov
-  - luarocks install luacov-coveralls
   - ./bin/build-server --prefix=$HOME/cosy
+  - $HOME/cosy/bin/luarocks install luacov-coveralls
 
 script:
   - ${HOME}/cosy/bin/cosy-check  output --test-format=junit
