@@ -2,21 +2,20 @@
 
 if [ "$#" -lt 2 ]; then
   echo "usage: $0 path/to/cosy server-url"
-  echo "ex: $0 /home/cosy/bin/cosy http://public.cosyverif.org"
+  echo "for instance: $0 /home/cosy/bin/cosy http://public.cosyverif.org"
   exit
 fi
 
 cosy="$1"
 url="$2"
 
-paths=$(dirname "${cosy}")
-source "${paths}/cosy-path"
+bin_dir=$(dirname "${cosy}")
 
 passwords=$(mktemp 2>/dev/null || mktemp -t cosy-user)
 echo "password" >> "${passwords}"
 echo "password" >> "${passwords}"
 
-token=$(luajit -e " \
+token=$("${bin_dir}/lua" -e " \
 local file = io.open '${HOME}/.cosy/server.data' \
 if file then
   local data = file:read '*all' \
@@ -24,8 +23,8 @@ if file then
   print (data.token)
 end")
 if [ "${token}" = "" ]; then
-  echo -n "Administration token? "
-  read token
+  echo "No administration token found"
+  exit 1
 fi
 
 #echo "Stopping daemon:"
