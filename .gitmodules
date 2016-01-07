@@ -1,6 +1,3 @@
-[submodule "luarocks"]
-	path = luarocks
-	url = https://github.com/keplerproject/luarocks.git
 [submodule "redis-lua"]
 	path = redis-lua
 	url = https://github.com/nrk/redis-lua.git
@@ -10,6 +7,3 @@
 [submodule "sh-realpath"]
 	path = sh-realpath
 	url = https://github.com/mkropat/sh-realpath
-[submodule "lua"]
-	path = lua
-	url = https://github.com/lua/lua.git
