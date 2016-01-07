@@ -15,6 +15,8 @@ before_script:
 install:
   - ./bin/build-server --prefix=$HOME/cosy
   - $HOME/cosy/bin/lua -e "print (package.path); print (package.cpath)"
+  - ls $HOME/cosy/lib/lua/5.2
+  - $HOME/cosy/bin/lua -e "require 'bcrypt'"
 
 script:
   - ${HOME}/cosy/bin/cosy-check  output --test-format=junit
