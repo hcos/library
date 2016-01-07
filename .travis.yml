@@ -46,6 +46,7 @@ before_script:
 
 install:
   - ./bin/build-server --prefix=$HOME/cosy --in-ci
+  - $HOME/bin/lua -e "print (package.path); print (package.cpath)"
 
 script:
   - ${HOME}/cosy/bin/cosy-check  output --test-format=junit
