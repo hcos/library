@@ -1,3 +1,9 @@
+package.loaded ["copas"     ] = nil
+package.loaded ["copas.ev"  ] = nil
+package.loaded ["ev"        ] = nil
+package.loaded ["hotswap.ev"] = nil
+package.loaded ["hotswap"   ] = nil
+
 local Scheduler = require "copas.ev"
 local Hotswap   = require "hotswap.ev".new {
   loop = Scheduler._loop,
@@ -87,17 +93,21 @@ local function call_parameters (method, parameters)
 end
 
 function Server.start ()
+  Scheduler._loop:fork ()
   App.server            = {}
   App.server.passphrase = Digest (Random ())
   App.server.token      = Token.administration ()
   local addserver       = Scheduler.addserver
+
   Scheduler.addserver   = function (s, f)
     local ok, port = s:getsockname ()
     if ok then
-      App.server.port = port
+      App.server.socket = s
+      App.server.port   = port
     end
     addserver (s, f)
   end
+
   Server.ws = Websocket.server.copas.listen {
     interface = Configuration.server.interface,
     port      = Configuration.server.port,
@@ -226,6 +236,7 @@ function Server.start ()
     }
   }
   Scheduler.addserver = addserver
+
   Logger.debug {
     _    = i18n ["websocket:listen"],
     host = Configuration.server.interface,
@@ -251,11 +262,9 @@ function Server.start ()
       token     = Configuration.server.token,
       interface = Configuration.server.interface,
       port      = Configuration.server.port,
-      pid       = Posix.getpid (),
+      pid       = Posix.getpid "pid",
     })
-    os.execute ([[ chmod 0600 {{{file}}} ]] % {
-      file = Configuration.server.data,
-    })
+    Posix.chmod (Configuration.server.data, "0600")
   end
 
   Scheduler.loop ()
@@ -263,8 +272,8 @@ end
 
 function Server.stop ()
   os.remove (Configuration.server.data)
+  Scheduler.removeserver (App.server.socket)
   Nginx.stop ()
-  os.exit (0)
 end
 
 return Server

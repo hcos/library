@@ -1,5 +1,3 @@
-#! /usr/bin/env lua
-
 local loader        = require "cosy.loader.lua" {
   logto = false,
 }
@@ -9,6 +7,7 @@ local I18n          = loader.load "cosy.i18n"
 local Library       = loader.load "cosy.library"
 local Arguments     = loader.require "argparse"
 local Colors        = loader.require "ansicolors"
+local Posix         = loader.require "posix"
 
 Configuration.load {
   "cosy.nginx", -- TODO: check
@@ -16,15 +15,13 @@ Configuration.load {
 }
 
 local i18n   = I18n.load {
-  "cosy.cli",
+  "cosy.client",
   "cosy.server",
 }
 i18n._locale = Configuration.server.locale
 
-local name = os.getenv "COSY_PREFIX" .. "/bin/cosy-server"
-name = name:gsub (os.getenv "HOME", "~")
 local parser = Arguments () {
-  name        = name,
+  name        = "cosy-server",
   description = i18n ["server:command"] % {},
 }
 local start = parser:command "start" {
@@ -42,6 +39,9 @@ local stop = parser:command "stop" {
 stop:flag "-f" "--force" {
   description = i18n ["flag:force"] % {},
 }
+local _ = parser:command "version" {
+  description = i18n ["server:version"] % {},
+}
 local arguments = parser:parse ()
 
 local data = File.decode (Configuration.server.data)
@@ -58,9 +58,7 @@ if arguments.start then
         administration = data.token,
       }
       if not result then
-        os.execute ([[ kill -s KILL {{{pid}}} 2> /dev/null ]] % {
-          pid = data.pid,
-        })
+        Posix.kill (data.pid, 9) -- kill
       end
     else
       print (Colors ("%{black redbg}" .. i18n ["failure"] % {}),
@@ -83,11 +81,16 @@ if arguments.start then
 
   os.remove (Configuration.server.log )
   os.remove (Configuration.server.data)
-  os.execute [[ lua -e 'require "cosy.server".start ()' & ]]
+
+  if Posix.fork () == 0 then
+    local Server = loader.require "cosy.server"
+    Server.start ()
+    os.exit (0)
+  end
   local tries = 0
   local serverdata, nginxdata
   repeat
-    os.execute ([[sleep {{{time}}}]] % { time = 0.5 })
+    Posix.sleep (1)
     serverdata = File.decode (Configuration.server.data)
     nginxdata  = File.decode (Configuration.http  .pid)
     tries      = tries + 1
@@ -119,19 +122,56 @@ elseif arguments.stop then
   end
   if not client then
     if arguments.force and data then
-      os.execute ([[ kill -s KILL {{{pid}}} 2> /dev/null ]] % {
-        pid = data.pid,
-      })
+      Posix.kill (data.pid, 9) -- kill
+      local nginx_file = io.open (Configuration.http.pid, "r")
+      local nginx_pid  = nginx_file:read "*a"
+      nginx_file:close ()
+      Posix.kill (nginx_pid:match "%S+", 15) -- term
       print (Colors ("%{black greenbg}" .. i18n ["success"] % {}))
       os.exit (0)
     elseif arguments.force then
-      print (Colors ("%{black greenbg}" .. i18n ["success"] % {}))
+      print (Colors ("%{black redbg}" .. i18n ["failure"] % {}))
       os.exit (0)
     else
       print (Colors ("%{black redbg}" .. i18n ["failure"] % {}),
              Colors ("%{red blackbg}" .. i18n ["server:unreachable"] % {}))
       os.exit (1)
     end
+
   end
+
+elseif arguments.version then
+
+  local path  = package.searchpath ("cosy.server.cli", package.path)
+  local parts = {}
+  for part in path:gmatch "[^/]+" do
+    parts [#parts+1] = part
+  end
+  parts [#parts] = nil
+  parts [#parts] = nil
+  path = (path:find "^/" and "/" or "") .. table.concat (parts, "/")
+  local handler = assert (io.popen ([[
+    source "{{{prefix}}}/bin/realpath.sh"
+    cd $(realpath "{{{path}}}")
+    git describe
+  ]] % {
+    prefix = loader.prefix,
+    path   = path,
+  }, "r"))
+  local result, err = assert (handler:read "*a")
+  handler:close ()
+  if result then
+    print (result:match "%S+")
+    print (Colors ("%{black greenbg}" .. i18n ["success"] % {}))
+    os.exit (0)
+  else
+    print (Colors ("%{black redbg}" .. i18n ["failure"] % {}),
+           Colors ("%{red blackbg}" .. err))
+    os.exit (1)
+  end
+
+else
+
+  assert (false)
 
 end
