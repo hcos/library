@@ -105,7 +105,16 @@ function install_lua () {
     >> "${cosy_log}" 2>&1 \
     && echo -e "${green}success${nc}" \
     || echo -e "${red}failure${nc}"
-  dependencies=(luasec luacheck busted luacov argparse luafilesystem serpent)
+  dependencies=(
+    argparse
+    busted
+    luacheck
+    luacov
+    luacov-coveralls
+    luafilesystem
+    luasec
+    serpent
+  )
   for dependency in ${dependencies[*]}; do
     if "${cosy_prefix}/bin/luarocks" list --porcelain \
         >> "${cosy_log}" 2>&1 \
