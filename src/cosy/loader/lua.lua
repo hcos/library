@@ -4,6 +4,7 @@ then
 end
 
 return function (t)
+
   t = t or {}
   local loader   = {}
   local modules  = setmetatable ({}, { __mode = "kv" })
@@ -45,5 +46,16 @@ return function (t)
   loader.hotswap.preload ["websocket.server_copas"] = function ()
     return loader.require "cosy.loader.patches.server_copas"
   end
+
+  local path = package.searchpath ("cosy.loader.lua", package.path)
+  local parts = {}
+  for part in path:gmatch "[^/]+" do
+    parts [#parts+1] = part
+  end
+  for i = #parts, #parts-5, -1 do
+    parts [i] = nil
+  end
+  loader.prefix = (path:find "^/" and "/" or "") .. table.concat (parts, "/")
+
   return loader
 end
