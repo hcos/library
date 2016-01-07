@@ -4,8 +4,8 @@ return function (loader)
   local Default       = loader.load "cosy.configuration.layers".default
   local I18n          = loader.load "cosy.i18n"
   local Logger        = loader.load "cosy.logger"
-  local Scheduler     = loader.load "cosy.scheduler"
   local Lfs           = loader.require "lfs"
+  local Posix         = loader.require "posix"
 
   Configuration.load {
     "cosy.nginx",
@@ -215,17 +215,12 @@ http {
       file:close ()
       resolver = table.concat (result, " ")
     end
-    os.execute ([[
-if [ ! -d {{{directory}}} ]; then
-  mkdir -p {{{directory}}}
-fi
-if [ ! -d {{{uploads}}} ]; then
-  mkdir -p {{{uploads}}}
-fi
-    ]] % {
-      directory = Configuration.http.directory,
-      uploads   = Configuration.http.uploads,
-    })
+    if not Lfs.attributes (Configuration.http.directory, "mode") then
+      Lfs.mkdir (Configuration.http.directory)
+    end
+    if not Lfs.attributes (Configuration.http.uploads, "mode") then
+      Lfs.mkdir (Configuration.http.uploads)
+    end
     local locations = {}
     for url, remote in pairs (Configuration.dependencies) do
       if type (remote) == "string" and remote:match "^http" then
@@ -271,71 +266,47 @@ fi
   function Nginx.start ()
     Nginx.stop      ()
     Nginx.configure ()
-    os.execute ([[
-      {{{nginx}}} -p {{{directory}}} -c {{{configuration}}} > {{{log}}} 2>&1
-    ]] % {
-      nginx         = Configuration.http.nginx .. "/sbin/nginx",
-      directory     = Configuration.http.directory,
-      configuration = Configuration.http.configuration,
-      log           = Configuration.http.log,
-    })
+    if Posix.fork () == 0 then
+      Posix.execp (Configuration.http.nginx .. "/sbin/nginx", {
+        "-q",
+        "-p", Configuration.http.directory,
+        "-c", Configuration.http.configuration,
+      })
+    end
     Nginx.stopped = false
   end
 
+  local function getpid ()
+    local nginx_file = io.open (Configuration.http.pid, "r")
+    if nginx_file then
+      local pid = nginx_file:read "*a"
+      nginx_file:close ()
+      return pid:match "%S+"
+    end
+  end
+
   function Nginx.stop ()
-    os.execute ([[
-      [ -f {{{pid}}} ] && {
-        kill -s QUIT $(cat {{{pid}}})
-      }
-    ]] % {
-      pid = Configuration.http.pid,
-    })
-    os.remove (Configuration.http.pid)
+    local pid = getpid ()
+    if pid then
+      Posix.kill (pid, 15) -- term
+      Posix.wait (pid)
+    end
     os.remove (Configuration.http.configuration)
-    os.remove (Configuration.http.log)
-    os.execute ([[
-      rm -rf {{{directory}}}
-    ]] % {
-      directory = Configuration.http.directory,
-    })
     Nginx.directory = nil
     Nginx.stopped   = true
   end
 
   function Nginx.update ()
     Nginx.configure ()
-    os.execute ([[
-      [ -f {{{pidfile}}} ] && {
-        kill -s HUP $(cat {{{pidfile}}})
-      }
-    ]] % {
-      pidfile = Configuration.http.pid,
-    })
+    local pid = getpid ()
+    if pid then
+      Posix.kill (pid, 1) -- hup
+    end
   end
 
   loader.hotswap.on_change ["cosy:configuration"] = function ()
     Nginx.update ()
   end
-
-  Scheduler.addthread (function ()
-    repeat
-      local count = 0
-      for entry in Lfs.dir (Configuration.http.uploads) do
-        if entry ~= "." and entry ~= ".." then
-          local filename     = Configuration.http.uploads .. "/" .. entry
-          local modification = Lfs.attributes (filename, "modification")
-          if os.difftime (os.time (), modification) > 2 * Configuration.upload.timeout then
-            os.remove (filename)
-          end
-          count = count + 1
-          Scheduler.sleep (Configuration.upload.timeout / count / 2)
-        end
-      end
-      if count == 0 then
-        Scheduler.sleep (Configuration.upload.timeout)
-      end
-    until Nginx.stopped
-  end)
 
   return Nginx
 
