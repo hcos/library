@@ -2,27 +2,63 @@ os:
   - linux
   - osx
 osx_image: xcode7.2b1
-sudo: required
 dist: trusty
-language: C
 
-install:
-  - ./bin/build-client --in-ci
-  - ./bin/build-server --prefix=$HOME/cosy/server --in-ci
+sudo: false
+language: python
+
+services:
+  - redis-server
+
+addons:
+  apt:
+    packages:
+      - git
+      - make
+      - clang
+      - gcc
+      - diffutils
+      - patch
+      - curl
+      - unzip
+      - perl
+      - build-essential
+      - wget
+      - python
+      - libc6-dev
+      - libssl-dev
+      - libev-dev
+      - libreadline-dev
+      - libncurses5-dev
+      - libpcre3-dev
+      - redis-server
+      - imagemagick
+
+before_install:
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew update; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew install openssl libev pcre python redis imagemagick wget; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew link --force openssl; fi
+  - pip install hererocks
 
 before_script:
-  - ${HOME}/cosy/server/local/cosy/5.1/bin/luarocks list
-  - ${HOME}/cosy/server/local/cosy/5.2/bin/luarocks list
   - rm    -rf output
-  - mkdir -p  output/server
-  - redis-server --save "" &
-  - sleep 1
+  - mkdir -p  output
+
+install:
+  - luarocks install luacheck
+  - luarocks install busted
+  - luarocks install luacov
+  - luarocks install luacov-coveralls
+  - ./bin/build-server --prefix=$HOME/cosy --in-ci
 
 script:
-  - ${HOME}/cosy/server/bin/cosy-check  output/server --test-format=junit
-  - ${HOME}/cosy/server/bin/cosy-server start --clean
-  - ./tests/user.sh ${HOME}/cosy/server/bin/cosy http://127.0.0.1:8080/
+  - ${HOME}/cosy/bin/cosy-check  output --test-format=junit
+  - ${HOME}/cosy/bin/cosy-server start --clean
+  - ./tests/user.sh ${HOME}/cosy/bin/cosy http://127.0.0.1:8080/
   - ${HOME}/cosy/server/bin/cosy-server stop
+
+after_success:
+  - luacov-coveralls --excluse "*" --include "cosy" --exclude "test"
 
 notifications:
   recipients:
