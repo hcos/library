@@ -46,7 +46,6 @@ before_script:
 
 install:
   - ./bin/build-server --prefix=$HOME/cosy --in-ci
-  - $HOME/cosy/bin/luarocks install luacov-coveralls
 
 script:
   - ${HOME}/cosy/bin/cosy-check  output --test-format=junit
