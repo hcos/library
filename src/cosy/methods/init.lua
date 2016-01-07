@@ -15,6 +15,7 @@ return function (loader)
   local Token         = loader.load "cosy.token"
   local Value         = loader.load "cosy.value"
   local Layer         = loader.require "layeredata"
+  local Posix         = loader.require "posix"
   local Websocket     = loader.require "websocket"
 
   Configuration.load {
@@ -128,14 +129,12 @@ return function (loader)
         authentication = Parameters.token.authentication,
       }
     })
-    local server_socket, server_port
+    local server_socket
     local running       = Scheduler.running ()
     local results       = {}
     local addserver     = Scheduler.addserver
     Scheduler.addserver = function (s, f)
-      local _, port = assert (s:getsockname ())
       server_socket = s
-      server_port   = port
       addserver (s, f)
     end
     Websocket.server.copas.listen {
@@ -157,9 +156,11 @@ return function (loader)
       }
     }
     Scheduler.addserver = addserver
-    os.execute ([[lua -e '_G.port = {{{port}}}; require "cosy.methods.filter"' &]] % {
-      port = server_port,
-    })
+    local pid = Posix.fork ()
+    if pid == 0 then
+      loader.require "cosy.methods.filter"
+      os.exit (0)
+    end
     return function ()
       repeat
         local result = results [1]
