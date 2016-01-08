@@ -258,7 +258,8 @@ http {
       cpath          = package.cpath,
       redirects      = table.concat (locations, "\n"),
     }
-    local file = io.open (Configuration.http.configuration, "w")
+    local file, err = io.open (Configuration.http.configuration, "w")
+    print (file, err)
     file:write (configuration)
     file:close ()
   end
