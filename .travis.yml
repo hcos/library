@@ -5,39 +5,12 @@ osx_image: xcode7.2b1
 sudo: required
 dist: trusty
 
-services:
-  - redis-server
-
-addons:
-  apt:
-    packages:
-      - git
-      - make
-      - clang
-      - gcc
-      - diffutils
-      - patch
-      - curl
-      - unzip
-      - perl
-      - build-essential
-      - wget
-      - python
-      - libc6-dev
-      - libssl-dev
-      - libev-dev
-      - libreadline-dev
-      - libncurses5-dev
-      - libpcre3-dev
-      - redis-server
-      - imagemagick
-
-before_script:
-  - rm    -rf output
-  - mkdir -p  output
-
 install:
   - ./bin/build-server --prefix=$HOME/cosy --in-ci
+
+before_script:
+  - rm -rf output && mkdir -p output
+  - redis-server & sleep 1
 
 script:
   - ${HOME}/cosy/bin/cosy-check  --output=output --test-format=junit
