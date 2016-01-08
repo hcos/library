@@ -38,6 +38,8 @@ function Cli.configure (cli, arguments)
   local File          = loader.load "cosy.file"
   local I18n          = loader.load "cosy.i18n"
 
+  Lfs.mkdir (os.getenv "HOME" .. "/.cosy")
+
   Configuration.load {
     "cosy.client",
   }
@@ -61,8 +63,6 @@ function Cli.configure (cli, arguments)
     end
     _error (err)
   end
-
-  Lfs.mkdir (os.getenv "HOME" .. "/.cosy")
 
   local default_server = Cli.default_server
   local default_locale = Cli.default_locale

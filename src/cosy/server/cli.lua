@@ -7,7 +7,10 @@ local I18n          = loader.load "cosy.i18n"
 local Library       = loader.load "cosy.library"
 local Arguments     = loader.require "argparse"
 local Colors        = loader.require "ansicolors"
+local Lfs           = loader.require "lfs"
 local Posix         = loader.require "posix"
+
+Lfs.mkdir (os.getenv "HOME" .. "/.cosy")
 
 Configuration.load {
   "cosy.nginx", -- TODO: check
