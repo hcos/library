@@ -100,6 +100,12 @@ do
           format   = arguments.test_format,
           output   = "test/" .. tostring (test_id),
         }) and status
+        os.execute ([[ "{{{prefix}}}/bin/busted" --verbose --coverage --pattern=test "{{{path}}}" > /dev/null ]] % {
+          prefix   = loader.prefix,
+          path     = path,
+          format   = arguments.test_format,
+          output   = "test/" .. tostring (test_id),
+        })
         test_id = test_id + 1
       end
     end
