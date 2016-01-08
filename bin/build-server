@@ -82,6 +82,7 @@ function install_dependencies ()
                                  libc6-dev libssl-dev libev-dev \
                                  libreadline-dev libncurses5-dev libpcre3-dev \
                                  redis-server imagemagick
+      pip install hererocks
       ;;
     "Darwin")
       HOMEBREW_PREFIX=$(brew config | grep "HOMEBREW_PREFIX" | tr -d ' \t' | cut -d ":" -f 2)
