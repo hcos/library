@@ -7,10 +7,7 @@ before_script:
 install:
   - sudo apt-get update  -y
   - sudo apt-get install -y redis-server
-  - ./bin/build-server --prefix=$HOME/cosy
-  - $HOME/cosy/bin/lua -e "print (package.path); print (package.cpath)"
-  - ls $HOME/cosy/lib/lua/5.2
-  - $HOME/cosy/bin/lua -e "require 'bcrypt'"
+  - ./bin/build-server --prefix=$HOME/cosy --in-ci
 
 before_script:
   - redis-server &
