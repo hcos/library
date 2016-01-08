@@ -14,12 +14,13 @@ before_script:
   - sleep 1
 
 script:
-  - ${HOME}/cosy/bin/cosy-check  output --test-format=junit
+  - ${HOME}/cosy/bin/cosy-check  --output=output --test-format=junit
   - ${HOME}/cosy/bin/cosy-server start --clean
   - ./tests/user.sh ${HOME}/cosy/bin/cosy http://127.0.0.1:8080/
   - ${HOME}/cosy/server/bin/cosy-server stop
 
 after_script:
+  - ls output/
   - for file in output/test/*; do mv ${file} shippable/testresults/$(basename ${file}).xml; done
 
 notifications:
