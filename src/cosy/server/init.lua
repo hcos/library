@@ -3,7 +3,8 @@ local Hotswap   = require "hotswap.ev".new {
   loop = Scheduler._loop,
 }
 local loader = require "cosy.loader.lua" {
-  logto     = os.getenv "HOME" .. "/.cosy/server.log",
+  alias     = _G.cosy_server_alias or "default",
+  logto     = false,
   hotswap   = Hotswap,
   scheduler = Scheduler,
 }
@@ -23,10 +24,21 @@ local Layer         = loader.require "layeredata"
 local Posix         = loader.require "posix"
 local Websocket     = loader.require "websocket"
 
-Configuration.load "cosy.server"
+Configuration.load {
+  "cosy.server",
+  "cosy.nginx",
+}
+
+loader.logto = Configuration.server.log
+Logger.update ()
 
 local i18n   = I18n.load "cosy.server"
 i18n._locale = Configuration.locale
+
+do
+  local data = File.decode (Configuration.server.data) or {}
+  Configuration.http.port = data.http_port or Configuration.http.port
+end
 
 local Server = {}
 
@@ -253,6 +265,11 @@ function Server.start ()
 
   do
     File.encode (Configuration.server.data, {
+      alias     = loader.alias,
+      http      = {
+        port      = Configuration.http.port,
+        interface = Configuration.http.interface,
+      },
       token     = Configuration.server.token,
       interface = Configuration.server.interface,
       port      = Configuration.server.port,

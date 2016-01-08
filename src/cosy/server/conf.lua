@@ -8,8 +8,8 @@ return function (loader)
     retry     = 5,
     name      = nil,
     locale    = (os.getenv "LANG" or "en"):match "[^%.]+":gsub ("_", "-"),
-    log       = os.getenv "HOME" .. "/.cosy/server.log",
-    data      = os.getenv "HOME" .. "/.cosy/server.data",
+    log       = loader.home .. "/server.log",
+    data      = loader.home .. "/server.data",
   }
 
   Default.recaptcha = {
