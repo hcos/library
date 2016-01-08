@@ -6,6 +6,7 @@ local Lustache  = loader.require "lustache"
 local Colors    = loader.require 'ansicolors'
 local Reporter  = loader.require "luacov.reporter"
 local Arguments = loader.require "argparse"
+local Socket    = loader.require "socket"
 
 local parser = Arguments () {
   name        = "cosy-check",
@@ -21,8 +22,6 @@ parser:option "--output" {
 }
 
 local arguments = parser:parse ()
-
-os.execute (loader.prefix .. [[/bin/cosy-server start --force --clean ]])
 
 local source
 do
@@ -64,6 +63,8 @@ main = main:gsub ("/check/cli.lua", "")
 
 local status = true
 
+Lfs.mkdir (arguments.output)
+
 -- luacheck
 -- ========
 
@@ -80,7 +81,13 @@ end
 -- ======
 
 do
-  Lfs.mkdir "test"
+  local server = Socket.bind ("*", 0)
+  local _, port = server:getsockname ()
+  server:close ()
+  os.execute (loader.prefix .. [[/bin/cosy-server start --force --clean --alias=__busted__ --port={{{port}}}]] % {
+    port = port,
+  })
+  Lfs.mkdir (arguments.output .. "/test")
   local test_id = 1
   for module in Lfs.dir (main) do
     local path = main .. "/" .. module
@@ -108,6 +115,7 @@ do
       end
     end
   end
+  os.execute (loader.prefix .. [[/bin/cosy-server stop --force --alias=__busted__]])
   print ()
 end
 
@@ -331,16 +339,36 @@ do
   -- We know that we are in developper mode. Thus, there is a link to the user
   -- sources of cosy library.
   if os.execute "command -v shellcheck > /dev/null 2>&1" then
-    status = os.execute ([[
-. "{{{prefix}}}/bin/realpath.sh"
-shellcheck --exclude=SC2024 $(realpath "{{{path}}}")/../../bin/*
+    local s = os.execute ([[
+      . "{{{prefix}}}/bin/realpath.sh"
+      shellcheck --exclude=SC2024 $(realpath "{{{path}}}")/../../bin/*
     ]] % {
       prefix = loader.prefix,
       path   = source,
-    }) and status
+    })
+    if s then
+      print (Colors ("Shellcheck detects %{bright green}no problems%{reset}."))
+    end
+    status = s and status
   end
 end
 
-os.execute (loader.prefix .. [[/bin/cosy-server stop --force ]])
+-- Scenarios
+-- ==========
+
+do
+  local server  = Socket.bind ("*", 0)
+  local _, port = server:getsockname ()
+  server:close ()
+
+  os.execute (loader.prefix .. [[/bin/cosy-server start --force --clean --alias=__scenario__ --port={{{port}}} ]] % {
+    port = port,
+  })
+  status = os.execute ([[ ./tests/user.sh __scenario__ "{{{prefix}}}/bin/cosy" --alias=__scenario__ --server="http://127.0.0.1:{{{port}}}" ]] % {
+    prefix = loader.prefix,
+    port   = port,
+  }) and status
+  os.execute (loader.prefix .. [[/bin/cosy-server stop --force --alias=__scenario__ ]])
+end
 
 os.exit (status and 0 or 1)
