@@ -14,7 +14,7 @@ local source
 do
   local path    = package.searchpath ("cosy.check.cli", package.path)
   local handler = assert (io.popen ([[
-    source "{{{prefix}}}/bin/realpath.sh"
+    . "{{{prefix}}}/bin/realpath.sh"
     path="{{{path}}}"
     path=$(dirname "${path}")
     path=$(dirname "${path}")
@@ -325,7 +325,7 @@ do
   -- sources of cosy library.
   if os.execute "command -v shellcheck > /dev/null 2>&1" then
     status = os.execute ([[
-source "{{{prefix}}}/bin/realpath.sh"
+. "{{{prefix}}}/bin/realpath.sh"
 shellcheck --exclude=SC2024 $(realpath "{{{path}}}")/../../bin/*
     ]] % {
       prefix = loader.prefix,

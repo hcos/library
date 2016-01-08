@@ -159,7 +159,7 @@ elseif arguments.version then
   parts [#parts] = nil
   path = (path:find "^/" and "/" or "") .. table.concat (parts, "/")
   local handler = assert (io.popen ([[
-    source "{{{prefix}}}/bin/realpath.sh"
+    . "{{{prefix}}}/bin/realpath.sh"
     cd $(realpath "{{{path}}}")
     git describe
   ]] % {
