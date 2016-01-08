@@ -139,15 +139,39 @@ function install_lua () {
        || echo -e "${red}failure${nc}"
     fi
   done
-  echo -n "  Installing sh-realpath... "
-  ( cp sh-realpath/realpath.sh "${cosy_prefix}/bin/"
-    chmod a+x "${cosy_prefix}/bin/realpath.sh"
-  ) >> "${cosy_log}" 2>&1 \
-    && echo -e "${green}success${nc}" \
-    || echo -e "${red}failure${nc}"
   echo -n "  Installing redis-lua (patched for cosy)... "
   ( cd redis-lua
     "${cosy_prefix}/bin/luarocks" make rockspec/redis-lua-scm-1.rockspec
+  ) >> "${cosy_log}" 2>&1 \
+    && echo -e "${green}success${nc}" \
+    || echo -e "${red}failure${nc}"
+  echo -n "Installing lua 5.1 and luarocks for nginx... "
+  hererocks "${cosy_temp}/lua_install" -r^ --lua="5.1" \
+    >> "${cosy_log}" 2>&1 \
+    && echo -e "${green}success${nc}" \
+    || echo -e "${red}failure${nc}"
+  nginx_dependencies=(
+    lua-cjson
+    lua-resty-http
+    md5
+  )
+  for dependency in ${nginx_dependencies[*]}; do
+    if "${cosy_temp}/lua_install/bin/luarocks" list --tree="${cosy_prefix}" --porcelain \
+        >> "${cosy_log}" 2>&1 \
+        | grep --silent "${dependency}"; then
+      echo "  Not installing ${dependency} as it is already installed."
+    else
+      echo -n "  Installing ${dependency} as it is not installed... "
+      # shellcheck disable=SC2086
+      "${cosy_temp}/lua_install/bin/luarocks" install --tree="${cosy_prefix}" "${dependency}" \
+        >> "${cosy_log}" 2>&1 \
+       && echo -e "${green}success${nc}" \
+       || echo -e "${red}failure${nc}"
+    fi
+  done
+  echo -n "Installing sh-realpath... "
+  ( cp sh-realpath/realpath.sh "${cosy_prefix}/bin/"
+    chmod a+x "${cosy_prefix}/bin/realpath.sh"
   ) >> "${cosy_log}" 2>&1 \
     && echo -e "${green}success${nc}" \
     || echo -e "${red}failure${nc}"
@@ -159,7 +183,7 @@ function install_lua () {
   ) >> "${cosy_log}" 2>&1 \
     && echo -e "${green}success${nc}" \
     || echo -e "${red}failure${nc}"
-  echo -n "  Installing cosy (this may take a while)... "
+  echo -n "Installing cosy (this may take a while)... "
   ( rm -rf "${cosy_prefix}/share/lua/${lua_version}/cosy"
     "${cosy_prefix}/bin/luarocks" make rockspec/cosyverif-master-1.rockspec
     rm -rf "${cosy_prefix}/share/lua/${lua_version}/cosy"
