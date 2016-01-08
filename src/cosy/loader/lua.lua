@@ -7,6 +7,10 @@ return function (t)
 
   t = t or {}
   local loader   = {}
+  for k, v in pairs (t) do
+    loader [k] = v
+  end
+  loader.home = os.getenv "HOME" .. "/.cosy/" .. (loader.alias or "default")
   local modules  = setmetatable ({}, { __mode = "kv" })
   loader.hotswap = t.hotswap
                 or require "hotswap".new {}
@@ -56,6 +60,10 @@ return function (t)
     parts [i] = nil
   end
   loader.prefix = (path:find "^/" and "/" or "") .. table.concat (parts, "/")
+
+  os.execute ([[ mkdir -p {{{home}}} ]] % {
+    home = loader.home,
+  })
 
   return loader
 end
