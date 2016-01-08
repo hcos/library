@@ -90,9 +90,8 @@ function install_dependencies ()
       export LD_LIBRARY_PATH="${HOMEBREW_PREFIX}/lib:${LD_LIBRARY_PATH}"
       export DYLD_LIBRARY_PATH="${HOMEBREW_PREFIX}/lib:${DYLD_LIBRARY_PATH}"
       brew update
-      brew install openssl libev pcre redis imagemagick wget
+      brew install openssl libev pcre python redis imagemagick wget
       brew link --force openssl
-      brew install python
       pip install hererocks
       ;;
     *)
