@@ -20,8 +20,11 @@ local Token         = loader.load "cosy.token"
 local Value         = loader.load "cosy.value"
 local App           = loader.load "cosy.configuration.layers".app
 local Layer         = loader.require "layeredata"
+local Lfs           = loader.require "lfs"
 local Posix         = loader.require "posix"
 local Websocket     = loader.require "websocket"
+
+Lfs.mkdir (os.getenv "HOME" .. "/.cosy")
 
 Configuration.load "cosy.server"
 

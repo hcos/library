@@ -62,6 +62,8 @@ function Cli.configure (cli, arguments)
     _error (err)
   end
 
+  Lfs.mkdir (os.getenv "HOME" .. "/.cosy")
+
   local default_server = Cli.default_server
   local default_locale = Cli.default_locale
 
