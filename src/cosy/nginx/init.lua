@@ -254,8 +254,8 @@ http {
       redis_host     = Configuration.redis.interface,
       redis_port     = Configuration.redis.port,
       redis_database = Configuration.redis.database,
-      path           = package.path,
-      cpath          = package.cpath,
+      path           = package. path:gsub ("5%.2", "5.1") .. ";" .. package. path,
+      cpath          = package.cpath:gsub ("5%.2", "5.1") .. ";" .. package.cpath,
       redirects      = table.concat (locations, "\n"),
     }
     local file = assert (io.open (Configuration.http.configuration, "w"))
