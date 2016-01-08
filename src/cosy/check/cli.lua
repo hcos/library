@@ -90,11 +90,11 @@ do
         print ("Testing {{{module}}} module:" % {
           module = module,
         })
-        status = os.execute ([[ "{{{prefix}}}/bin/lua" {{{path}}}/test.lua --verbose ]] % {
+        status = os.execute ([[ "{{{prefix}}}/bin/busted" --verbose --pattern=test "{{{path}}}" ]] % {
           prefix = loader.prefix,
           path   = path,
         }) and status
-        status = os.execute ([[ "{{{prefix}}}/bin/lua" {{{path}}}/test.lua --verbose --coverage --output={{{format}}} >> {{{output}}} ]] % {
+        status = os.execute ([[ "{{{prefix}}}/bin/busted" --verbose --output={{{format}}} --pattern=test "{{{path}}}" >> {{{output}}} ]] % {
           prefix   = loader.prefix,
           path     = path,
           format   = arguments.test_format,
