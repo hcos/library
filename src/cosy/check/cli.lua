@@ -7,8 +7,22 @@ local Colors    = loader.require 'ansicolors'
 local Reporter  = loader.require "luacov.reporter"
 local Arguments = loader.require "argparse"
 
-local prefix = loader.prefix
-os.execute (prefix .. [[/bin/cosy-server start --force --clean ]])
+local parser = Arguments () {
+  name        = "cosy-check",
+  description = "Perform various checks on the cosy sources",
+}
+parser:option "--test-format" {
+  description = "format for the test results (supported by busted)",
+  default     = "TAP",
+}
+parser:option "--output" {
+  description = "output directory",
+  default     = "output",
+}
+
+local arguments = parser:parse ()
+
+os.execute (loader.prefix .. [[/bin/cosy-server start --force --clean ]])
 
 local source
 do
@@ -26,17 +40,6 @@ do
   source = assert (handler:read "*l")
   handler:close ()
 end
-
-local parser = Arguments () {
-  name        = "cosy-check",
-  description = "Perform various checks on the cosy sources",
-}
-parser:option "--test-format" {
-  description = "format for the test results (supported by busted)",
-  default     = "TAP",
-}
-
-local arguments = parser:parse ()
 
 local string_mt = getmetatable ""
 
@@ -68,7 +71,7 @@ do
   status = os.execute ([[
     "{{{prefix}}}/bin/luacheck" --std max --std +busted "{{{source}}}"
   ]] % {
-    prefix = prefix,
+    prefix = loader.prefix,
     source = source,
   }) and status
 end
@@ -88,11 +91,11 @@ do
           module = module,
         })
         status = os.execute ([[ "{{{prefix}}}/bin/lua" {{{path}}}/test.lua --verbose ]] % {
-          prefix = prefix,
+          prefix = loader.prefix,
           path   = path,
         }) and status
         status = os.execute ([[ "{{{prefix}}}/bin/lua" {{{path}}}/test.lua --verbose --coverage --output={{{format}}} >> {{{output}}} ]] % {
-          prefix   = prefix,
+          prefix   = loader.prefix,
           path     = path,
           format   = arguments.test_format,
           output   = "test/" .. tostring (test_id),
@@ -334,6 +337,6 @@ shellcheck --exclude=SC2024 $(realpath "{{{path}}}")/../../bin/*
   end
 end
 
-os.execute (prefix .. [[/bin/cosy-server stop --force ]])
+os.execute (loader.prefix .. [[/bin/cosy-server stop --force ]])
 
 os.exit (status and 0 or 1)
