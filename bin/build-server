@@ -60,10 +60,20 @@ function error ()
 # Install dependencies:
 function install_dependencies ()
 {
-  if [ ! -z "${in_ci+x}" ]; then
+  echo -n "Installing development packages... "
+  if command -v apt-get; then
+    if sudo apt-get update; then
+      apt_available=true
+    fi
+  fi >> "${cosy_log}" 2>&1
+  if command -v brew; then
+    brew_available=true
+  fi >> "${cosy_log}" 2>&1
+  if [ -z "${apt_available}" ] && [ -z "${brew_available}" ]; then
+    echo -e "${green}skipped${nc}"
     return
   fi
-  echo -n "Installing development packages... "
+
   case "$(uname -s)" in
     "Linux")
       sudo apt-get update  --yes
