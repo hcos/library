@@ -1,15 +1,13 @@
 build_image: shippableimages/ubuntu1404_python
 
-before_script:
-  - rm    -rf output
-  - mkdir -p  output
-
 install:
   - sudo apt-get update  -y
   - sudo apt-get install -y redis-server
   - ./bin/build-server --prefix=$HOME/cosy --in-ci
 
 before_script:
+  - rm    -rf output
+  - mkdir -p  output
   - redis-server &
   - sleep 1
 
@@ -19,7 +17,11 @@ script:
   - ./tests/user.sh ${HOME}/cosy/bin/cosy http://127.0.0.1:8080/
   - ${HOME}/cosy/bin/cosy-server stop
 
-after_script:
+after_failure:
+  - cat ${HOME}/.cosy/nginx/access.log
+  - cat ${HOME}/.cosy/nginx/error.log
+
+after_success:
   - ls output/
   - for file in output/test/*; do mv ${file} shippable/testresults/$(basename ${file}).xml; done
 
@@ -29,4 +31,4 @@ notifications:
       - alban@linard.fr
       - leprieur@lipn.univ-paris13.fr
     on_success: change
-    on_failure: always
+    on_failure: change

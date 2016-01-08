@@ -45,6 +45,10 @@ script:
   - ./tests/user.sh ${HOME}/cosy/bin/cosy http://127.0.0.1:8080/
   - ${HOME}/cosy/bin/cosy-server stop
 
+after_failure:
+  - cat ${HOME}/.cosy/nginx/access.log
+  - cat ${HOME}/.cosy/nginx/error.log
+
 after_success:
   - luacov-coveralls --excluse "*" --include "cosy" --exclude "test"
 
@@ -54,4 +58,4 @@ notifications:
     - leprieur@lipn.univ-paris13.fr
   email:
     on_success: change
-    on_failure: always
+    on_failure: change
