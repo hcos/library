@@ -141,9 +141,6 @@ if arguments.start then
   until (serverdata and nginxdata) or tries == 5
   if serverdata and nginxdata then
     print (Colors ("%{black greenbg}" .. i18n ["success"] % {}))
-    local Value = loader.load "cosy.value"
-    print (Value.encode (nginxdata))
-    print (Value.encode (serverdata))
     os.exit (0)
   else
     print (Colors ("%{black redbg}" .. i18n ["failure"] % {}),
