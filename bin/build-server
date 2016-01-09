@@ -123,6 +123,7 @@ function install_lua () {
     luacov-coveralls
     luafilesystem
     luasec
+    lustache
     serpent
   )
   for dependency in ${dependencies[*]}; do
