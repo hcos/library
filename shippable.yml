@@ -18,7 +18,6 @@ after_failure:
   - cat ${HOME}/.cosy/__scenario__/nginx/error.log
 
 after_success:
-  - ls output/
   - for file in output/test/*; do mv ${file} shippable/testresults/$(basename ${file}).xml; done
 
 notifications:
