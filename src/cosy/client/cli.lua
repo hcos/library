@@ -8,6 +8,14 @@ function Cli.new ()
   return setmetatable ({}, Cli)
 end
 
+local function printerr (...)
+  local t = { ... }
+  for i = 1, #t do
+    t [i] = tostring (t [i])
+  end
+  io.stderr:write (table.concat (t, "\t") .. "\n")
+end
+
 -----------------------------
 --  While not found Cli tries to determine what server it will connect to
 --    by scanning in that order :
@@ -124,16 +132,16 @@ function Cli.configure (cli, arguments)
   local _error = error
   local function error (err)
     if type (err) == "table" and err._ then
-      print (Colors ("%{red blackbg}" .. i18n ["failure"] % {}))
-      print (Colors ("%{white redbg}" .. err._ % err))
+      printerr (Colors ("%{red blackbg}" .. i18n ["failure"] % {}))
+      printerr (Colors ("%{white redbg}" .. err._ % err))
     else
-      print ("An error happened. Maybe the client was unable to download sources from " .. (server or "no server") .. ".")
+      printerr ("An error happened. Maybe the client was unable to download sources from " .. (server or "no server") .. ".")
       local errorfile = os.tmpname ()
       local file      = io.open (errorfile, "w")
       file:write (tostring (err) .. "\n")
       file:write (debug.traceback () .. "\n")
       file:close ()
-      print ("See error file " .. Colors ("%{white redbg}" .. errorfile) .. " for more information.")
+      printerr ("See error file " .. Colors ("%{white redbg}" .. errorfile) .. " for more information.")
     end
     _error (err)
   end
@@ -252,8 +260,8 @@ function Cli.start (cli)
 
   local client = Library.connect (data.server, data)
   if not client then
-    print (Colors ("%{white redbg}" .. i18n ["failure"] % {}),
-           Colors ("%{white redbg}" .. i18n ["server:unreachable"] % {}))
+    printerr (Colors ("%{white redbg}" .. i18n ["failure"] % {}),
+              Colors ("%{white redbg}" .. i18n ["server:unreachable"] % {}))
     return false
   end
 
@@ -274,13 +282,13 @@ function Cli.start (cli)
       Commands.parse (commands)
       File.encode (Configuration.cli.data % { config = cli.config }, data)
     end, function (err)
-      print (Colors ("%{white redbg}" .. i18n ["error:unexpected"] % {}))
-      print (err)
-      print (debug.traceback ())
+      printerr (Colors ("%{white redbg}" .. i18n ["error:unexpected"] % {}))
+      printerr (err)
+      printerr (debug.traceback ())
     end)
   if not ok and result then
-    print (Colors ("%{red blackbg}" .. i18n ["failure"] % {}))
-    print (Colors ("%{white redbg}" .. i18n (result.error).message))
+    printerr (Colors ("%{red blackbg}" .. i18n ["failure"] % {}))
+    printerr (Colors ("%{white redbg}" .. i18n (result.error).message))
   end
   return ok
 end

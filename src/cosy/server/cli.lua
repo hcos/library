@@ -1,3 +1,11 @@
+local function printerr (...)
+  local t = { ... }
+  for i = 1, #t do
+    t [i] = tostring (t [i])
+  end
+  io.stderr:write (table.concat (t, "\t") .. "\n")
+end
+
 local arguments
 do
   local loader        = require "cosy.loader.lua" {
@@ -95,8 +103,8 @@ if arguments.start then
         Posix.kill (data.pid, 9) -- kill
       end
     else
-      print (Colors ("%{black redbg}" .. i18n ["failure"] % {}),
-             Colors ("%{red blackbg}" .. i18n ["server:already-running"] % {}))
+      printerr (Colors ("%{black redbg}" .. i18n ["failure"] % {}),
+                Colors ("%{red blackbg}" .. i18n ["server:already-running"] % {}))
       os.exit (1)
     end
   end
@@ -143,8 +151,8 @@ if arguments.start then
     print (Colors ("%{black greenbg}" .. i18n ["success"] % {}))
     os.exit (0)
   else
-    print (Colors ("%{black redbg}" .. i18n ["failure"] % {}),
-           Colors ("%{red blackbg}" .. i18n ["server:unreachable"] % {}))
+    printerr (Colors ("%{black redbg}" .. i18n ["failure"] % {}),
+              Colors ("%{red blackbg}" .. i18n ["server:unreachable"] % {}))
     os.exit (1)
   end
 
@@ -176,15 +184,15 @@ elseif arguments.stop then
         print (Colors ("%{black greenbg}" .. i18n ["success"] % {}))
         os.exit (0)
       else
-        print (Colors ("%{black redbg}" .. i18n ["failure"] % {}))
-        os.exit (0)
+        printerr (Colors ("%{black redbg}" .. i18n ["failure"] % {}))
+        os.exit (1)
       end
     elseif arguments.force then
-      print (Colors ("%{black redbg}" .. i18n ["failure"] % {}))
-      os.exit (0)
+      printerr (Colors ("%{black redbg}" .. i18n ["failure"] % {}))
+      os.exit (1)
     else
-      print (Colors ("%{black redbg}" .. i18n ["failure"] % {}),
-             Colors ("%{red blackbg}" .. i18n ["server:unreachable"] % {}))
+      printerr (Colors ("%{black redbg}" .. i18n ["failure"] % {}),
+                Colors ("%{red blackbg}" .. i18n ["server:unreachable"] % {}))
       os.exit (1)
     end
 
@@ -215,8 +223,8 @@ elseif arguments.version then
     print (Colors ("%{black greenbg}" .. i18n ["success"] % {}))
     os.exit (0)
   else
-    print (Colors ("%{black redbg}" .. i18n ["failure"] % {}),
-           Colors ("%{red blackbg}" .. err))
+    printerr (Colors ("%{black redbg}" .. i18n ["failure"] % {}),
+              Colors ("%{red blackbg}" .. err))
     os.exit (1)
   end
 
