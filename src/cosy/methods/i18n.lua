@@ -6,9 +6,6 @@ return function (loader)
   Configuration.load "cosy.methods"
 
   local result = {
-    ["translation:failure"] = {
-      en = "translation failed: {{{reason}}}",
-    },
     ["captcha:failure"] = {
       en = "captcha verification failed",
     },
@@ -23,9 +20,6 @@ return function (loader)
     },
     ["server:tos"] = {
       en = "show the terms of service of the server",
-    },
-    ["server:stop"] = {
-      en = "stop the server",
     },
     ["server:filter"] = {
       en = "run an iterator on the server",

@@ -27,7 +27,10 @@ return function (loader)
     "cosy.token",
   }
 
-  local i18n   = I18n.load "cosy.methods"
+  local i18n   = I18n.load {
+    "cosy.methods",
+    "cosy.server",
+  }
   i18n._locale = Configuration.locale
 
   -- Server

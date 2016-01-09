@@ -32,7 +32,9 @@ Configuration.load {
 loader.logto = Configuration.server.log
 Logger.update ()
 
-local i18n   = I18n.load "cosy.server"
+local i18n   = I18n.load {
+  "cosy.server",
+}
 i18n._locale = Configuration.locale
 
 do
