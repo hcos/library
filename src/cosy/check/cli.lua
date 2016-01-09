@@ -101,7 +101,7 @@ do
           prefix = loader.prefix,
           path   = path,
         }) and status
-        status = os.execute ([[ "{{{prefix}}}/bin/busted" --verbose --output={{{format}}} --pattern=test "{{{path}}}" >> {{{output}}} ]] % {
+        status = os.execute ([[ "{{{prefix}}}/bin/busted" --output={{{format}}} --pattern=test "{{{path}}}" > {{{output}}} 2> /dev/null ]] % {
           prefix   = loader.prefix,
           path     = path,
           format   = arguments.test_format,
