@@ -6,7 +6,8 @@ sudo: required
 dist: trusty
 
 install:
-  - ./bin/build-server --prefix=$HOME/cosy --in-ci
+  - ./bin/build-server --in-ci --prefix=$HOME/cosy
+  - ./bin/build-client --in-ci
 
 before_script:
   - rm -rf output && mkdir -p output

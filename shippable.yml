@@ -1,9 +1,8 @@
 build_image: shippableimages/ubuntu1404_python
 
 install:
-  - sudo apt-get update  -y
-  - sudo apt-get install -y redis-server
-  - ./bin/build-server --prefix=$HOME/cosy --in-ci
+  - ./bin/build-server --in-ci --prefix=$HOME/cosy
+  - ./bin/build-client --in-ci
 
 before_script:
   - rm -rf output && mkdir -p output
