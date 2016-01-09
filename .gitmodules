@@ -7,3 +7,6 @@
 [submodule "sh-realpath"]
 	path = sh-realpath
 	url = https://github.com/mkropat/sh-realpath
+[submodule "makeself"]
+	path = makeself
+	url = https://github.com/megastep/makeself.git
