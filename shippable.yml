@@ -12,8 +12,14 @@ script:
   - ${HOME}/cosy/bin/cosy-check --output=output --test-format=junit
 
 after_failure:
+  - ${HOME}/cosy/bin/cosy-server start --force --clean --port=8090
+  - curl -v http://127.0.0.1:8090/lua/dkjson
+  - curl -v http://localhost:8090/lua/dkjson
+  - ${HOME}/cosy/bin/cosy-server stop --force
+  - cat ${HOME}/.cosy/__busted__/nginx.conf
   - cat ${HOME}/.cosy/__busted__/nginx/access.log
   - cat ${HOME}/.cosy/__busted__/nginx/error.log
+  - cat ${HOME}/.cosy/__scenario__/nginx.conf
   - cat ${HOME}/.cosy/__scenario__/nginx/access.log
   - cat ${HOME}/.cosy/__scenario__/nginx/error.log
 
