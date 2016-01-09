@@ -13,8 +13,10 @@ script:
   - ${HOME}/cosy/bin/cosy-check --output=output --test-format=junit
 
 after_failure:
-  - cat ${HOME}/.cosy/nginx/access.log
-  - cat ${HOME}/.cosy/nginx/error.log
+  - cat ${HOME}/.cosy/__busted__nginx/access.log
+  - cat ${HOME}/.cosy/__busted__nginx/error.log
+  - cat ${HOME}/.cosy/__scenario__/access.log
+  - cat ${HOME}/.cosy/__scenario__/error.log
 
 after_success:
   - ls output/
