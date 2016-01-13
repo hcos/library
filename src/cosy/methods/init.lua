@@ -90,10 +90,17 @@ return function (loader)
 
   function Methods.server.information (request, store)
     Parameters.check (store, request, {})
-    return {
+    local result = {
       name    = Configuration.http.hostname,
       captcha = Configuration.recaptcha.public_key,
     }
+    local info = store / "info"
+    result ["#users"   ] = info ["#users"   ] or 0
+    result ["#projects"] = info ["#projects"] or 0
+    for id in Layer.pairs (Configuration.resource.project ["/"]) do
+      result ["#" .. id] = info ["#" .. id] or 0
+    end
+    return result
   end
 
   function Methods.server.tos (request, store)
@@ -262,6 +269,8 @@ return function (loader)
     user.reputation  = Configuration.reputation.initial
     user.status      = "active"
     user.type        = "user"
+    local info = store / "info"
+    info ["#users"] = (info ["#users"] or 0) + 1
     if try_only then
       return true
     end
@@ -597,6 +606,8 @@ return function (loader)
     local user = request.authentication.user
     local _ = store / "email" - user.email
     local _ = store / "data"  - user.identifier
+    local info = store / "info"
+    info ["#users"] = info ["#users"] - 1
   end
 
   -- Project
@@ -626,6 +637,8 @@ return function (loader)
     project.permissions = {}
     project.identifier  = request.identifier
     project.type        = "project"
+    local info = store / "info"
+    info ["#projects"] = (info ["#projects"] or 0) + 1
   end
 
   function Methods.project.delete (request, store)
@@ -650,6 +663,8 @@ return function (loader)
       }
     end
     local _ = - project
+    local info = store / "info"
+    info ["#projects"] = info ["#projects"] - 1
   end
 
   for id in Layer.pairs (Configuration.resource.project ["/"]) do
@@ -685,6 +700,8 @@ return function (loader)
       resource.type        = id
       resource.username    = user.username
       resource.projectname = project.projectname
+      local info = store / "info"
+      info ["#" .. id] = (info ["#" .. id] or 0) + 1
     end
 
     function methods.copy (request, store)
@@ -716,6 +733,8 @@ return function (loader)
       resource.type        = id
       resource.username    = user.username
       resource.projectname = project.projectname
+      local info = store / "info"
+      info ["#" .. id] = info ["#" .. id] + 1
     end
 
     function methods.delete (request, store)
@@ -740,6 +759,8 @@ return function (loader)
         }
       end
       local _ = user - resource.id
+      local info = store / "info"
+      info ["#" .. id] = info ["#" .. id] - 1
     end
   end
 
