@@ -69,7 +69,7 @@ local Hotswap   = require "hotswap.ev".new {
   loop = Scheduler._loop,
 }
 local loader    = require "cosy.loader.lua" {
-  alias     = arguments.aias,
+  alias     = arguments.alias,
   logto     = false,
   hotswap   = Hotswap,
   scheduler = Scheduler,
