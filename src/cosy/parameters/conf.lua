@@ -666,6 +666,27 @@ return function (loader)
     end
   end
 
+  -- Identification token
+  -- --------------------
+  do
+    Default.data.token.identification = {
+      __refines__ = {
+        this.data.token,
+      },
+    }
+    local checks = Default.data.token.identification.checks
+    checks [Layer.size (checks)+1] = function (t)
+      local request = t.request
+      local key     = t.key
+      local value   = request [key]
+      request [key] = value.data
+      return  value.type == "identification"
+          or  nil, {
+                _ = i18n ["check:token:invalid"],
+              }
+    end
+  end
+
   -- Validation token
   -- ----------------
   do
