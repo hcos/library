@@ -14,7 +14,7 @@ do
     ;;
     *)
       echo "Usage: "
-      echo "  install [--prefix=PREFIX] [--lua=LUA_VERSION] [--in-ci]"
+      echo "  install [--lua=LUA_VERSION] [--in-ci]"
       exit 1;
     ;;
   esac
