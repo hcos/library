@@ -198,25 +198,39 @@ return function (loader)
         local coroutine = Coromake ()
         result = results [1]
         table.remove (results, 1)
-        result.iterator = coroutine.wrap (function ()
-          repeat
-            while client._ws.status == "opened" and not results [1] do
-              Operation.receive (client)
-            end
-            local subresult = results [1]
-            if subresult == nil then
-              client._results [identifier] = nil
-              error {
-                _ = i18n ["server:timeout"],
-              }
-            else
-              if subresult.finished then
-                client._results [identifier] = nil
+        local token    = result.token
+        local iterator = setmetatable ({}, {
+          __call = function ()
+            repeat
+              local start_time = os.time ()
+              while client._ws.status == "opened"
+              and not results [1]
+              and os.time () - start_time <= Configuration.library.timeout do
+                Operation.receive (client)
               end
-              coroutine.yield (subresult)
-              table.remove (results, 1)
-            end
-          until subresult.finished
+              local subresult = results [1]
+              if subresult == nil then
+                client._results [identifier] = nil
+                error {
+                  _ = i18n ["server:timeout"],
+                }
+              else
+                if subresult.finished then
+                  client._results [identifier] = nil
+                end
+                coroutine.yield (subresult)
+                table.remove (results, 1)
+              end
+            until subresult.finished
+          end,
+          __gc = function ()
+            client.server.cancel {
+              filter = token,
+            }
+          end,
+        })
+        result.iterator = coroutine.wrap (function ()
+          return iterator ()
         end)
       else
         result = results [1]
@@ -233,7 +247,11 @@ return function (loader)
             threadof (function ()
               r = iterator ()
             end)
-            if r.success then
+            if not r then
+              error {
+                _ = i18n ["server:timeout"],
+              }
+            elseif r.success then
               return r.response
             else
               error (r.error)
