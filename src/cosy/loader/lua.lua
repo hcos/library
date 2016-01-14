@@ -6,7 +6,7 @@ end
 return function (t)
 
   t = t or {}
-  local loader   = {}
+  local loader = {}
   for k, v in pairs (t) do
     loader [k] = v
   end
@@ -34,8 +34,6 @@ return function (t)
       loader.scheduler.autoclose = false
     end
   end
-  _G.package = loader.hotswap
-  _G.require = loader.require
   package.loaded.copas = loader.scheduler
   loader.coroutine = t.coroutine
                   or loader.scheduler._coroutine
