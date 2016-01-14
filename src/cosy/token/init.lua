@@ -66,6 +66,24 @@ return function (loader)
     return Token.encode (result)
   end
 
+  function Token.identification (data)
+    local now    = Time ()
+    local result = {
+      iat      = now,
+      nbf      = now - 1,
+      exp      = now + Configuration.expiration.identification,
+      iss      = Configuration.http.hostname,
+      aud      = nil,
+      sub      = "cosy:identification",
+      jti      = Digest (tostring (now + Random ())),
+      contents = {
+        type = "identification",
+        data = data,
+      },
+    }
+    return Token.encode (result)
+  end
+
   function Token.validation (data)
     local now    = Time ()
     local result = {
