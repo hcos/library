@@ -301,8 +301,10 @@ end
 if not _G._TEST then
   local cli = Cli.new ()
   if cli:start () then
+    collectgarbage "collect"
     os.exit (0)
   else
+    collectgarbage "collect"
     os.exit (1)
   end
 end
