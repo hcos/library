@@ -5,6 +5,7 @@ return function (loader)
 
   Default.filter = {
     timeout = 2, -- seconds
+    log     = loader.home .. "/filter-{{{pid}}}.log",
   }
 
   Default.reputation = {
