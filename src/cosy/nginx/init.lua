@@ -202,19 +202,21 @@ http {
         Logger.error {
           _ = i18n ["nginx:no-resolver"],
         }
-      end
-      local result = {}
-      for line in file:lines () do
-        local address = line:match "nameserver%s+(%S+)"
-        if address then
-          if address:find ":" then
-            address = "[{{{address}}}]" % { address = address }
+        resolver = "8.8.8.8"
+      else
+        local result = {}
+        for line in file:lines () do
+          local address = line:match "nameserver%s+(%S+)"
+          if address then
+            if address:find ":" then
+              address = "[{{{address}}}]" % { address = address }
+            end
+            result [#result+1] = address
           end
-          result [#result+1] = address
         end
+        file:close ()
+        resolver = table.concat (result, " ")
       end
-      file:close ()
-      resolver = table.concat (result, " ")
     end
     if not Lfs.attributes (Configuration.http.directory, "mode") then
       Lfs.mkdir (Configuration.http.directory)
