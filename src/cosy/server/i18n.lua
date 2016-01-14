@@ -37,6 +37,9 @@ return function (--[[loader]])
     ["error:internal"] = {
       en = "internal server error",
     },
+    ["server:unreachable"] = {
+      en = "server is not reachable",
+    },
   }
 
 end
