@@ -1,4 +1,5 @@
 return function (loader)
+
   local Configuration = loader.load "cosy.configuration"
   local Digest        = loader.load "cosy.digest"
   local I18n          = loader.load "cosy.i18n"
@@ -290,4 +291,5 @@ return function (loader)
   end
 
   return Server
+
 end
