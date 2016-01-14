@@ -64,9 +64,15 @@ do
   arguments = parser:parse ()
 end
 
-local loader        = require "cosy.loader.lua" {
-  logto = false,
-  alias = arguments.alias,
+local Scheduler = require "copas.ev"
+local Hotswap   = require "hotswap.ev".new {
+  loop = Scheduler._loop,
+}
+local loader    = require "cosy.loader.lua" {
+  alias     = arguments.aias,
+  logto     = false,
+  hotswap   = Hotswap,
+  scheduler = Scheduler,
 }
 local Configuration = loader.load "cosy.configuration"
 local File          = loader.load "cosy.file"
