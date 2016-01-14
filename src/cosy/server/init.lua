@@ -190,6 +190,7 @@ return function (loader)
                     identifier = identifier,
                     success    = true,
                     iterator   = true,
+                    token      = result (), -- first call returns the token
                   })
                   repeat
                     local subresult, suberr = result ()

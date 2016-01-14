@@ -30,6 +30,7 @@ return function (loader)
   local i18n   = I18n.load {
     "cosy.methods",
     "cosy.server",
+    "cosy.library",
   }
   i18n._locale = Configuration.locale
 
@@ -126,6 +127,8 @@ return function (loader)
     }
   end
 
+  local filters = setmetatable ({}, { __mode = "v" })
+
   function Methods.server.filter (request, store)
     local back_request = {}
     for k, v in pairs (request) do
@@ -166,7 +169,8 @@ return function (loader)
       }
     }
     Scheduler.addserver = addserver
-    if Posix.fork () == 0 then
+    local pid = Posix.fork ()
+    if pid == 0 then
       local ev = require "ev"
       ev.Loop.default:fork ()
       local Filter  = loader.load "cosy.methods.filter"
@@ -179,23 +183,49 @@ return function (loader)
       }
       os.exit (0)
     end
-    return function ()
-      repeat
-        local result = results [1]
-        if result then
-          table.remove (results, 1)
-          if result.success then
-            return result.response
-          else
-            return nil, {
-              _      = i18n ["server:filter:error"],
-              reason = result.error,
-            }
-          end
-        else
-          Scheduler.sleep (Configuration.filter.timeout)
+    local token = Token.identification {
+      pid = pid,
+    }
+    local iterator
+    iterator = function ()
+      if not filters [token] then
+        filters [token] = iterator
+        return token
+      end
+      local result = results [1]
+      if not result then
+        Scheduler.sleep (Configuration.filter.timeout)
+        result = results [1]
+      end
+      if result then
+        table.remove (results, 1)
+      end
+      if result and result.success then
+        if result.finished then
+          filters [token] = nil
         end
-      until result and result.finished
+        return result.response
+      else
+        filters [token] = nil
+        Posix.kill (pid, 9)
+        return nil, {
+          _      = i18n ["server:filter:error"],
+          reason = result and result.error or i18n ["server:timeout"] % {},
+        }
+      end
+    end
+    return iterator
+  end
+
+  function Methods.server.cancel (request, store)
+    local raw = request.filter
+    Parameters.check (store, request, {
+      required = {
+        filter = Parameters.token.identification,
+      },
+    })
+    if filters [raw] then
+      Posix.kill (request.filter.pid, 9)
     end
   end
 
