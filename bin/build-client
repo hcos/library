@@ -157,13 +157,16 @@ function generate_archive () {
 #! /usr/bin/env sh
 
 export LC_ALL=C
-find ./ -type f -exec sed -i "" -e "s|COSY_PREFIX|\$PWD|g" {} \;
+grep -lr "COSY_PREFIX" . | xargs -L1 sed -i ".cosy-back" -e "s|COSY_PREFIX|\$PWD|g"
+find . -type f -name "*.cosy-back" -exec rm -f {} \;
 rm -f $0
 EOF
   chmod a+x "${cosy_temp}/bin/cosy_setpath"
   echo -n -e "Packaging in ${green}${archive}${nc}... "
   {
-    find "${cosy_temp}" -type f -exec sed -i '' -e "s|${cosy_temp}|COSY_PREFIX|g" {} \;
+    export LC_ALL=C
+    find "${cosy_temp}" -type f -exec sed -i ".cosy-back" -e "s|${cosy_temp}|COSY_PREFIX|g" {} \;
+    find "${cosy_temp}" -type f -name "*.cosy-back" -exec rm -f {} \;
     ./makeself/makeself.sh \
       "${cosy_temp}" \
       "${archive}" \
