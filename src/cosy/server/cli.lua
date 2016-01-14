@@ -124,18 +124,14 @@ if arguments.start then
   os.remove (Configuration.server.log )
   os.remove (Configuration.server.data)
 
-  if Posix.fork () == 0 then
-    package.loaded ["copas"     ] = nil
-    package.loaded ["copas.ev"  ] = nil
-    package.loaded ["ev"        ] = nil
-    package.loaded ["hotswap.ev"] = nil
-    package.loaded ["hotswap"   ] = nil
+ if Posix.fork () == 0 then
+    local ev = require "ev"
+    ev.Loop.default:fork ()
     File.encode (Configuration.server.data, {
       alias     = arguments.alias,
       http_port = tonumber (arguments.port) or data.port or Configuration.http.port,
     })
-    _G.cosy_server_alias = arguments.alias
-    local Server = loader.require "cosy.server"
+    local Server = loader.load "cosy.server"
     Server.start ()
     os.exit (0)
   end
