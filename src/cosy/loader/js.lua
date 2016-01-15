@@ -125,11 +125,7 @@ return function (options)
   loader.library  = loader.load "cosy.library"
   loader.storage  = loader.window.sessionStorage
   loader.data     = loader.storage:getItem "cosy:client"
-  if loader.data == loader.js.null then
-    loader.data = nil
-  else
-    loader.data = Value.decode (loader.data)
-  end
+  loader.data     = loader.data ~= loader.js.null and Value.decode (loader.data) or nil
   loader.client   = loader.library.connect (loader.window.location.origin, loader.data)
 
   return loader
