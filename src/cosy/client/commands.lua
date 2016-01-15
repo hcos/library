@@ -339,6 +339,7 @@ return function (loader)
       keys [#keys+1] = key
       max = math.max (max, #key)
     end
+    table.sort (keys)
     for i = 1, #keys do
       local key   = keys [i]
       local value = response [key]
