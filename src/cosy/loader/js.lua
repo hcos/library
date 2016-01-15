@@ -57,6 +57,7 @@ return function (options)
     waiting   = {},
     ready     = {},
     coroutine = loader.coroutine,
+    timeout   = {},
   }
   function loader.scheduler.running ()
     return loader.scheduler._running
@@ -71,7 +72,8 @@ return function (options)
     time = time or -math.huge
     local co = loader.scheduler.running ()
     if time > 0 then
-      loader.window:setTimeout (function ()
+      loader.scheduler.timeout [co] = loader.window:setTimeout (function ()
+        loader.window:clearTimeout (loader.scheduler.timeout [co])
         loader.scheduler.waiting [co] = nil
         loader.scheduler.ready   [co] = true
         if coroutine.status (loader.scheduler.co) == "suspended" then
@@ -86,6 +88,7 @@ return function (options)
     end
   end
   function loader.scheduler.wakeup (co)
+    loader.window:clearTimeout (loader.scheduler.timeout [co])
     loader.scheduler.waiting [co] = nil
     loader.scheduler.ready   [co] = true
     coroutine.resume (loader.scheduler.co)
