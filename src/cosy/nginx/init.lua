@@ -185,7 +185,7 @@ http {
 
   local function sethostname ()
     local handle = io.popen "hostname"
-    local result = handle:read "*all"
+    local result = handle:read "*l"
     handle:close()
     Default.http.hostname = result
     Logger.info {
