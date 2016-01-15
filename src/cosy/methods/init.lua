@@ -96,8 +96,8 @@ return function (loader)
       captcha = Configuration.recaptcha.public_key,
     }
     local info = store / "info"
-    result ["#users"   ] = info ["#users"   ] or 0
-    result ["#projects"] = info ["#projects"] or 0
+    result ["#user"   ] = info ["#user"   ] or 0
+    result ["#project"] = info ["#project"] or 0
     for id in Layer.pairs (Configuration.resource.project ["/"]) do
       result ["#" .. id] = info ["#" .. id] or 0
     end
@@ -299,7 +299,7 @@ return function (loader)
     user.status      = "active"
     user.type        = "user"
     local info = store / "info"
-    info ["#users"] = (info ["#users"] or 0) + 1
+    info ["#user"] = (info ["#user"] or 0) + 1
     if try_only then
       return true
     end
@@ -636,7 +636,7 @@ return function (loader)
     local _ = store / "email" - user.email
     local _ = store / "data"  - user.identifier
     local info = store / "info"
-    info ["#users"] = info ["#users"] - 1
+    info ["#user"] = info ["#user"] - 1
   end
 
   -- Project
@@ -667,7 +667,7 @@ return function (loader)
     project.identifier  = request.identifier
     project.type        = "project"
     local info = store / "info"
-    info ["#projects"] = (info ["#projects"] or 0) + 1
+    info ["#project"] = (info ["#project"] or 0) + 1
   end
 
   function Methods.project.delete (request, store)
@@ -693,7 +693,7 @@ return function (loader)
     end
     local _ = - project
     local info = store / "info"
-    info ["#projects"] = info ["#projects"] - 1
+    info ["#project"] = info ["#project"] - 1
   end
 
   for id in Layer.pairs (Configuration.resource.project ["/"]) do
