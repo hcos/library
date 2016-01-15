@@ -225,6 +225,9 @@ return function (loader)
             until subresult.finished
           end,
           __gc = function ()
+            if loader.js then
+              return -- FIXME: is there no other way?
+            end
             client._results [identifier] = nil
             client.server.cancel {
               filter = token,
