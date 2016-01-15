@@ -74,6 +74,9 @@ return function (options)
       loader.window:setTimeout (function ()
         loader.scheduler.waiting [co] = nil
         loader.scheduler.ready   [co] = true
+        if coroutine.status (loader.scheduler.co) == "suspended" then
+          coroutine.resume (loader.scheduler.co)
+        end
       end, time * 1000)
     end
     if time ~= 0 then
@@ -91,10 +94,12 @@ return function (options)
     while true do
       local to_run, t = next (loader.scheduler.ready)
       if to_run then
-        loader.scheduler._running = to_run
-        local ok, err = loader.scheduler.coroutine.resume (to_run, type (t) == "table" and table.unpack (t.parameters))
-        if not ok then
-          loader.window.console:log (err)
+        if loader.scheduler.coroutine.status (to_run) == "suspended" then
+          loader.scheduler._running = to_run
+          local ok, err = loader.scheduler.coroutine.resume (to_run, type (t) == "table" and table.unpack (t.parameters))
+          if not ok then
+            loader.window.console:log (err)
+          end
         end
         if loader.scheduler.coroutine.status (to_run) == "dead" then
           loader.scheduler.waiting [to_run] = nil
