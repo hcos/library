@@ -87,9 +87,19 @@
     <script src="js/bootstrap.min.js" type="text/javascript"></script>
     <script src="js/app.min.js" type="text/javascript"></script>
     <script type="text/lua" lang="Lua" id="luascript">
-    local location = js.global.location
-    local loader    = require (location.origin .. "/lua/cosy.loader")
-    require ("cosy.webclient.main")
+      local origin   = _G.js.global.location.origin
+      local coromake = require (origin .. "/lua/coroutine.make")
+      _G.coroutine = coromake ()
+      local co = coroutine.create (function ()
+        xpcall (function ()
+          local loader = require (origin .. "/lua/cosy.loader.js") {}
+          loader.load "cosy.webclient.main"
+        end, function (err)
+          print ("error:", err)
+          print (debug.traceback ())
+        end)
+      end)
+      coroutine.resume (co)
     </script>
   
     <script src="https://maps.googleapis.com/maps/api/js?v=3" type="text/javascript"></script>
