@@ -123,14 +123,14 @@ return function (options)
   local Value = loader.load "cosy.value"
 
   loader.library  = loader.load "cosy.library"
-  loader.storage  = loader.js.global.sessionStorage
-  local data      = loader.storage:getItem "cosy:client"
-  if data == loader.js.null then
-    data = nil
+  loader.storage  = loader.window.sessionStorage
+  loader.data     = loader.storage:getItem "cosy:client"
+  if loader.data == loader.js.null then
+    loader.data = nil
   else
-    data = Value.decode (data)
+    loader.data = Value.decode (loader.data)
   end
-  loader.client   = loader.library.connect (loader.js.global.location.origin, data)
+  loader.client   = loader.library.connect (loader.window.location.origin, loader.data)
 
   return loader
 
