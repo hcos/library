@@ -122,8 +122,8 @@ return function (loader)
       locale = locale,
     }
     return {
-      tos        = tos,
-      tos_digest = Digest (tos),
+      text   = tos,
+      digest = Digest (tos),
     }
   end
 

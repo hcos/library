@@ -355,10 +355,10 @@ return function (loader)
   end
 
   Results ["server:tos"] = function (_, response)
-    print (response.tos)
+    print (response.text)
     print (Colors ("%{black yellowbg}" .. "digest") ..
            Colors ("%{reset}" .. " => ") ..
-           Colors ("%{yellow blackbg}" .. response.tos_digest))
+           Colors ("%{yellow blackbg}" .. response.digest))
   end
 
   Results ["server:filter"] = function (_, result)
