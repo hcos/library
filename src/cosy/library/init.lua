@@ -140,8 +140,9 @@ return function (loader)
           message = Value.decode (message)
           local identifier = message.identifier
           local results    = client._results [identifier]
-          assert (results)
-          results [#results+1] = message
+          if results then
+            results [#results+1] = message
+          end
         end
       end
     end
@@ -224,6 +225,7 @@ return function (loader)
             until subresult.finished
           end,
           __gc = function ()
+            client._results [identifier] = nil
             client.server.cancel {
               filter = token,
             }
