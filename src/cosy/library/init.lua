@@ -41,7 +41,7 @@ return function (loader)
   end
 
   function JsWs.connect (ws, url, protocol)
-    ws.ws     = _G.js.new (_G.window.WebSocket, url, protocol)
+    ws.ws     = loader.js.new (loader.window.WebSocket, url, protocol)
     ws.co     = Scheduler.running ()
     ws.status = "closed"
     ws.ws.onopen    = function ()
@@ -89,7 +89,7 @@ return function (loader)
       host = session.host,
       port = session.port,
     }
-    if _G.js then
+    if loader.js then
       client._ws = assert (JsWs.new {
         timeout = Configuration.library.timeout,
       })
@@ -417,9 +417,9 @@ return function (loader)
     end
   end
 
-  if _G.js then
+  if loader.js then
     function Library.connect (url, data)
-      local parser   = _G.window.document:createElement "a";
+      local parser   = loader.window.document:createElement "a";
       parser.href    = url;
       return Library.client {
         url        = url,
