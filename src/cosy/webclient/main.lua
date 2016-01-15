@@ -1,98 +1,104 @@
-local js = _G.js
-local location = js.global.location
-local loader  = require (location.origin .. "/lua/cosy.loader")
-_G.client = {}
-local function screen ()
-local result,err = _G.client.server.filter({
-  iterator = "return function (yield, store)\
-    for k in pairs (store.user) do\
-      yield {lat = store.user [k].position.latitude , lng = store.user [k].position.longitude}\
-    end\
-  end"
-  })
-  if result then
-  local iframe = js.global.document:getElementById("map").contentWindow
-    for _,value in pairs(result) do
-      if value.lat and value.lng then
-        iframe.cluster (nil,value.lat,value.lng)
+return function (loader)
+  local Value = loader.load "cosy.value"
+
+  local Main = {}
+
+  local function show_users ()
+    local result, err = loader.client.server.filter {
+      iterator = [[
+        return function (coroutine, store)
+          for user in store / "data" * ".*" do
+            if user.position then
+              coroutine.yield {
+                latitude  = user.position.latitude,
+                longitude = user.position.longitude,
+              }
+            end
+          end
+        end
+      ]]
+    }
+    if result then
+      local iframe = loader.document:getElementById "map".contentWindow
+      for value in result do
+        iframe.cluster (nil, value.latitude, value.longitude)
+      end
+      iframe.groupcluster ()
+    else
+      print (err.message, Value.encode (err))
+    end
+  end
+
+  function Main.init ()
+    local serverinfo = assert (loader.client.server.information ())
+    local userinfo   = assert (loader.client.user.authentified_as {})
+    local username = userinfo and userinfo.username
+    loader.document:getElementById "content-wrapper".innerHTML = (loader.request "/html/main.html") % serverinfo
+    if username then
+      loader.document:getElementById "navbar-login".innerHTML = loader.request "/html/logoutnavbar.html"
+      loader.document:getElementById "user-in".innerHTML = username
+      userinfo = loader.client.user.update {}
+      if userinfo.name then
+        loader.document:getElementById "user-name".innerHTML = userinfo.name
+      end
+      if userinfo.lastseen then
+        loader.document:getElementById "user-last".innerHTML = os.date ("%d/%m/%Y %H:%M:%S", userinfo.lastseen)
+      end
+      if userinfo.avatar then
+        loader.document:getElementById "user-image-s".src = "data:image/png;base64," .. userinfo.avatar
+        loader.document:getElementById "user-image-b".src = "data:image/png;base64," .. userinfo.avatar
+      else
+        loader.document:getElementById "user-image-s".src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVQYV2P4DwABAQEAWk1v8QAAAABJRU5ErkJggg=="
+        loader.document:getElementById "user-image-b".src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVQYV2P4DwABAQEAWk1v8QAAAABJRU5ErkJggg=="
+      end
+
+      loader.document:getElementById "logout-button".onclick = function ()
+        loader.storage:removeItem "cosy:client"
+        loader.window.location.href = "/"
+        return false
+      end
+      loader.document:getElementById "profile-button".onclick = function ()
+        loader.load "cosy.webclient.profile"
+        return false
+      end
+    else
+      local auth = loader.load "cosy.webclient.auth"
+      loader.document:getElementById "navbar-login".innerHTML = loader.request "/html/loginnavbar.html"
+      loader.document:getElementById "login-button".onclick = function ()
+        loader.coroutine.wrap (auth.login) ()
+        return false
+      end
+      loader.document:getElementById "signup-button".onclick = function ()
+        loader.coroutine.wrap (auth.register) ()
+        return false
       end
     end
-    iframe.groupcluster ()
-  else
-    print(err.message)
-  end
-end
-
-local function main()
-  local lib      = require "cosy.library"
-  _G.client   = lib.connect (js.global.location.origin)
-  local storage = js.global.sessionStorage
-  local token = storage:getItem("cosytoken")
-  local user = storage:getItem("cosyuser")
-  local connected = false
-  local connection, err = _G.client.user.is_authentified  {
-      authentication = token
-    }
-  if connection then
-    if user == connection.username and token ~= js.null then
-      connected = true
-    end
-  else
-    print(err.message)
-  end
-  js.global.document:getElementById("content-wrapper").innerHTML = loader.loadhttp ( "/html/main.html")
-  if connected then
-    js.global.document:getElementById("navbar-login").innerHTML = loader.loadhttp ( "/html/logoutnavbar.html")
-    js.global.document:getElementById("user-in").innerHTML = user
-    local result = _G.client.user.update {
-      authentication = token
-    }
-    if result.name then
-      js.global.document:getElementById("user-name").innerHTML = result.name
-    end
-    if result.lastseen then
-      js.global.document:getElementById("user-last").innerHTML = os.date('%d/%m/%Y %H:%M:%S', result.lastseen)
-    end
-    if result.avatar then
-      js.global.document:getElementById("user-image-s").src = 'data:image/png;base64,'..result.avatar
-      js.global.document:getElementById("user-image-b").src = 'data:image/png;base64,'..result.avatar
-    else
-      js.global.document:getElementById("user-image-s").src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVQYV2P4DwABAQEAWk1v8QAAAABJRU5ErkJggg=="
-      js.global.document:getElementById("user-image-b").src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVQYV2P4DwABAQEAWk1v8QAAAABJRU5ErkJggg=="
-    end
-
-    js.global.document:getElementById("logout-button").onclick = function()
-      storage:removeItem("cosytoken")
-      storage:removeItem("cosyuser")
-      js.global.location.href = "/"
-      return false
-    end
-    js.global.document:getElementById("profile-button").onclick = function()
-      require ("cosy.webclient.profile")
-      return false
-    end
-  else
-    local auth = require ("cosy.webclient.auth")
-    js.global.document:getElementById("navbar-login").innerHTML = loader.loadhttp ( "/html/loginnavbar.html")
-    js.global.document:getElementById("login-button").onclick = function()
-      coroutine.wrap(auth.login) ()
-      return false
-    end
-    js.global.document:getElementById("signup-button").onclick = function()
-      coroutine.wrap(auth.register) ()
-      return false
-    end
-  end
-  local map = js.global.document:getElementById("map")
-  if map.contentWindow.cluster == nil then
+    local map = loader.document:getElementById "map"
+    if map.contentWindow.cluster == nil then
       map.onload = function ()
-      local co = coroutine.create (screen)
-      coroutine.resume (co)
-   end
-  else
-    screen()
+        loader.scheduler.addthread (show_users)
+       end
+    else
+      loader.scheduler.addthread (show_users)
+    end
   end
-end
 
-local co = coroutine.create (main)
-coroutine.resume (co)
+  Main.init ()
+
+  -- Update server information regularly:
+  loader.scheduler.addthread (function ()
+    while true do
+      loader.scheduler.sleep (10)
+      local serverinfo = assert (loader.client.server.information ())
+      for k, v in pairs (serverinfo) do
+        if k:match "^#" then
+          local part = loader.document:getElementById (k)
+          if part ~= loader.js.null then
+            part.innerHTML = tostring (v)
+          end
+        end
+      end
+    end
+  end)
+
+end
