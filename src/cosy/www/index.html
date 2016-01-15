@@ -99,7 +99,10 @@
       local co = coroutine.create (function ()
         xpcall (function ()
           local loader = require (origin .. "/lua/cosy.loader.js") {}
-          loader.load "cosy.webclient.main"
+          loader.scheduler.addthread (function ()
+            loader.load "cosy.webclient.main"
+          end)
+          loader.scheduler.loop ()
         end, function (err)
           print ("error:", err)
           print (debug.traceback ())
