@@ -51,7 +51,6 @@ return function (loader)
         loader.document:getElementById "user-image-s".src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVQYV2P4DwABAQEAWk1v8QAAAABJRU5ErkJggg=="
         loader.document:getElementById "user-image-b".src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVQYV2P4DwABAQEAWk1v8QAAAABJRU5ErkJggg=="
       end
-
       loader.document:getElementById "logout-button".onclick = function ()
         loader.storage:removeItem "cosy:client"
         loader.window.location.href = "/"
@@ -62,23 +61,19 @@ return function (loader)
         return false
       end
     else
-      local auth = loader.load "cosy.webclient.auth"
+      local Auth = loader.load "cosy.webclient.auth"
       loader.document:getElementById "navbar-login".innerHTML = loader.request "/html/loginnavbar.html"
       loader.document:getElementById "login-button".onclick = function ()
-        loader.coroutine.wrap (auth.login) ()
+        loader.scheduler.addthread (Auth.login)
         return false
       end
       loader.document:getElementById "signup-button".onclick = function ()
-        loader.coroutine.wrap (auth.register) ()
+        loader.scheduler.addthread (Auth.register)
         return false
       end
     end
     local map = loader.document:getElementById "map"
-    if map.contentWindow.cluster == nil then
-      map.onload = function ()
-        loader.scheduler.addthread (show_users)
-       end
-    else
+    map.onload = function ()
       loader.scheduler.addthread (show_users)
     end
   end
