@@ -404,10 +404,13 @@ return function (loader)
   end
 
   Results ["user:authentified-as"] = function (_, response)
-    print (Value.expression (response))
-    print (Colors ("%{black yellowbg}" .. "username") ..
-           Colors ("%{reset}" .. " => ") ..
-           Colors ("%{yellow blackbg}" .. response.username))
+    if response.username then
+      print (Colors ("%{black yellowbg}" .. "username") ..
+             Colors ("%{reset}" .. " => ") ..
+             Colors ("%{yellow blackbg}" .. response.username))
+    else
+      print (Colors ("%{black yellowbg}" .. "nobody"))
+    end
   end
 
   Results ["user:information"] = function (_, response)
