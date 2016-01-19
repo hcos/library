@@ -56,6 +56,7 @@ return function (options)
     _running  = nil,
     waiting   = {},
     ready     = {},
+    blocked   = {},
     coroutine = loader.coroutine,
     timeout   = {},
   }
@@ -67,6 +68,15 @@ return function (options)
     loader.scheduler.ready [co] = {
       parameters = { ... },
     }
+    if loader.scheduler.co and coroutine.status (loader.scheduler.co) == "suspended" then
+      coroutine.resume (loader.scheduler.co)
+    end
+  end
+  function loader.scheduler.block (co)
+    loader.scheduler.blocked [co] = true
+  end
+  function loader.scheduler.release (co)
+    loader.scheduler.blocked [co] = nil
   end
   function loader.scheduler.sleep (time)
     time = time or -math.huge
@@ -95,38 +105,44 @@ return function (options)
   end
   function loader.scheduler.loop ()
     while true do
-      local to_run, t = next (loader.scheduler.ready)
-      if to_run then
-        if loader.scheduler.coroutine.status (to_run) == "suspended" then
-          loader.scheduler._running = to_run
-          local ok, err = loader.scheduler.coroutine.resume (to_run, type (t) == "table" and table.unpack (t.parameters))
-          if not ok then
-            loader.window.console:log (err)
+      for to_run, t in pairs (loader.scheduler.ready) do
+        if not loader.scheduler.blocked [to_run] then
+          if loader.scheduler.coroutine.status (to_run) == "suspended" then
+            loader.scheduler._running = to_run
+            local ok, err = loader.scheduler.coroutine.resume (to_run, type (t) == "table" and table.unpack (t.parameters))
+            if not ok then
+              loader.window.console:log (err)
+            end
           end
-        end
-        if loader.scheduler.coroutine.status (to_run) == "dead" then
-          loader.scheduler.waiting [to_run] = nil
-          loader.scheduler.ready   [to_run] = nil
+          if loader.scheduler.coroutine.status (to_run) == "dead" then
+            loader.scheduler.waiting [to_run] = nil
+            loader.scheduler.ready   [to_run] = nil
+          end
         end
       end
       if  not next (loader.scheduler.ready  )
-      and not next (loader.scheduler.waiting) then
+      and not next (loader.scheduler.waiting)
+      and not next (loader.scheduler.blocked) then
+        loader.scheduler.co = nil
         break
-      elseif not next (loader.scheduler.ready) then
-        loader.scheduler.co = coroutine.running ()
-        coroutine.yield ()
+      else
+        local runnable = 0
+        for k in pairs (loader.scheduler.ready) do
+          if not loader.scheduler.blocked [k] then
+            runnable = runnable + 1
+            break
+          end
+        end
+        if runnable == 0 then
+          loader.scheduler.co = coroutine.running ()
+        else
+          coroutine.yield ()
+        end
       end
     end
   end
 
-  local _     = loader.load "cosy.string"
-  local Value = loader.load "cosy.value"
-
-  loader.library  = loader.load "cosy.library"
-  loader.storage  = loader.window.sessionStorage
-  loader.data     = loader.storage:getItem "cosy:client"
-  loader.data     = loader.data ~= loader.js.null and Value.decode (loader.data) or nil
-  loader.client   = loader.library.connect (loader.window.location.origin, loader.data)
+  loader.load "cosy.string"
 
   return loader
 
