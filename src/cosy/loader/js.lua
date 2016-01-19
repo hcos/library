@@ -28,7 +28,7 @@ return function (options)
     if request.status == 200 then
       return request.responseText, request.status
     else
-      return nil , request.status
+      return nil, request.status
     end
   end
   table.insert (package.searchers, 2, function (name)
@@ -104,6 +104,7 @@ return function (options)
     coroutine.resume (loader.scheduler.co)
   end
   function loader.scheduler.loop ()
+    loader.scheduler.co = coroutine.running ()
     while true do
       for to_run, t in pairs (loader.scheduler.ready) do
         if not loader.scheduler.blocked [to_run] then
@@ -124,7 +125,7 @@ return function (options)
       and not next (loader.scheduler.waiting)
       and not next (loader.scheduler.blocked) then
         loader.scheduler.co = nil
-        break
+        return
       else
         local runnable = 0
         for k in pairs (loader.scheduler.ready) do
@@ -134,8 +135,6 @@ return function (options)
           end
         end
         if runnable == 0 then
-          loader.scheduler.co = coroutine.running ()
-        else
           coroutine.yield ()
         end
       end
