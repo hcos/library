@@ -3,11 +3,8 @@ return function (loader)
   local Configuration = loader.load "cosy.configuration"
   local I18n          = loader.load "cosy.i18n"
   local Scheduler     = loader.load "cosy.scheduler"
-  local Token         = loader.load "cosy.token"
   local Default       = loader.load "cosy.configuration.layers".default
   local Layer         = loader.require "layeredata"
-  local Lfs           = loader.require "lfs"
-  local Mime          = loader.require "mime"
   local this          = Layer.reference (false)
 
   Configuration.load "cosy.methods"
@@ -133,6 +130,8 @@ return function (loader)
     }
     local checks = Default.data.avatar.checks
     checks [#checks+1] = function (t)
+      local Lfs        = loader.require "lfs"
+      local Mime       = loader.require "mime"
       local request    = t.request
       local key        = t.key
       local value      = request [key]
@@ -333,6 +332,7 @@ return function (loader)
         }
       }
     }
+
     local checks = Default.data.resource.identifier.checks
     checks [Layer.size (checks)+1] = function (t)
       local request = t.request
@@ -623,6 +623,7 @@ return function (loader)
     }
     local checks = Default.data.token.checks
     checks [Layer.size (checks)+1] = function (t)
+      local Token      = loader.load "cosy.token"
       local request    = t.request
       local key        = t.key
       local value      = request [key]
