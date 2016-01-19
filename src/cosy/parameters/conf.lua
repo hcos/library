@@ -165,15 +165,13 @@ return function (loader)
       }
     }
     local checks = Default.data.string.trimmed.checks
-    checks [2] = function (t)
+    table.insert (checks, 2, function (t)
       local request = t.request
       local key     = t.key
       local value   = request [key]
       request [key] = value:trim ()
       return true
-    end
-    checks [3] = Default.data.string.checks [2]
-    checks [4] = Default.data.string.checks [3]
+    end)
   end
 
   do
