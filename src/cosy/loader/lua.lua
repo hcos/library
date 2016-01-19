@@ -10,7 +10,7 @@ return function (t)
   for k, v in pairs (t) do
     loader [k] = v
   end
-  loader.home = os.getenv "HOME" .. "/.cosy/" .. (loader.alias or "default")
+  loader.home    = os.getenv "HOME" .. "/.cosy/" .. (loader.alias or "default")
   local modules  = setmetatable ({}, { __mode = "kv" })
   loader.hotswap = t.hotswap
                 or require "hotswap".new {}
@@ -34,7 +34,8 @@ return function (t)
       loader.scheduler.autoclose = false
     end
   end
-  package.loaded.copas = loader.scheduler
+  loader.hotswap.loaded.copas = loader.scheduler
+  package.loaded.copas        = loader.scheduler
   loader.coroutine = t.coroutine
                   or loader.scheduler._coroutine
                   or loader.require "coroutine.make" ()
