@@ -261,27 +261,6 @@ return function (loader)
         identifier = request.identifier,
       }
     end
-    if request.captcha then
-      local url  = "https://www.google.com/recaptcha/api/siteverify"
-      local body = "secret="    .. Configuration.recaptcha.private_key
-                .. "&response=" .. request.captcha
-                .. "&remoteip=" .. request.ip
-      local response, status = loader.request (url, body)
-      assert (status == 200)
-      response = Json.decode (response)
-      assert (response)
-      if not response.success then
-        error {
-          _          = i18n ["captcha:failure"],
-          identifier = request.identifier,
-        }
-      end
-    elseif not request.administration then
-      error {
-        _          = i18n ["method:administration-only"],
-        identifier = request.identifier,
-      }
-    end
     local email = store / "email" + request.email
     email.identifier = request.identifier
     if request.locale == nil then
@@ -302,6 +281,29 @@ return function (loader)
     info ["#user"] = (info ["#user"] or 0) + 1
     if try_only then
       return true
+    end
+    -- Captcha validation must be done only once,
+    -- so it must be __after__ the `try_only`.`
+    if request.captcha then
+      local url  = "https://www.google.com/recaptcha/api/siteverify"
+      local body = "secret="    .. Configuration.recaptcha.private_key
+                .. "&response=" .. request.captcha
+                .. "&remoteip=" .. request.ip
+      local response, status = loader.request (url, body)
+      assert (status == 200)
+      response = Json.decode (response)
+      assert (response)
+      if not response.success then
+        error {
+          _          = i18n ["captcha:failure"],
+          identifier = request.identifier,
+        }
+      end
+    elseif not request.administration then
+      error {
+        _          = i18n ["method:administration-only"],
+        identifier = request.identifier,
+      }
     end
     Email.send {
       locale  = user.locale,
