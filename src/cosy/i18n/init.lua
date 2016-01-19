@@ -52,6 +52,10 @@ return function (loader)
     }, I18n)
   end
 
+  function I18n.defines (i18n, key)
+    return i18n._store [key]
+  end
+
   function I18n.__index (i18n, key)
     local entry = i18n._store [key]
     if not entry then
