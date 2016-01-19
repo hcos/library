@@ -603,7 +603,7 @@ return function (loader)
       local value   = request [key]
       local Methods = loader.load "cosy.methods"
       local tos     = Methods.server.tos { locale = request.locale }
-      return  tos.tos_digest == value
+      return  tos.digest == value
           or  nil, {
                 _          = i18n ["check:tos_digest:incorrect"],
                 tos_digest = value,

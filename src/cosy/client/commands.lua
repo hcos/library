@@ -400,7 +400,7 @@ return function (loader)
         locale = args.locale,
       }
       print (tos.tos)
-      args.tos_digest = tos.tos_digest
+      args.tos_digest = tos.digest
     end
   end
 
