@@ -33,7 +33,7 @@ return function (loader)
     ["/js/jquery.js"] = "http://code.jquery.com/jquery-2.1.4.min.js",
     ["/js/map.js"] = "https://maps.googleapis.com/maps/api/js?v=3&sensor=false",
     ["/js/mapcluster.js"] = "http://google-maps-utility-library-v3.googlecode.com/svn/trunk/markerclusterer/src/markerclusterer_compiled.js",
-    ["/js/recaptcha/api.js"] = "https://www.google.com/recaptcha/api.js",
+    ["/js/recaptcha.js"] = "https://www.google.com/recaptcha/api.js",
     ["/js/bootstrap.min.js"] = "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js",
     ["/css/bootstrap.min.css"] = "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css",
     ["/css/font-awesome.min.css"] = "https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css",
