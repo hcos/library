@@ -324,7 +324,7 @@ return function (loader)
     os.execute ([[
       xdg-open {{{url}}} 2> /dev/null || open {{{url}}} /dev/null &
     ]] % {
-      url = "{{{server}}}/html/captchacli.html?port={{{port}}}" % {
+      url = "{{{server}}}/captchacli.html?port={{{port}}}" % {
         server = args.server,
         port   = info.port,
       },
