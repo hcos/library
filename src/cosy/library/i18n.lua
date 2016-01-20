@@ -8,6 +8,9 @@ return function (--[[loader]])
     ["server:timeout"] = {
       en = "timeout while waiting response from server",
     },
+    ["password:too-weak"] = {
+      en = "password is too weak, need at least {{{size}}} characters",
+    },
   }
 
 end

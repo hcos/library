@@ -148,6 +148,7 @@ return function (loader)
   end
 
   function Operation.__call (operation, parameters, try_only, no_redo)
+    local back_password = parameters and parameters.password
     -- Automatic reconnect:
     local client  = operation._client
     local session = client._session
@@ -238,6 +239,24 @@ return function (loader)
       else
         result = results [1]
         client._results [identifier] = nil
+      end
+      -- Special case: if the password is not strong enough,
+      -- add it as a reason.
+      if  back_password
+      and #back_password < Configuration.library.password then
+        local reason = i18n {
+          _    = i18n ["password:too-weak"],
+          key  = "password",
+          size = Configuration.library.password,
+        }
+        if result and result.success then
+          result.success = false
+          result.error   = {
+            reasons = { reason },
+          }
+        elseif result and not result.success then
+          result.error.reasons [#result.error.reasons+1] = reason
+        end
       end
       if result and result.success then
         if wrapperco and not try_only then
