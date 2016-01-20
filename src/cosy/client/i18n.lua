@@ -31,9 +31,6 @@ return function (--[[loader]])
     ["failure"] = {
       en = "failure",
     },
-    ["upload:failure"] = {
-      en = "failed to upload content (error {{{status}}})",
-    },
     ["server:already-running"] = {
       en = "server is already running",
     },

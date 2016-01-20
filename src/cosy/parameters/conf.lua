@@ -128,27 +128,22 @@ return function (loader)
     }
     local checks = Default.data.avatar.checks
     checks [#checks+1] = function (t)
-      local Lfs        = loader.require "lfs"
       local Mime       = loader.require "mime"
       local request    = t.request
       local key        = t.key
-      local value      = request [key]
-      local filename   = Configuration.http.uploads .. "/" .. value
-      local attributes = Lfs.attributes (filename)
-      if attributes.mode ~= "file"
-      or os.difftime (os.time (), attributes.modification) > Configuration.upload.timeout then
-        return nil, {
-              _ = i18n ["check:avatar:expired"],
-            }
-      end
+      local value      = Mime.unb64 (request [key])
+      local filename   = os.tmpname ()
+      local file       = io.open (filename, "wb")
+      file:write (value)
+      file:close ()
       Scheduler.execute ([[
         convert {{{filename}}} -resize {{{width}}}x{{{height}}} png:{{{filename}}}
       ]] % {
         filename = filename,
         height   = Configuration.data.avatar.height,
-        width    = Configuration.data.avatar.width ,
+        width    = Configuration.data.avatar.width,
       })
-      local file    = io.open (filename, "r")
+      file = io.open (filename, "rb")
       request [key] = Mime.b64 (file:read "*all")
       file:close ()
       os.remove (filename)

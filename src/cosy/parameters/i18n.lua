@@ -82,9 +82,6 @@ return function (--[[loader]])
     ["check:iterator:function"] = {
       en = "invalid Lua function: {{{reason}}}",
     },
-    ["check:avatar:expired"] = {
-      en = "avatar file has expired",
-    },
     ["translation:failure"] = {
       en = "translation failed: {{{reason}}}",
     },

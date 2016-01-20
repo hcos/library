@@ -8,6 +8,7 @@ return function (loader)
   local Websocket     = loader.require "websocket"
   local Http          = loader.require "socket.http"
   local Ltn12         = loader.require "ltn12"
+  local Mime          = loader.require "mime"
 
   Configuration.load {
     "cosy.client",
@@ -248,24 +249,16 @@ return function (loader)
             elseif avatar:match "^~" then
               filename = os.getenv "HOME" .. avatar:sub (2)
             end
-            local file, err = io.open (filename, "r")
+            local file, err = io.open (filename, "rb")
             if not file then
               errresult = i18n {
                 _        = i18n ["file:not-found"],
                 filename = filename,
                 reason   = err,
               }
-            end
-            local body = file:read "*all"
-            file:close ()
-            local _, status, headers = Http.request (args.server .. "/upload", body)
-            if status == 200 then
-              parameters [name] = headers ["cosy-avatar"]
             else
-              errresult = i18n {
-                _      = i18n ["upload:failure"],
-                status = status,
-              }
+              parameters [name] = Mime.b64 (file:read "*all")
+              file:close ()
             end
             if errresult then
               show_status (nil, errresult)
@@ -412,11 +405,11 @@ return function (loader)
 
   Results ["user:information"] = function (_, response)
     if response.avatar then
-      local avatar     = response.avatar
-      local inputname  = os.tmpname ()
-      local file = io.open (inputname, "w")
+      local decoded   = Mime.unb64 (response.avatar)
+      local inputname = os.tmpname ()
+      local file      = io.open (inputname, "wb")
       assert (file)
-      file:write (avatar)
+      file:write (decoded)
       file:close ()
       os.execute ([[
         img2txt -W 40 -H 20 {{{input}}} 2> /dev/null

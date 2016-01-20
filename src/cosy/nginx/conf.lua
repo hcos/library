@@ -18,12 +18,7 @@ return function (loader)
     pid           = loader.home .. "/nginx.pid",
     configuration = loader.home .. "/nginx.conf",
     directory     = loader.home .. "/nginx",
-    uploads       = loader.home .. "/nginx/uploads",
     www           = main:gsub ("cosy/nginx.*", "cosy/www"),
-  }
-
-  Default.upload = {
-    timeout = 5 * 60, -- 5 minutes
   }
 
   Default.dependencies = {

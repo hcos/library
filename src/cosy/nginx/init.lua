@@ -66,34 +66,6 @@ http {
       ';
     }
 
-    location /upload {
-      limit_except                POST { deny all; }
-      client_body_in_file_only    on;
-      client_body_temp_path       {{{uploads}}};
-      client_body_buffer_size     128K;
-      client_max_body_size        10240K;
-      proxy_pass_request_headers  on;
-      proxy_set_header            X-File $request_body_file;
-      proxy_set_body              off;
-      proxy_redirect              off;
-      proxy_pass                  http://localhost:{{{port}}}/uploaded;
-    }
-
-    location /uploaded {
-      content_by_lua '
-        local md5      = require "md5"
-        local filename = ngx.var.http_x_file
-        local file     = assert (io.open (filename))
-        local contents = file:read "*all"
-        file:close ()
-        local sum      = md5.sumhexa (contents)
-        ngx.log (ngx.ERR, filename)
-        ngx.log (ngx.ERR, filename:gsub ("([^/]+)$", sum))
-        os.rename (filename, filename:gsub ("([^/]+)$", sum))
-        ngx.say (sum)
-      ';
-    }
-
     location /template {
       default_type  text/html;
       root          /;
@@ -239,9 +211,6 @@ http {
     if not Lfs.attributes (Configuration.http.directory, "mode") then
       Lfs.mkdir (Configuration.http.directory)
     end
-    if not Lfs.attributes (Configuration.http.uploads, "mode") then
-      Lfs.mkdir (Configuration.http.uploads)
-    end
     local locations = {}
     for url, remote in pairs (Configuration.dependencies) do
       if type (remote) == "string" and remote:match "^http" then
@@ -268,7 +237,6 @@ http {
       host           = Configuration.http.interface,
       port           = Configuration.http.port,
       www            = Configuration.http.www,
-      uploads        = Configuration.http.uploads,
       pid            = Configuration.http.pid,
       wshost         = Configuration.server.interface,
       wsport         = Configuration.server.port,
