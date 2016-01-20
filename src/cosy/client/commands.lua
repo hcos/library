@@ -202,6 +202,8 @@ return function (loader)
     local parameters = {
       authentication = commands.data.authentication,
     }
+    local need_position = false
+    local need_captcha  = false
     for _, x in pairs (commands.methods [key].parameters) do
       for name, t in pairs (x) do
         if t.type == "password" and args [name] then
@@ -220,9 +222,9 @@ return function (loader)
           until passwords [1] == passwords [2]
           parameters [name] = passwords [1]
         elseif t.type == "position" and args [name] then
-          parameters [name] = true
+          need_position = true
         elseif t.type == "captcha" and args [name] then
-          Commands.captcha (args, parameters)
+          need_captcha  = true
         elseif args [name] then
           if t.type == "token:authentication" then
             local _ = false
@@ -270,6 +272,12 @@ return function (loader)
         end
       end
     end
+    if need_captcha or need_position then
+      Commands.webpage (args, parameters, {
+        captcha  = need_captcha,
+        position = need_position,
+      })
+    end
     local result, err = commands.client [key] (parameters)
     if Results [key]
     and (  type (result) == "function"
@@ -280,7 +288,7 @@ return function (loader)
     return result
   end
 
-  function Commands.captcha (args, parameters)
+  function Commands.webpage (args, parameters, need)
     local info      = {}
     local addserver = Scheduler.addserver
     Scheduler.addserver = function (s, f)
@@ -294,12 +302,17 @@ return function (loader)
     Websocket.server.copas.listen {
       port      = 0,
       protocols = {
-        cosycli = function (ws)
+        ["cosy-cli"] = function (ws)
           while true do
             local message = ws:receive ()
             if message then
               message = Value.decode (message)
-              parameters.captcha = message.response
+              if need.captcha then
+                parameters.captcha  = message.captcha
+              end
+              if need.position then
+                parameters.position = message.position
+              end
               Scheduler.removeserver (info.socket)
             else
               ws:close()
@@ -313,9 +326,11 @@ return function (loader)
     os.execute ([[
       xdg-open {{{url}}} 2> /dev/null || open {{{url}}} /dev/null &
     ]] % {
-      url = "{{{server}}}/captchacli.html?port={{{port}}}" % {
-        server = args.server,
-        port   = info.port,
+      url = "{{{server}}}/cli.html?port={{{port}}}\\&captcha={{{captcha}}}\\&position={{{position}}}" % {
+        server   = args.server,
+        port     = info.port,
+        captcha  = need.captcha,
+        position = need.position,
       },
     })
     Scheduler.loop()
