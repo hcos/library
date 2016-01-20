@@ -15,12 +15,15 @@ return function (loader)
         where    = options.where,
         template = HeadBar.template,
         data     = {
-          title = loader.client.server.information {}.name,
+          title = Webclient.client.server.information {}.name,
         },
         i18n     = i18n,
       }
-      loader.window:eval [[
-        $(".main-content").css({"margin-top": (($(".navbar-fixed-top").height()) + 1 )+"px"});
+      Webclient.window:eval [[
+        var height = $(".navbar-fixed-top").height ();
+        $(".main-content").css ({
+          "margin-top": (height + 1 ) + "px"
+        });
       ]]
       loader.load "cosy.webclient.authentication" {
         where = "headbar:user",
