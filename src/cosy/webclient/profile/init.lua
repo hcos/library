@@ -1,13 +1,8 @@
 return function (loader)
 
-  local Configuration = loader.load "cosy.configuration"
   local I18n          = loader.load "cosy.i18n"
   local Scheduler     = loader.load "cosy.scheduler"
   local Webclient     = loader.load "cosy.webclient"
-
-  local Value         = loader.load "cosy.value"
-
-  Configuration.load "cosy.webclient.authentication"
 
   local i18n = I18n.load {
     "cosy.webclient.profile",
@@ -79,16 +74,6 @@ return function (loader)
             elseif passwords [1] ~= "" then
               Webclient.window:jQuery "#password-group":addClass "has-success"
               Webclient.window:jQuery "#password-error":html ("")
-            end
-            for i = 1, 2 do
-              if passwords [i] ~= "" and #passwords [i] < Configuration.webclient.authentication.password_size then
-                Webclient.window:jQuery "#password-group":addClass "has-error"
-                local text = i18n ["sign-up:password-size"] % {
-                  size = Configuration.webclient.authentication.password_size,
-                }
-                Webclient.window:jQuery "#password-error":html (text)
-                result = false
-              end
             end
             if result then
               Webclient.window:jQuery "#accept":removeClass "disabled"
