@@ -11,18 +11,15 @@ return function (options)
     loader [k] = v
   end
 
-  local global = _G or _ENV
+  local global   = _G or _ENV
 
-  loader.home     = "/"
-  loader.prefix   = "/"
-  loader.js       = global.js
-  loader.window   = loader.js.global
-  loader.document = loader.js.global.document
-  loader.screen   = loader.js.global.screen
+  loader.home    = "/"
+  loader.prefix  = "/"
+  loader.js      = global.js
 
   local modules  = setmetatable ({}, { __mode = "kv" })
   loader.request = function (url, allow_yield)
-    local request = loader.js.new (loader.window.XMLHttpRequest)
+    local request = loader.js.new (loader.js.global.XMLHttpRequest)
     local co      = loader.scheduler and loader.scheduler.running ()
     if allow_yield and co then
       request:open ("GET", url, true)
@@ -93,8 +90,8 @@ return function (options)
     time = time or -math.huge
     local co = loader.scheduler.running ()
     if time > 0 then
-      loader.scheduler.timeout [co] = loader.window:setTimeout (function ()
-        loader.window:clearTimeout (loader.scheduler.timeout [co])
+      loader.scheduler.timeout [co] = loader.js.global:setTimeout (function ()
+        loader.js.global:clearTimeout (loader.scheduler.timeout [co])
         loader.scheduler.waiting [co] = nil
         loader.scheduler.ready   [co] = true
         if coroutine.status (loader.scheduler.co) == "suspended" then
@@ -109,7 +106,7 @@ return function (options)
     end
   end
   function loader.scheduler.wakeup (co)
-    loader.window:clearTimeout (loader.scheduler.timeout [co])
+    loader.js.global:clearTimeout (loader.scheduler.timeout [co])
     loader.scheduler.waiting [co] = nil
     loader.scheduler.ready   [co] = true
     coroutine.resume (loader.scheduler.co)
@@ -122,8 +119,9 @@ return function (options)
           if loader.scheduler.coroutine.status (to_run) == "suspended" then
             loader.scheduler._running = to_run
             local ok, err = loader.scheduler.coroutine.resume (to_run, type (t) == "table" and table.unpack (t.parameters))
+            loader.scheduler._running = nil
             if not ok then
-              loader.window.console:log (err)
+              loader.js.global.console:log (err)
             end
           end
           if loader.scheduler.coroutine.status (to_run) == "dead" then

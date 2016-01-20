@@ -41,7 +41,7 @@ return function (loader)
   end
 
   function JsWs.connect (ws, url, protocol)
-    ws.ws     = loader.js.new (loader.window.WebSocket, url, protocol)
+    ws.ws     = loader.js.new (loader.js.global.WebSocket, url, protocol)
     ws.co     = Scheduler.running ()
     ws.status = "closed"
     ws.ws.onopen    = function ()
@@ -422,7 +422,7 @@ return function (loader)
 
   if loader.js then
     function Library.connect (url, data)
-      local parser   = loader.window.document:createElement "a";
+      local parser   = loader.js.global.document:createElement "a";
       parser.href    = url;
       return Library.client {
         url        = url,
