@@ -115,28 +115,6 @@ return function (loader)
       end
     end
 
-    do
-      loader.window.on_captcha_load = function ()
-        Scheduler.wakeup (co)
-      end
-      local head   = loader.document:getElementsByTagName "head" [0]
-      local script = loader.document:createElement "script"
-      script.type = "text/javascript"
-      script.src  = "js/recaptcha.js?onload=on_captcha_load&render=explicit"
-      head:appendChild (script)
-      Scheduler.sleep (-math.huge) -- wait for recaptcha
-    end
-    do
-      local params    = loader.js.new (loader.window.Object)
-      params.sitekey  = info.captcha
-      params.callback = function ()
-        Webclient.run (check)
-      end
-      params ["expired-callback"] = function ()
-        Webclient.run (check)
-      end
-      captcha         = loader.window.grecaptcha:render ("captcha", params)
-    end
     local button
     loader.document:getElementById "cancel".onclick = function ()
       button = "cancel"
@@ -147,6 +125,26 @@ return function (loader)
       button = "accept"
       Scheduler.wakeup (co)
       return false
+    end
+
+    do
+      loader.window.on_captcha_load = function ()
+        local params    = loader.js.new (loader.window.Object)
+        params.sitekey  = info.captcha
+        params.callback = function ()
+          Webclient.run (check)
+        end
+        params ["expired-callback"] = function ()
+          Webclient.run (check)
+        end
+        captcha = loader.window.grecaptcha:render ("captcha", params)
+        return false
+      end
+      local head   = loader.document:getElementsByTagName "head" [0]
+      local script = loader.document:createElement "script"
+      script.type = "text/javascript"
+      script.src  = "js/recaptcha.js?onload=on_captcha_load&render=explicit"
+      head:appendChild (script)
     end
 
     while true do
