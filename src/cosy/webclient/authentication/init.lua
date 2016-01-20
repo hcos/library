@@ -201,7 +201,7 @@ return function (loader)
 
   return function (options)
     Webclient.run (function ()
-      local co = Scheduler.running ()
+      local co        = Scheduler.running ()
       local component = {
         where    = options.where,
         template = Authentication.template.headbar,
@@ -213,7 +213,7 @@ return function (loader)
       while true do
         local user = Webclient.client.user.authentified_as {}
         component.data.user = user and user.identifier or nil
-        Webclient.update (component)
+        Webclient.show (component)
         Webclient.document:getElementById "sign-up".onclick = function ()
           Webclient.run (function ()
             Authentication.sign_up ()
