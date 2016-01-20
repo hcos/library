@@ -145,6 +145,14 @@ return function (loader)
                    and tos.digest,
           locale     = Webclient.window.navigator.language,
         })
+        if Webclient.navigator.geolocation then
+          Webclient.navigator.geolocation:getCurrentPosition (function (p)
+            assert (Webclient.client.user.update {
+              latitude  = p.coords.latitude,
+              longitude = p.coords.longitude,
+            })
+          end)
+        end
         loader.load "cosy.webclient.profile" {
           where = "main",
         }
