@@ -196,6 +196,9 @@ return function (loader)
 
   function Authentication.log_out ()
     Webclient.storage:removeItem "cosy:client"
+    loader.load "cosy.webclient.dashboard" {
+      where = "main",
+    }
     Webclient.init ()
   end
 
