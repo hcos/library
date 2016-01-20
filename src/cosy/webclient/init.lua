@@ -73,6 +73,19 @@ return function (loader)
     return result
   end
 
+  function Webclient.tojs (t)
+    if type (t) ~= "table" then
+      return t
+    else
+      local result = Webclient.js.new (Webclient.window.Object)
+      for k, v in pairs (t) do
+        assert (type (k) == "string")
+        result [k] = Webclient.tojs (v)
+      end
+      return result
+    end
+  end
+
   function Webclient.init ()
     local Value       = loader.load "cosy.value"
     Webclient.library = loader.load "cosy.library"
