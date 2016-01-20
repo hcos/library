@@ -6,10 +6,12 @@ return function (loader)
 
   local Webclient = {}
 
-  Webclient.window   = loader.js.global
-  Webclient.document = loader.js.global.document
-  Webclient.screen   = loader.js.global.screen
-  Webclient.locale   = Webclient.window.navigator.language
+  Webclient.js        = loader.js
+  Webclient.window    = loader.js.global
+  Webclient.document  = loader.js.global.document
+  Webclient.screen    = loader.js.global.screen
+  Webclient.navigator = loader.js.global.navigator
+  Webclient.locale    = Webclient.window.navigator.language
 
   local function replace (t)
     if type (t) ~= "table" then
