@@ -115,9 +115,7 @@ return function (loader)
       protocols = {
         cosy = function (ws)
           ws.ip, ws.port = ws.sock:getpeername ()
-          -- FIXME: geolocation is missing
-          local geo = Layer.export (Layer.flatten (Configuration.geodb.position))
-          geo.country = geo.country_name
+          local geo = Layer.export (Layer.flatten (Configuration.position))
           local message
           local function send (t)
             local response = Value.expression (t)
