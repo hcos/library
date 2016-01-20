@@ -1,0 +1,26 @@
+<div class="col-md-4 col-xs-12 col-centered">
+  <form class="form-signin">
+    <h2 class="form-signin-heading">{{title}}</h2>
+    <input type="email"
+           id="email"
+           class="form-control has-feedback"
+           placeholder="{{email}}"
+           required autofocus />
+    <input type="password"
+           id="password"
+           class="form-control has-feedback"
+           placeholder="{{password}}"
+           required>
+    <div class="checkbox">
+      <label>
+        <input id="remember"
+               type="checkbox"
+               value="{{remember}}" />
+        {{remember}}
+      </label>
+    </div>
+    <button id="log-in"
+            class="btn btn-lg btn-primary btn-block"
+            type="submit">{{log-in}}</button>
+  </form>
+</div>
