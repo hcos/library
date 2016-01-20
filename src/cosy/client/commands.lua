@@ -434,8 +434,9 @@ return function (loader)
       os.remove (inputname)
       response.avatar  = nil
     end
-    if response.position and response.position.address then
+    if response.position then
       response.position = response.position.address
+                       or "{{{latitude}}}, {{{longitude}}}" % response.position
     end
     if response.lastseen then
       response.lastseen = os.date ("%x, %X", response.lastseen)
