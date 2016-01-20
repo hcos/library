@@ -93,23 +93,23 @@ return function (loader)
           component.data         = info
           component.data.address = info.position and "{{{city}}}, {{{country}}}" % info.position
           Webclient.show (component)
-          local params = {
+          Webclient.window:jQuery "#position":locationpicker (Webclient.tojs {
             location     = info.position,
             radius       = 0,
             inputBinding = {
               locationNameInput = Webclient.window:jQuery "#address",
             },
             enableAutocomplete = true,
-            onchanged          = function (_, current)
+            onchanged          = function ()
+              local location = Webclient.window:jQuery "#position":locationpicker "map".location
               position = {
-                address   = Webclient.document:getElementById "address".value,
-                latitude  = current.latitude,
-                longitude = current.longitude,
+                address   = location.formattedAddress,
+                latitude  = location.latitude,
+                longitude = location.longitude,
               }
               Webclient.run (check)
             end,
-          }
-          Webclient.window:jQuery "#position":locationpicker (Webclient.tojs (params))
+          })
           for _, x in ipairs { "name", "organization", "homepage", "email", "password-1", "password-2" } do
             Webclient.document:getElementById (x).onblur = function ()
               Webclient.run (check)
