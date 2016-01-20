@@ -21,10 +21,22 @@ return function (options)
   loader.screen   = loader.js.global.screen
 
   local modules  = setmetatable ({}, { __mode = "kv" })
-  loader.request = function (url)
+  loader.request = function (url, allow_yield)
     local request = loader.js.new (loader.window.XMLHttpRequest)
-    request:open ("GET", url, false)
-    request:send (nil)
+    local co      = loader.scheduler and loader.scheduler.running ()
+    if allow_yield and co then
+      request:open ("GET", url, true)
+      request.onreadystatechange = function ()
+        if request.readyState == 4 then
+          loader.scheduler.wakeup (co)
+        end
+      end
+      request:send (nil)
+      loader.scheduler.sleep (-math.huge)
+    else
+      request:open ("GET", url, false)
+      request:send (nil)
+    end
     if request.status == 200 then
       return request.responseText, request.status
     else
