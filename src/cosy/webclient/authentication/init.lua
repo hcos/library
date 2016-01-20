@@ -115,14 +115,7 @@ return function (loader)
       end
     end
 
-    local button
-    Webclient.document:getElementById "cancel".onclick = function ()
-      button = "cancel"
-      Scheduler.wakeup (co)
-      return false
-    end
     Webclient.document:getElementById "accept".onclick = function ()
-      button = "accept"
       Scheduler.wakeup (co)
       return false
     end
@@ -149,11 +142,6 @@ return function (loader)
 
     while true do
       Scheduler.sleep (-math.huge)
-      if button == "cancel" then
-        Webclient.hide (component)
-        return
-      end
-      assert (button == "accept")
       if check () then
         assert (Webclient.client.user.create {
           identifier = Webclient.document:getElementById "identifier".value,
@@ -181,25 +169,13 @@ return function (loader)
     }
     Webclient.show (component)
 
-    local button
-    Webclient.document:getElementById "cancel".onclick = function ()
-      button = "cancel"
-      Scheduler.wakeup (co)
-      return false
-    end
     Webclient.document:getElementById "accept".onclick = function ()
-      button = "accept"
       Scheduler.wakeup (co)
       return false
     end
 
     while true do
       Scheduler.sleep (-math.huge)
-      if button == "cancel" then
-        Webclient.hide (component)
-        return
-      end
-      assert (button == "accept")
       local result, err = Webclient.client.user.authenticate {
         user     = Webclient.document:getElementById "identifier".value,
         password = Webclient.document:getElementById "password"  .value,
