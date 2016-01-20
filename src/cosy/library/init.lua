@@ -18,13 +18,11 @@ return function (loader)
   local Operation = {}
 
   local function threadof (f, ...)
-    if Scheduler._running then
+    if Scheduler.running () then
       f (...)
     else
       Scheduler.addthread (f, ...)
-      Scheduler._running = true
       Scheduler.loop ()
-      Scheduler._running = false
     end
   end
 
