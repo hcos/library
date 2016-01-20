@@ -45,8 +45,7 @@ return function (options)
   end
   table.insert (package.searchers, 2, function (name)
     local url = "/lua/" .. name
-    local result, err
-    result, err = loader.request (url)
+    local result, err = loader.request (url)
     if not result then
       error (err)
     end
