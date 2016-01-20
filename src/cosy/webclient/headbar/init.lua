@@ -25,6 +25,12 @@ return function (loader)
           "margin-top": (height + 1 ) + "px"
         });
       ]]
+      Webclient.document:getElementById "home".onclick = function ()
+        loader.load "cosy.webclient.dashboard" {
+          where = "main",
+        }
+        return false
+      end
       loader.load "cosy.webclient.authentication" {
         where = "headbar:user",
       }
