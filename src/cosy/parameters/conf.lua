@@ -62,9 +62,7 @@ return function (loader)
       local request = t.request
       local key     = t.key
       local value   = request [key]
-      return  value.country
-         and  value.city
-         and  value.latitude
+      return  value.latitude
          and  value.longitude
           or  nil, {
                 _   = i18n ["check:is-position"],

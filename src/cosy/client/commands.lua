@@ -124,7 +124,7 @@ return function (loader)
     elseif oftype == "tos:digest" then
       local _ = false
     elseif oftype == "position" then
-      parser:option ("--{{{name}}}" % { name = name }) {
+      parser:flag ("--{{{name}}}" % { name = name }) {
         description = description,
       }
     elseif oftype == "ip" then
@@ -219,11 +219,7 @@ return function (loader)
           until passwords [1] == passwords [2]
           parameters [name] = passwords [1]
         elseif t.type == "position" and args [name] then
-          if args [name] == "auto" then
-            parameters [name] = true
-          else
-            parameters [name] = args [name] / "{{{Country}}}/{{{City}}}"
-          end
+          parameters [name] = true
         elseif t.type == "captcha" and args [name] then
           Commands.captcha (args, parameters)
         elseif args [name] then
@@ -430,8 +426,8 @@ return function (loader)
       os.remove (inputname)
       response.avatar  = nil
     end
-    if response.position then
-      response.position = "{{{country}}}/{{{city}}}" % response.position
+    if response.position and response.position.address then
+      response.position = response.position.address
     end
     if response.lastseen then
       response.lastseen = os.date ("%x, %X", response.lastseen)
