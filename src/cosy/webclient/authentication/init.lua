@@ -121,23 +121,15 @@ return function (loader)
     end
 
     do
-      Webclient.window.on_captcha_load = function ()
-        local params    = loader.js.new (Webclient.window.Object)
-        params.sitekey  = info.captcha
-        params.callback = function ()
-          Webclient.run (check)
-        end
-        params ["expired-callback"] = function ()
-          Webclient.run (check)
-        end
-        captcha = Webclient.window.grecaptcha:render ("captcha", params)
-        return false
+      local params    = loader.js.new (Webclient.window.Object)
+      params.sitekey  = info.captcha
+      params.callback = function ()
+        Webclient.run (check)
       end
-      local head   = Webclient.document:getElementsByTagName "head" [0]
-      local script = Webclient.document:createElement "script"
-      script.type = "text/javascript"
-      script.src  = "js/recaptcha.js?onload=on_captcha_load&render=explicit"
-      head:appendChild (script)
+      params ["expired-callback"] = function ()
+        Webclient.run (check)
+      end
+      captcha = Webclient.window.grecaptcha:render ("captcha", params)
     end
 
     while true do
