@@ -41,6 +41,8 @@ return function (loader)
     local captcha
 
     local function check ()
+      Webclient.window:jQuery "#accept":addClass    "disabled"
+      Webclient.window:jQuery "#accept":removeClass "active"
       local result, err = Webclient.client.user.create ({
         identifier = Webclient.document:getElementById "identifier".value,
         password   = Webclient.document:getElementById "password-1".value,
@@ -99,8 +101,6 @@ return function (loader)
             Webclient.window:jQuery ("#" .. reason.key .. "-error"):html (reason.message)
           end
         end
-        Webclient.window:jQuery "#accept":removeClass "active"
-        Webclient.window:jQuery "#accept":addClass    "disabled"
         return false
       end
     end
