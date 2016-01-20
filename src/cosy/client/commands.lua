@@ -403,7 +403,7 @@ return function (loader)
       local tos = commands.client.server.tos {
         locale = args.locale,
       }
-      print (tos.tos)
+      print (tos.text)
       args.tos_digest = tos.digest
     end
   end
