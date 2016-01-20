@@ -4,15 +4,7 @@ return function (loader)
   local Scheduler = loader.load "cosy.scheduler"
   local Layer     = loader.require "layeredata"
 
-  local Webclient = {
-    shown = setmetatable ({}, {
-      __index = function (shown, k)
-        local result = {}
-        shown [k] = result
-        return result
-      end,
-    }),
-  }
+  local Webclient = {}
 
   Webclient.window   = loader.js.global
   Webclient.document = loader.js.global.document
@@ -38,48 +30,6 @@ return function (loader)
     local i18n      = component.i18n
     local template  = component.template
     local container = Webclient.document:getElementById (where)
-    local stack     = Webclient.shown [where]
-    if #stack ~= 0 then
-      local previous = stack [#stack]
-      Scheduler.block (previous.co)
-      previous.contents   = container.innerHTML
-      container.innerHTML = ""
-    end
-    stack [#stack+1] = {
-      co       = Scheduler.running (),
-      contents = nil,
-    }
-    if data then
-      data.locale = Webclient.locale
-    end
-    local replacer  = setmetatable ({}, {
-      __index = function (_, key)
-        if I18n.defines (i18n, key) then
-          return i18n [key] % {}
-        elseif data [key] then
-          return tostring (data [key])
-        else
-          return nil
-        end
-      end
-    })
-    container.innerHTML = template % replacer
-  end
-
-  function Webclient.update (component)
-    local where     = component.where
-    local data      = component.data
-    local i18n      = component.i18n
-    local template  = component.template
-    local container = Webclient.document:getElementById (where)
-    local stack     = Webclient.shown [where]
-    if #stack == 0 then
-      return Webclient.show (component)
-    end
-    local current   = stack [#stack]
-    if current.co ~= Scheduler.running () then
-      return Webclient.show (component)
-    end
     if data then
       data.locale = Webclient.locale
     end
@@ -100,17 +50,7 @@ return function (loader)
   function Webclient.hide (component)
     local where     = component.where
     local container = Webclient.document:getElementById (where)
-    local stack     = Webclient.shown [where]
-    assert (#stack ~= 0)
-    local current   = stack [#stack]
-    local previous  = stack [#stack-1]
-    stack [#stack]  = nil
     container.innerHTML = ""
-    Scheduler.block (current.co)
-    if previous then
-      container.innerHTML = previous.contents
-      Scheduler.release (previous.co)
-    end
   end
 
   function Webclient.run (f)
