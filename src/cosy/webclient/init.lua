@@ -3,7 +3,6 @@ return function (loader)
   local I18n      = loader.load "cosy.i18n"
   local Scheduler = loader.load "cosy.scheduler"
   local Layer     = loader.require "layeredata"
-  local locale    = loader.window.navigator.language
 
   local Webclient = {
     shown = setmetatable ({}, {
@@ -14,6 +13,11 @@ return function (loader)
       end,
     }),
   }
+
+  Webclient.window   = loader.js.global
+  Webclient.document = loader.js.global.document
+  Webclient.screen   = loader.js.global.screen
+  Webclient.locale   = Webclient.window.navigator.language
 
   local function replace (t)
     if type (t) ~= "table" then
@@ -33,7 +37,7 @@ return function (loader)
     local data      = component.data
     local i18n      = component.i18n
     local template  = component.template
-    local container = loader.document:getElementById (where)
+    local container = Webclient.document:getElementById (where)
     local stack     = Webclient.shown [where]
     if #stack ~= 0 then
       local previous = stack [#stack]
@@ -46,7 +50,7 @@ return function (loader)
       contents = nil,
     }
     if data then
-      data.locale = locale
+      data.locale = Webclient.locale
     end
     local replacer  = setmetatable ({}, {
       __index = function (_, key)
@@ -67,7 +71,7 @@ return function (loader)
     local data      = component.data
     local i18n      = component.i18n
     local template  = component.template
-    local container = loader.document:getElementById (where)
+    local container = Webclient.document:getElementById (where)
     local stack     = Webclient.shown [where]
     if #stack == 0 then
       return Webclient.show (component)
@@ -77,7 +81,7 @@ return function (loader)
       return Webclient.show (component)
     end
     if data then
-      data.locale = locale
+      data.locale = Webclient.locale
     end
     local replacer  = setmetatable ({}, {
       __index = function (_, key)
@@ -95,7 +99,7 @@ return function (loader)
 
   function Webclient.hide (component)
     local where     = component.where
-    local container = loader.document:getElementById (where)
+    local container = Webclient.document:getElementById (where)
     local stack     = Webclient.shown [where]
     assert (#stack ~= 0)
     local current   = stack [#stack]
@@ -127,21 +131,19 @@ return function (loader)
     return result
   end
 
-  local Value     = loader.load "cosy.value"
-  loader.library  = loader.load "cosy.library"
-  loader.storage  = loader.window.sessionStorage
-  local data      = loader.storage:getItem "cosy:client"
-  loader.data     = Layer.new {
-    name = "webclient",
-    data = data ~= loader.js.null and Value.decode (data) or {},
-  }
-  loader.client   = loader.library.connect (loader.window.location.origin, loader.data)
+  function Webclient.init ()
+    local Value       = loader.load "cosy.value"
+    Webclient.library = loader.load "cosy.library"
+    Webclient.storage = Webclient.window.sessionStorage
+    local data        = Webclient.storage:getItem "cosy:client"
+    Webclient.data    = Layer.new {
+      name = "webclient",
+      data = data ~= loader.js.null and Value.decode (data) or {},
+    }
+    Webclient.client  = Webclient.library.connect (Webclient.window.location.origin, Webclient.data)
+  end
 
-  Webclient.run (function ()
-    while true do
-      Scheduler.sleep (3600)
-    end
-  end)
+  Webclient.init ()
 
   return Webclient
 
