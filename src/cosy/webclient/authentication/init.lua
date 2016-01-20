@@ -153,7 +153,9 @@ return function (loader)
                    and tos.digest,
           locale     = Webclient.window.navigator.language,
         })
-        Webclient.hide (component)
+        loader.load "cosy.webclient.profile" {
+          where = "main",
+        }
         return
       end
     end
@@ -231,6 +233,12 @@ return function (loader)
             Authentication.log_out ()
             Scheduler.wakeup (co)
           end)
+          return false
+        end
+        Webclient.document:getElementById "profile" .onclick = function ()
+          loader.load "cosy.webclient.profile" {
+            where = "main",
+          }
           return false
         end
         Scheduler.sleep (-math.huge)
