@@ -7,33 +7,7 @@ return function (loader)
   }
 
   local HeadBar    = {}
-  HeadBar.template = [[
-    <nav class="navbar navbar-inverse navbar-fixed-top">
-      <div class="container-fluid">
-        <div class="navbar-header">
-          <button type="button"
-                  class="navbar-toggle collapsed"
-                  data-toggle="collapse"
-                  data-target="#navbar"
-                  aria-expanded="false"
-                  aria-controls="navbar">
-            <span class="sr-only">{{headbar:toggle}}</span>
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-          </button>
-          <a class="navbar-brand" href="#">{{title}}</a>
-        </div>
-        <div id="headbar:user"></div>
-      </div>
-    </nav>
-    <script type="text/javascript">
-      $(window).resize(function(){
-        console.log ("resize");
-        $(".main-content").css({"margin-top": (($(".navbar-fixed-top").height()) + 1 )+"px"});
-      });
-    </script>
-  ]]
+  HeadBar.template = Webclient.template "cosy.webclient.headbar"
 
   return function (options)
     Webclient.run (function ()
