@@ -28,6 +28,9 @@ return function (--[[ loader ]])
     ["profile:email-not-checked"] = {
       en = "your email has not been checked",
     },
+    ["profile:delete"] = {
+      en = "Are you sure that you want to delete your account?",
+    },
   }
 
 end

@@ -144,6 +144,17 @@ return function (loader)
             Scheduler.wakeup (co)
             return false
           end
+          Webclient.document:getElementById "delete".onclick = function ()
+            Webclient.window.bootbox:confirm (i18n ["profile:delete"] % {}, function (result)
+              if result ~= Webclient.js.null then
+                Webclient.run (function ()
+                  assert (Webclient.client.user.delete {})
+                  Webclient.window:jQuery "#log-out":click ()
+                end)
+              end
+            end)
+            return false
+          end
           Scheduler.sleep (-math.huge)
           local email        = Webclient.document:getElementById "email".value
           local name         = Webclient.document:getElementById "name".value
@@ -162,14 +173,21 @@ return function (loader)
           })
 
         else
+
           local info = Webclient.client.user.information {
             user = options.username,
           }
-          print (Value.encode (info))
           component.template      = Profile.template.show
-          component.data.username = options.username
+          component.data          = info
+          component.data.address  = info.position and "{{{city}}}, {{{country}}}" % info.position
           Webclient.show (component)
+          local params = {
+            location     = info.position,
+            radius       = 0,
+          }
+          Webclient.window:jQuery "#position":locationpicker (Webclient.tojs (params))
           Scheduler.sleep (-math.huge)
+
         end
       end
     end)
