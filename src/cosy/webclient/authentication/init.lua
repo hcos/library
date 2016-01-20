@@ -1,13 +1,8 @@
 return function (loader)
 
-  local Configuration = loader.load "cosy.configuration"
   local I18n          = loader.load "cosy.i18n"
   local Scheduler     = loader.load "cosy.scheduler"
   local Webclient     = loader.load "cosy.webclient"
-
-  Configuration.load {
-    "cosy.webclient.authentication",
-  }
 
   local i18n = I18n.load {
     "cosy.webclient.authentication",
@@ -70,16 +65,6 @@ return function (loader)
         Webclient.window:jQuery "#password-group":addClass "has-success"
         Webclient.window:jQuery "#password-error":html ("")
       end
-      for i = 1, 2 do
-        if #passwords [i] < Configuration.webclient.authentication.password_size then
-          Webclient.window:jQuery "#password-group":addClass "has-error"
-          local text = i18n ["sign-up:password-size"] % {
-            size = Configuration.webclient.authentication.password_size,
-          }
-          Webclient.window:jQuery "#password-error":html (text)
-          result = false
-        end
-      end
       if not captcha or Webclient.window.grecaptcha:getResponse (captcha) == "" then
         Webclient.window:jQuery "#captcha-group":addClass "has-error"
         local text = i18n ["sign-up:no-captcha"] % {}
@@ -120,16 +105,24 @@ return function (loader)
       return false
     end
 
-    do
-      local params    = loader.js.new (Webclient.window.Object)
-      params.sitekey  = info.captcha
-      params.callback = function ()
+    captcha = Webclient.window.grecaptcha:render ("captcha", Webclient.tojs {
+      sitekey  = info.captcha,
+      callback = function ()
         Webclient.run (check)
-      end
-      params ["expired-callback"] = function ()
+      end,
+      ["expired-callback"] = function ()
         Webclient.run (check)
-      end
-      captcha = Webclient.window.grecaptcha:render ("captcha", params)
+      end,
+    })
+
+    local position
+    if Webclient.navigator.geolocation then
+      Webclient.navigator.geolocation:getCurrentPosition (function (_, p)
+        position = {
+          latitude  = p.coords.latitude,
+          longitude = p.coords.longitude,
+        }
+      end)
     end
 
     while true do
@@ -145,13 +138,10 @@ return function (loader)
                    and tos.digest,
           locale     = Webclient.window.navigator.language,
         })
-        if Webclient.navigator.geolocation then
-          Webclient.navigator.geolocation:getCurrentPosition (function (p)
-            assert (Webclient.client.user.update {
-              latitude  = p.coords.latitude,
-              longitude = p.coords.longitude,
-            })
-          end)
+        if position then
+          assert (Webclient.client.user.update {
+            position = position,
+          })
         end
         loader.load "cosy.webclient.profile" {
           where = "main",
