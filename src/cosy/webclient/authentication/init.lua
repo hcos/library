@@ -171,97 +171,55 @@ return function (loader)
     end
   end
 
-  --[==[
-
   function Authentication.log_in ()
-    local running = loader.scheduler.running ()
-    loader.document:getElementById "content-wrapper".innerHTML = loader.request "/html/login.html"
-    loader.document:getElementById "signin".onclick = function ()
-      loader.window:jQuery "#userdiv"  :removeClass "has-error"
-      loader.window:jQuery "#error"    :hide ()
-      loader.window:jQuery "#usererror":hide ()
-      loader.scheduler.wakeup (running)
+    local co        = Scheduler.running ()
+    local component = {
+      where    = "main",
+      template = Authentication.template.log_in,
+      data     = {},
+      i18n     = i18n,
+    }
+    Webclient.show (component)
+
+    local button
+    Webclient.document:getElementById "cancel".onclick = function ()
+      button = "cancel"
+      Scheduler.wakeup (co)
       return false
     end
-    loader.document:getElementById "register".onclick = function ()
-      loader.scheduler.addthread (Auth.register)
+    Webclient.document:getElementById "accept".onclick = function ()
+      button = "accept"
+      Scheduler.wakeup (co)
       return false
     end
+
     while true do
-      local identifier = loader.document:getElementById "identifier".value
-      local password = loader.document:getElementById "password".value
-      local result, err = loader.client.user.authenticate {
-        user     = identifier,
-        password = password,
+      Scheduler.sleep (-math.huge)
+      if button == "cancel" then
+        Webclient.hide (component)
+        return
+      end
+      assert (button == "accept")
+      local result, err = Webclient.client.user.authenticate {
+        user     = Webclient.document:getElementById "identifier".value,
+        password = Webclient.document:getElementById "password"  .value,
+        locale   = Webclient.window.navigator.language,
       }
       if result then
-        loader.window:jQuery "#success #message":html "User authentified"
-        loader.window:jQuery "#success":show ()
-        loader.storage:setItem ("cosy:client", Value.encode (loader.data))
-        loader.window.location.href = "/"
+        Webclient.hide (component)
+        return
       else
-        loader.window:jQuery "#error #message":html (err.message)
-        loader.window:jQuery "#error":show ()
-        if err.reasons then
-          for i = 1, #err.reasons do
-            local reason = err.reasons [i]
-            if reason.parameter == "identifier" then
-              loader.window:jQuery "#usererror":html (reason.message)
-              loader.window:jQuery "#usererror":show()
-              loader.window:jQuery "#userdiv"  :addClass "has-error"
-            end
-          end
-        end
+        Webclient.window:jQuery "#identifier-group":addClass "has-error"
+        Webclient.window:jQuery "#password-group"  :addClass "has-error"
+        Webclient.window:jQuery "#identifier-error":html (err.message)
       end
-      loader.scheduler.sleep ()
     end
   end
 
   function Authentication.log_out ()
-    local running = loader.scheduler.running ()
-    loader.document:getElementById "content-wrapper".innerHTML = loader.request "/html/login.html"
-    loader.document:getElementById "signin".onclick = function ()
-      loader.window:jQuery "#userdiv"  :removeClass "has-error"
-      loader.window:jQuery "#error"    :hide ()
-      loader.window:jQuery "#usererror":hide ()
-      loader.scheduler.wakeup (running)
-      return false
-    end
-    loader.document:getElementById "register".onclick = function ()
-      loader.scheduler.addthread (Auth.register)
-      return false
-    end
-    while true do
-      local identifier = loader.document:getElementById "identifier".value
-      local password = loader.document:getElementById "password".value
-      local result, err = loader.client.user.authenticate {
-        user     = identifier,
-        password = password,
-      }
-      if result then
-        loader.window:jQuery "#success #message":html "User authentified"
-        loader.window:jQuery "#success":show ()
-        loader.storage:setItem ("cosy:client", Value.encode (loader.data))
-        loader.window.location.href = "/"
-      else
-        loader.window:jQuery "#error #message":html (err.message)
-        loader.window:jQuery "#error":show ()
-        if err.reasons then
-          for i = 1, #err.reasons do
-            local reason = err.reasons [i]
-            if reason.parameter == "identifier" then
-              loader.window:jQuery "#usererror":html (reason.message)
-              loader.window:jQuery "#usererror":show()
-              loader.window:jQuery "#userdiv"  :addClass "has-error"
-            end
-          end
-        end
-      end
-      loader.scheduler.sleep ()
-    end
+    Webclient.storage:removeItem "cosy:client"
+    Webclient.init ()
   end
-
-  --]==]
 
   return function (options)
     Webclient.run (function ()

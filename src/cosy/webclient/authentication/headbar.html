@@ -1,5 +1,6 @@
 <ul class="nav navbar-nav navbar-right">
   <li {{#user}}class="hidden"{{/user}}><a id="sign-up" href="#" title="{{headbar:sign-up}}"><i class="fa fa-user-plus"></i></a></li>
   <li {{#user}}class="hidden"{{/user}}><a id="log-in"  href="#" title="{{headbar:log-in}}" ><i class="fa fa-sign-in"  ></i></a></li>
+  <li {{^user}}class="hidden"{{/user}}><a id="profile" href="#" title="{{headbar:profile}}"><i class="fa fa-user"></i>&nbsp;{{user}}</a></li>
   <li {{^user}}class="hidden"{{/user}}><a id="log-out" href="#" title="{{headbar:log-out}}"><i class="fa fa-sign-out" ></i></a></li>
 </ul>

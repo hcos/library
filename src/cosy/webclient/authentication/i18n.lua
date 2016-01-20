@@ -46,6 +46,15 @@ return function (--[[ loader ]])
     ["sign-up:accept"] = {
       en = "I agree to the Terms of Service",
     },
+    ["log-in:title"] = {
+      en = "Log in",
+    },
+    ["log-in:identifier"] = {
+      en = "username",
+    },
+    ["log-in:password"] = {
+      en = "password",
+    },
   }
 
 end
