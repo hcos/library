@@ -13,7 +13,7 @@ return function (loader)
     "cosy.webclient.authentication",
     "cosy.client",
   }
-  i18n._locale = loader.window.navigator.language
+  i18n._locale = Webclient.window.navigator.language
 
   local Authentication = {
     template = {},
@@ -24,9 +24,9 @@ return function (loader)
 
   function Authentication.sign_up ()
     local co   = Scheduler.running ()
-    local info = loader.client.server.information ()
-    local tos  = loader.client.server.tos {
-      locale = loader.window.navigator.language,
+    local info = Webclient.client.server.information ()
+    local tos  = Webclient.client.server.tos {
+      locale = Webclient.window.navigator.language,
     }
     local component = {
       where    = "main",
@@ -41,95 +41,95 @@ return function (loader)
     local captcha
 
     local function check ()
-      local result, err = loader.client.user.create ({
-        identifier = loader.document:getElementById "identifier".value,
-        password   = loader.document:getElementById "password-1".value,
-        email      = loader.document:getElementById "email".value,
-        captcha    = captcha and loader.window.grecaptcha:getResponse (captcha),
-        tos_digest = loader.document:getElementById "tos".checked
+      local result, err = Webclient.client.user.create ({
+        identifier = Webclient.document:getElementById "identifier".value,
+        password   = Webclient.document:getElementById "password-1".value,
+        email      = Webclient.document:getElementById "email".value,
+        captcha    = captcha and Webclient.window.grecaptcha:getResponse (captcha),
+        tos_digest = Webclient.document:getElementById "tos".checked
                  and tos.digest,
-        locale     = loader.window.navigator.language,
+        locale     = Webclient.window.navigator.language,
       }, true)
       for _, x in ipairs { "identifier", "email", "password", "captcha", "tos" } do
-        loader.window:jQuery ("#" .. x .. "-group"):removeClass "has-error"
-        loader.window:jQuery ("#" .. x .. "-group"):addClass    "has-success"
-        loader.window:jQuery ("#" .. x .. "-error"):html ("")
+        Webclient.window:jQuery ("#" .. x .. "-group"):removeClass "has-error"
+        Webclient.window:jQuery ("#" .. x .. "-group"):addClass    "has-success"
+        Webclient.window:jQuery ("#" .. x .. "-error"):html ("")
       end
       local passwords = {
-        loader.document:getElementById "password-1".value,
-        loader.document:getElementById "password-2".value,
+        Webclient.document:getElementById "password-1".value,
+        Webclient.document:getElementById "password-2".value,
       }
       if passwords [1] ~= passwords [2] then
-        loader.window:jQuery "#password-group":addClass "has-error"
+        Webclient.window:jQuery "#password-group":addClass "has-error"
         local text = i18n ["argument:password:nomatch"] % {}
-        loader.window:jQuery "#password-error":html (text)
+        Webclient.window:jQuery "#password-error":html (text)
         result = false
       else
-        loader.window:jQuery "#password-group":addClass "has-success"
-        loader.window:jQuery "#password-error":html ("")
+        Webclient.window:jQuery "#password-group":addClass "has-success"
+        Webclient.window:jQuery "#password-error":html ("")
       end
       for i = 1, 2 do
         if #passwords [i] < Configuration.webclient.authentication.password_size then
-          loader.window:jQuery "#password-group":addClass "has-error"
+          Webclient.window:jQuery "#password-group":addClass "has-error"
           local text = i18n ["sign-up:password-size"] % {
             size = Configuration.webclient.authentication.password_size,
           }
-          loader.window:jQuery "#password-error":html (text)
+          Webclient.window:jQuery "#password-error":html (text)
           result = false
         end
       end
-      if not captcha or loader.window.grecaptcha:getResponse (captcha) == "" then
-        loader.window:jQuery "#captcha-group":addClass "has-error"
+      if not captcha or Webclient.window.grecaptcha:getResponse (captcha) == "" then
+        Webclient.window:jQuery "#captcha-group":addClass "has-error"
         local text = i18n ["sign-up:no-captcha"] % {}
-        loader.window:jQuery "#captcha-error":html (text)
+        Webclient.window:jQuery "#captcha-error":html (text)
         result = false
       end
       if result then
-        loader.window:jQuery "#accept":removeClass "disabled"
-        loader.window:jQuery "#accept":addClass    "active"
+        Webclient.window:jQuery "#accept":removeClass "disabled"
+        Webclient.window:jQuery "#accept":addClass    "active"
         return true
       elseif err then
         for _, reason in ipairs (err.reasons or {}) do
           if reason.key == "tos_digest" then
-            loader.window:jQuery "#tos-group":addClass "has-error"
+            Webclient.window:jQuery "#tos-group":addClass "has-error"
             local text = i18n ["sign-up:no-tos"] % {}
-            loader.window:jQuery "#tos-error":html (text)
+            Webclient.window:jQuery "#tos-error":html (text)
           else
-            loader.window:jQuery ("#" .. reason.key .. "-group"):addClass "has-error"
-            loader.window:jQuery ("#" .. reason.key .. "-error"):html (reason.message)
+            Webclient.window:jQuery ("#" .. reason.key .. "-group"):addClass "has-error"
+            Webclient.window:jQuery ("#" .. reason.key .. "-error"):html (reason.message)
           end
         end
-        loader.window:jQuery "#accept":removeClass "active"
-        loader.window:jQuery "#accept":addClass    "disabled"
+        Webclient.window:jQuery "#accept":removeClass "active"
+        Webclient.window:jQuery "#accept":addClass    "disabled"
         return false
       end
     end
     for _, x in ipairs { "identifier", "password-1", "password-2", "email", "captcha" } do
-      loader.document:getElementById (x).onblur = function ()
+      Webclient.document:getElementById (x).onblur = function ()
         Webclient.run (check)
       end
     end
     for _, x in ipairs { "captcha", "tos" } do
-      loader.document:getElementById (x).onchange = function ()
+      Webclient.document:getElementById (x).onchange = function ()
         Webclient.run (check)
       end
     end
 
     local button
-    loader.document:getElementById "cancel".onclick = function ()
+    Webclient.document:getElementById "cancel".onclick = function ()
       button = "cancel"
       Scheduler.wakeup (co)
       return false
     end
-    loader.document:getElementById "accept".onclick = function ()
+    Webclient.document:getElementById "accept".onclick = function ()
       button = "accept"
       Scheduler.wakeup (co)
       return false
     end
 
     do
-      loader.window.on_captcha_load = function ()
-        local params    = loader.js.new (loader.window.Object)
+      Webclient.window.on_captcha_load = function ()
+        local params    = loader.js.new (Webclient.window.Object)
         params.sitekey  = info.captcha
         params.callback = function ()
           Webclient.run (check)
@@ -137,11 +137,11 @@ return function (loader)
         params ["expired-callback"] = function ()
           Webclient.run (check)
         end
-        captcha = loader.window.grecaptcha:render ("captcha", params)
+        captcha = Webclient.window.grecaptcha:render ("captcha", params)
         return false
       end
-      local head   = loader.document:getElementsByTagName "head" [0]
-      local script = loader.document:createElement "script"
+      local head   = Webclient.document:getElementsByTagName "head" [0]
+      local script = Webclient.document:createElement "script"
       script.type = "text/javascript"
       script.src  = "js/recaptcha.js?onload=on_captcha_load&render=explicit"
       head:appendChild (script)
@@ -155,15 +155,15 @@ return function (loader)
       end
       assert (button == "accept")
       if check () then
-        assert (loader.client.user.create {
-          identifier = loader.document:getElementById "identifier".value,
-          password   = loader.document:getElementById "password-1".value,
-          email      = loader.document:getElementById "email".value,
+        assert (Webclient.client.user.create {
+          identifier = Webclient.document:getElementById "identifier".value,
+          password   = Webclient.document:getElementById "password-1".value,
+          email      = Webclient.document:getElementById "email".value,
           captcha    = captcha
-                   and loader.window.grecaptcha:getResponse (captcha),
-          tos_digest = loader.document:getElementById "tos".checked
+                   and Webclient.window.grecaptcha:getResponse (captcha),
+          tos_digest = Webclient.document:getElementById "tos".checked
                    and tos.digest,
-          locale     = loader.window.navigator.language,
+          locale     = Webclient.window.navigator.language,
         })
         Webclient.hide (component)
         return
@@ -275,24 +275,24 @@ return function (loader)
         i18n     = i18n,
       }
       while true do
-        local user = loader.client.user.authentified_as {}
+        local user = Webclient.client.user.authentified_as {}
         component.data.user = user and user.identifier or nil
         Webclient.update (component)
-        loader.document:getElementById "sign-up".onclick = function ()
+        Webclient.document:getElementById "sign-up".onclick = function ()
           Webclient.run (function ()
             Authentication.sign_up ()
             Scheduler.wakeup (co)
           end)
           return false
         end
-        loader.document:getElementById "log-in" .onclick = function ()
+        Webclient.document:getElementById "log-in" .onclick = function ()
           Webclient.run (function ()
             Authentication.log_in ()
             Scheduler.wakeup (co)
           end)
           return false
         end
-        loader.document:getElementById "log-out".onclick = function ()
+        Webclient.document:getElementById "log-out".onclick = function ()
           Webclient.run (function ()
             Authentication.log_out ()
             Scheduler.wakeup (co)
