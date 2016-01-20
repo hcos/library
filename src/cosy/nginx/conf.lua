@@ -29,16 +29,14 @@ return function (loader)
     ["/js/map.js"] = "https://maps.googleapis.com/maps/api/js",
     ["/js/mapcluster.js"] = "http://google-maps-utility-library-v3.googlecode.com/svn/trunk/markerclusterer/src/markerclusterer_compiled.js",
     ["/js/recaptcha.js"] = "https://www.google.com/recaptcha/api.js",
-    ["/js/bootstrap.min.js"] = "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js",
+    ["/js/bootstrap.js"] = "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js",
+    ["/js/bootbox.js"] = "https://cdnjs.cloudflare.com/ajax/libs/bootbox.js/4.4.0/bootbox.min.js",
     ["/js/position.js"] = "http://rawgit.com/Logicify/jquery-locationpicker-plugin/master/dist/locationpicker.jquery.js",
-    ["/css/bootstrap.min.css"] = "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css",
-    ["/css/font-awesome.min.css"] = "https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css",
+    ["/css/bootstrap.css"] = "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css",
+    ["/css/font-awesome.css"] = "https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css",
     ["/fonts/fontawesome-webfont.woff2"] = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.3.0/fonts/fontawesome-webfont.woff2",
     ["/fonts/fontawesome-webfont.woff"] = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.3.0/fonts/fontawesome-webfont.woff",
     ["/fonts/fontawesome-webfont.ttf"] = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.3.0/fonts/fontawesome-webfont.ttf",
-    ["/fonts/glyphicons-halflings-regular.woff2"] = "https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.4/fonts/glyphicons-halflings-regular.woff2",
-    ["/fonts/glyphicons-halflings-regular.woff"] = "https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.4/fonts/glyphicons-halflings-regular.woff",
-    ["/fonts/glyphicons-halflings-regular.ttf"] = "https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.4/fonts/glyphicons-halflings-regular.ttf",
   }
 
 end
