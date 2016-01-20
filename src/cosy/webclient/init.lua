@@ -118,6 +118,15 @@ return function (loader)
     end)
   end
 
+  function Webclient.template (name)
+    local url = "/template/" .. name
+    local result, err = loader.request (url, true)
+    if not result then
+      error (err)
+    end
+    return result
+  end
+
   local Value     = loader.load "cosy.value"
   loader.library  = loader.load "cosy.library"
   loader.storage  = loader.window.sessionStorage

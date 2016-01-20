@@ -94,6 +94,24 @@ http {
       ';
     }
 
+    location /template {
+      default_type  text/html;
+      root          /;
+      set           $target   "";
+      access_by_lua '
+        local name = ngx.var.uri:match "/template/(.*)"
+        local path = ("{{{path}}}"):gsub ("%.lua", "%.html")
+        local filename = package.searchpath (name, path)
+        if filename then
+          ngx.var.target = filename
+        else
+          ngx.log (ngx.ERR, "failed to locate template: " .. name)
+          return ngx.exit (404)
+        end
+      ';
+      try_files     $target =404;
+    }
+
     location /lua {
       default_type  application/lua;
       root          /;
