@@ -16,16 +16,16 @@ return function (loader)
   local Client    = {}
   local Operation = {}
 
-  local function threadof (f, ...)
-    if Scheduler.running () then
-      f (...)
-    else
-      Scheduler.addthread (f, ...)
-      Scheduler.loop ()
-    end
-  end
+  Library.info = setmetatable ({}, {
+    __mode = "k",
+  })
 
   Client.coroutine = Coromake ()
+
+  local Status = {
+    opened = {},
+    closed = {},
+  }
 
   local JsWs = {}
 
@@ -37,391 +37,390 @@ return function (loader)
     }, JsWs)
   end
 
-  function JsWs.connect (ws, url, protocol)
-    ws.ws     = loader.js.new (loader.js.global.WebSocket, url, protocol)
-    ws.co     = Scheduler.running ()
-    ws.status = "closed"
-    ws.ws.onopen    = function ()
-      ws.status = "opened"
-      Scheduler.wakeup (ws.co)
+  function JsWs.connect (websocket, url, protocol)
+    websocket.ws     = loader.js.new (loader.js.global.WebSocket, url, protocol)
+    websocket.co     = Scheduler.running ()
+    websocket.status = Status.closed
+    websocket.ws.onopen = function ()
+      websocket.status = Status.opened
+      Scheduler.wakeup (websocket.co)
     end
-    ws.ws.onclose   = function ()
-      ws.status = "closed"
-      Scheduler.wakeup (ws.co)
+    websocket.ws.onclose = function ()
+      websocket.status = Status.closed
+      Scheduler.wakeup (websocket.co)
     end
-    ws.ws.onmessage = function (_, event)
-      ws.message = event.data
-      Scheduler.wakeup (ws.co)
+    websocket.ws.onmessage = function (_, event)
+      websocket.message = event.data
+      Scheduler.wakeup (websocket.co)
     end
-    ws.ws.onerror   = function ()
-      ws.status = "closed"
-      Scheduler.wakeup (ws.co)
+    websocket.ws.onerror = function ()
+      websocket.status = Status.closed
+      Scheduler.wakeup (websocket.co)
     end
-    Scheduler.sleep (ws.timeout)
-    if ws.status == "opened" then
-      return ws
+    Scheduler.sleep (websocket.timeout)
+    if websocket.status == Status.opened then
+      return websocket
     else
-      return nil, ws.state
+      return nil, websocket.reason
     end
   end
 
-  function JsWs:receive ()
-    self.message = nil
-    self.co      = Scheduler.running ()
-    Scheduler.sleep (self.timeout)
-    return self.message
+  function JsWs.receive (websocket)
+    websocket.message = nil
+    websocket.co      = Scheduler.running ()
+    Scheduler.sleep (websocket.timeout)
+    return websocket.message
   end
 
-  function JsWs:send (message)
-    self.ws:send (message)
+  function JsWs.send (websocket, message)
+    websocket.ws:send (message)
   end
 
-  function JsWs:close ()
-    self.ws:close ()
+  function JsWs.close (websocket)
+    websocket.ws:close ()
+  end
+
+  local Receiver = {}
+
+  function Receiver.new (client)
+    return setmetatable ({
+      client  = client,
+      waiting = {},
+    }, Receiver)
+  end
+
+  function Receiver.step (receiver)
+    local info    = Library.info [receiver.client]
+    local message = info.websocket:receive ()
+    if message then
+      message = Value.decode (message)
+      local identifier = message.identifier
+      local results    = info.results [identifier]
+      if results then
+        results [#results+1] = message
+        for co in pairs (receiver.waiting) do
+          Scheduler.wakeup (co)
+        end
+      end
+    end
+  end
+
+  function Receiver.loop (receiver)
+    return Scheduler.addthread (function ()
+      local info = Library.info [receiver.client]
+      while info.websocket.status == Status.opened do
+        Receiver.step (info.receiver)
+      end
+    end)
+  end
+
+  function Receiver.__call (receiver, identifier)
+    local info    = Library.info [receiver.client]
+    local results = info.results [identifier]
+    if info.synchronous then
+      repeat
+        Receiver.step (info.receiver)
+      until info.websocket.status ~= Status.opened or results [1]
+    elseif info.asynchronous then
+      info.receiver.waiting [Scheduler.running ()] = true
+      repeat
+        Scheduler.sleep (-math.huge)
+      until info.websocket.status ~= Status.opened or results [1]
+      info.receiver.waiting [Scheduler.running ()] = nil
+    end
+    return results [1]
+  end
+
+  function Client.new (t)
+    t.url = t.url
+        and t.url:gsub ("^%s*(.-)/*%s*$", "%1")
+         or t.url
+    local client = setmetatable ({}, Client)
+    Library.info [client] = {
+      data           = t.data         or {},
+      url            = t.url          or false,
+      host           = t.host         or false,
+      port           = t.port         or 80,
+      identifier     = t.identifier   or false,
+      password       = t.password     or false,
+      synchronous    = t.synchronous  or false,
+      asynchronous   = t.asynchronous or false,
+      hashed         = false,
+      authentication = false,
+      websocket      = false,
+      results        = {},
+      receiver       = Receiver.new (client),
+    }
+    local ok, err = Client.connect (client)
+    if ok then
+      return client
+    else
+      return nil, err
+    end
   end
 
   function Client.connect (client)
-    local session = client._session
-    local url     = "ws://{{{host}}}:{{{port}}}/ws" % {
-      host = session.host,
-      port = session.port,
+    local info = Library.info [client]
+    local url  = "ws://{{{host}}}:{{{port}}}/ws" % {
+      host = info.host,
+      port = info.port,
     }
     if loader.js then
-      client._ws = assert (JsWs.new {
+      info.websocket = JsWs.new {
         timeout = Configuration.library.timeout,
-      })
-    else
+      }
+    elseif client.synchronous then
       local Websocket = loader.require "websocket"
-      client._ws = assert (Websocket.client.copas {
+      info.websocket = Websocket.client.sync {
         timeout = Configuration.library.timeout,
-      })
+      }
+    elseif client.asynchronous then
+      local Websocket = loader.require "websocket"
+      info.websocket = Websocket.client.copas {
+        timeout = Configuration.library.timeout,
+      }
     end
-    client._ws.status = "closed"
-    threadof (function ()
-      local ok, err = client._ws:connect (url, "cosy")
-      if ok then
-        client._ws.status = "opened"
-      else
-        client._ws.status = "closed"
-        client._ws.error  = err
-      end
-    end)
-    if  client._ws.status == "opened"
-    and session.identifier and session.identifier ~= ""
-    and session.password   and session.password   ~= "" then
+    info.websocket.status = Status.closed
+    if not info.websocket:connect (url, "cosy") then
+      return nil
+    end
+    info.websocket.status = Status.opened
+    if client.asynchronous then
+      info.receiver.co = Receiver.loop (info.receiver)
+    end
+    if  info.identifier and info.identifier ~= ""
+    and info.password   and info.password   ~= "" then
       client.user.authenticate {}
     end
+    return true
   end
 
   function Client.__index (client, key)
-    return setmetatable ({
-      _client = client,
-      _keys   = { key },
-    }, Operation)
+    local result = setmetatable ({}, Operation)
+    Library.info [result] = {
+      client = client,
+      keys   = { key },
+    }
+    return result
   end
 
   function Operation.__index (operation, key)
-    local unpack = table.unpack or unpack
-    return setmetatable ({
-      _client = operation._client,
-      _keys = { unpack (operation._keys), key },
-    }, Operation)
+    local info   = Library.info [operation]
+    local result = setmetatable ({}, Operation)
+    Library.info [result] = {
+      client = info.client,
+      keys   = { table.unpack (info.keys), key },
+    }
+    return result
   end
 
-  Operation.receives = {}
-  function Operation.receive (client)
-    if not Operation.receives [client] then
-      Operation.receives [client] = function ()
-        local message = client._ws:receive ()
-        if message then
-          message = Value.decode (message)
-          local identifier = message.identifier
-          local results    = client._results [identifier]
-          if results then
-            results [#results+1] = message
-          end
-        end
+  local Iterator = {}
+
+  function Iterator.new (t)
+    local info    = Library.info [t.client]
+    local results = info.results [t.identifier]
+    local result  = results [1]
+    table.remove (results, 1)
+    return setmetatable ({
+      client     = t.client,
+      identifier = t.identifier,
+      token      = result.token,
+    }, Iterator)
+  end
+
+  function Iterator.__call (iterator)
+    local info    = Library.info [iterator.client]
+    local results = info.results [iterator.identifier]
+    local result  = info.receiver (iterator.identifier)
+    if result == nil then
+      info.results [iterator.identifier] = nil
+      error {
+        _ = i18n ["server:timeout"],
+      }
+    elseif result.finished then
+      info.results [iterator.identifier] = nil
+      return nil
+    else
+      table.remove (results, 1)
+      if result.success then
+        return result.response
+      else
+        return nil, result.error
       end
     end
-    Operation.receives [client] ()
   end
 
-  function Operation.__call (operation, parameters, try_only, no_redo)
-    local back_password = parameters and parameters.password
-    -- Automatic reconnect:
-    local client  = operation._client
-    local session = client._session
-    local data    = client._data [session.url]
-    if client._ws.status ~= "opened" then
-      Client.connect (client)
-    end
-    if client._ws.status ~= "opened" then
-      return nil, i18n {
-        _ = i18n ["server:unreachable"],
+  function Iterator.__gc (iterator)
+    local info = Library.info [iterator.client]
+    info.results [iterator.identifier] = nil
+    if loader.js then
+      Scheduler.addthread (function ()
+        iterator.client.server.cancel {
+          filter = iterator.token,
+        }
+      end)
+      if not Scheduler.running () then
+        Scheduler.loop ()
+      end
+    else
+      iterator.client.server.cancel {
+        filter = iterator.token,
       }
     end
+  end
+
+  function Operation.__call (operation, parameters, options)
+    parameters = parameters or {}
+    options    = options    or {}
+    local path     = Library.info [operation]
+    local client   = path.client
+    local info     = Library.info [client]
+    local password = parameters.password
+    -- Automatic reconnect:
+    if info.websocket.status ~= Status.opened then
+      if not Client.connect (client) then
+        return nil, i18n {
+          _      = i18n ["server:unreachable"],
+        }
+      end
+    end
     -- Call special cases:
-    local result, err
-    threadof (function ()
-      if not parameters then
-        parameters = {}
-      end
-      if not parameters.authentication then
-        parameters.authentication = session.authentication
-                                 or data   .authentication
-      end
-      local identifier = #client._results + 1
-      local operator   = table.concat (operation._keys, ":")
-      local wrapper    = Client.methods [operator]
-      local wrapperco  = wrapper and Client.coroutine.create (wrapper) or nil
-      client._results [identifier] = {}
-      if wrapperco then
-        Client.coroutine.resume (wrapperco, operation, parameters, try_only)
-      end
-      client._ws:send (Value.expression {
-        identifier = identifier,
-        operation  = operator,
-        parameters = parameters,
-        try_only   = try_only,
-      })
-      local results = client._results [identifier]
-      while client._ws.status == "opened" and not results [1] do
-        Operation.receive (client)
-      end
-      if results [1] == nil then
-        result, err = nil, {
-          _ = i18n ["server:timeout"],
+    if not parameters.authentication then
+      parameters.authentication = info.authentication
+                               or info.data.authentication
+    end
+    info.results [#info.results+1] = {}
+    path.coroutine   = Coromake ()
+    local identifier = #info.results
+    local operator   = table.concat (path.keys, ":")
+    local wrapper    = Client.methods [operator]
+    local wrapperco  = wrapper and path.coroutine.create (wrapper) or nil
+    client._results [identifier] = {}
+    if wrapperco then
+      path.coroutine.resume (wrapperco, operation, parameters, options)
+    end
+    -- Send request:
+    info.websocket:send (Value.expression {
+      identifier = identifier,
+      operation  = operator,
+      parameters = parameters,
+      try_only   = options.try_only,
+    })
+    local result = info.receiver (identifier)
+    if not result then
+      return nil, {
+        _ = i18n ["server:timeout"],
+      }
+    end
+    -- Handle results:
+    if result.iterator then
+      return Iterator.new {
+        client     = client,
+        identifier = result.identifier
+      }
+    end
+    info.results [identifier] = nil
+    -- Special case: password size
+    if password and #password < Configuration.library.password then
+      local reason = i18n {
+        _    = i18n ["password:too-weak"],
+        key  = "password",
+        size = Configuration.library.password,
+      }
+      if result.success then
+        result.success = false
+        result.error   = {
+          reasons = { reason },
         }
-        client._results [identifier] = nil
-      elseif results [1].iterator then
-        local coroutine = Coromake ()
-        result = results [1]
-        table.remove (results, 1)
-        local token    = result.token
-        local iterator = setmetatable ({}, {
-          __call = function ()
-            repeat
-              local start_time = os.time ()
-              while client._ws.status == "opened"
-              and not results [1]
-              and os.time () - start_time <= Configuration.library.timeout do
-                Operation.receive (client)
-              end
-              local subresult = results [1]
-              if subresult == nil then
-                client._results [identifier] = nil
-                error {
-                  _ = i18n ["server:timeout"],
-                }
-              else
-                if subresult.finished then
-                  client._results [identifier] = nil
-                end
-                coroutine.yield (subresult)
-                table.remove (results, 1)
-              end
-            until subresult.finished
-          end,
-          __gc = function ()
-            if loader.js then
-              return -- FIXME: is there no other way?
-            end
-            client._results [identifier] = nil
-            client.server.cancel {
-              filter = token,
-            }
-          end,
-        })
-        result.iterator = coroutine.wrap (function ()
-          return iterator ()
-        end)
       else
-        result = results [1]
-        client._results [identifier] = nil
+        result.error.reasons [#result.error.reasons+1] = reason
       end
-      -- Special case: if the password is not strong enough,
-      -- add it as a reason.
-      if  back_password
-      and #back_password < Configuration.library.password then
-        local reason = i18n {
-          _    = i18n ["password:too-weak"],
-          key  = "password",
-          size = Configuration.library.password,
-        }
-        if result and result.success then
-          result.success = false
-          result.error   = {
-            reasons = { reason },
-          }
-        elseif result and not result.success then
-          result.error.reasons [#result.error.reasons+1] = reason
-        end
-      end
-      if result and result.success then
-        if wrapperco and not try_only then
-          Client.coroutine.resume (wrapperco, result)
-        end
-        if result.iterator then
-          local iterator = result.iterator
-          result, err = function ()
-            local r
-            threadof (function ()
-              r = iterator ()
-            end)
-            if not r then
-              error {
-                _ = i18n ["server:timeout"],
-              }
-            elseif r.success then
-              return r.response
-            else
-              error (r.error)
-            end
-          end, nil
-        else
-          result, err = result.response or true, nil
-        end
-      elseif operator == "user:authenticate" then
-        result, err = nil, result.error
-      elseif  result
-      and     result.error
-      and (   result.error._ == "user:authenticate:failure"
-          or  result.error._ == "check:error"
-          and result.error.reasons
-          and #result.error.reasons == 1
-          and result.error.reasons [1].key == "authentication"
-          )
-      then
-        if (session.identifier and session.hashed and not client.user.authenticate {})
-        or not session.identifier
-        or not session.hashed
-        then
-          session.identifier        = nil
-          session.hashed            = nil
-          session.authentication    = nil
-          parameters.authentication = nil
-          data      .authentication = nil
-        end
-        if not no_redo then
-          result, err = operation (parameters, try_only, true)
-        else
-          result, err = nil, result.error
-        end
-      elseif result then
-        result, err = nil, result.error
-      end
-    end)
-    return result, err
+    end
+    if wrapperco then
+      path.coroutine.resume (wrapperco, result)
+    end
+    if result.success then
+      return result.response
+    else
+      return nil, result.error
+    end
   end
 
   Client.methods = {}
 
   Client.methods ["user:create"] = function (operation, parameters)
-    local client           = operation._client
-    local session          = client._session
-    local data             = client._data [session.url]
-    session.identifier     = nil
-    session.hashed         = nil
-    session.token          = nil
-    session.authentication = nil
-    parameters.password    = Digest (parameters.password)
-    local result           = Client.coroutine.yield ()
+    local path = Library.info [operation]
+    local info = Library.info [path.client]
+    info.identifier     = nil
+    info.hashed         = nil
+    info.authentication = nil
+    parameters.password = Digest (parameters.password)
+    local result = path.coroutine.yield ()
     if result.success then
-      session.identifier     = parameters.identifier
-      session.hashed         = parameters.password
-      session.authentication = result.response.authentication
-      data   .authentication = result.response.authentication
+      info.identifier          = parameters.identifier
+      info.hashed              = parameters.password
+      info.authentication      = result.response.authentication
+      info.data.authentication = result.response.authentication
     end
   end
 
   Client.methods ["user:authenticate"] = function (operation, parameters)
-    local client  = operation._client
-    local session = client._session
-    local data    = client._data [session.url]
-    session.authentication = nil
-    parameters.user        = parameters.user or session.identifier
+    local path = Library.info [operation]
+    local info = Library.info [path.client]
+    info.authentication = nil
+    parameters.user     = parameters.user or info.identifier
     if parameters.password then
       parameters.password = Digest (parameters.password)
-    elseif session.hashed then
-      parameters.password = session.hashed
+    elseif info.hashed then
+      parameters.password = info.hashed
     end
-    local result = Client.coroutine.yield ()
+    local result = path.coroutine.yield ()
     if result.success then
-      session.identifier     = parameters.user
-      session.hashed         = parameters.password
-      session.authentication = result.response.authentication
-      data   .authentication = result.response.authentication
+      info.identifier          = parameters.user
+      info.hashed              = parameters.password
+      info.authentication      = result.response.authentication
+      info.data.authentication = result.response.authentication
     end
   end
 
   Client.methods ["user:delete"] = function (operation)
-    local client    = operation._client
-    local session   = client._session
-    local data      = client._data [session.url]
-    session.identifier     = nil
-    session.hashed         = nil
-    session.authentication = nil
-    data   .authentication = nil
-    Client.coroutine.yield ()
+    local path = Library.info [operation]
+    local info = Library.info [path.client]
+    info.identifier          = nil
+    info.hashed              = nil
+    info.authentication      = nil
+    info.data.authentication = nil
+    path.coroutine.yield ()
   end
 
   Client.methods ["user:update"] = function (operation, parameters)
-    local client  = operation._client
-    local session = client._session
+    local path = Library.info [operation]
+    local info = Library.info [path.client]
     if parameters.password then
       parameters.password = Digest (parameters.password)
     end
-    local result = Client.coroutine.yield ()
+    local result = path.coroutine.yield ()
     if result.success and parameters.password then
-      session.hashed = parameters.password
+      info.hashed = parameters.password
     end
   end
 
   Client.methods ["user:recover"] = Client.methods ["user:update"]
 
-  Client.methods ["server:filter"] = function (_, parameters)
+  Client.methods ["server:filter"] = function (operation, parameters)
+    local path = Library.info [operation]
     if type (parameters.iterator) == "function" then
       parameters.iterator = string.dump (parameters.iterator)
     end
-    Client.coroutine.yield ()
+    path.coroutine.yield ()
   end
 
-  function Library.client (t)
-    local client = setmetatable ({
-      _status  = false,
-      _error   = false,
-      _ws      = false,
-      _co      = coroutine.running (),
-      _results = {},
-      _session = {},
-      _data    = t.data or {},
-    }, Client)
-    t.url = t.url
-        and t.url:gsub ("^%s*(.-)/*%s*$", "%1")
-         or t.url
-    client._session.url        = t.url        or false
-    client._session.host       = t.host       or false
-    client._session.port       = t.port       or 80
-    client._session.identifier = t.identifier or false
-    client._session.password   = t.password   or false
-    client._session.hashed     = false
-    client._session.token      = false
-    Client.connect (client)
-    if client._ws.status == "opened" then
-      client._data [t.url] = client._data [t.url] or {}
-      return client
-    elseif client._ws.status == "closed" then
-      return nil, client._ws.error
-    else
-      assert (false)
-    end
-  end
-
-  if loader.js then
-    function Library.connect (url, data)
-      local parser   = loader.js.global.document:createElement "a";
-      parser.href    = url;
-      return Library.client {
+  function Library.connect (url, data)
+    local parameters
+    if loader.js then
+      local parser = loader.js.global.document:createElement "a";
+      parser.href  = url;
+      parameters   = {
         url        = url,
         host       = parser.hostname,
         port       = parser.port,
@@ -429,12 +428,10 @@ return function (loader)
         password   = parser.password,
         data       = data,
       }
-    end
-  else
-    local Url = loader.require "socket.url"
-    function Library.connect (url, data)
+    else
+      local Url    = loader.require "socket.url"
       local parsed = Url.parse (url)
-      return Library.client {
+      parameters   = {
         url        = url,
         host       = parsed.host,
         port       = parsed.port,
@@ -443,6 +440,12 @@ return function (loader)
         data       = data,
       }
     end
+    if Scheduler.running () then
+      parameters.asynchronous = true
+    else
+      parameters.synchronous  = true
+    end
+    return Client.new (parameters)
   end
 
   return Library
