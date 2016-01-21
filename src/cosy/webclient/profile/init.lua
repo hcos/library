@@ -35,8 +35,7 @@ return function (loader)
           local avatar
 
           local function check ()
-            Webclient.window:jQuery "#accept":addClass    "disabled"
-            Webclient.window:jQuery "#accept":removeClass "active"
+            Webclient.window:jQuery "#accept":addClass "disabled"
             local email        = Webclient.document:getElementById "email".value
             local name         = Webclient.document:getElementById "name".value
             local organization = Webclient.document:getElementById "organization".value
@@ -77,7 +76,6 @@ return function (loader)
             end
             if result then
               Webclient.window:jQuery "#accept":removeClass "disabled"
-              Webclient.window:jQuery "#accept":addClass    "active"
               return true
             elseif err then
               for _, reason in ipairs (err.reasons or {}) do
@@ -93,6 +91,17 @@ return function (loader)
           component.data         = info
           component.data.address = info.position and "{{{city}}}, {{{country}}}" % info.position
           Webclient.show (component)
+
+          if not info.position and Webclient.navigator.geolocation then
+            Webclient.navigator.geolocation:getCurrentPosition (function (_, p)
+              info.position = {
+                latitude  = p.coords.latitude,
+                longitude = p.coords.longitude,
+              }
+              Scheduler.wakeup (co)
+            end)
+            Scheduler.sleep (-math.huge)
+          end
           Webclient.window:jQuery "#position":locationpicker (Webclient.tojs {
             location     = info.position,
             radius       = 0,
@@ -101,6 +110,15 @@ return function (loader)
             },
             enableAutocomplete = true,
             onchanged          = function ()
+              local location = Webclient.window:jQuery "#position":locationpicker "map".location
+              position = {
+                address   = location.formattedAddress,
+                latitude  = location.latitude,
+                longitude = location.longitude,
+              }
+              Webclient.run (check)
+            end,
+            oninitialized      = function ()
               local location = Webclient.window:jQuery "#position":locationpicker "map".location
               position = {
                 address   = location.formattedAddress,
@@ -133,6 +151,7 @@ return function (loader)
             Webclient.window.bootbox:confirm (i18n ["profile:delete"] % {}, function (result)
               if result ~= Webclient.js.null then
                 Webclient.run (function ()
+                  Webclient.document:getElementById "delete".innerHTML = [[<i class="fa fa-spinner fa-spin"></i>]]
                   assert (Webclient.client.user.delete {})
                   Webclient.window:jQuery "#log-out":click ()
                 end)
@@ -146,6 +165,7 @@ return function (loader)
           local organization = Webclient.document:getElementById "organization".value
           local homepage     = Webclient.document:getElementById "homepage".value
           local password     = Webclient.document:getElementById "password-1".value
+          Webclient.document:getElementById "accept".innerHTML = [[<i class="fa fa-spinner fa-spin"></i>]]
           assert (Webclient.client.user.update {
             email        = email ~= info.email and email        or nil,
             avatar       = avatar              and avatar       or nil,
@@ -156,6 +176,7 @@ return function (loader)
             position     = position            and position     or nil,
             locale       = Webclient.window.navigator.language,
           })
+          Webclient.document:getElementById "accept".innerHTML = [[<i class="fa fa-check"></i>]]
 
         else
 
