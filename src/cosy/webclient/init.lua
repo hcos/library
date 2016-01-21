@@ -4,7 +4,10 @@ return function (loader)
   local Scheduler = loader.load "cosy.scheduler"
   local Layer     = loader.require "layeredata"
 
-  local Webclient = {}
+  local MT        = {}
+  local Webclient = setmetatable ({
+    shown = {},
+  }, MT)
 
   Webclient.js        = loader.js
   Webclient.window    = loader.js.global
@@ -32,6 +35,7 @@ return function (loader)
     local i18n      = component.i18n
     local template  = component.template
     local container = Webclient.document:getElementById (where)
+    local shown     = Webclient.shown [where]
     if data then
       data.locale = Webclient.locale
     end
@@ -46,13 +50,11 @@ return function (loader)
         end
       end
     })
+    if shown and shown ~= Scheduler.running () then
+      Scheduler.removethread (shown)
+    end
+    Webclient.shown [where] = Scheduler.running ()
     container.innerHTML = template % replacer
-  end
-
-  function Webclient.hide (component)
-    local where     = component.where
-    local container = Webclient.document:getElementById (where)
-    container.innerHTML = ""
   end
 
   function Webclient.run (f)
@@ -95,10 +97,16 @@ return function (loader)
       name = "webclient",
       data = data ~= loader.js.null and Value.decode (data) or {},
     }
-    Webclient.client  = Webclient.library.connect (Webclient.window.location.origin, Webclient.data)
+    Webclient.client  = assert (Webclient.library.connect (Webclient.window.location.origin, Webclient.data))
   end
 
-  Webclient.init ()
+  function MT.__index (webclient, key)
+    return webclient.window:jQuery (key)
+  end
+
+  function MT.__call (webclient, script)
+    return webclient.window:eval (script)
+  end
 
   return Webclient
 

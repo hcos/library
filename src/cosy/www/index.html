@@ -30,11 +30,12 @@
       _G.coroutine = coromake ()
       local co = coroutine.create (function ()
         xpcall (function ()
-          local loader = require (origin .. "/lua/cosy.loader.js") {}
-          loader.load "cosy.webclient"
-          loader.load "cosy.webclient.headbar" {
-            where = "headbar",
-          }
+          local loader    = require (origin .. "/lua/cosy.loader.js") {}
+          local Webclient = loader.load "cosy.webclient"
+          loader.scheduler.addthread (function ()
+            Webclient.init ()
+            loader.load "cosy.webclient.headbar" ()
+          end)
           loader.scheduler.loop ()
         end, function (err)
           print ("error:", err)
