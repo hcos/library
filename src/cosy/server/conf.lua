@@ -17,10 +17,4 @@ return function (loader)
     private_key = nil,
   }
 
-  Default.position = {
-    address   = "Privas, France",
-    longitude = 4.6,
-    latitude  = 44.735833,
-  }
-
 end

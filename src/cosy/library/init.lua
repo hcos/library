@@ -3,7 +3,6 @@ return function (loader)
   local Configuration = loader.load "cosy.configuration"
   local Digest        = loader.load "cosy.digest"
   local I18n          = loader.load "cosy.i18n"
-  local Json          = loader.load "cosy.json"
   local Value         = loader.load "cosy.value"
   local Scheduler     = loader.load "cosy.scheduler"
   local Coromake      = loader.require "coroutine.make"
@@ -332,10 +331,6 @@ return function (loader)
       session.hashed         = parameters.password
       session.authentication = result.response.authentication
       data   .authentication = result.response.authentication
-      client.user.update {
-        authentication = session.authentication,
-        position       = true,
-      }
     end
   end
 
@@ -375,21 +370,6 @@ return function (loader)
     local session = client._session
     if parameters.password then
       parameters.password = Digest (parameters.password)
-    end
-    if  type (parameters.position) == "table"
-    and parameters.position.longitude == ""
-    and parameters.position.latitude  == "" then
-      local url = session.url .. "/ext/maps?address={{{country}}},{{{city}}}" % {
-        country = parameters.position.country,
-        city    = parameters.position.city,
-      }
-      local response, status = loader.request (url)
-      if status == 200 then
-        local coordinate   = Json.decode (response)
-        local position     = parameters.position
-        position.latitude  = coordinate.results [1].geometry.location.lat
-        position.longitude = coordinate.results [1].geometry.location.lng
-      end
     end
     local result = Client.coroutine.yield ()
     if result.success and parameters.password then
