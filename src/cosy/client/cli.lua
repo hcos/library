@@ -127,6 +127,7 @@ function Cli.configure (cli, arguments)
   }
   local i18n = I18n.load {
     "cosy.client",
+    "cosy.library",
   }
 
   local _error = error
