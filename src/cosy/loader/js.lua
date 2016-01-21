@@ -64,7 +64,6 @@ return function (options)
     _running  = nil,
     waiting   = {},
     ready     = {},
-    blocked   = {},
     coroutine = loader.coroutine,
     timeout   = {},
   }
@@ -80,11 +79,13 @@ return function (options)
       coroutine.resume (loader.scheduler.co)
     end
   end
-  function loader.scheduler.block (co)
-    loader.scheduler.blocked [co] = true
-  end
-  function loader.scheduler.release (co)
-    loader.scheduler.blocked [co] = nil
+  function loader.scheduler.removethread (co)
+    if loader.scheduler.timeout [co] then
+      loader.js.global:clearTimeout (loader.scheduler.timeout [co])
+    end
+    loader.scheduler.waiting [co] = nil
+    loader.scheduler.ready   [co] = nil
+    loader.scheduler.timeout [co] = nil
   end
   function loader.scheduler.sleep (time)
     time = time or -math.huge
@@ -92,6 +93,7 @@ return function (options)
     if time > 0 then
       loader.scheduler.timeout [co] = loader.js.global:setTimeout (function ()
         loader.js.global:clearTimeout (loader.scheduler.timeout [co])
+        loader.scheduler.timeout [co] = nil
         loader.scheduler.waiting [co] = nil
         loader.scheduler.ready   [co] = true
         if coroutine.status (loader.scheduler.co) == "suspended" then
@@ -107,6 +109,7 @@ return function (options)
   end
   function loader.scheduler.wakeup (co)
     loader.js.global:clearTimeout (loader.scheduler.timeout [co])
+    loader.scheduler.timeout [co] = nil
     loader.scheduler.waiting [co] = nil
     loader.scheduler.ready   [co] = true
     coroutine.resume (loader.scheduler.co)
@@ -115,37 +118,27 @@ return function (options)
     loader.scheduler.co = coroutine.running ()
     while true do
       for to_run, t in pairs (loader.scheduler.ready) do
-        if not loader.scheduler.blocked [to_run] then
-          if loader.scheduler.coroutine.status (to_run) == "suspended" then
-            loader.scheduler._running = to_run
-            local ok, err = loader.scheduler.coroutine.resume (to_run, type (t) == "table" and table.unpack (t.parameters))
-            loader.scheduler._running = nil
-            if not ok then
-              loader.js.global.console:log (err)
-            end
-          end
-          if loader.scheduler.coroutine.status (to_run) == "dead" then
-            loader.scheduler.waiting [to_run] = nil
-            loader.scheduler.ready   [to_run] = nil
+        if loader.scheduler.coroutine.status (to_run) == "suspended" then
+          loader.scheduler._running = to_run
+          local ok, err = loader.scheduler.coroutine.resume (to_run, type (t) == "table" and table.unpack (t.parameters))
+          loader.scheduler._running = nil
+          if not ok then
+            loader.js.global.console:log (err)
           end
         end
       end
+      for co in pairs (loader.scheduler.ready) do
+        if loader.scheduler.coroutine.status (co) == "dead" then
+          loader.scheduler.waiting [co] = nil
+          loader.scheduler.ready   [co] = nil
+        end
+      end
       if  not next (loader.scheduler.ready  )
-      and not next (loader.scheduler.waiting)
-      and not next (loader.scheduler.blocked) then
+      and not next (loader.scheduler.waiting) then
         loader.scheduler.co = nil
         return
-      else
-        local runnable = 0
-        for k in pairs (loader.scheduler.ready) do
-          if not loader.scheduler.blocked [k] then
-            runnable = runnable + 1
-            break
-          end
-        end
-        if runnable == 0 then
-          coroutine.yield ()
-        end
+      elseif not next (loader.scheduler.ready) then
+        coroutine.yield ()
       end
     end
   end
