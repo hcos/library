@@ -36,8 +36,7 @@ return function (loader)
     local captcha
 
     local function check ()
-      Webclient.window:jQuery "#accept":addClass    "disabled"
-      Webclient.window:jQuery "#accept":removeClass "active"
+      Webclient.window:jQuery "#accept":addClass "disabled"
       local result, err = Webclient.client.user.create ({
         identifier = Webclient.document:getElementById "identifier".value,
         password   = Webclient.document:getElementById "password-1".value,
@@ -73,7 +72,6 @@ return function (loader)
       end
       if result then
         Webclient.window:jQuery "#accept":removeClass "disabled"
-        Webclient.window:jQuery "#accept":addClass    "active"
         return true
       elseif err then
         for _, reason in ipairs (err.reasons or {}) do
@@ -115,19 +113,11 @@ return function (loader)
       end,
     })
 
-    local position
-    if Webclient.navigator.geolocation then
-      Webclient.navigator.geolocation:getCurrentPosition (function (_, p)
-        position = {
-          latitude  = p.coords.latitude,
-          longitude = p.coords.longitude,
-        }
-      end)
-    end
-
     while true do
       Scheduler.sleep (-math.huge)
       if check () then
+        Webclient.window:jQuery "#accept":addClass "disabled"
+        Webclient.document:getElementById "accept".innerHTML = [[<i class="fa fa-spinner fa-spin"></i>]]
         assert (Webclient.client.user.create {
           identifier = Webclient.document:getElementById "identifier".value,
           password   = Webclient.document:getElementById "password-1".value,
@@ -138,15 +128,9 @@ return function (loader)
                    and tos.digest,
           locale     = Webclient.window.navigator.language,
         })
-        if position then
-          assert (Webclient.client.user.update {
-            position = position,
-          })
-        end
         loader.load "cosy.webclient.profile" {
           where = "main",
         }
-        return
       end
     end
   end
@@ -168,15 +152,21 @@ return function (loader)
 
     while true do
       Scheduler.sleep (-math.huge)
+      Webclient.window:jQuery "#accept":addClass "disabled"
+      Webclient.document:getElementById "accept".innerHTML = [[<i class="fa fa-spinner fa-spin"></i>]]
       local result, err = Webclient.client.user.authenticate {
         user     = Webclient.document:getElementById "identifier".value,
         password = Webclient.document:getElementById "password"  .value,
         locale   = Webclient.window.navigator.language,
       }
       if result then
-        Webclient.hide (component)
+        loader.load "cosy.webclient.dashboard" {
+          where = "main",
+        }
         return
       else
+        Webclient.window:jQuery "#accept":removeClass "disabled"
+        Webclient.document:getElementById "accept".innerHTML = [[<i class="fa fa-check"></i>]]
         Webclient.window:jQuery "#identifier-group":addClass "has-error"
         Webclient.window:jQuery "#password-group"  :addClass "has-error"
         Webclient.window:jQuery "#identifier-error":html (err.message)
