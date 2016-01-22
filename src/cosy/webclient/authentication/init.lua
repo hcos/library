@@ -50,8 +50,6 @@ return function (loader)
       }, {
         try_only = true,
       })
-      local Value = loader.load "cosy.value"
-      print (result, Value.encode (err))
       for _, x in ipairs { "identifier", "email", "password", "captcha", "tos" } do
         Webclient.jQuery ("#" .. x .. "-group"):removeClass "has-error"
         Webclient.jQuery ("#" .. x .. "-group"):addClass    "has-success"
@@ -73,7 +71,6 @@ return function (loader)
         Webclient.jQuery "#captcha-error":html (text)
         result = false
       end
-      print ("check", result)
       if result then
         Webclient.jQuery "#accept":removeClass "disabled"
         return true
