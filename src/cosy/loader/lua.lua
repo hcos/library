@@ -55,9 +55,16 @@ return function (t)
   for part in path:gmatch "[^/]+" do
     parts [#parts+1] = part
   end
-  for i = #parts, #parts-5, -1 do
-    parts [i] = nil
-  end
+
+  parts [#parts] = nil
+  parts [#parts] = nil
+
+  loader.source = (path:find "^/" and "/" or "") .. table.concat (parts, "/")
+
+  parts [#parts] = nil
+  parts [#parts] = nil
+  parts [#parts] = nil
+
   loader.prefix = (path:find "^/" and "/" or "") .. table.concat (parts, "/")
 
   os.execute ([[ mkdir -p {{{home}}} ]] % {
