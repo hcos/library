@@ -9,13 +9,6 @@ return function (loader)
     shown = {},
   }, MT)
 
-  Webclient.js        = loader.js
-  Webclient.window    = loader.js.global
-  Webclient.document  = loader.js.global.document
-  Webclient.screen    = loader.js.global.screen
-  Webclient.navigator = loader.js.global.navigator
-  Webclient.locale    = Webclient.window.navigator.language
-
   local function replace (t)
     if type (t) ~= "table" then
       return t
@@ -29,12 +22,28 @@ return function (loader)
     end
   end
 
+  function MT.__call (_, f, ...)
+    local args = { ... }
+    Scheduler.addthread (function ()
+      xpcall (function ()
+        return f (table.unpack (args))
+      end, function (err)
+        print ("error:", err)
+        print (debug.traceback ())
+      end)
+    end)
+  end
+
+  function Webclient.jQuery (key)
+    return Webclient.window:jQuery (key)
+  end
+
   function Webclient.show (component)
     local where     = component.where
     local data      = component.data
     local i18n      = component.i18n
     local template  = component.template
-    local container = Webclient.document:getElementById (where)
+    local container = Webclient.jQuery ("#" .. where)
     local shown     = Webclient.shown [where]
     if data then
       data.locale = Webclient.locale
@@ -54,16 +63,7 @@ return function (loader)
       Scheduler.removethread (shown)
     end
     Webclient.shown [where] = Scheduler.running ()
-    container.innerHTML = template % replacer
-  end
-
-  function Webclient.run (f)
-    Scheduler.addthread (function ()
-      xpcall (f, function (err)
-        print ("error:", err)
-        print (debug.traceback ())
-      end)
-    end)
+    container:html (template % replacer)
   end
 
   function Webclient.template (name)
@@ -97,16 +97,15 @@ return function (loader)
       name = "webclient",
       data = data ~= loader.js.null and Value.decode (data) or {},
     }
-    Webclient.client  = assert (Webclient.library.connect (Webclient.window.location.origin, Webclient.data))
+    Webclient.client  = assert (Webclient.library.connect (Webclient.origin, Webclient.data))
   end
 
-  function MT.__index (webclient, key)
-    return webclient.window:jQuery (key)
-  end
-
-  function MT.__call (webclient, script)
-    return webclient.window:eval (script)
-  end
+  Webclient.js        = loader.js
+  Webclient.window    = loader.js.global
+  Webclient.document  = loader.js.global.document
+  Webclient.navigator = loader.js.global.navigator
+  Webclient.locale    = loader.js.global.navigator.language
+  Webclient.origin    = loader.js.global.location.origin
 
   return Webclient
 
