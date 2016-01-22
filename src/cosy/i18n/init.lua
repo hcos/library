@@ -126,10 +126,10 @@ return function (loader)
       t [k] = v
       if type (v) == "number" then
         assert (context ["~" .. k] == nil)
-        t ["~" .. k] = Plural.get (locale, v)
+        t [k .. "~" .. Plural.get (locale, v)] = true
       end
     end
-    return Lustache:render (result, context)
+    return Lustache:render (result, t)
   end
 
   return I18n
