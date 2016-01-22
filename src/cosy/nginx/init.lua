@@ -4,6 +4,7 @@ return function (loader)
   local Default       = loader.load "cosy.configuration.layers".default
   local I18n          = loader.load "cosy.i18n"
   local Logger        = loader.load "cosy.logger"
+  local Scheduler     = loader.load "cosy.scheduler"
   local Lfs           = loader.require "lfs"
   local Posix         = loader.require "posix"
 
@@ -299,8 +300,57 @@ http {
     end
   end
 
-  loader.hotswap.on_change ["cosy:configuration"] = function ()
+  function Nginx.bundle ()
+    Scheduler.addthread (function ()
+      local modules = {}
+      local function find (path, prefix)
+        for module in Lfs.dir (path) do
+          local subpath = path .. "/" .. module
+          if  module ~= "." and module ~= ".."
+          and Lfs.attributes (subpath, "mode") == "directory" then
+            if Lfs.attributes (subpath .. "/init.lua", "mode") == "file" then
+              modules [#modules+1] = prefix .. "." .. module
+            end
+            local subprefix = prefix .. "." .. module
+            for submodule in Lfs.dir (subpath) do
+              if  submodule ~= "." and submodule ~= ".."
+              and Lfs.attributes (subpath .. "/" .. submodule, "mode") == "file"
+              and not submodule:find "init%.lua$"
+              and not submodule:find "bin%.lua$"
+              then
+                if submodule:match "%.lua$" then
+                  submodule = submodule:sub (1, #submodule-4)
+                  modules [#modules+1] = subprefix .. "." .. submodule
+                end
+              elseif Lfs.attributes (subpath .. "/" .. submodule, "mode") == "directory" then
+                find (subpath, subprefix)
+              end
+            end
+          end
+        end
+      end
+      find (loader.source .. "/cosy", "cosy")
+      table.sort (modules)
+      print ([[
+        {{{prefix}}}/amalg.lua -o {{{source}}}/cosy-full.lua -d {{{modules}}}
+      ]] % {
+        prefix  = loader.prefix,
+        source  = loader.source,
+        modules = table.concat (modules, " "),
+      })
+      Scheduler.execute ([[
+        {{{prefix}}}/amalg.lua -o {{{source}}}/cosy-full.lua -d {{{modules}}}
+      ]] % {
+        prefix  = loader.prefix,
+        source  = loader.source,
+        modules = table.concat (modules, " "),
+      })
+    end)
+  end
+
+  loader.hotswap.on_change.nginx = function ()
     Nginx.update ()
+    Nginx.bundle ()
   end
 
   return Nginx
