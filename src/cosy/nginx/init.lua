@@ -257,6 +257,7 @@ http {
   function Nginx.start ()
     Nginx.stop      ()
     Nginx.configure ()
+    Nginx.bundle    ()
     os.execute ([[
       mkdir -p {{{dir}}}
     ]] % {
@@ -290,6 +291,7 @@ http {
     os.remove (Configuration.http.configuration)
     Nginx.directory = nil
     Nginx.stopped   = true
+    os.remove (Configuration.http.bundle)
   end
 
   function Nginx.update ()
@@ -301,50 +303,64 @@ http {
   end
 
   function Nginx.bundle ()
+    os.remove (Configuration.http.bundle)
     Scheduler.addthread (function ()
-      local modules = {}
+      if Nginx.in_bundle then
+        return
+      end
+      print ("generating bundle")
+      Nginx.in_bundle = true
+      local modules   = {}
       local function find (path, prefix)
-        for module in Lfs.dir (path) do
-          local subpath = path .. "/" .. module
-          if  module ~= "." and module ~= ".."
-          and Lfs.attributes (subpath, "mode") == "directory" then
-            if Lfs.attributes (subpath .. "/init.lua", "mode") == "file" then
-              modules [#modules+1] = prefix .. "." .. module
-            end
-            local subprefix = prefix .. "." .. module
-            for submodule in Lfs.dir (subpath) do
-              if  submodule ~= "." and submodule ~= ".."
-              and Lfs.attributes (subpath .. "/" .. submodule, "mode") == "file"
-              and not submodule:find "init%.lua$"
-              and not submodule:find "bin%.lua$"
-              then
-                if submodule:match "%.lua$" then
-                  submodule = submodule:sub (1, #submodule-4)
-                  modules [#modules+1] = subprefix .. "." .. submodule
-                end
-              elseif Lfs.attributes (subpath .. "/" .. submodule, "mode") == "directory" then
-                find (subpath, subprefix)
-              end
-            end
+        if path:match "%.$" then
+          return
+        end
+        if  Lfs.attributes (path, "mode") == "file"
+        and path:match "%.lua$"
+        then
+          local module = path:match "/([^/]+)%.lua$"
+          if module == "init" then
+            modules [#modules+1] = prefix
+          else
+            modules [#modules+1] = prefix and prefix .. "." .. module or module
+          end
+        elseif Lfs.attributes (path, "mode") == "directory"
+        then
+          local module = path:match "/([^/]+)$"
+          local subprefix
+          if prefix == nil then
+            subprefix = false
+          elseif prefix == false then
+            subprefix = module
+          else
+            subprefix = prefix .. "." .. module
+          end
+          for sub in Lfs.dir (path) do
+            find (path .. "/" ..sub, subprefix)
           end
         end
       end
-      find (loader.source .. "/cosy", "cosy")
+      find (loader.source)
       table.sort (modules)
-      print ([[
-        {{{prefix}}}/amalg.lua -o {{{source}}}/cosy-full.lua -d {{{modules}}}
-      ]] % {
-        prefix  = loader.prefix,
-        source  = loader.source,
-        modules = table.concat (modules, " "),
-      })
+      local temp = os.tmpname ()
       Scheduler.execute ([[
-        {{{prefix}}}/amalg.lua -o {{{source}}}/cosy-full.lua -d {{{modules}}}
+        "{{{prefix}}}/bin/amalg.lua" -o "{{{temp}}}" -d {{{modules}}}
       ]] % {
         prefix  = loader.prefix,
-        source  = loader.source,
+        temp    = temp,
         modules = table.concat (modules, " "),
       })
+      local ok = loadfile (temp)
+      if ok then
+        Scheduler.execute ([[
+          cp "{{{temp}}}" "{{{target}}}"
+        ]] % {
+          temp   = temp,
+          target = Configuration.http.bundle,
+        })
+        os.remove (temp)
+      end
+      Nginx.in_bundle = nil
     end)
   end
 

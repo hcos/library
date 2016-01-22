@@ -19,6 +19,7 @@ return function (loader)
     configuration = loader.home .. "/nginx.conf",
     directory     = loader.home .. "/nginx",
     www           = main:gsub ("cosy/nginx.*", "cosy/www"),
+    bundle        = loader.source .. "/cosy-full.lua",
   }
 
   Default.dependencies = {
