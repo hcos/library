@@ -292,9 +292,9 @@ return function (loader)
       parameters.authentication = info.authentication
                                or info.data.authentication
     end
-    info.results [#info.results+1] = {}
+    local identifier = #info.results+1
+    info.results [identifier] = {}
     path.coroutine   = Coromake ()
-    local identifier = #info.results
     local operator   = table.concat (path.keys, ":")
     local wrapper    = Client.methods [operator]
     local wrapperco  = wrapper and path.coroutine.create (wrapper) or nil
