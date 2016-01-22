@@ -35,7 +35,7 @@ http {
   types_hash_max_size   2048;
 
   proxy_temp_path       proxy;
-  proxy_cache_path      cache   keys_zone=foreign:10m;
+  proxy_cache_path      cache   keys_zone=foreign:10m max_size=1g inactive=1d use_temp_path=off;
   lua_package_path      "{{{path}}}";
   lua_package_cpath     "{{{cpath}}}";
 
@@ -169,7 +169,18 @@ http {
       ';
     }
 
-{{{redirects}}}
+    {{#redirects}}
+    location {{{url}}} {
+      proxy_cache             foreign;
+      proxy_cache_revalidate  on;
+      proxy_cache_lock        on;
+      proxy_cache_use_stale   error timeout http_500 http_502 http_503 http_504;
+      expires                 modified    1d;
+      resolver                {{{resolver}}};
+      set                     $target   "{{{remote}}}";
+      proxy_pass              $target$is_args$args;
+    }
+    {{/redirects}}
   }
 }
 ]]
@@ -212,22 +223,14 @@ http {
     if not Lfs.attributes (Configuration.http.directory, "mode") then
       Lfs.mkdir (Configuration.http.directory)
     end
-    local locations = {}
+    local redirects = {}
     for url, remote in pairs (Configuration.dependencies) do
       if type (remote) == "string" and remote:match "^http" then
-        locations [#locations+1] = [==[
-    location {{{url}}} {
-      proxy_cache foreign;
-      expires     modified  1d;
-      resolver    {{{resolver}}};
-      set         $target   "{{{remote}}}";
-      proxy_pass  $target$is_args$args;
-    }
-          ]==] % {
-            url      = url,
-            remote   = remote,
-            resolver = resolver,
-          }
+        redirects [#redirects+1] = {
+          url      = url,
+          remote   = remote,
+          resolver = resolver,
+        }
       end
     end
     if not Configuration.http.hostname then
@@ -247,7 +250,7 @@ http {
       user           = Posix.geteuid () == 0 and ("user " .. os.getenv "USER" .. ";") or "",
       path           = package. path:gsub ("5%.2", "5.1") .. ";" .. package. path,
       cpath          = package.cpath:gsub ("5%.2", "5.1") .. ";" .. package.cpath,
-      redirects      = table.concat (locations, "\n"),
+      redirects      = redirects,
     }
     local file = assert (io.open (Configuration.http.configuration, "w"))
     file:write (configuration)
