@@ -37,7 +37,7 @@ return function (loader)
     }, JsWs)
   end
 
-  function JsWs.connect (websocket, url, protocol)
+  function JsWs.connect (websocket, url, protocol, second_try)
     websocket.ws     = loader.js.new (loader.js.global.WebSocket, url, protocol)
     websocket.co     = Scheduler.running ()
     websocket.status = Status.closed
@@ -58,7 +58,10 @@ return function (loader)
       Scheduler.wakeup (websocket.co)
     end
     Scheduler.sleep (websocket.timeout)
-    if websocket.status == Status.opened then
+    if not second_try and websocket.status == Status.closed then
+      websocket.ws:close ()
+      return JsWs.connect (websocket, url, protocol, true)
+    elseif websocket.status == Status.opened then
       return websocket
     else
       return nil, websocket.reason
