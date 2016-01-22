@@ -25,12 +25,21 @@
 
     <script type="text/lua"
             lang="Lua">
-      local origin   = _G.js.global.location.origin
-      local coromake = require (origin .. "/lua/coroutine.make")
-      _G.coroutine = coromake ()
+      local origin      = _G.js.global.location.origin
+      local loaded, err = pcall (require, origin .. "/lua/cosy-full")
+      if not loaded then
+        print ("Cosy bundle cannot be loaded:", err)
+      end
+      local coromake    = loaded
+                      and require "coroutine.make"
+                       or require (origin .. "/lua/coroutine.make")
+      _G.coroutine      = coromake ()
       local co = coroutine.create (function ()
         xpcall (function ()
-          local loader    = require (origin .. "/lua/cosy.loader.js") {}
+          local Loader    = loaded
+                        and require "cosy.loader.js"
+                         or require (origin .. "/lua/cosy.loader.js")
+          local loader    = Loader {}
           local Webclient = loader.load "cosy.webclient"
           loader.scheduler.addthread (function ()
             Webclient.init ()
