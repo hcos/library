@@ -120,8 +120,14 @@ return function (loader)
 
   do
     Default.data.avatar = {
-      width  = 400,
-      height = 400,
+      normal = {
+        width  = 400,
+        height = 400,
+      },
+      icon = {
+        width  = 32,
+        height = 32,
+      },
       __refines__ = {
         this.data.string,
       },
@@ -136,16 +142,31 @@ return function (loader)
       local file       = io.open (filename, "wb")
       file:write (value)
       file:close ()
-      Scheduler.execute ([[
-        convert {{{filename}}} -resize {{{width}}}x{{{height}}} png:{{{filename}}}
-      ]] % {
-        filename = filename,
-        height   = Configuration.data.avatar.height,
-        width    = Configuration.data.avatar.width,
-      })
-      file = io.open (filename, "rb")
-      request [key] = Mime.b64 (file:read "*all")
-      file:close ()
+      request [key] = {}
+      do
+        Scheduler.execute ([[
+          convert {{{filename}}} -resize {{{width}}}x{{{height}}} png:{{{filename}}}
+        ]] % {
+          filename = filename,
+          height   = Configuration.data.avatar.normal.height,
+          width    = Configuration.data.avatar.normal.width,
+        })
+        file = io.open (filename, "rb")
+        request [key].normal = Mime.b64 (file:read "*all")
+        file:close ()
+      end
+      do
+        Scheduler.execute ([[
+          convert {{{filename}}} -resize {{{width}}}x{{{height}}} png:{{{filename}}}
+        ]] % {
+          filename = filename,
+          height   = Configuration.data.avatar.icon.height,
+          width    = Configuration.data.avatar.icon.width,
+        })
+        file = io.open (filename, "rb")
+        request [key].icon = Mime.b64 (file:read "*all")
+        file:close ()
+      end
       os.remove (filename)
       return true
     end
