@@ -34,7 +34,8 @@
           local Webclient = loader.load "cosy.webclient"
           loader.scheduler.addthread (function ()
             Webclient.init ()
-            loader.load "cosy.webclient.headbar" ()
+            loader.load "cosy.webclient.headbar"   ()
+            loader.load "cosy.webclient.dashboard" ()
           end)
           loader.scheduler.loop ()
         end, function (err)
