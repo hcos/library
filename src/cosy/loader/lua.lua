@@ -58,6 +58,7 @@ return function (t)
 
   parts [#parts] = nil
   parts [#parts] = nil
+  parts [#parts] = nil
 
   loader.source = (path:find "^/" and "/" or "") .. table.concat (parts, "/")
 
