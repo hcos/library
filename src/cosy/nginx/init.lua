@@ -311,7 +311,6 @@ http {
       if Nginx.in_bundle then
         return
       end
-      print ("generating bundle")
       Nginx.in_bundle = true
       local modules   = {}
       local function find (path, prefix)
@@ -348,21 +347,14 @@ http {
       local temp = os.tmpname ()
       Scheduler.execute ([[
         "{{{prefix}}}/bin/amalg.lua" -o "{{{temp}}}" -d {{{modules}}}
+        if "{{{prefix}}}/bin/lua" "{{{temp}}}"; then cp "{{{temp}}}" "{{{target}}}"; fi
       ]] % {
         prefix  = loader.prefix,
         temp    = temp,
+        target  = Configuration.http.bundle,
         modules = table.concat (modules, " "),
       })
-      local ok = loadfile (temp)
-      if ok then
-        Scheduler.execute ([[
-          cp "{{{temp}}}" "{{{target}}}"
-        ]] % {
-          temp   = temp,
-          target = Configuration.http.bundle,
-        })
-        os.remove (temp)
-      end
+      os.remove (temp)
       Nginx.in_bundle = nil
     end)
   end
