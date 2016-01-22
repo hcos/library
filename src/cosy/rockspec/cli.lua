@@ -38,6 +38,7 @@ local rockspecs = {
     },
     dependencies = {
       "lua >= 5.2",
+      "amalg",
       "ansicolors",
       "argparse",
       "bcrypt",
@@ -125,7 +126,7 @@ local rockspecs = {
 local modules   = {}
 local resources = {}
 
-local function do_on (path, prefix)
+local function find (path, prefix)
   for module in Lfs.dir (path) do
     local subpath = path .. "/" .. module
     if  module ~= "." and module ~= ".."
@@ -147,14 +148,14 @@ local function do_on (path, prefix)
             resources [#resources+1] = subpath .. "/" .. submodule
           end
         elseif Lfs.attributes (subpath .. "/" .. submodule, "mode") == "directory" then
-          do_on (subpath, subprefix)
+          find (subpath, subprefix)
         end
       end
     end
   end
 end
 
-do_on (arguments.source .. "/cosy", "cosy")
+find (arguments.source .. "/cosy", "cosy")
 rockspecs.full  .build.modules      = modules
 rockspecs.full  .build.install.conf = resources
 rockspecs.client.build.modules      = modules
