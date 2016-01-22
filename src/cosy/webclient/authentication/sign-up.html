@@ -42,7 +42,7 @@
                  id="password-1"
                  class="form-control has-feedback"
                  placeholder="{{sign-up:password-1}}"
-                 required>
+                 required />
         </div>
       </div>
       <div class="col-md-6 col-centered">
@@ -54,20 +54,28 @@
                  id="password-2"
                  class="form-control has-feedback"
                  placeholder="{{sign-up:password-2}}"
-                 required>
+                 required />
         </div>
       </div>
       <div id="password-error"
            class="help-block with-errors"></div>
     </div>
     <div id="tos-group"
-         class="checkbox form-group">
-      <label>
-        <input id="tos"
-               type="checkbox"
-               value="{{sign-up:accept}}" />
-        {{sign-up:accept}}
+         class="form-group">
+      <label class="control-label"
+             for="tos">{{sign-up:tos}}
       </label>
+      <div class="input-group">
+        <span class="input-group-addon">
+          <input id="tos"
+                 type="checkbox"
+                 required />
+        </span>
+        <input type="text"
+               class="form-control"
+               value="{{sign-up:accept}}"
+               readonly />
+      </div>
       <textarea class="form-control"
                 rows="5"
                 readonly>
