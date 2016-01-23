@@ -77,6 +77,9 @@ local rockspecs = {
         },
         conf = {},
       },
+      copy_directories = {
+        arguments.source .. "/cosy",
+      },
     },
   },
   client = {
@@ -156,9 +159,8 @@ local function find (path, prefix)
 end
 
 find (arguments.source .. "/cosy", "cosy")
-rockspecs.full  .build.modules      = modules
-rockspecs.full  .build.install.conf = resources
-rockspecs.client.build.modules      = modules
+rockspecs.client.build.modules          = modules
+rockspecs.full  .build.modules          = modules
 
 local options = {
   indent   = "  ",
