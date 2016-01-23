@@ -154,7 +154,7 @@ return function (loader)
             Webclient.jQuery "bootbox":confirm (i18n ["profile:delete"] % {}, function (result)
               if result ~= Webclient.js.null then
                 Webclient (function ()
-                  Webclient.jQuery "#delete":html [[<i class="fa fa-spinner fa-spin"></i>]]
+                  Webclient.jQuery "#delete":html [[<i class="fa fa-spinner fa-pulse"></i>]]
                   assert (Webclient.client.user.delete {})
                   Webclient.jQuery "#log-out":click ()
                 end)
@@ -168,7 +168,7 @@ return function (loader)
           local organization = Webclient.jQuery "#organization":val ()
           local homepage     = Webclient.jQuery "#homepage":val ()
           local password     = Webclient.jQuery "#password-1":val ()
-          Webclient.jQuery "#accept":html [[<i class="fa fa-spinner fa-spin"></i>]]
+          Webclient.jQuery "#accept":html [[<i class="fa fa-spinner fa-pulse"></i>]]
           assert (Webclient.client.user.update {
             email        = email        ~= (info.email        or "") and email        or nil,
             avatar       = t.avatar                                  and t.avatar     or nil,

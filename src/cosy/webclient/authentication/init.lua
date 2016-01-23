@@ -117,7 +117,7 @@ return function (loader)
       Scheduler.sleep (-math.huge)
       if check () then
         Webclient.jQuery "#accept":addClass "disabled"
-        Webclient.jQuery "#accept":html [[<i class="fa fa-spinner fa-spin"></i>]]
+        Webclient.jQuery "#accept":html [[<i class="fa fa-spinner fa-pulse"></i>]]
         assert (Webclient.client.user.create {
           identifier = Webclient.jQuery "#identifier":val (),
           password   = Webclient.jQuery "#password-1":val (),
@@ -151,7 +151,7 @@ return function (loader)
     while true do
       Scheduler.sleep (-math.huge)
       Webclient.jQuery "#accept":addClass "disabled"
-      Webclient.jQuery "#accept":html [[<i class="fa fa-spinner fa-spin"></i>]]
+      Webclient.jQuery "#accept":html [[<i class="fa fa-spinner fa-pulse"></i>]]
       local result, err = Webclient.client.user.authenticate {
         user     = Webclient.jQuery "#identifier":val (),
         password = Webclient.jQuery "#password"  :val (),
