@@ -81,7 +81,7 @@ function install_dependencies ()
                                  perl build-essential wget python python-pip \
                                  libc6-dev libssl-dev libev-dev \
                                  libreadline-dev libncurses5-dev libpcre3-dev \
-                                 redis-server imagemagick
+                                 redis-server imagemagick npm
       sudo pip install hererocks
       ;;
     "Darwin")
@@ -91,7 +91,7 @@ function install_dependencies ()
       export LD_LIBRARY_PATH="${HOMEBREW_PREFIX}/lib:${LD_LIBRARY_PATH}"
       export DYLD_LIBRARY_PATH="${HOMEBREW_PREFIX}/lib:${DYLD_LIBRARY_PATH}"
       brew update
-      brew install openssl libev pcre python redis imagemagick wget
+      brew install openssl libev pcre python redis imagemagick wget npm
       brew link --force openssl
       pip install hererocks
       ;;
@@ -205,6 +205,46 @@ function install_lua () {
     || echo -e "${red}failure${nc}"
 }
 
+# Install web dependencies:
+function install_web ()
+{
+  web_dependencies=(
+    bootbox
+    bootstrap3
+    font-awesome
+    jquery
+    jquery-locationpicker
+    sjcl
+  )
+  rm -rf node_modules
+  echo "Installing web dependencies... "
+  for dependency in ${web_dependencies[*]}; do
+    echo -n "  Installing ${dependency}... "
+    npm install "${dependency}" >> "${cosy_log}" 2>&1 \
+      && echo -e "${green}success${nc}" \
+      || echo -e "${red}failure${nc}"
+  done
+  mkdir -p "${cosy_prefix}/share/cosy/www"
+  mkdir -p "${cosy_prefix}/share/cosy/www/js"
+  mkdir -p "${cosy_prefix}/share/cosy/www/css"
+  mkdir -p "${cosy_prefix}/share/cosy/www/fonts"
+  for module in node_modules/*; do
+    name=$(basename "${module}")
+    cp "${module}/dist/"*.js    "${cosy_prefix}/share/cosy/www/js/"    2> /dev/null || true
+    cp "${module}/dist/"*.map   "${cosy_prefix}/share/cosy/www/js/"    2> /dev/null || true
+    cp "${module}/dist/js/"*    "${cosy_prefix}/share/cosy/www/js/"    2> /dev/null || true
+    cp "${module}/dist/css/"*   "${cosy_prefix}/share/cosy/www/css/"   2> /dev/null || true
+    cp "${module}/dist/fonts/"* "${cosy_prefix}/share/cosy/www/fonts/" 2> /dev/null || true
+    cp "${module}/js/"*         "${cosy_prefix}/share/cosy/www/js/"    2> /dev/null || true
+    cp "${module}/css/"*        "${cosy_prefix}/share/cosy/www/css/"   2> /dev/null || true
+    cp "${module}/fonts/"*      "${cosy_prefix}/share/cosy/www/fonts/" 2> /dev/null || true
+    cp "${module}/${name}"*.js  "${cosy_prefix}/share/cosy/www/js/"    2> /dev/null || true
+    cp "${module}/${name}"*.map "${cosy_prefix}/share/cosy/www/js/"    2> /dev/null || true
+    cp "${module}/${name}"*.css "${cosy_prefix}/share/cosy/www/css/"   2> /dev/null || true
+  done
+  cp "lua.vm.js/dist/lua.vm.js" "${cosy_prefix}/share/cosy/www/js/"
+}
+
 # Install openresty:
 function install_openresty ()
 {
@@ -231,6 +271,7 @@ trap error ERR
 install_dependencies
 install_lua
 install_openresty
+install_web
 
 echo "You can now try the following commands:"
 echo "- ${cosy_prefix}/bin/cosy-server start [--clean] [--force]"
