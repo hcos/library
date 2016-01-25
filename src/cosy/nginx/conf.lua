@@ -23,25 +23,8 @@ return function (loader)
     configuration = loader.home .. "/nginx.conf",
     directory     = loader.home .. "/nginx",
     www           = www,
+    www_fallback  = loader.prefix .. "/share/cosy/www",
     bundle        = loader.source .. "/cosy-full.lua",
-  }
-
-  Default.dependencies = {
-    expiration = 24 * 3600, -- 1 day
-    ["/js/lua.vm.js"] = "https://kripken.github.io/lua.vm.js/lua.vm.js",
-    ["/js/sjcl.js"  ] = "http://bitwiseshiftleft.github.io/sjcl/sjcl.js",
-    ["/js/jquery.js"] = "http://code.jquery.com/jquery-2.1.4.min.js",
-    ["/js/map.js"] = "https://maps.googleapis.com/maps/api/js",
-    ["/js/mapcluster.js"] = "http://google-maps-utility-library-v3.googlecode.com/svn/trunk/markerclusterer/src/markerclusterer_compiled.js",
-    ["/js/recaptcha.js"] = "https://www.google.com/recaptcha/api.js",
-    ["/js/bootstrap.js"] = "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js",
-    ["/js/bootbox.js"] = "https://cdnjs.cloudflare.com/ajax/libs/bootbox.js/4.4.0/bootbox.min.js",
-    ["/js/position.js"] = "http://rawgit.com/Logicify/jquery-locationpicker-plugin/master/dist/locationpicker.jquery.js",
-    ["/css/bootstrap.css"] = "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css",
-    ["/css/font-awesome.css"] = "https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css",
-    ["/fonts/fontawesome-webfont.woff2"] = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.3.0/fonts/fontawesome-webfont.woff2",
-    ["/fonts/fontawesome-webfont.woff"] = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.3.0/fonts/fontawesome-webfont.woff",
-    ["/fonts/fontawesome-webfont.ttf"] = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.3.0/fonts/fontawesome-webfont.ttf",
   }
 
 end

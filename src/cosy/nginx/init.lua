@@ -57,6 +57,16 @@ http {
       add_header  Access-Control-Allow-Origin *;
       root        {{{www}}};
       index       index.html;
+      try_files   $uri $uri.html $uri/ /fallback/$uri;
+    }
+
+    location /fallback {
+      add_header  Access-Control-Allow-Origin *;
+      root        {{{www_fallback}}};
+      access_by_lua '
+        ngx.var.target = ngx.var.uri:match "/fallback/(.*)"
+      ';
+      try_files     $target =404;
     }
 
     location = /setup {
@@ -169,18 +179,6 @@ http {
       ';
     }
 
-    {{#redirects}}
-    location {{{url}}} {
-      proxy_cache             foreign;
-      proxy_cache_revalidate  on;
-      proxy_cache_lock        on;
-      proxy_cache_use_stale   error timeout http_500 http_502 http_503 http_504;
-      expires                 modified    1d;
-      resolver                {{{resolver}}};
-      set                     $target   "{{{remote}}}";
-      proxy_pass              $target$is_args$args;
-    }
-    {{/redirects}}
   }
 }
 ]]
@@ -197,41 +195,8 @@ http {
   end
 
   function Nginx.configure ()
-    local resolver
-    do
-      local file = io.open "/etc/resolv.conf"
-      if not file then
-        Logger.error {
-          _ = i18n ["nginx:no-resolver"],
-        }
-        resolver = "8.8.8.8"
-      else
-        local result = {}
-        for line in file:lines () do
-          local address = line:match "nameserver%s+(%S+)"
-          if address then
-            if address:find ":" then
-              address = "[{{{address}}}]" % { address = address }
-            end
-            result [#result+1] = address
-          end
-        end
-        file:close ()
-        resolver = table.concat (result, " ")
-      end
-    end
     if not Lfs.attributes (Configuration.http.directory, "mode") then
       Lfs.mkdir (Configuration.http.directory)
-    end
-    local redirects = {}
-    for url, remote in pairs (Configuration.dependencies) do
-      if type (remote) == "string" and remote:match "^http" then
-        redirects [#redirects+1] = {
-          url      = url,
-          remote   = remote,
-          resolver = resolver,
-        }
-      end
     end
     if not Configuration.http.hostname then
       sethostname ()
@@ -241,6 +206,7 @@ http {
       host           = Configuration.http.interface,
       port           = Configuration.http.port,
       www            = Configuration.http.www,
+      www_fallback   = Configuration.http.www_fallback,
       pid            = Configuration.http.pid,
       wshost         = Configuration.server.interface,
       wsport         = Configuration.server.port,
@@ -250,7 +216,6 @@ http {
       user           = Posix.geteuid () == 0 and ("user " .. os.getenv "USER" .. ";") or "",
       path           = package. path:gsub ("5%.2", "5.1") .. ";" .. package. path,
       cpath          = package.cpath:gsub ("5%.2", "5.1") .. ";" .. package.cpath,
-      redirects      = redirects,
     }
     local file = assert (io.open (Configuration.http.configuration, "w"))
     file:write (configuration)
