@@ -185,6 +185,7 @@ function install_lua () {
     rm -rf "${cosy_prefix}/share/lua/${lua_version}/cosy"
     ln -s  "${PWD}/src/cosy" \
            "${cosy_prefix}/share/lua/${lua_version}/cosy"
+    rm -rf "${cosy_prefix}/lib/luarocks/rocks/cosyverif/master-1/src"
     ln -s  "${PWD}/src" \
            "${cosy_prefix}/lib/luarocks/rocks/cosyverif/master-1/src"
   ) >> "${cosy_log}" 2>&1 \
