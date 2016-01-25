@@ -78,7 +78,7 @@ function install_dependencies ()
     "Linux")
       sudo apt-get update  --yes
       sudo apt-get install --yes git make clang gcc diffutils patch curl unzip \
-                                 perl build-essential wget python \
+                                 perl build-essential wget python python-pip \
                                  libc6-dev libssl-dev libev-dev \
                                  libreadline-dev libncurses5-dev libpcre3-dev \
                                  redis-server imagemagick
