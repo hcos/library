@@ -129,6 +129,9 @@ return function (loader)
 
   function Receiver.__call (receiver, identifier)
     local info    = Library.info [receiver.client.id]
+    if not info then
+      return
+    end
     local results = info.results [identifier]
     if info.synchronous then
       repeat
