@@ -87,13 +87,17 @@ return function (loader)
 
   function Receiver.new (client)
     return setmetatable ({
-      client  = client,
+      client  = setmetatable ({
+        id = client,
+      }, {
+        __mode = "v",
+      }),
       waiting = {},
     }, Receiver)
   end
 
   function Receiver.step (receiver)
-    local info    = Library.info [receiver.client]
+    local info    = Library.info [receiver.client.id]
     local message = info.websocket:receive ()
     if message then
       message = Value.decode (message)
@@ -110,26 +114,32 @@ return function (loader)
 
   function Receiver.loop (receiver)
     return Scheduler.addthread (function ()
-      local info = Library.info [receiver.client]
-      while info.websocket.status == Status.opened do
-        Receiver.step (info.receiver)
+      while true do
+        if not receiver.client.id then
+          break
+        end
+        local info = Library.info [receiver.client.id]
+        if info.websocket.status ~= Status.opened then
+          break
+        end
+        Receiver.step (receiver)
       end
     end)
   end
 
   function Receiver.__call (receiver, identifier)
-    local info    = Library.info [receiver.client]
+    local info    = Library.info [receiver.client.id]
     local results = info.results [identifier]
     if info.synchronous then
       repeat
-        Receiver.step (info.receiver)
+        Receiver.step (receiver)
       until info.websocket.status ~= Status.opened or results [1]
     elseif info.asynchronous then
-      info.receiver.waiting [Scheduler.running ()] = true
+      receiver.waiting [Scheduler.running ()] = true
       repeat
         Scheduler.sleep (-math.huge)
       until info.websocket.status ~= Status.opened or results [1]
-      info.receiver.waiting [Scheduler.running ()] = nil
+      receiver.waiting [Scheduler.running ()] = nil
     end
     return results [1]
   end
