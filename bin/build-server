@@ -274,7 +274,7 @@ install_openresty
 install_web
 
 echo "You can now try the following commands:"
-echo "- ${cosy_prefix}/bin/cosy-server start [--clean] [--force]"
+echo "- ${cosy_prefix}/bin/cosy-server start [--clean] [--force] [--port=<port>]"
 echo "- ${cosy_prefix}/bin/cosy-server stop  [--force]"
 echo "- ${cosy_prefix}/bin/cosy-server version"
 echo "- ${cosy_prefix}/bin/cosy"
