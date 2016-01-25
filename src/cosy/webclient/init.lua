@@ -78,6 +78,12 @@ return function (loader)
   function Webclient.tojs (t)
     if type (t) ~= "table" then
       return t
+    elseif #t ~= 0 then
+      local result = Webclient.js.new (Webclient.window.Array)
+      for i = 1, #t do
+        result [result.length] = Webclient.tojs (t [i])
+      end
+      return result
     else
       local result = Webclient.js.new (Webclient.window.Object)
       for k, v in pairs (t) do
