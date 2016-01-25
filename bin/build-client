@@ -159,11 +159,17 @@ function generate_archive () {
   os=$(fix_string "$(uname -s)")
   arch=$(fix_string "$(uname -m)")
   archive="cosy-client-${version}-${os}-${arch}.sh"
+  case "${os}" in
+    linux)
+      backup="";;
+    darwin)
+      backup=".cosy.back";;
+  esac
   cat > "${cosy_temp}/bin/cosy_setpath" <<EOF
 #! /usr/bin/env sh
 
 export LC_ALL=C
-grep -lr "COSY_PREFIX" . | xargs -L1 sed -i ".cosy-back" -e "s|COSY_PREFIX|\$PWD|g"
+grep -lr "COSY_PREFIX" . | xargs -L1 sed -i ${backup} -e "s|COSY_PREFIX|\$PWD|g"
 find . -type f -name "*.cosy-back" -exec rm -f {} \;
 rm -f $0
 EOF
@@ -171,7 +177,7 @@ EOF
   echo -n -e "Packaging in ${green}${archive}${nc}... "
   {
     export LC_ALL=C
-    find "${cosy_temp}" -type f -exec sed -i ".cosy-back" -e "s|${cosy_temp}|COSY_PREFIX|g" {} \;
+    find "${cosy_temp}" -type f -exec sed -i ${backup} -e "s|${cosy_temp}|COSY_PREFIX|g" {} \;
     find "${cosy_temp}" -type f -name "*.cosy-back" -exec rm -f {} \;
     ./makeself/makeself.sh \
       "${cosy_temp}" \
