@@ -44,6 +44,7 @@ function Cli.configure (cli, arguments)
 
     Configuration.load {
       "cosy.client",
+      "cosy.library",
     }
 
     if iteration == 2 then
