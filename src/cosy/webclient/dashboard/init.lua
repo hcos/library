@@ -47,7 +47,7 @@ return function (loader)
         map       = Dashboard.map,
         draggable = false,
         animation = Webclient.window.google.maps.Animation.DROP,
-        icon      = user.icon and "data:image/png;base64," .. user.icon or nil,
+        icon      = user.avatar and "data:image/png;base64," .. user.avatar.icon or nil,
         title     = user.identifier,
       })
     end
