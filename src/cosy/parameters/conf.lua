@@ -128,6 +128,10 @@ return function (loader)
         width  = 32,
         height = 32,
       },
+      ascii = {
+        width  = 64,
+        height = 16,
+      },
       __refines__ = {
         this.data.string,
       },
@@ -145,27 +149,44 @@ return function (loader)
       request [key] = {}
       do
         Scheduler.execute ([[
-          convert {{{filename}}} -resize {{{width}}}x{{{height}}} png:{{{filename}}}
+          convert "{{{filename}}}" -resize {{{width}}}x{{{height}}} png:"{{{filename}}}-full"
         ]] % {
           filename = filename,
           height   = Configuration.data.avatar.normal.height,
           width    = Configuration.data.avatar.normal.width,
         })
-        file = io.open (filename, "rb")
+        file = io.open (filename .. "-full", "rb")
         request [key].normal = Mime.b64 (file:read "*all")
         file:close ()
+        os.remove (filename .. "-full")
       end
       do
         Scheduler.execute ([[
-          convert {{{filename}}} -resize {{{width}}}x{{{height}}} png:{{{filename}}}
+          convert "{{{filename}}}" -resize {{{width}}}x{{{height}}} png:"{{{filename}}}-icon"
         ]] % {
           filename = filename,
           height   = Configuration.data.avatar.icon.height,
           width    = Configuration.data.avatar.icon.width,
         })
-        file = io.open (filename, "rb")
+        file = io.open (filename .. "-icon", "rb")
         request [key].icon = Mime.b64 (file:read "*all")
         file:close ()
+        os.remove (filename .. "-icon")
+      end
+      do
+        Scheduler.execute ([[
+          convert "{{{filename}}}" bmp3:"{{{filename}}}.bmp"
+          img2txt --width="{{{width}}}" --height="{{{height}}}" --format=ansi "{{{filename}}}.bmp" > "{{{filename}}}-ascii"
+          rm -f "{{{filename}}}.bmp"
+        ]] % {
+          filename = filename,
+          height   = Configuration.data.avatar.ascii.height,
+          width    = Configuration.data.avatar.ascii.width,
+        })
+        file = io.open (filename .. "-ascii", "rb")
+        request [key].ascii = Mime.b64 (file:read "*all")
+        file:close ()
+        os.remove (filename .. "-ascii")
       end
       os.remove (filename)
       return true
