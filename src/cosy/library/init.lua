@@ -352,6 +352,11 @@ return function (loader)
         result.error.reasons [#result.error.reasons+1] = reason
       end
     end
+    local retry = Client.methods.fix_authentication (operation, parameters, result)
+    if retry and not info.retry then
+      info.retry = true
+      return operation (parameters, options)
+    end
     if wrapperco then
       path.coroutine.resume (wrapperco, result)
     end
@@ -363,6 +368,26 @@ return function (loader)
   end
 
   Client.methods = {}
+
+  Client.methods.fix_authentication = function (operation, parameters, result)
+    local path = Library.info [operation]
+    local info = Library.info [path.client]
+    if result.success then
+      return false
+    end
+    if result.error and result.error.reasons then
+      for _, reason in ipairs (result.error.reasons) do
+        if  reason._   == "check:token:invalid"
+        and reason.key == "authentication" then
+          parameters.authentication = nil
+          info.authentication       = nil
+          info.data.authentication  = nil
+          return true
+        end
+      end
+    end
+    return false
+  end
 
   Client.methods ["user:create"] = function (operation, parameters)
     local path = Library.info [operation]

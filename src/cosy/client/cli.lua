@@ -268,8 +268,8 @@ function Cli.start (cli)
     return false
   end
 
-  local who  = client.user.authentified_as {}
-  if who.identifier then
+  local who = client.user.authentified_as {}
+  if who and who.identifier then
     print (Colors ("%{green blackbg}" .. i18n ["client:identified"] % {
       user = who.identifier,
     }))
