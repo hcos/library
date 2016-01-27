@@ -728,6 +728,8 @@ return function (loader)
       resource.type        = id
       resource.username    = user.username
       resource.projectname = project.projectname
+      resource.value       = nil
+      resource.history     = {}
       local info = store / "info"
       info ["#" .. id] = (info ["#" .. id] or 0) + 1
     end
@@ -756,20 +758,47 @@ return function (loader)
           name = request.name,
         }
       end
+      local source = request [id]
       resource             = request.project + request.name
       resource.id          = request.name
       resource.type        = id
       resource.username    = user.username
       resource.projectname = project.projectname
+      resource.value       = source.value
+      resource.history     = source.history
       local info = store / "info"
       info ["#" .. id] = info ["#" .. id] + 1
+    end
+
+    function methods.get (request, store)
+      Parameters.check (store, request, {
+        required = {
+          [id] = Parameters.resource [id],
+        },
+        optional = {
+          authentication = Parameters.token.authentication,
+          history        = Parameters.boolean,
+        },
+      })
+    end
+
+    function methods.set (request, store)
+      Parameters.check (store, request, {
+        required = {
+          [id] = Parameters.resource [id],
+        },
+        optional = {
+          authentication = Parameters.token.authentication,
+          history        = Parameters.boolean,
+        },
+      })
     end
 
     function methods.delete (request, store)
       Parameters.check (store, request, {
         required = {
           authentication = Parameters.token.authentication,
-          resource       = Parameters [id],
+          [id]           = Parameters.resource [id],
         },
       })
       local resource = request.resource
