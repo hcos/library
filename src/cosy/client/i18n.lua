@@ -40,9 +40,6 @@ return function (--[[loader]])
     ["option:server"]= {
       en = "server URL"
     },
-    ["flag:captcha"] = {
-      en = "answer to captcha in web browser",
-    },
     ["flag:debug"] = {
       en = "show debug information",
     },
