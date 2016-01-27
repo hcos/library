@@ -2,10 +2,8 @@ return function (loader)
 
   local Configuration = loader.load "cosy.configuration"
   local I18n          = loader.load "cosy.i18n"
-  local Scheduler     = loader.load "cosy.scheduler"
   local Value         = loader.load "cosy.value"
   local Colors        = loader.require "ansicolors"
-  local Websocket     = loader.require "websocket"
   local Http          = loader.require "socket.http"
   local Ltn12         = loader.require "ltn12"
   local Mime          = loader.require "mime"
@@ -125,16 +123,11 @@ return function (loader)
     elseif oftype == "tos:digest" then
       local _ = false
     elseif oftype == "position" then
-      parser:flag ("--{{{name}}}" % { name = name }) {
-        description = description,
-      }
+      local _ = false
     elseif oftype == "ip" then
       local _ = false
     elseif oftype == "captcha" then
-      parser:flag ("--{{{name}}}" % { name = name }) {
-        description = i18n ["flag:captcha"] % {},
-        default     = part == "required" and "" or nil,
-      }
+      local _ = false
     elseif oftype == "boolean" then
       parser:flag ("--{{{name}}}" % { name = name }) {
         description = description,
@@ -202,8 +195,6 @@ return function (loader)
     local parameters = {
       authentication = commands.data.authentication,
     }
-    local need_position = false
-    local need_captcha  = false
     for _, x in pairs (commands.methods [key].parameters) do
       for name, t in pairs (x) do
         if t.type == "password" and args [name] then
@@ -221,10 +212,6 @@ return function (loader)
             end
           until passwords [1] == passwords [2]
           parameters [name] = passwords [1]
-        elseif t.type == "position" and args [name] then
-          need_position = true
-        elseif t.type == "captcha" and args [name] then
-          need_captcha  = true
         elseif args [name] then
           if t.type == "token:authentication" then
             local _ = false
@@ -272,12 +259,6 @@ return function (loader)
         end
       end
     end
-    if need_captcha or need_position then
-      Commands.webpage (args, parameters, {
-        captcha  = need_captcha,
-        position = need_position,
-      })
-    end
     local result, err = commands.client [key] (parameters)
     if Results [key]
     and (  type (result) == "function"
@@ -286,54 +267,6 @@ return function (loader)
     end
     show_status (result, err)
     return result
-  end
-
-  function Commands.webpage (args, parameters, need)
-    local info      = {}
-    local addserver = Scheduler.addserver
-    Scheduler.addserver = function (s, f)
-      info.socket = s
-      local ok, port = s:getsockname ()
-      if ok then
-        info.port = port
-      end
-      addserver (s, f)
-    end
-    Websocket.server.copas.listen {
-      port      = 0,
-      protocols = {
-        ["cosy-cli"] = function (ws)
-          while true do
-            local message = ws:receive ()
-            if message then
-              message = Value.decode (message)
-              if need.captcha then
-                parameters.captcha  = message.captcha
-              end
-              if need.position then
-                parameters.position = message.position
-              end
-              Scheduler.removeserver (info.socket)
-            else
-              ws:close()
-              return
-            end
-          end
-        end
-      },
-    }
-    Scheduler.addserver = addserver
-    os.execute ([[
-      xdg-open {{{url}}} 2> /dev/null || open {{{url}}} /dev/null &
-    ]] % {
-      url = "{{{server}}}/cli.html?port={{{port}}}\\&captcha={{{captcha}}}\\&position={{{position}}}" % {
-        server   = args.server,
-        port     = info.port,
-        captcha  = need.captcha,
-        position = need.position,
-      },
-    })
-    Scheduler.loop()
   end
 
   Results ["server:information"] = function (_, response)
