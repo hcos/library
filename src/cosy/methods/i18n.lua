@@ -30,6 +30,9 @@ return function (loader)
     ["server:filter:error"] = {
       en = "filtering has failed, because {{{reason}}}",
     },
+    ["server:cancel"] = {
+      en = "cancel an iterator on the server",
+    },
     ["user:create"] = {
       en = "create a user account on the server",
     },

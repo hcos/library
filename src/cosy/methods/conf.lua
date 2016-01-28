@@ -5,6 +5,7 @@ return function (loader)
 
   Default.filter = {
     timeout = 2, -- seconds
+    log     = loader.home .. "/filter-{{{pid}}}.log",
   }
 
   Default.reputation = {
@@ -19,7 +20,9 @@ return function (loader)
       token = ref.resource.token,
       tag   = ref.resource.tag,
       data  = ref.resource.data,
+      info  = ref.resource.info,
     },
+    info = {},
     email = {
       ["/"] = {},
     },

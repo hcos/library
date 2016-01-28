@@ -2,6 +2,7 @@ return function (loader)
 
   local Configuration = loader.load "cosy.configuration"
   local I18n          = loader.load "cosy.i18n"
+  local Scheduler     = loader.load "cosy.scheduler"
   local Token         = loader.load "cosy.token"
   local Default       = loader.load "cosy.configuration.layers".default
   local Layer         = loader.require "layeredata"
@@ -143,7 +144,7 @@ return function (loader)
               _ = i18n ["check:avatar:expired"],
             }
       end
-      os.execute ([[
+      Scheduler.execute ([[
         convert {{{filename}}} -resize {{{width}}}x{{{height}}} png:{{{filename}}}
       ]] % {
         filename = filename,
@@ -659,6 +660,27 @@ return function (loader)
       local key     = t.key
       local value   = request [key]
       return  value.passphrase == Configuration.server.passphrase
+          or  nil, {
+                _ = i18n ["check:token:invalid"],
+              }
+    end
+  end
+
+  -- Identification token
+  -- --------------------
+  do
+    Default.data.token.identification = {
+      __refines__ = {
+        this.data.token,
+      },
+    }
+    local checks = Default.data.token.identification.checks
+    checks [Layer.size (checks)+1] = function (t)
+      local request = t.request
+      local key     = t.key
+      local value   = request [key]
+      request [key] = value.data
+      return  value.type == "identification"
           or  nil, {
                 _ = i18n ["check:token:invalid"],
               }
