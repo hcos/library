@@ -68,7 +68,7 @@ return function (loader)
             key = key,
           }
         elseif value ~= nil then
-          for i = 1, parameter.checks and Layer.size (parameter.checks) or 0 do
+          for i = 1, parameter.checks and #parameter.checks or 0 do
             local ok, reason = parameter.checks [i] {
               parameter = parameter,
               request   = request,

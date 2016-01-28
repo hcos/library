@@ -1,7 +1,6 @@
 return function (loader)
 
   local Configuration = loader.load "cosy.configuration"
-  local Layer         = loader.require "layeredata"
 
   Configuration.load "cosy.methods"
 
@@ -167,7 +166,7 @@ return function (loader)
     },
   }
 
-  for id in Layer.pairs (Configuration.resource.project ["/"]) do
+  for id in pairs (Configuration.resource.project ["/"]) do
     local a = "a"
     if id:match "^[aeiou]" then
       a = "an"
