@@ -96,8 +96,8 @@ return function (loader)
       captcha = Configuration.recaptcha.public_key,
     }
     local info = store / "info"
-    result ["#users"   ] = info ["#users"   ] or 0
-    result ["#projects"] = info ["#projects"] or 0
+    result ["#user"   ] = info ["#user"   ] or 0
+    result ["#project"] = info ["#project"] or 0
     for id in Layer.pairs (Configuration.resource.project ["/"]) do
       result ["#" .. id] = info ["#" .. id] or 0
     end
@@ -122,8 +122,8 @@ return function (loader)
       locale = locale,
     }
     return {
-      tos        = tos,
-      tos_digest = Digest (tos),
+      text   = tos,
+      digest = Digest (tos),
     }
   end
 
@@ -261,6 +261,29 @@ return function (loader)
         identifier = request.identifier,
       }
     end
+    local email = store / "email" + request.email
+    email.identifier = request.identifier
+    if request.locale == nil then
+      request.locale = Configuration.locale
+    end
+    local user = store / "data" + request.identifier
+    user.checked     = false
+    user.email       = request.email
+    user.identifier  = request.identifier
+    user.lastseen    = Time ()
+    user.locale      = request.locale
+    user.password    = Password.hash (request.password)
+    user.tos_digest  = request.tos_digest
+    user.reputation  = Configuration.reputation.initial
+    user.status      = "active"
+    user.type        = "user"
+    local info = store / "info"
+    info ["#user"] = (info ["#user"] or 0) + 1
+    if try_only then
+      return true
+    end
+    -- Captcha validation must be done only once,
+    -- so it must be __after__ the `try_only`.`
     if request.captcha then
       local url  = "https://www.google.com/recaptcha/api/siteverify"
       local body = "secret="    .. Configuration.recaptcha.private_key
@@ -281,27 +304,6 @@ return function (loader)
         _          = i18n ["method:administration-only"],
         identifier = request.identifier,
       }
-    end
-    local email = store / "email" + request.email
-    email.identifier = request.identifier
-    if request.locale == nil then
-      request.locale = Configuration.locale
-    end
-    local user = store / "data" + request.identifier
-    user.checked     = false
-    user.email       = request.email
-    user.identifier  = request.identifier
-    user.lastseen    = Time ()
-    user.locale      = request.locale
-    user.password    = Password.hash (request.password)
-    user.tos_digest  = request.tos_digest
-    user.reputation  = Configuration.reputation.initial
-    user.status      = "active"
-    user.type        = "user"
-    local info = store / "info"
-    info ["#users"] = (info ["#users"] or 0) + 1
-    if try_only then
-      return true
     end
     Email.send {
       locale  = user.locale,
@@ -463,17 +465,14 @@ return function (loader)
     end
     if request.position then
       user.position = {
-        country        = request.position.country,
-        city           = request.position.city,
-        latitude       = request.position.latitude,
-        longitude      = request.position.longitude,
-        continent_code = request.position.continent_code,
-        country_code   = request.position.country_code,
-        timezone       = request.position.timezone,
+        address   = request.position.address,
+        latitude  = request.position.latitude,
+        longitude = request.position.longitude,
       }
     end
     if request.avatar then
-      user.avatar = request.avatar
+      user.avatar = request.avatar.normal
+      user.icon   = request.avatar.icon
     end
     for _, key in ipairs { "name", "homepage", "organization", "locale" } do
       if request [key] then
@@ -636,7 +635,7 @@ return function (loader)
     local _ = store / "email" - user.email
     local _ = store / "data"  - user.identifier
     local info = store / "info"
-    info ["#users"] = info ["#users"] - 1
+    info ["#user"] = info ["#user"] - 1
   end
 
   -- Project
@@ -667,7 +666,7 @@ return function (loader)
     project.identifier  = request.identifier
     project.type        = "project"
     local info = store / "info"
-    info ["#projects"] = (info ["#projects"] or 0) + 1
+    info ["#project"] = (info ["#project"] or 0) + 1
   end
 
   function Methods.project.delete (request, store)
@@ -693,7 +692,7 @@ return function (loader)
     end
     local _ = - project
     local info = store / "info"
-    info ["#projects"] = info ["#projects"] - 1
+    info ["#project"] = info ["#project"] - 1
   end
 
   for id in Layer.pairs (Configuration.resource.project ["/"]) do

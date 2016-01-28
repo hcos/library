@@ -3,11 +3,8 @@ return function (loader)
   local Configuration = loader.load "cosy.configuration"
   local I18n          = loader.load "cosy.i18n"
   local Scheduler     = loader.load "cosy.scheduler"
-  local Token         = loader.load "cosy.token"
   local Default       = loader.load "cosy.configuration.layers".default
   local Layer         = loader.require "layeredata"
-  local Lfs           = loader.require "lfs"
-  local Mime          = loader.require "mime"
   local this          = Layer.reference (false)
 
   Configuration.load "cosy.methods"
@@ -65,9 +62,7 @@ return function (loader)
       local request = t.request
       local key     = t.key
       local value   = request [key]
-      return  value.country
-         and  value.city
-         and  value.latitude
+      return  value.latitude
          and  value.longitude
           or  nil, {
                 _   = i18n ["check:is-position"],
@@ -125,35 +120,53 @@ return function (loader)
 
   do
     Default.data.avatar = {
-      width  = 400,
-      height = 400,
+      normal = {
+        width  = 400,
+        height = 400,
+      },
+      icon = {
+        width  = 32,
+        height = 32,
+      },
       __refines__ = {
         this.data.string,
       },
     }
     local checks = Default.data.avatar.checks
     checks [#checks+1] = function (t)
+      local Mime       = loader.require "mime"
       local request    = t.request
       local key        = t.key
-      local value      = request [key]
-      local filename   = Configuration.http.uploads .. "/" .. value
-      local attributes = Lfs.attributes (filename)
-      if attributes.mode ~= "file"
-      or os.difftime (os.time (), attributes.modification) > Configuration.upload.timeout then
-        return nil, {
-              _ = i18n ["check:avatar:expired"],
-            }
-      end
-      Scheduler.execute ([[
-        convert {{{filename}}} -resize {{{width}}}x{{{height}}} png:{{{filename}}}
-      ]] % {
-        filename = filename,
-        height   = Configuration.data.avatar.height,
-        width    = Configuration.data.avatar.width ,
-      })
-      local file    = io.open (filename, "r")
-      request [key] = Mime.b64 (file:read "*all")
+      local value      = Mime.unb64 (request [key])
+      local filename   = os.tmpname ()
+      local file       = io.open (filename, "wb")
+      file:write (value)
       file:close ()
+      request [key] = {}
+      do
+        Scheduler.execute ([[
+          convert {{{filename}}} -resize {{{width}}}x{{{height}}} png:{{{filename}}}
+        ]] % {
+          filename = filename,
+          height   = Configuration.data.avatar.normal.height,
+          width    = Configuration.data.avatar.normal.width,
+        })
+        file = io.open (filename, "rb")
+        request [key].normal = Mime.b64 (file:read "*all")
+        file:close ()
+      end
+      do
+        Scheduler.execute ([[
+          convert {{{filename}}} -resize {{{width}}}x{{{height}}} png:{{{filename}}}
+        ]] % {
+          filename = filename,
+          height   = Configuration.data.avatar.icon.height,
+          width    = Configuration.data.avatar.icon.width,
+        })
+        file = io.open (filename, "rb")
+        request [key].icon = Mime.b64 (file:read "*all")
+        file:close ()
+      end
       os.remove (filename)
       return true
     end
@@ -166,15 +179,13 @@ return function (loader)
       }
     }
     local checks = Default.data.string.trimmed.checks
-    checks [2] = function (t)
+    table.insert (checks, 2, function (t)
       local request = t.request
       local key     = t.key
       local value   = request [key]
       request [key] = value:trim ()
       return true
-    end
-    checks [3] = Default.data.string.checks [2]
-    checks [4] = Default.data.string.checks [3]
+    end)
   end
 
   do
@@ -333,6 +344,7 @@ return function (loader)
         }
       }
     }
+
     local checks = Default.data.resource.identifier.checks
     checks [Layer.size (checks)+1] = function (t)
       local request = t.request
@@ -605,7 +617,7 @@ return function (loader)
       local value   = request [key]
       local Methods = loader.load "cosy.methods"
       local tos     = Methods.server.tos { locale = request.locale }
-      return  tos.tos_digest == value
+      return  tos.digest == value
           or  nil, {
                 _          = i18n ["check:tos_digest:incorrect"],
                 tos_digest = value,
@@ -623,6 +635,7 @@ return function (loader)
     }
     local checks = Default.data.token.checks
     checks [Layer.size (checks)+1] = function (t)
+      local Token      = loader.load "cosy.token"
       local request    = t.request
       local key        = t.key
       local value      = request [key]

@@ -107,7 +107,7 @@ if arguments.start then
         administration = data.token,
       }
       if not result then
-        Posix.kill (data.pid, 9) -- kill
+        pcall (Posix.kill, data.pid, 9) -- kill
       end
     else
       printerr (Colors ("%{black redbg}" .. i18n ["failure"] % {}),

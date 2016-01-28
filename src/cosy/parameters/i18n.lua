@@ -41,7 +41,7 @@ return function (--[[loader]])
       en = "a {{{key}}} must be a boolean",
     },
     ["check:is-position"] = {
-      en = "{{{key}}} must contain a country, and city",
+      en = "{{{key}}} must contain a latitude and a longitude",
     },
     ["check:is-string"] = {
       en = "a {{{key}}} must be a string",
@@ -81,9 +81,6 @@ return function (--[[loader]])
     },
     ["check:iterator:function"] = {
       en = "invalid Lua function: {{{reason}}}",
-    },
-    ["check:avatar:expired"] = {
-      en = "avatar file has expired",
     },
     ["translation:failure"] = {
       en = "translation failed: {{{reason}}}",

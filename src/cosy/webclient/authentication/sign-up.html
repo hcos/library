@@ -1,0 +1,107 @@
+<div class="col-md-4 col-md-offset-4 col-centered">
+  <form id="sign-up-form">
+    <h2>{{sign-up:title}}</h2>
+    <div id="identifier-group"
+         class="form-group">
+      <label class="control-label"
+             for="identifier">{{sign-up:identifier}}</label>
+      <div class="input-group">
+        <span class="input-group-addon"><i class="fa fa-user" ></i></span>
+        <input type="text"
+               id="identifier"
+               class="form-control has-feedback"
+               placeholder="{{sign-up:identifier}}"
+               required autofocus />
+      </div>
+      <div id="identifier-error"
+           class="help-block with-errors"></div>
+    </div>
+    <div id="email-group"
+         class="form-group">
+      <label class="control-label"
+             for="email">{{sign-up:email}}</label>
+      <div class="input-group">
+        <span class="input-group-addon">@</span>
+        <input type="email"
+               id="email"
+               class="form-control has-feedback"
+               placeholder="{{sign-up:email}}"
+               required />
+        </div>
+      <div id="email-error"
+           class="help-block with-errors"></div>
+    </div>
+    <div id="password-group"
+         class="form-group">
+      <div class="col-md-6 col-centered">
+        <label class="control-label"
+               for="password-1">{{sign-up:password}}</label>
+        <div class="input-group">
+          <span class="input-group-addon"><i class="fa fa-key" ></i></span>
+          <input type="password"
+                 id="password-1"
+                 class="form-control has-feedback"
+                 placeholder="{{sign-up:password-1}}"
+                 required />
+        </div>
+      </div>
+      <div class="col-md-6 col-centered">
+        <label class="control-label"
+               for="password-2">{{sign-up:password}}</label>
+        <div class="input-group">
+          <span class="input-group-addon"><i class="fa fa-key" ></i></span>
+          <input type="password"
+                 id="password-2"
+                 class="form-control has-feedback"
+                 placeholder="{{sign-up:password-2}}"
+                 required />
+        </div>
+      </div>
+      <div id="password-error"
+           class="help-block with-errors"></div>
+    </div>
+    <div id="tos-group"
+         class="form-group">
+      <label class="control-label"
+             for="tos">{{sign-up:tos}}
+      </label>
+      <div class="input-group">
+        <span class="input-group-addon">
+          <input id="tos"
+                 type="checkbox"
+                 required />
+        </span>
+        <input type="text"
+               class="form-control"
+               value="{{sign-up:accept}}"
+               readonly />
+      </div>
+      <textarea class="form-control"
+                rows="5"
+                readonly>
+        {{tos}}
+      </textarea>
+      <div id="tos-error"
+           class="help-block with-errors"></div>
+    </div>
+    <div id="captcha-group"
+         class="form-group has-feedback">
+      <label class="control-label"
+             for="g-recaptcha">{{sign-up:captcha}}</label>
+      <div id="captcha"
+           class="col-md-12 col-centered">
+      </div>
+      <div id="captcha-error"
+           class="help-block with-errors"></div>
+    </div>
+    <div class="form-group">
+      <div class="col-md-6 col-md-offset-3 col-centered">
+        <button id="accept"
+                class="btn btn-lg btn-primary btn-block btn-success disabled"
+                type="submit">
+          <i class="fa fa-check"></i>
+        </button>
+      </div>
+    </div>
+  </form>
+</div>

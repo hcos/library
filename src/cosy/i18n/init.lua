@@ -52,6 +52,10 @@ return function (loader)
     }, I18n)
   end
 
+  function I18n.defines (i18n, key)
+    return i18n._store [key]
+  end
+
   function I18n.__index (i18n, key)
     local entry = i18n._store [key]
     if not entry then
@@ -122,10 +126,10 @@ return function (loader)
       t [k] = v
       if type (v) == "number" then
         assert (context ["~" .. k] == nil)
-        t ["~" .. k] = Plural.get (locale, v)
+        t [k .. "~" .. Plural.get (locale, v)] = true
       end
     end
-    return Lustache:render (result, context)
+    return Lustache:render (result, t)
   end
 
   return I18n

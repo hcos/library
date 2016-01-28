@@ -13,7 +13,6 @@ return function (loader)
   local Token         = loader.load "cosy.token"
   local Value         = loader.load "cosy.value"
   local App           = loader.load "cosy.configuration.layers".app
-  local Layer         = loader.require "layeredata"
   local Posix         = loader.require "posix"
   local Websocket     = loader.require "websocket"
 
@@ -115,9 +114,6 @@ return function (loader)
       protocols = {
         cosy = function (ws)
           ws.ip, ws.port = ws.sock:getpeername ()
-          -- FIXME: geolocation is missing
-          local geo = Layer.export (Layer.flatten (Configuration.geodb.position))
-          geo.country = geo.country_name
           local message
           local function send (t)
             local response = Value.expression (t)
@@ -157,9 +153,6 @@ return function (loader)
                 local method          = Methods
                 parameters.ip         = ws.ip
                 parameters.port       = ws.port
-                parameters.position   = parameters.position == true
-                                    and geo
-                                     or parameters.position
                 if operation:sub (-1) == "?" then
                   operation       = operation:sub (1, #operation-1)
                   parameters_only = true

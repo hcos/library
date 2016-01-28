@@ -44,6 +44,7 @@ function Cli.configure (cli, arguments)
 
     Configuration.load {
       "cosy.client",
+      "cosy.library",
     }
 
     if iteration == 2 then
@@ -127,6 +128,7 @@ function Cli.configure (cli, arguments)
   }
   local i18n = I18n.load {
     "cosy.client",
+    "cosy.library",
   }
 
   local _error = error
@@ -266,8 +268,8 @@ function Cli.start (cli)
     return false
   end
 
-  local who  = client.user.authentified_as {}
-  if who.identifier then
+  local who = client.user.authentified_as {}
+  if who and who.identifier then
     print (Colors ("%{green blackbg}" .. i18n ["client:identified"] % {
       user = who.identifier,
     }))

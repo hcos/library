@@ -4,6 +4,7 @@ return function (loader)
   local Default       = loader.load "cosy.configuration.layers".default
   local I18n          = loader.load "cosy.i18n"
   local Logger        = loader.load "cosy.logger"
+  local Scheduler     = loader.load "cosy.scheduler"
   local Lfs           = loader.require "lfs"
   local Posix         = loader.require "posix"
 
@@ -34,7 +35,7 @@ http {
   types_hash_max_size   2048;
 
   proxy_temp_path       proxy;
-  proxy_cache_path      cache   keys_zone=foreign:10m;
+  proxy_cache_path      cache   keys_zone=foreign:10m max_size=1g inactive=1d use_temp_path=off;
   lua_package_path      "{{{path}}}";
   lua_package_cpath     "{{{cpath}}}";
 
@@ -56,6 +57,16 @@ http {
       add_header  Access-Control-Allow-Origin *;
       root        {{{www}}};
       index       index.html;
+      try_files   $uri $uri.html $uri/ /fallback/$uri;
+    }
+
+    location /fallback {
+      add_header  Access-Control-Allow-Origin *;
+      root        {{{www_fallback}}};
+      access_by_lua '
+        ngx.var.target = ngx.var.uri:match "/fallback/(.*)"
+      ';
+      try_files     $target =404;
     }
 
     location = /setup {
@@ -66,32 +77,22 @@ http {
       ';
     }
 
-    location /upload {
-      limit_except                POST { deny all; }
-      client_body_in_file_only    on;
-      client_body_temp_path       {{{uploads}}};
-      client_body_buffer_size     128K;
-      client_max_body_size        10240K;
-      proxy_pass_request_headers  on;
-      proxy_set_header            X-File $request_body_file;
-      proxy_set_body              off;
-      proxy_redirect              off;
-      proxy_pass                  http://localhost:{{{port}}}/uploaded;
-    }
-
-    location /uploaded {
-      content_by_lua '
-        local md5      = require "md5"
-        local filename = ngx.var.http_x_file
-        local file     = assert (io.open (filename))
-        local contents = file:read "*all"
-        file:close ()
-        local sum      = md5.sumhexa (contents)
-        ngx.log (ngx.ERR, filename)
-        ngx.log (ngx.ERR, filename:gsub ("([^/]+)$", sum))
-        os.rename (filename, filename:gsub ("([^/]+)$", sum))
-        ngx.say (sum)
+    location /template {
+      default_type  text/html;
+      root          /;
+      set           $target   "";
+      access_by_lua '
+        local name = ngx.var.uri:match "/template/(.*)"
+        local path = ("{{{path}}}"):gsub ("%.lua", "%.html")
+        local filename = package.searchpath (name, path)
+        if filename then
+          ngx.var.target = filename
+        else
+          ngx.log (ngx.ERR, "failed to locate template: " .. name)
+          return ngx.exit (404)
+        end
       ';
+      try_files     $target =404;
     }
 
     location /lua {
@@ -178,14 +179,13 @@ http {
       ';
     }
 
-{{{redirects}}}
   }
 }
 ]]
 
   local function sethostname ()
     local handle = io.popen "hostname"
-    local result = handle:read "*all"
+    local result = handle:read "*l"
     handle:close()
     Default.http.hostname = result
     Logger.info {
@@ -195,52 +195,8 @@ http {
   end
 
   function Nginx.configure ()
-    local resolver
-    do
-      local file = io.open "/etc/resolv.conf"
-      if not file then
-        Logger.error {
-          _ = i18n ["nginx:no-resolver"],
-        }
-        resolver = "8.8.8.8"
-      else
-        local result = {}
-        for line in file:lines () do
-          local address = line:match "nameserver%s+(%S+)"
-          if address then
-            if address:find ":" then
-              address = "[{{{address}}}]" % { address = address }
-            end
-            result [#result+1] = address
-          end
-        end
-        file:close ()
-        resolver = table.concat (result, " ")
-      end
-    end
     if not Lfs.attributes (Configuration.http.directory, "mode") then
       Lfs.mkdir (Configuration.http.directory)
-    end
-    if not Lfs.attributes (Configuration.http.uploads, "mode") then
-      Lfs.mkdir (Configuration.http.uploads)
-    end
-    local locations = {}
-    for url, remote in pairs (Configuration.dependencies) do
-      if type (remote) == "string" and remote:match "^http" then
-        locations [#locations+1] = [==[
-    location {{{url}}} {
-      proxy_cache foreign;
-      expires     modified  1d;
-      resolver    {{{resolver}}};
-      set         $target   "{{{remote}}}";
-      proxy_pass  $target$is_args$args;
-    }
-          ]==] % {
-            url      = url,
-            remote   = remote,
-            resolver = resolver,
-          }
-      end
     end
     if not Configuration.http.hostname then
       sethostname ()
@@ -250,7 +206,7 @@ http {
       host           = Configuration.http.interface,
       port           = Configuration.http.port,
       www            = Configuration.http.www,
-      uploads        = Configuration.http.uploads,
+      www_fallback   = Configuration.http.www_fallback,
       pid            = Configuration.http.pid,
       wshost         = Configuration.server.interface,
       wsport         = Configuration.server.port,
@@ -260,7 +216,6 @@ http {
       user           = Posix.geteuid () == 0 and ("user " .. os.getenv "USER" .. ";") or "",
       path           = package. path:gsub ("5%.2", "5.1") .. ";" .. package. path,
       cpath          = package.cpath:gsub ("5%.2", "5.1") .. ";" .. package.cpath,
-      redirects      = table.concat (locations, "\n"),
     }
     local file = assert (io.open (Configuration.http.configuration, "w"))
     file:write (configuration)
@@ -270,6 +225,7 @@ http {
   function Nginx.start ()
     Nginx.stop      ()
     Nginx.configure ()
+    Nginx.bundle    ()
     os.execute ([[
       mkdir -p {{{dir}}}
     ]] % {
@@ -303,6 +259,7 @@ http {
     os.remove (Configuration.http.configuration)
     Nginx.directory = nil
     Nginx.stopped   = true
+    os.remove (Configuration.http.bundle)
   end
 
   function Nginx.update ()
@@ -313,8 +270,63 @@ http {
     end
   end
 
-  loader.hotswap.on_change ["cosy:configuration"] = function ()
+  function Nginx.bundle ()
+    os.remove (Configuration.http.bundle)
+    Scheduler.addthread (function ()
+      if Nginx.in_bundle then
+        return
+      end
+      Nginx.in_bundle = true
+      local modules   = {}
+      local function find (path, prefix)
+        if path:match "%.$" then
+          return
+        end
+        if  Lfs.attributes (path, "mode") == "file"
+        and path:match "%.lua$"
+        then
+          local module = path:match "/([^/]+)%.lua$"
+          if module == "init" then
+            modules [#modules+1] = prefix
+          else
+            modules [#modules+1] = prefix and prefix .. "." .. module or module
+          end
+        elseif Lfs.attributes (path, "mode") == "directory"
+        then
+          local module = path:match "/([^/]+)$"
+          local subprefix
+          if prefix == nil then
+            subprefix = false
+          elseif prefix == false then
+            subprefix = module
+          else
+            subprefix = prefix .. "." .. module
+          end
+          for sub in Lfs.dir (path) do
+            find (path .. "/" ..sub, subprefix)
+          end
+        end
+      end
+      find (loader.source)
+      table.sort (modules)
+      local temp = os.tmpname ()
+      Scheduler.execute ([[
+        "{{{prefix}}}/bin/amalg.lua" -o "{{{temp}}}" -d {{{modules}}}
+        if "{{{prefix}}}/bin/lua" "{{{temp}}}"; then cp "{{{temp}}}" "{{{target}}}"; fi
+      ]] % {
+        prefix  = loader.prefix,
+        temp    = temp,
+        target  = Configuration.http.bundle,
+        modules = table.concat (modules, " "),
+      })
+      os.remove (temp)
+      Nginx.in_bundle = nil
+    end)
+  end
+
+  loader.hotswap.on_change.nginx = function ()
     Nginx.update ()
+    Nginx.bundle ()
   end
 
   return Nginx

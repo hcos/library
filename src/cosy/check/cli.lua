@@ -400,4 +400,10 @@ do
   os.execute (loader.prefix .. [[/bin/cosy-server stop --force --alias=__scenario__ ]])
 end
 
+if status then
+  print (Colors ("%{bright green blackbg}success%{reset}"))
+else
+  print (Colors ("%{bright red   blackbg}failure%{reset}"))
+end
+
 os.exit (status and 0 or 1)

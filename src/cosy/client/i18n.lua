@@ -31,9 +31,6 @@ return function (--[[loader]])
     ["failure"] = {
       en = "failure",
     },
-    ["upload:failure"] = {
-      en = "failed to upload content (error {{{status}}})",
-    },
     ["server:already-running"] = {
       en = "server is already running",
     },
@@ -42,9 +39,6 @@ return function (--[[loader]])
     },
     ["option:server"]= {
       en = "server URL"
-    },
-    ["flag:captcha"] = {
-      en = "answer to captcha in web browser",
     },
     ["flag:debug"] = {
       en = "show debug information",

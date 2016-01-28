@@ -2,12 +2,11 @@ return function (loader)
 
   local Configuration = loader.load "cosy.configuration"
   local I18n          = loader.load "cosy.i18n"
-  local Scheduler     = loader.load "cosy.scheduler"
   local Value         = loader.load "cosy.value"
   local Colors        = loader.require "ansicolors"
-  local Websocket     = loader.require "websocket"
   local Http          = loader.require "socket.http"
   local Ltn12         = loader.require "ltn12"
+  local Mime          = loader.require "mime"
 
   Configuration.load {
     "cosy.client",
@@ -124,16 +123,11 @@ return function (loader)
     elseif oftype == "tos:digest" then
       local _ = false
     elseif oftype == "position" then
-      parser:option ("--{{{name}}}" % { name = name }) {
-        description = description,
-      }
+      local _ = false
     elseif oftype == "ip" then
       local _ = false
     elseif oftype == "captcha" then
-      parser:flag ("--{{{name}}}" % { name = name }) {
-        description = i18n ["flag:captcha"] % {},
-        default     = part == "required" and "" or nil,
-      }
+      local _ = false
     elseif oftype == "boolean" then
       parser:flag ("--{{{name}}}" % { name = name }) {
         description = description,
@@ -218,14 +212,6 @@ return function (loader)
             end
           until passwords [1] == passwords [2]
           parameters [name] = passwords [1]
-        elseif t.type == "position" and args [name] then
-          if args [name] == "auto" then
-            parameters [name] = true
-          else
-            parameters [name] = args [name] / "{{{Country}}}/{{{City}}}"
-          end
-        elseif t.type == "captcha" and args [name] then
-          Commands.captcha (args, parameters)
         elseif args [name] then
           if t.type == "token:authentication" then
             local _ = false
@@ -252,24 +238,16 @@ return function (loader)
             elseif avatar:match "^~" then
               filename = os.getenv "HOME" .. avatar:sub (2)
             end
-            local file, err = io.open (filename, "r")
+            local file, err = io.open (filename, "rb")
             if not file then
               errresult = i18n {
                 _        = i18n ["file:not-found"],
                 filename = filename,
                 reason   = err,
               }
-            end
-            local body = file:read "*all"
-            file:close ()
-            local _, status, headers = Http.request (args.server .. "/upload", body)
-            if status == 200 then
-              parameters [name] = headers ["cosy-avatar"]
             else
-              errresult = i18n {
-                _      = i18n ["upload:failure"],
-                status = status,
-              }
+              parameters [name] = Mime.b64 (file:read "*all")
+              file:close ()
             end
             if errresult then
               show_status (nil, errresult)
@@ -291,47 +269,6 @@ return function (loader)
     return result
   end
 
-  function Commands.captcha (args, parameters)
-    local info      = {}
-    local addserver = Scheduler.addserver
-    Scheduler.addserver = function (s, f)
-      info.socket = s
-      local ok, port = s:getsockname ()
-      if ok then
-        info.port = port
-      end
-      addserver (s, f)
-    end
-    Websocket.server.copas.listen {
-      port      = 0,
-      protocols = {
-        cosycli = function (ws)
-          while true do
-            local message = ws:receive ()
-            if message then
-              message = Value.decode (message)
-              parameters.captcha = message.response
-              Scheduler.removeserver (info.socket)
-            else
-              ws:close()
-              return
-            end
-          end
-        end
-      },
-    }
-    Scheduler.addserver = addserver
-    os.execute ([[
-      xdg-open {{{url}}} 2> /dev/null || open {{{url}}} /dev/null &
-    ]] % {
-      url = "{{{server}}}/html/captchacli.html?port={{{port}}}" % {
-        server = args.server,
-        port   = info.port,
-      },
-    })
-    Scheduler.loop()
-  end
-
   Results ["server:information"] = function (_, response)
     local max  = 0
     local keys = {}
@@ -339,6 +276,7 @@ return function (loader)
       keys [#keys+1] = key
       max = math.max (max, #key)
     end
+    table.sort (keys)
     for i = 1, #keys do
       local key   = keys [i]
       local value = response [key]
@@ -354,10 +292,10 @@ return function (loader)
   end
 
   Results ["server:tos"] = function (_, response)
-    print (response.tos)
+    print (response.text)
     print (Colors ("%{black yellowbg}" .. "digest") ..
            Colors ("%{reset}" .. " => ") ..
-           Colors ("%{yellow blackbg}" .. response.tos_digest))
+           Colors ("%{yellow blackbg}" .. response.digest))
   end
 
   Results ["server:filter"] = function (_, result)
@@ -398,16 +336,16 @@ return function (loader)
       local tos = commands.client.server.tos {
         locale = args.locale,
       }
-      print (tos.tos)
-      args.tos_digest = tos.tos_digest
+      print (tos.text)
+      args.tos_digest = tos.digest
     end
   end
 
   Results ["user:authentified-as"] = function (_, response)
-    if response.username then
-      print (Colors ("%{black yellowbg}" .. "username") ..
+    if response.identifier then
+      print (Colors ("%{black yellowbg}" .. "identifier") ..
              Colors ("%{reset}" .. " => ") ..
-             Colors ("%{yellow blackbg}" .. response.username))
+             Colors ("%{yellow blackbg}" .. response.identifier))
     else
       print (Colors ("%{black yellowbg}" .. "nobody"))
     end
@@ -415,11 +353,11 @@ return function (loader)
 
   Results ["user:information"] = function (_, response)
     if response.avatar then
-      local avatar     = response.avatar
-      local inputname  = os.tmpname ()
-      local file = io.open (inputname, "w")
+      local decoded   = Mime.unb64 (response.avatar)
+      local inputname = os.tmpname ()
+      local file      = io.open (inputname, "wb")
       assert (file)
-      file:write (avatar)
+      file:write (decoded)
       file:close ()
       os.execute ([[
         img2txt -W 40 -H 20 {{{input}}} 2> /dev/null
@@ -430,7 +368,8 @@ return function (loader)
       response.avatar  = nil
     end
     if response.position then
-      response.position = "{{{country}}}/{{{city}}}" % response.position
+      response.position = response.position.address
+                       or "{{{latitude}}}, {{{longitude}}}" % response.position
     end
     if response.lastseen then
       response.lastseen = os.date ("%x, %X", response.lastseen)

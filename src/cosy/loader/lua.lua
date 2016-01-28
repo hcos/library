@@ -10,7 +10,7 @@ return function (t)
   for k, v in pairs (t) do
     loader [k] = v
   end
-  loader.home = os.getenv "HOME" .. "/.cosy/" .. (loader.alias or "default")
+  loader.home    = os.getenv "HOME" .. "/.cosy/" .. (loader.alias or "default")
   local modules  = setmetatable ({}, { __mode = "kv" })
   loader.hotswap = t.hotswap
                 or require "hotswap".new {}
@@ -34,7 +34,8 @@ return function (t)
       loader.scheduler.autoclose = false
     end
   end
-  package.loaded.copas = loader.scheduler
+  loader.hotswap.loaded.copas = loader.scheduler
+  package.loaded.copas        = loader.scheduler
   loader.coroutine = t.coroutine
                   or loader.scheduler._coroutine
                   or loader.require "coroutine.make" ()
@@ -54,9 +55,17 @@ return function (t)
   for part in path:gmatch "[^/]+" do
     parts [#parts+1] = part
   end
-  for i = #parts, #parts-5, -1 do
-    parts [i] = nil
-  end
+
+  parts [#parts] = nil
+  parts [#parts] = nil
+  parts [#parts] = nil
+
+  loader.source = (path:find "^/" and "/" or "") .. table.concat (parts, "/")
+
+  parts [#parts] = nil
+  parts [#parts] = nil
+  parts [#parts] = nil
+
   loader.prefix = (path:find "^/" and "/" or "") .. table.concat (parts, "/")
 
   os.execute ([[ mkdir -p {{{home}}} ]] % {

@@ -10,3 +10,6 @@
 [submodule "makeself"]
 	path = makeself
 	url = https://github.com/megastep/makeself.git
+[submodule "lua.vm.js"]
+	path = lua.vm.js
+	url = https://github.com/kripken/lua.vm.js.git
