@@ -4,7 +4,6 @@ return function (loader)
   local I18n          = loader.load "cosy.i18n"
   local Logger        = loader.load "cosy.logger"
   local Value         = loader.load "cosy.value"
-  local Layer         = loader.require "layeredata"
 
   Configuration.load "cosy.parameters"
 
