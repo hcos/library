@@ -81,7 +81,7 @@ function install_dependencies ()
                                  perl build-essential wget python python-pip \
                                  libc6-dev libssl-dev libev-dev \
                                  libreadline-dev libncurses5-dev libpcre3-dev \
-                                 redis-server imagemagick npm
+                                 redis-server imagemagick npm caca-utils
       sudo pip install hererocks
       ;;
     "Darwin")
@@ -91,7 +91,7 @@ function install_dependencies ()
       export LD_LIBRARY_PATH="${HOMEBREW_PREFIX}/lib:${LD_LIBRARY_PATH}"
       export DYLD_LIBRARY_PATH="${HOMEBREW_PREFIX}/lib:${DYLD_LIBRARY_PATH}"
       brew update
-      brew install openssl libev pcre python redis imagemagick wget npm
+      brew install openssl libev pcre python redis imagemagick wget npm libcaca
       brew link --force openssl
       pip install hererocks
       ;;

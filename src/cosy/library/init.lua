@@ -268,7 +268,6 @@ return function (loader)
 
   function Iterator.__gc (iterator)
     local info = Library.info [iterator.client]
-    info.results [iterator.identifier] = nil
     if loader.js then
       Scheduler.addthread (function ()
         iterator.client.server.cancel {
@@ -283,6 +282,7 @@ return function (loader)
         filter = iterator.token,
       }
     end
+    info.results [iterator.identifier] = nil
   end
 
   function Operation.__call (operation, parameters, options)

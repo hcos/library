@@ -353,19 +353,9 @@ return function (loader)
 
   Results ["user:information"] = function (_, response)
     if response.avatar then
-      local decoded   = Mime.unb64 (response.avatar)
-      local inputname = os.tmpname ()
-      local file      = io.open (inputname, "wb")
-      assert (file)
-      file:write (decoded)
-      file:close ()
-      os.execute ([[
-        img2txt -W 40 -H 20 {{{input}}} 2> /dev/null
-      ]] % {
-        input  = inputname,
-      })
-      os.remove (inputname)
-      response.avatar  = nil
+      local decoded = Mime.unb64 (response.avatar.ascii)
+      print (decoded)
+      response.avatar = nil
     end
     if response.position then
       response.position = response.position.address
