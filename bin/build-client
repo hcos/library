@@ -136,6 +136,12 @@ function install_lua () {
   } >> "${cosy_log}" 2>&1 \
     && echo -e "${green}success${nc}" \
     || echo -e "${red}failure${nc}"
+  echo -n "  Installing luasocket dev version..."
+  ( cd redis-lua
+    "${cosy_temp}/bin/luarocks" install --server=https://luarocks.org/dev luasocket
+  ) >> "${cosy_log}" 2>&1 \
+    && echo -e "${green}success${nc}" \
+    || echo -e "${red}failure${nc}"
 }
 
 function fix_string ()
