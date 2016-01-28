@@ -163,7 +163,7 @@ function generate_archive () {
   cat > "${cosy_temp}/bin/cosy-setpath" <<EOF
 #! /usr/bin/env sh
 
-for file in \$(grep -rlI "COSY_PREFIX" .); do
+grep -rlI "COSY_PREFIX" . | while IFS= read -r file; do
   sed -i ${backup} -e "s|COSY_PREFIX|\$PWD|g" "\${file}"
 done
 find . -type f -name "*.cosy-back" -exec rm -f {} \;
@@ -171,7 +171,7 @@ EOF
   chmod a+x "${cosy_temp}/bin/cosy-setpath"
   echo -n -e "Packaging in ${green}${archive}${nc}... "
   {
-    for file in $(grep -rlI "${cosy_temp}" "${cosy_temp}"); do
+    grep -rlI "${cosy_temp}" "${cosy_temp}" | while IFS= read -r file; do
       sed -i ${backup} -e "s|${cosy_temp}|COSY_PREFIX|g" "${file}"
     done
     find "${cosy_temp}" -type f -name "*.cosy-back" -exec rm -f {} \;
