@@ -14,7 +14,6 @@ return function (loader)
   local Time          = loader.load "cosy.time"
   local Token         = loader.load "cosy.token"
   local Value         = loader.load "cosy.value"
-  local Layer         = loader.require "layeredata"
   local Posix         = loader.require "posix"
   local Websocket     = loader.require "websocket"
 
@@ -98,7 +97,7 @@ return function (loader)
     local info = store / "info"
     result ["#user"   ] = info ["#user"   ] or 0
     result ["#project"] = info ["#project"] or 0
-    for id in Layer.pairs (Configuration.resource.project ["/"]) do
+    for id in pairs (Configuration.resource.project ["/"]) do
       result ["#" .. id] = info ["#" .. id] or 0
     end
     return result
@@ -698,7 +697,7 @@ return function (loader)
     info ["#project"] = info ["#project"] - 1
   end
 
-  for id in Layer.pairs (Configuration.resource.project ["/"]) do
+  for id in pairs (Configuration.resource.project ["/"]) do
 
     Methods [id] = {}
     local methods = Methods [id]
