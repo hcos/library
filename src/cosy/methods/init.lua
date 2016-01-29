@@ -470,8 +470,11 @@ return function (loader)
       }
     end
     if request.avatar then
-      user.avatar = request.avatar.normal
-      user.icon   = request.avatar.icon
+      user.avatar = {
+        full  = request.avatar.normal,
+        icon  = request.avatar.icon,
+        ascii = request.avatar.ascii,
+      }
     end
     for _, key in ipairs { "name", "homepage", "organization", "locale" } do
       if request [key] then

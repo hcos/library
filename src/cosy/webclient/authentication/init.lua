@@ -142,7 +142,6 @@ return function (loader)
       data     = {},
       i18n     = i18n,
     }
-
     Webclient.jQuery "#accept":click (function ()
       Scheduler.wakeup (co)
       return false
@@ -172,8 +171,8 @@ return function (loader)
 
   function Authentication.log_out ()
     Webclient.storage:removeItem "cosy:client"
-    loader.load "cosy.webclient.dashboard" ()
     Webclient.init ()
+    loader.load "cosy.webclient.dashboard" ()
   end
 
   local function register_events ()
