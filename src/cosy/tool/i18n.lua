@@ -10,6 +10,9 @@ return function (--[[loader]])
     ["tool:parameters:description"] = {
       en = "tool parameters",
     },
+    ["tool:model-output"] = {
+      en = "Model has been output to {{{filename}}} (a temporary file).",
+    },
   }
 
 end

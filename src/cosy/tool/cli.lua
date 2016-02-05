@@ -5,6 +5,7 @@ local I18n      = Loader.load "cosy.i18n"
 local Scheduler = Loader.load "cosy.scheduler"
 local Layer     = Loader.require "layeredata"
 local Arguments = Loader.require "argparse"
+local Colors    = Loader.require "ansicolors"
 
 local i18n = I18n.load {
   "cosy.tool",
@@ -148,3 +149,13 @@ Scheduler.addthread (function ()
 end)
 
 Scheduler.loop ()
+
+do
+  local filename = os.tmpname ()
+  local file     = io.open (filename, "w")
+  file:write (Layer.encode (mytool))
+  file:close ()
+  print (Colors ("%{green blackbg}" .. i18n ["tool:model-output"] % {
+    filename = filename,
+  }))
+end
