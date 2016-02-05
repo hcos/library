@@ -161,24 +161,6 @@ http {
       proxy_set_header    Connection "upgrade";
     }
 
-    location /hook {
-      content_by_lua '
-        local temporary = os.tmpname ()
-        local file      = io.open (temporary, "w")
-        file:write [==[
-          git pull --quiet --force
-          luarocks install --local --force --only-deps cosyverif
-          for rock in $(luarocks list --outdated --porcelain | cut -f 1)
-          do
-          luarocks install --local --force ${rock}
-          done
-          rm --force $0
-        ]==]
-        file:close ()
-        os.execute ("bash " .. temporary .. " &")
-      ';
-    }
-
   }
 }
 ]]
