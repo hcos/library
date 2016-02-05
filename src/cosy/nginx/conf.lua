@@ -3,7 +3,7 @@ return function (loader)
   local Lfs     = loader.require "lfs"
   local Default = loader.load "cosy.configuration.layers".default
 
-  local www = loader.prefix .. "/lib/luarocks/rocks/cosyverif/"
+  local www = loader.prefix .. "/lib/luarocks/rocks/cosy/"
   for subpath in Lfs.dir (www) do
     if  subpath ~= "." and subpath ~= ".."
     and Lfs.attributes (www .. "/" .. subpath, "mode") == "directory" then
