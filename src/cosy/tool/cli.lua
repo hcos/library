@@ -128,7 +128,9 @@ for key in pairs (parameters) do
     elseif key.type == "function" then
       value = loadstring (value) ()
     elseif getmetatable (key.type) == Layer.Proxy then
-      value = Layer.require (value)
+      value = {
+        [Layer.key.refines] = { Layer.require (value) }
+      }
     else
       assert (false)
     end
