@@ -278,6 +278,7 @@ echo "- ${cosy_prefix}/bin/cosy-server start [--clean] [--force] [--port=<port>]
 echo "- ${cosy_prefix}/bin/cosy-server stop  [--force]"
 echo "- ${cosy_prefix}/bin/cosy-server version"
 echo "- ${cosy_prefix}/bin/cosy"
+echo "- ${cosy_prefix}/bin/cosy-tool"
 echo "The development environment also provides two commands:"
 echo "- ${cosy_prefix}/bin/cosy-check"
 
