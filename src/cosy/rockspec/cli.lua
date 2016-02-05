@@ -24,7 +24,7 @@ local arguments = parser:parse ()
 
 local rockspecs = {
   full = {
-    package = "cosyverif",
+    package = "cosy",
     version = "master-1",
     source = {
       url = "git://github.com/cosyverif/library",
@@ -84,7 +84,7 @@ local rockspecs = {
     },
   },
   client = {
-    package = "cosyverif-client",
+    package = "cosy-client",
     version = "master-1",
     source = {
       url = "git://github.com/cosyverif/library",
@@ -176,7 +176,7 @@ local options = {
 
 Lfs.mkdir (arguments.target)
 do
-  local file = io.open (arguments.target .. "/cosyverif-master-1.rockspec", "w")
+  local file = io.open (arguments.target .. "/cosy-master-1.rockspec", "w")
   for _, key in ipairs {
     "package",
     "version",
@@ -191,7 +191,7 @@ do
   file:close ()
 end
 do
-  local file = io.open (arguments.target .. "/cosyverif-client-master-1.rockspec", "w")
+  local file = io.open (arguments.target .. "/cosy-client-master-1.rockspec", "w")
   for _, key in ipairs {
     "package",
     "version",
