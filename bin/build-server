@@ -181,7 +181,7 @@ function install_lua () {
   echo -n "Installing cosy (this may take a while)... "
   ( rm -rf "${cosy_prefix}/share/lua/${lua_version}/cosy"
     rm -rf "${cosy_prefix}/lib/luarocks/rocks/cosyverif/master-1/src"
-    "${cosy_prefix}/bin/luarocks" make rockspec/cosyverif-master-1.rockspec
+    "${cosy_prefix}/bin/luarocks" make rockspec/cosy-master-1.rockspec
     rm -rf "${cosy_prefix}/share/lua/${lua_version}/cosy"
     ln -s  "${PWD}/src/cosy" \
            "${cosy_prefix}/share/lua/${lua_version}/cosy"
@@ -278,6 +278,7 @@ echo "- ${cosy_prefix}/bin/cosy-server start [--clean] [--force] [--port=<port>]
 echo "- ${cosy_prefix}/bin/cosy-server stop  [--force]"
 echo "- ${cosy_prefix}/bin/cosy-server version"
 echo "- ${cosy_prefix}/bin/cosy"
+echo "- ${cosy_prefix}/bin/cosy-tool"
 echo "The development environment also provides two commands:"
 echo "- ${cosy_prefix}/bin/cosy-check"
 

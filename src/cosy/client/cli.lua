@@ -237,6 +237,7 @@ function Cli.start (cli)
 
   local i18n = I18n.load {
     "cosy.client",
+    "cosy.library",
   }
   i18n._locale = data.locale or Configuration.cli.locale
 
