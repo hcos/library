@@ -72,6 +72,11 @@ do
   end
 end
 
+local loaded     = {}
+for k in pairs (Layer.loaded) do
+  loaded [k] = true
+end
+
 local mytool     = toolname and Layer.require (toolname) or nil
 local parameters = {}
 if mytool then
@@ -171,11 +176,20 @@ end)
 Scheduler.loop ()
 
 do
-  local filename = os.tmpname ()
-  local file     = io.open (filename, "w")
-  file:write (Layer.encode (mytool))
-  file:close ()
+  local directory = os.tmpname ()
+  os.execute ([[
+    rm -rf {{{directory}}}
+    mkdir -p {{{directory}}}
+  ]] % { directory = directory })
+  for name, model in pairs (Layer.loaded) do
+    if not loaded [name] then
+      local package = name:gsub ("/", ".")
+      local file = assert (io.open (directory .. "/" .. package, "w"))
+      file:write (Layer.encode (model))
+      file:close ()
+    end
+  end
   print (Colors ("%{green blackbg}" .. i18n ["tool:model-output"] % {
-    filename = filename,
+    directory = directory,
   }))
 end
