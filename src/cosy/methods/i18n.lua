@@ -8,6 +8,9 @@ return function (loader)
     ["captcha:failure"] = {
       en = "captcha verification failed",
     },
+    ["captcha:missing"] = {
+      en = "captcha validation is missing",
+    },
     ["method:administration-only"] = {
       en = "method is reserved to server administrator",
     },

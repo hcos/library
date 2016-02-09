@@ -65,12 +65,6 @@ return function (loader)
         Webclient.jQuery "#password-error":html (text)
         result = false
       end
-      if not captcha or Webclient.window.grecaptcha:getResponse (captcha) == "" then
-        Webclient.jQuery "#captcha-group":addClass "has-error"
-        local text = i18n ["sign-up:no-captcha"] % {}
-        Webclient.jQuery "#captcha-error":html (text)
-        result = false
-      end
       if result then
         Webclient.jQuery "#accept":removeClass "disabled"
         return true

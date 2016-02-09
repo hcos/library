@@ -40,9 +40,6 @@ return function (--[[ loader ]])
     ["sign-up:no-tos"] = {
       en = "you must accept our terms of service",
     },
-    ["sign-up:no-captcha"] = {
-      en = "you must validate the captcha",
-    },
     ["sign-up:accept"] = {
       en = "I agree to the Terms of Service",
     },
