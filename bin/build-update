@@ -62,6 +62,8 @@ function update_cosy ()
     || echo -e "${red}failure${nc}"
   echo -n "Installing cosy (this may take a while)... "
   ( "${cosy_prefix}/bin/luarocks" remove cosy
+    "${cosy_prefix}/bin/luarocks" remove cosy-client
+    "${cosy_prefix}/bin/luarocks" make rockspec/cosy-client-master-1.rockspec
     "${cosy_prefix}/bin/luarocks" make rockspec/cosy-master-1.rockspec
   ) >> "${cosy_log}" 2>&1 \
     && echo -e "${green}success${nc}" \
