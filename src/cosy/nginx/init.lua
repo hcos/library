@@ -55,14 +55,14 @@ http {
 
     location / {
       add_header  Access-Control-Allow-Origin *;
-      root        {{{www}}};
+      root        {{{source}}}/cosy/www;
       index       index.html;
       try_files   $uri $uri.html $uri/ /fallback/$uri;
     }
 
     location /fallback {
       add_header  Access-Control-Allow-Origin *;
-      root        {{{www_fallback}}};
+      root        {{{prefix}}}/share/cosy/www;
       access_by_lua '
         ngx.var.target = ngx.var.uri:match "/fallback/(.*)"
       ';
@@ -82,13 +82,13 @@ http {
       root          /;
       set           $target   "";
       access_by_lua '
-        local name = ngx.var.uri:match "/template/(.*)"
-        local path = ("{{{path}}}"):gsub ("%.lua", "%.html")
-        local filename = package.searchpath (name, path)
+        local name     = ngx.var.uri:match "/template/(.*)"
+        local path     = "{{{source}}}/?.html;{{{source}}}/?/init.html"
+        local filename, err = package.searchpath (name, path)
         if filename then
           ngx.var.target = filename
         else
-          ngx.log (ngx.ERR, "failed to locate template: " .. name)
+          ngx.log (ngx.ERR, "failed to locate template: " .. name .. ", " .. tostring (err))
           return ngx.exit (404)
         end
       ';
@@ -184,11 +184,11 @@ http {
       sethostname ()
     end
     local configuration = configuration_template % {
+      prefix         = loader.prefix,
+      source         = loader.source,
       nginx          = Configuration.http.nginx,
       host           = Configuration.http.interface,
       port           = Configuration.http.port,
-      www            = Configuration.http.www,
-      www_fallback   = Configuration.http.www_fallback,
       pid            = Configuration.http.pid,
       wshost         = Configuration.server.interface,
       wsport         = Configuration.server.port,
@@ -289,7 +289,7 @@ http {
           end
         end
       end
-      find (loader.source)
+      find (loader.lua_modules)
       table.sort (modules)
       local temp = os.tmpname ()
       Scheduler.execute ([[
