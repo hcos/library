@@ -38,6 +38,7 @@ local rockspecs = {
     },
     dependencies = {
       "lua >= 5.2",
+      "cosy-client",
       "amalg",
       "ansicolors",
       "argparse",
@@ -70,9 +71,7 @@ local rockspecs = {
       modules = {},
       install = {
         bin = {
-          ["cosy"         ] = "src/cosy/client/bin.lua",
           ["cosy-server"  ] = "src/cosy/server/bin.lua",
-          ["cosy-tool"    ] = "src/cosy/tool/bin.lua",
           ["cosy-check"   ] = "src/cosy/check/bin.lua",
           ["cosy-rockspec"] = "src/cosy/rockspec/bin.lua",
         },
@@ -161,8 +160,7 @@ local function find (path, prefix)
 end
 
 find (arguments.source .. "/cosy", "cosy")
-rockspecs.client.build.modules          = modules
-rockspecs.full  .build.modules          = modules
+rockspecs.client.build.modules = modules
 
 local options = {
   indent   = "  ",
