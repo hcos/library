@@ -11,7 +11,7 @@ return function (--[[loader]])
       en = "tool parameters",
     },
     ["tool:model-output"] = {
-      en = "Model has been output to {{{filename}}} (a temporary file).",
+      en = "Models has been output to {{{directory}}}.",
     },
   }
 
