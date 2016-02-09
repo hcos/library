@@ -370,10 +370,10 @@ do
   if os.execute "command -v shellcheck > /dev/null 2>&1" then
     local s = os.execute ([[
       . "{{{prefix}}}/bin/realpath.sh"
-      shellcheck --exclude=SC2024 $(realpath "{{{path}}}")/../../bin/*
+      shellcheck --exclude=SC2024 $(realpath "{{{source}}}")/../bin/*
     ]] % {
       prefix = loader.prefix,
-      path   = source,
+      source = loader.source,
     })
     if s then
       print (Colors ("Shellcheck detects %{bright green}no problems%{reset}."))
