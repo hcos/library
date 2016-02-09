@@ -23,23 +23,6 @@ parser:option "--output" {
 
 local arguments = parser:parse ()
 
-local source
-do
-  local path    = package.searchpath ("cosy.check.cli", package.path)
-  local handler = assert (io.popen ([[
-    . "{{{prefix}}}/bin/realpath.sh"
-    path="{{{path}}}"
-    path=$(dirname "${path}")
-    path=$(dirname "${path}")
-    realpath "${path}"
-  ]] % {
-    prefix = loader.prefix,
-    path   = path,
-  }, "r"))
-  source = assert (handler:read "*l")
-  handler:close ()
-end
-
 local string_mt = getmetatable ""
 
 function string_mt.__mod (pattern, variables)
@@ -73,7 +56,7 @@ do
     "{{{prefix}}}/bin/luacheck" --std max --std +busted "{{{source}}}"
   ]] % {
     prefix = loader.prefix,
-    source = source,
+    source = loader.source,
   }) and status
 end
 
@@ -87,34 +70,20 @@ do
   os.execute (loader.prefix .. [[/bin/cosy-server start --force --clean --alias=__busted__ --port={{{port}}}]] % {
     port = port,
   })
-  Lfs.mkdir (arguments.output .. "/test")
-  local test_id = 1
-  for module in Lfs.dir (main) do
-    local path = main .. "/" .. module
-    if  module ~= "." and module ~= ".."
-    and Lfs.attributes (path, "mode") == "directory" then
-      if Lfs.attributes (path .. "/test.lua", "mode") == "file" then
-        print ("Testing {{{module}}} module:" % {
-          module = module,
-        })
-        status = os.execute ([[ "{{{prefix}}}/bin/busted" --verbose --pattern=test "{{{path}}}" ]] % {
-          prefix = loader.prefix,
-          path   = path,
-        }) and status
-        status = os.execute ([[ "{{{prefix}}}/bin/busted" --output={{{format}}} --pattern=test "{{{path}}}" > {{{output}}} 2> /dev/null ]] % {
-          prefix   = loader.prefix,
-          path     = path,
-          format   = arguments.test_format,
-          output   = arguments.output .. "/test/" .. tostring (test_id),
-        }) and status
-        os.execute ([[ "{{{prefix}}}/bin/busted" --verbose --coverage --pattern=test "{{{path}}}" > /dev/null ]] % {
-          prefix   = loader.prefix,
-          path     = path,
-        })
-        test_id = test_id + 1
-      end
-    end
-  end
+  status = os.execute ([[ "{{{prefix}}}/bin/busted" --verbose --pattern=test "{{{source}}}" ]] % {
+    prefix = loader.prefix,
+    source = loader.source,
+  }) and status
+  status = os.execute ([[ "{{{prefix}}}/bin/busted" --output={{{format}}} --pattern=test "{{{source}}}" > {{{output}}} 2> /dev/null ]] % {
+    prefix = loader.prefix,
+    source = loader.source,
+    format = arguments.test_format,
+    output = arguments.output .. "/test-results",
+  }) and status
+  os.execute ([[ "{{{prefix}}}/bin/busted" --verbose --coverage --pattern=test "{{{source}}}" > /dev/null ]] % {
+    prefix = loader.prefix,
+    source = loader.source,
+  })
   os.execute (loader.prefix .. [[/bin/cosy-server stop --force --alias=__busted__]])
   print ()
 end
@@ -370,7 +339,7 @@ do
   if os.execute "command -v shellcheck > /dev/null 2>&1" then
     local s = os.execute ([[
       . "{{{prefix}}}/bin/realpath.sh"
-      shellcheck --exclude=SC2024 $(realpath "{{{source}}}")/../bin/*
+      shellcheck --exclude=SC2024 --exclude=SC1008 $(realpath "{{{source}}}")/../bin/*
     ]] % {
       prefix = loader.prefix,
       source = loader.source,
