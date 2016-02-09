@@ -1,0 +1,76 @@
+#! /usr/bin/env bash
+
+for i in "$@"
+do
+  case ${i} in
+    -p=*|--prefix=*)
+      cosy_prefix="${i#*=}"
+      cosy_prefix="${cosy_prefix%/}"
+      shift # past argument=value
+    ;;
+    --in-ci)
+      in_ci=true
+      shift # past argument=value
+    ;;
+    *)
+      echo "Usage: "
+      echo "  build-update [--prefix=PREFIX] [--in-ci]"
+      exit 1;
+    ;;
+  esac
+done
+
+cosy_prefix=${cosy_prefix:-/usr/local}
+
+if [ ! -z "${in_ci+x}" ]; then
+  red=''
+  green=''
+  nc=''
+else
+  red='\033[0;31m'
+  green='\033[0;32m'
+  nc='\033[0m'
+fi
+
+# Useful variables:
+cosy_temp=$(mktemp -d 2>/dev/null || mktemp -d -t cosy)
+cosy_log="${cosy_temp}/install.log"
+
+echo -e "Prefix   : ${green}${cosy_prefix}${nc}"
+echo -e "Temporary: ${green}${cosy_temp}${nc}"
+echo -e "Log file : ${green}${cosy_log}${nc}"
+
+function error ()
+{
+  echo -e "${red}An error happened.${nc}"
+  echo -e "Please read log file: ${red}${cosy_log}${nc}."
+  if [ ! -z "${in_ci+x}" ]; then
+    cat "${cosy_log}"
+  fi
+  exit 1
+}
+
+function update_cosy ()
+{
+  echo -n "Generating cosy rockspec... "
+  ( # shellcheck disable=SC2091
+    $("${cosy_prefix}/bin/luarocks" path | tr "'" ";")
+    export LUA_PATH="${LUA_PATH};./src/?.lua"
+    "${cosy_prefix}/bin/lua" src/cosy/rockspec/bin.lua
+  ) >> "${cosy_log}" 2>&1 \
+    && echo -e "${green}success${nc}" \
+    || echo -e "${red}failure${nc}"
+  echo -n "Installing cosy (this may take a while)... "
+  ( "${cosy_prefix}/bin/luarocks" remove cosy
+    "${cosy_prefix}/bin/luarocks" make rockspec/cosy-master-1.rockspec
+  ) >> "${cosy_log}" 2>&1 \
+    && echo -e "${green}success${nc}" \
+    || echo -e "${red}failure${nc}"
+}
+
+trap error ERR
+update_cosy
+
+if [ ! -z "${in_ci+x}" ]; then
+  cat "${cosy_log}"
+fi
