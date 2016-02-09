@@ -55,6 +55,7 @@ return function (t)
   for part in path:gmatch "[^/]+" do
     parts [#parts+1] = part
   end
+
   for _ = 1, 3 do
     parts [#parts] = nil
   end
@@ -65,16 +66,20 @@ return function (t)
   end
   loader.prefix = (path:find "^/" and "/" or "") .. table.concat (parts, "/")
 
-  local Lfs = loader.require "lfs"
-  local src = loader.prefix .. "/lib/luarocks/rocks/cosy/"
-  for subpath in Lfs.dir (src) do
-    if  subpath ~= "." and subpath ~= ".."
-    and Lfs.attributes (src .. "/" .. subpath, "mode") == "directory" then
-      src = src .. subpath .. "/src"
-      break
+  if path:match "^/" then
+    local Lfs = loader.require "lfs"
+    local src = loader.prefix .. "/lib/luarocks/rocks/cosy/"
+    for subpath in Lfs.dir (src) do
+      if  subpath ~= "." and subpath ~= ".."
+      and Lfs.attributes (src .. "/" .. subpath, "mode") == "directory" then
+        src = src .. subpath .. "/src"
+        break
+      end
     end
+    loader.source = src
+  else
+    loader.source = loader.lua_modules
   end
-  loader.source = src
 
   os.execute ([[ mkdir -p {{{home}}} ]] % {
     home = loader.home,
