@@ -215,12 +215,17 @@ end
 function Cli.start (cli)
   assert (getmetatable (cli) == Cli)
 
-  if not pcall (cli.configure, cli, _G.arg) then
-    print (cli.parser:get_help ())
-    return false
-  else
-    cli.parser = nil
+  do
+    local ok, err = pcall (cli.configure, cli, _G.arg)
+    if not ok then
+      print (err)
+      print (cli.parser:get_help ())
+      return false
+    else
+      cli.parser = nil
+    end
   end
+  
   local loader        = cli.loader
   local Configuration = loader.load "cosy.configuration"
   local File          = loader.load "cosy.file"
