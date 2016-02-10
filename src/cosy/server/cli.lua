@@ -118,17 +118,12 @@ if arguments.start then
 
   if arguments.clean then
     Configuration.load "cosy.redis"
-    local Redis     = loader.require "redis"
-    local host      = Configuration.redis.interface
-    local port      = Configuration.redis.port
-    local database  = Configuration.redis.database
-    local redis     = Redis.connect (host, port)
-    redis:select (database)
-    redis:flushdb ()
-    package.loaded ["redis"] = nil
+    os.remove (Configuration.redis.log)
+    os.remove (Configuration.redis.db)
+    os.remove (Configuration.redis.append)
   end
 
-  os.remove (Configuration.server.log )
+  os.remove (Configuration.server.log)
   os.remove (Configuration.server.data)
 
  if Posix.fork () == 0 then

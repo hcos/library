@@ -8,6 +8,7 @@ return function (loader)
   local Methods       = loader.load "cosy.methods"
   local Nginx         = loader.load "cosy.nginx"
   local Random        = loader.load "cosy.random"
+  local Redis         = loader.load "cosy.redis"
   local Scheduler     = loader.load "cosy.scheduler"
   local Store         = loader.load "cosy.store"
   local Token         = loader.load "cosy.token"
@@ -258,7 +259,8 @@ return function (loader)
       Store.commit (store)
     end)
 
-   Nginx.start ()
+    Nginx.start ()
+    Redis.start ()
 
     do
       File.encode (Configuration.server.data, {
@@ -282,6 +284,7 @@ return function (loader)
     os.remove (Configuration.server.data)
     Scheduler.removeserver (App.server.socket)
     Nginx.stop ()
+    Redis.stop ()
   end
 
   return Server
