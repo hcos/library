@@ -1,5 +1,8 @@
 #! /usr/bin/env bash
 
+set -e
+set -o pipefail
+
 for i in "$@"
 do
   case ${i} in
@@ -24,6 +27,9 @@ do
     ;;
   esac
 done
+
+git submodule init
+git submodule update
 
 cosy_prefix=${cosy_prefix:-/usr/local}
 lua_version=${lua_version:-5.2}
@@ -56,9 +62,9 @@ function error ()
   fi
   exit 1
 }
+trap error ERR
 
 # Install dependencies:
-function install_dependencies ()
 {
   echo -n "Installing development packages... "
   if command -v apt-get; then
@@ -108,7 +114,7 @@ function install_dependencies ()
 }
 
 # Install lua, luarocks and packages:
-function install_lua () {
+{
   export CC=clang
   echo -n "Installing lua ${lua_version} and luarocks... "
   hererocks "${cosy_prefix}" -r^ --lua="${lua_version}" \
@@ -199,14 +205,15 @@ function install_lua () {
 }
 
 # Install web dependencies:
-function install_web ()
 {
   web_dependencies=(
     bootbox
     bootstrap3
+    casperjs
     font-awesome
     jquery
     jquery-locationpicker
+    karma
     sjcl
   )
   rm -rf node_modules
@@ -239,7 +246,6 @@ function install_web ()
 }
 
 # Install openresty:
-function install_openresty ()
 {
   echo -n "Installing openresty... "
   (
@@ -257,14 +263,6 @@ function install_openresty ()
     && echo -e "${green}success${nc}" \
     || echo -e "${red}failure${nc}"
 }
-
-git submodule init
-git submodule update
-trap error ERR
-install_dependencies
-install_lua
-install_openresty
-install_web
 
 echo "You can now try the following commands:"
 echo "- ${cosy_prefix}/bin/cosy-server start [--clean] [--force] [--port=<port>]"

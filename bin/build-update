@@ -1,5 +1,8 @@
 #! /usr/bin/env bash
 
+set -e
+set -o pipefail
+
 for i in "$@"
 do
   case ${i} in
@@ -49,8 +52,8 @@ function error ()
   fi
   exit 1
 }
+trap error ERR
 
-function update_cosy ()
 {
   echo -n "Generating cosy rockspec... "
   ( # shellcheck disable=SC2091
@@ -69,9 +72,6 @@ function update_cosy ()
     && echo -e "${green}success${nc}" \
     || echo -e "${red}failure${nc}"
 }
-
-trap error ERR
-update_cosy
 
 if [ ! -z "${in_ci+x}" ]; then
   cat "${cosy_log}"
