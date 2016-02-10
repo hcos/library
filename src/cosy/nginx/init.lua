@@ -255,7 +255,7 @@ http {
   function Nginx.bundle ()
     os.remove (Configuration.http.bundle)
     Scheduler.addthread (function ()
-      if Nginx.in_bundle then
+      if Nginx.in_bundle or Configuration.dev_mode then
         return
       end
       Nginx.in_bundle = true
