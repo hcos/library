@@ -15,6 +15,10 @@ before_script:
 
 script:
   - ${HOME}/cosy/bin/cosy-check --output=output --test-format=junit
+  - ${HOME}/cosy/bin/cosy-server start --port=8090
+  - ./cosy-client-*.sh --target ${HOME}/cosy-client
+  - ./tests/user.sh default ${HOME}/cosy-client/bin/cosy --server=http://127.0.0.1:8090/
+  - ${HOME}/cosy/bin/cosy-server stop
 
 after_failure:
   - cat ${HOME}/.cosy/__busted__/nginx/access.log
