@@ -247,6 +247,9 @@ return function (loader)
       })
     end)
 
+    Nginx.start ()
+    Redis.start ()
+
     Scheduler.addthread (function ()
       local store = Store.new ()
       local view  = Store.toview (store)
@@ -258,9 +261,6 @@ return function (loader)
       end
       Store.commit (store)
     end)
-
-    Nginx.start ()
-    Redis.start ()
 
     do
       File.encode (Configuration.server.data, {
