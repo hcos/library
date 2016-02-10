@@ -69,6 +69,9 @@ return function (t)
   if path:match "^/" then
     local Lfs = loader.require "lfs"
     local src = loader.prefix .. "/lib/luarocks/rocks/cosy/"
+    if Lfs.attributes (src, "mode") ~= "directory" then
+      src = loader.prefix .. "/lib/luarocks/rocks/cosy-client/"
+    end
     for subpath in Lfs.dir (src) do
       if  subpath ~= "." and subpath ~= ".."
       and Lfs.attributes (src .. "/" .. subpath, "mode") == "directory" then
