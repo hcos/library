@@ -26,13 +26,7 @@ return function (t)
   loader.logto     = t.logto
   loader.scheduler = t.scheduler
   if not loader.scheduler then
-    local ok, s = pcall (loader.require, "copas.ev")
-    if ok then
-      loader.scheduler = s
-    else
-      loader.scheduler = loader.require "copas"
-      loader.scheduler.autoclose = false
-    end
+    loader.scheduler = loader.require "copas.ev"
   end
   loader.hotswap.loaded.copas = loader.scheduler
   package.loaded.copas        = loader.scheduler
