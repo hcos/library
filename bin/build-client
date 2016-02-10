@@ -99,6 +99,19 @@ trap error ERR
        || echo -e "${red}failure${nc}"
 }
 
+# Install libev:
+{
+  export CC=clang
+  echo -n "Installing libev... "
+  (
+    cd libev
+    ./configure --prefix="${cosy_temp}"
+    make && make install
+  ) >> "${cosy_log}" 2>&1 \
+    && echo -e "${green}success${nc}" \
+    || echo -e "${red}failure${nc}"
+}
+
 # Install lua, luarocks and packages:
 {
   export CC=clang
