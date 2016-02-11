@@ -8,6 +8,9 @@ before_script:
   - mkdir -p output
 
 script:
+  - export CPATH="/home/cosy/install/include:${CPATH}"
+  - export LIBRARY_PATH="/home/cosy/install/lib:${LIBRARY_PATH}"
+  - export LD_LIBRARY_PATH="/home/cosy/install/lib:${LD_LIBRARY_PATH}"
   - /home/cosy/install/bin/cosy-check --output=output --test-format=junit
   - /home/cosy/install/bin/cosy-server start --port=8080
   - ./cosy-client-*.sh --target client
