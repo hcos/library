@@ -13,6 +13,7 @@ build:
         name: "Show path"
         code: |
           /home/cosy/install/bin/luarocks path
+          ls -lh /home/cosy/install/lib/lua/5.2/
     - script:
         name: "Check server"
         code: |
