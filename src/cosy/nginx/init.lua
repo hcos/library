@@ -183,6 +183,10 @@ http {
     if not Configuration.http.hostname then
       sethostname ()
     end
+    local user
+    if Posix.geteuid () == 0 and os.getenv "USER" then
+      user = "user " .. os.getenv "USER" .. ";"
+    end
     local configuration = configuration_template % {
       prefix         = loader.prefix,
       source         = loader.source,
@@ -195,7 +199,7 @@ http {
       redis_host     = Configuration.redis.interface,
       redis_port     = Configuration.redis.port,
       redis_database = Configuration.redis.database,
-      user           = Posix.geteuid () == 0 and ("user " .. os.getenv "USER" .. ";") or "",
+      user           = user,
       path           = package. path:gsub ("5%.2", "5.1") .. ";" .. package. path,
       cpath          = package.cpath:gsub ("5%.2", "5.1") .. ";" .. package.cpath,
     }
