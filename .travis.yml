@@ -6,26 +6,25 @@ sudo: required
 dist: trusty
 
 install:
-  - ./bin/build-server --in-ci --prefix=$HOME/cosy
+  - ./environment/bin/install --in-ci --prefix="${HOME}/cosy"
+  - ./bin/build-server --in-ci --prefix="${HOME}/cosy"
   - ./bin/build-client --in-ci
 
 before_script:
   - rm -rf output && mkdir -p output
-  - redis-server & sleep 1
 
 script:
-  - ${HOME}/cosy/bin/cosy-check --output=output --test-format=junit
-  - ${HOME}/cosy/bin/cosy-server start --port=8090
-  - ./cosy-client-*.sh --list
-  - ./cosy-client-*.sh --target ${HOME}/cosy-client
-  - ./tests/user.sh default ${HOME}/cosy-client/bin/cosy --server=http://127.0.0.1:8090/
-  - ${HOME}/cosy/bin/cosy-server stop
+  - "${HOME}/cosy/bin/cosy-check" --output=output --test-format=junit
+  - "${HOME}/cosy/bin/cosy-server" start --port=8080
+  - for file in ./cosy-client-*.sh; do echo "Installing ${file}..."; "${file}" --target ./cosy-client; done
+  - ./tests/user.sh default ./cosy-client/bin/cosy --server=http://127.0.0.1:8080/
+  - "${HOME}/cosy/bin/cosy-server" stop
 
 after_failure:
-  - cat ${HOME}/.cosy/__busted__/nginx/access.log
-  - cat ${HOME}/.cosy/__busted__/nginx/error.log
-  - cat ${HOME}/.cosy/__scenario__/nginx/access.log
-  - cat ${HOME}/.cosy/__scenario__/nginx/error.log
+  - cat "${HOME}/.cosy/__busted__/nginx/access.log"
+  - cat "${HOME}/.cosy/__busted__/nginx/error.log"
+  - cat "${HOME}/.cosy/__scenario__/nginx/access.log"
+  - cat "${HOME}/.cosy/__scenario__/nginx/error.log"
 
 after_success:
   - luacov-coveralls --excluse "*" --include "cosy" --exclude "test"

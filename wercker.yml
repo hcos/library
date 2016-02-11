@@ -1,0 +1,23 @@
+box: cosyverif/environment:master
+build:
+  steps:
+    - script:
+        name: "Build server"
+        code: |
+          ./bin/build-server --prefix=/usr/local/cosy --in-ci
+    - script:
+        name: "Build client"
+        code: |
+          ./bin/build-client --in-ci
+    - script:
+        name: "Check server"
+        code: |
+          /usr/local/cosy/bin/cosy-check --output=output --test-format=junit
+    - script:
+        name: "Check client"
+        code: |
+          /usr/local/cosy/bin/cosy-server start --port=8080
+          ./cosy-client-*.sh --list
+          ./cosy-client-*.sh --target ./cosy-client
+          ./tests/user.sh default ./cosy-client/bin/cosy --server=http://127.0.0.1:8080/
+          /usr/local/cosy/bin/cosy-server stop
