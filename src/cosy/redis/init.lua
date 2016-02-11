@@ -26,7 +26,6 @@ return function (loader)
   pidfile         {{{pid}}}
   bind            {{{interface}}}
   port            {{{port}}}
-  tcp-backlog     511
   timeout         0
   tcp-keepalive   60
   loglevel        notice
