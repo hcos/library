@@ -1,4 +1,4 @@
-build_image: cosyverif/environment:user
+build_image: cosyverif/environment:master
 
 install:
   - ./bin/build-server --in-ci --prefix=/home/cosy/install

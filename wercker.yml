@@ -1,4 +1,4 @@
-box: cosyverif/environment:user
+box: cosyverif/environment:master
 build:
   steps:
     - script:
