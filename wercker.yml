@@ -28,5 +28,5 @@ build:
           export LD_LIBRARY_PATH="/home/cosy/install/lib:${LD_LIBRARY_PATH}"
           /home/cosy/install/bin/cosy-server start --port=8080
           ./cosy-client-*.sh --target client
-          ./test/user.sh default ./client/bin/cosy --server=http://127.0.0.1:8080/
+          ./tests/user.sh default ./client/bin/cosy --server=http://127.0.0.1:8080/
           /home/cosy/install/bin/cosy-server stop
