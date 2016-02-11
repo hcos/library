@@ -10,13 +10,17 @@ build:
         code: |
           ./bin/build-client --in-ci --prefix=/home/cosy/install
     - script:
+        name: "Show path"
+        code: |
+          /home/cosy/install/bin/luarocks path
+    - script:
         name: "Check server"
         code: |
           /home/cosy/install/bin/cosy-check --output=. --test-format=junit
     - script:
         name: "Check client"
         code: |
-          /home/cosy/install/bin/cosy-server --start --port=8080
+          /home/cosy/install/bin/cosy-server start --port=8080
           ./cosy-client-*.sh --target client
           ./test/user.sh default ./client/bin/cosy --server=http://127.0.0.1:8080/
-          /home/cosy/install/bin/cosy-server --stop
+          /home/cosy/install/bin/cosy-server stop

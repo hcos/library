@@ -9,10 +9,10 @@ before_script:
 
 script:
   - /home/cosy/install/bin/cosy-check --output=output --test-format=junit
-  - /home/cosy/install/bin/cosy-server --start --port=8080
+  - /home/cosy/install/bin/cosy-server start --port=8080
   - ./cosy-client-*.sh --target client
   - ./test/user.sh default ./client/bin/cosy --server=http://127.0.0.1:8080/
-  - home/cosy/install/bin/cosy-server --stop
+  - home/cosy/install/bin/cosy-server stop
 
 after_failure:
   - cat $HOME/.cosy/__busted__/nginx/access.log
