@@ -2,29 +2,21 @@ box: cosyverif/environment:user
 build:
   steps:
     - script:
-        name: "Copy"
-        code: |
-          su cosy -c "cp -R . /home/cosy/current"
-    - script:
         name: "Build server"
         code: |
-          su cosy -c "cd /home/cosy/current && ./bin/build-server --in-ci --prefix=/home/cosy/install"
+          ./bin/build-server --in-ci --prefix=/home/cosy/install
     - script:
         name: "Build client"
         code: |
-          su cosy -c "cd /home/cosy/current && ./bin/build-client --in-ci --prefix=/home/cosy/install"
-    - script:
-        name: "Create output"
-        code: |
-          su cosy -c "cd /home/cosy/current && mkdir -p output"
+          ./bin/build-client --in-ci --prefix=/home/cosy/install
     - script:
         name: "Check server"
         code: |
-          su cosy -c "cd /home/cosy/current && cosy-check --output=output --test-format=junit"
+          /home/cosy/install/bin/cosy-check --output=. --test-format=junit
     - script:
         name: "Check client"
         code: |
-          su cosy -c "/home/cosy/install/bin/cosy-server --start --port=8080"
-          su cosy -c "cd /home/cosy/current && ./cosy-client-*.sh --target client"
-          su cosy -c "cd /home/cosy/current && ./test/user.sh default ./client/bin/cosy --server=http://127.0.0.1:8080/"
-          su cosy -c "/home/cosy/install/bin/cosy-server --stop"
+          /home/cosy/install/bin/cosy-server --start --port=8080
+          ./cosy-client-*.sh --target client
+          ./test/user.sh default ./client/bin/cosy --server=http://127.0.0.1:8080/
+          /home/cosy/install/bin/cosy-server --stop
