@@ -24,15 +24,20 @@ git submodule update
   ) >> "${cosy_log}" 2>&1 \
     && echo -e "${green}success${nc}" \
     || echo -e "${red}failure${nc}"
-  echo -n "Installing cosy... "
-  { ${sudo} "${cosy_prefix}/bin/luarocks" make rockspec/cosy-client-master-1.rockspec \
-      LIBEV_DIR="${cosy_prefix}"
-  } >> "${cosy_log}" 2>&1 \
+  echo -n "  Installing lua-ev..."
+  ( ${sudo} "${cosy_prefix}/bin/luarocks" install lua-ev
+  ) >> "${cosy_log}" 2>&1 \
     && echo -e "${green}success${nc}" \
     || echo -e "${red}failure${nc}"
   echo -n "  Installing luasocket (dev version)..."
   ( ${sudo} "${cosy_prefix}/bin/luarocks" install --server=https://luarocks.org/dev luasocket
   ) >> "${cosy_log}" 2>&1 \
+    && echo -e "${green}success${nc}" \
+    || echo -e "${red}failure${nc}"
+  echo -n "Installing cosy... "
+  { ${sudo} "${cosy_prefix}/bin/luarocks" make rockspec/cosy-client-master-1.rockspec \
+      LIBEV_DIR="${cosy_prefix}"
+  } >> "${cosy_log}" 2>&1 \
     && echo -e "${green}success${nc}" \
     || echo -e "${red}failure${nc}"
 }
