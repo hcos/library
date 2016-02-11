@@ -16,8 +16,12 @@ build:
     - script:
         name: "Show path"
         code: |
+          export CPATH="/home/cosy/install/include:${CPATH}"
+          export LIBRARY_PATH="/home/cosy/install/lib:${LIBRARY_PATH}"
+          export LD_LIBRARY_PATH="/home/cosy/install/lib:${LD_LIBRARY_PATH}"
           /home/cosy/install/bin/luarocks path
           ls -lh /home/cosy/install/lib/lua/5.2/
+          ls -lh /home/cosy/install/lib/
           /home/cosy/install/bin/lua -e "require 'ev'"
     - script:
         name: "Check server"
