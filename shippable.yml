@@ -1,22 +1,28 @@
-build_image: cosyverif/environment:master
+build_image: cosyverif/environment:user
 
 install:
-  - ./bin/build-server --in-ci --prefix=/usr
+  - su cosy -c "cp -R . /home/cosy/current"
+  - su cosy -c "cd /home/cosy/current && ./bin/build-server --in-ci --prefix=/home/cosy/install"
+  - su cosy -c "cd /home/cosy/current && ./bin/build-client --in-ci --prefix=/home/cosy/install"
 
 before_script:
-  - rm -rf output && mkdir -p output
+  - su cosy -c "cd /home/cosy/current && mkdir -p output"
 
 script:
-  - cosy-check --output=output --test-format=junit
+  - su cosy -c "cd /home/cosy/current && cosy-check --output=output --test-format=junit"
+  - su cosy -c "/home/cosy/install/bin/cosy-server --start --port=8080"
+  - su cosy -c "cd /home/cosy/current && ./cosy-client-*.sh --target client"
+  - su cosy -c "cd /home/cosy/current && ./test/user.sh default ./client/bin/cosy --server=http://127.0.0.1:8080/"
+  - su cosy -c "/home/cosy/install/bin/cosy-server --stop"
 
 after_failure:
-  - cat ${HOME}/.cosy/__busted__/nginx/access.log
-  - cat ${HOME}/.cosy/__busted__/nginx/error.log
-  - cat ${HOME}/.cosy/__scenario__/nginx/access.log
-  - cat ${HOME}/.cosy/__scenario__/nginx/error.log
+  - su cosy -c "cd /home/cosy && cat .cosy/__busted__/nginx/access.log"
+  - su cosy -c "cd /home/cosy && cat .cosy/__busted__/nginx/error.log"
+  - su cosy -c "cd /home/cosy && cat .cosy/__scenario__/nginx/access.log"
+  - su cosy -c "cd /home/cosy && cat .cosy/__scenario__/nginx/error.log"
 
 after_success:
-  - mv output/test-results shippable/testresults/cosy.xml
+  - mv /home/cosy/current/output/test-results shippable/testresults/cosy.xml
 
 notifications:
   email:
