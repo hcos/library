@@ -22,8 +22,10 @@ echo -n "Generating cosy rockspec... "
 echo -n "Reinstalling cosy... "
 ( "${cosy_prefix}/bin/luarocks" remove cosy
   "${cosy_prefix}/bin/luarocks" remove cosy-client
-  "${cosy_prefix}/bin/luarocks" make rockspec/cosy-client-master-1.rockspec
-  "${cosy_prefix}/bin/luarocks" make rockspec/cosy-master-1.rockspec
+  "${cosy_prefix}/bin/luarocks" make rockspec/cosy-client-master-1.rockspec \
+    LIBEV_DIR="${cosy_prefix}"
+  "${cosy_prefix}/bin/luarocks" make rockspec/cosy-master-1.rockspec \
+    LIBEV_DIR="${cosy_prefix}"
 ) >> "${cosy_log}" 2>&1 \
   && echo -e "${green}success${nc}" \
   || echo -e "${red}failure${nc}"
