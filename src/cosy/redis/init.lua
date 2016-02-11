@@ -33,7 +33,6 @@ return function (loader)
   databases       1
 
   ################################ SNAPSHOTTING  ################################
-  stop-writes-on-bgsave-error yes
   save            3600  1
   rdbcompression  yes
   rdbchecksum     yes
@@ -44,10 +43,6 @@ return function (loader)
   appendonly      yes
   appendfilename  "{{{append}}}"
   appendfsync     everysec
-  no-appendfsync-on-rewrite     no
-  auto-aof-rewrite-percentage   100
-  auto-aof-rewrite-min-size     64mb
-  aof-load-truncated            yes
   ]]
 
   function Redis.configure ()
