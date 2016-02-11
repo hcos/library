@@ -6,18 +6,6 @@ build:
         code: |
           ./bin/build-server --prefix=/usr --in-ci
     - script:
-        name: "Build client"
-        code: |
-          ./bin/build-client --prefix=/usr --in-ci
-    - script:
         name: "Check server"
         code: |
           cosy-check --output=output --test-format=junit
-    - script:
-        name: "Check client"
-        code: |
-          cosy-server start --port=8080
-          ./cosy-client-*.sh --list
-          ./cosy-client-*.sh --target ./cosy-client
-          ./tests/user.sh default ./cosy-client/bin/cosy --server=http://127.0.0.1:8080/
-          cosy-server stop
