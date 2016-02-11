@@ -8,7 +8,7 @@ dist: trusty
 install:
   - ./environment/bin/install --in-ci --prefix="${HOME}/cosy"
   - ./bin/build-server --in-ci --prefix="${HOME}/cosy"
-  - ./bin/build-client --in-ci
+  - ./bin/build-client --in-ci --prefix="${HOME}/cosy"
 
 before_script:
   - rm -rf output && mkdir -p output

@@ -1,18 +1,18 @@
 build_image: cosyverif/environment:master
 
 install:
-  - ./bin/build-server --in-ci --prefix=/usr/local/cosy
-  - ./bin/build-client --in-ci --prefix=/usr/local/cosy
+  - ./bin/build-server --in-ci --prefix=/usr
+  - ./bin/build-client --in-ci --prefix=/usr
 
 before_script:
   - rm -rf output && mkdir -p output
 
 script:
-  - /usr/local/cosy/bin/cosy-check --output=output --test-format=junit
-  - /usr/local/cosy/bin/cosy-server start --port=8080
+  - cosy-check --output=output --test-format=junit
+  - cosy-server start --port=8080
   - for file in ./cosy-client-*.sh; do echo "Installing ${file}..."; "${file}" --target ./cosy-client; done
   - ./tests/user.sh default ./cosy-client/bin/cosy --server=http://127.0.0.1:8080/
-  - /usr/local/cosy/bin/cosy-server stop
+  - cosy-server stop
 
 after_failure:
   - cat ${HOME}/.cosy/__busted__/nginx/access.log
