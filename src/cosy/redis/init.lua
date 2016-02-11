@@ -79,13 +79,21 @@ return function (loader)
       Posix.execp ("redis-server", {
         Configuration.redis.configuration,
       })
-    else
-      File.encode (Configuration.redis.data, {
-        interface = Configuration.redis.interface,
-        port      = Configuration.redis.port,
-      })
-      Posix.chmod (Configuration.redis.data, "0600")
     end
+    File.encode (Configuration.redis.data, {
+      interface = Configuration.redis.interface,
+      port      = Configuration.redis.port,
+    })
+    Posix.chmod (Configuration.redis.data, "0600")
+    repeat
+      Posix.nanosleep (0, 100000) -- sleep 100ms
+      local socket = Rawsocket.tcp ()
+      socket:connect (Configuration.redis.interface, Configuration.redis.port)
+      local client = Redis_Client.connect {
+        socket = socket,
+      }
+      local ok = pcall (client.ping, client)
+    until ok
   end
 
   local function getpid ()
