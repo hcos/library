@@ -4,3 +4,6 @@
 [submodule "environment"]
 	path = environment
 	url = https://github.com/CosyVerif/environment.git
+[submodule "makeself"]
+	path = makeself
+	url = https://github.com/megastep/makeself.git
