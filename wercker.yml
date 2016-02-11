@@ -10,10 +10,15 @@ build:
         code: |
           ./bin/build-client --in-ci --prefix=/home/cosy/install
     - script:
+        name: "Fix permissions"
+        code: |
+          chown -R root.users /home/cosy/install
+    - script:
         name: "Show path"
         code: |
           /home/cosy/install/bin/luarocks path
           ls -lh /home/cosy/install/lib/lua/5.2/
+          /home/cosy/install/bin/lua -e "require 'ev'"
     - script:
         name: "Check server"
         code: |
