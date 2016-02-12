@@ -47,10 +47,11 @@ deploy:
         name: Stop
         code: ssh -i $PRIVATEKEY_PATH -l cosy -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no cosy.linard.fr "./install/bin/cosy-server stop"
     - script:
+        name: Update
+        code: ssh -i $PRIVATEKEY_PATH -l cosy -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no cosy.linard.fr "cd sources && git checkout $WERCKER_GIT_BRANCH && git pull"
+    - script:
         name: Build
-        code: |
-          ssh -i $PRIVATEKEY_PATH -l cosy -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no cosy.linard.fr "cd sources && git checkout $WERCKER_GIT_BRANCH && git pull"
-          ssh -i $PRIVATEKEY_PATH -l cosy -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no cosy.linard.fr "cd sources && ./bin/build-server --prefix=/home/cosy/install"
+        code: ssh -i $PRIVATEKEY_PATH -l cosy -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no cosy.linard.fr "cd sources && ./bin/build-server --prefix=/home/cosy/install"
      - script:
         name: Start
         code: ssh -i $PRIVATEKEY_PATH -l cosy -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no cosy.linard.fr "./install/bin/cosy-server start --port=8080"
