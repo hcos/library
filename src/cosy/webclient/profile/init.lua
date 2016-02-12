@@ -76,7 +76,8 @@ return function (loader)
     end
   end
 
-  function Profile.__call (options)
+  function Profile.__call (_, options)
+    options = options or {}
     Webclient (function ()
       local co   = Scheduler.running ()
       local user = Webclient.client.user.authentified_as {}

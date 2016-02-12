@@ -1,8 +1,10 @@
 return function (loader)
 
-  local Webclient = loader.load "cosy.webclient"
-  local I18n      = loader.load "cosy.i18n"
-  local i18n      = I18n.load {
+  local Webclient      = loader.load "cosy.webclient"
+  local I18n           = loader.load "cosy.i18n"
+  local Dashboard      = loader.load "cosy.webclient.dashboard"
+  local Authentication = loader.load "cosy.webclient.authentication"
+  local i18n           = I18n.load {
     "cosy.webclient.headbar",
   }
 
@@ -30,10 +32,10 @@ return function (loader)
       setmargin ()
       Webclient.jQuery (Webclient.window):resize (setmargin)
       Webclient.jQuery "#home":click (function ()
-        loader.load "cosy.webclient.dashboard" ()
+        Dashboard ()
         return false
       end)
-      loader.load "cosy.webclient.authentication" ()
+      Authentication ()
     end)
   end
 

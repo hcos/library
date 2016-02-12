@@ -26,7 +26,6 @@ return function (loader)
   pidfile         {{{pid}}}
   bind            {{{interface}}}
   port            {{{port}}}
-  tcp-backlog     511
   timeout         0
   tcp-keepalive   60
   loglevel        notice
@@ -34,7 +33,6 @@ return function (loader)
   databases       1
 
   ################################ SNAPSHOTTING  ################################
-  stop-writes-on-bgsave-error yes
   save            3600  1
   rdbcompression  yes
   rdbchecksum     yes
@@ -45,10 +43,6 @@ return function (loader)
   appendonly      yes
   appendfilename  "{{{append}}}"
   appendfsync     everysec
-  no-appendfsync-on-rewrite     no
-  auto-aof-rewrite-percentage   100
-  auto-aof-rewrite-min-size     64mb
-  aof-load-truncated            yes
   ]]
 
   function Redis.configure ()
@@ -79,13 +73,21 @@ return function (loader)
       Posix.execp ("redis-server", {
         Configuration.redis.configuration,
       })
-    else
-      File.encode (Configuration.redis.data, {
-        interface = Configuration.redis.interface,
-        port      = Configuration.redis.port,
-      })
-      Posix.chmod (Configuration.redis.data, "0600")
     end
+    File.encode (Configuration.redis.data, {
+      interface = Configuration.redis.interface,
+      port      = Configuration.redis.port,
+    })
+    Posix.chmod (Configuration.redis.data, "0600")
+    repeat
+      Posix.nanosleep (0, 100000) -- sleep 100ms
+      local socket = Rawsocket.tcp ()
+      socket:connect (Configuration.redis.interface, Configuration.redis.port)
+      local client = Redis_Client.connect {
+        socket = socket,
+      }
+      local ok = pcall (client.ping, client)
+    until ok
   end
 
   local function getpid ()

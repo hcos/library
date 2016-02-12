@@ -352,13 +352,12 @@ do
 end
 
 -- Scenarios
--- ==========
+-- =========
 
 do
   local server  = Socket.bind ("*", 0)
   local _, port = server:getsockname ()
   server:close ()
-
   os.execute (loader.prefix .. [[/bin/cosy-server start --force --clean --alias=__scenario__ --port={{{port}}} ]] % {
     port = port,
   })

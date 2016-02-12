@@ -1,18 +1,9 @@
 [submodule "redis-lua"]
 	path = redis-lua
 	url = https://github.com/nrk/redis-lua.git
-[submodule "openresty"]
-	path = openresty
-	url = https://github.com/openresty/ngx_openresty
-[submodule "sh-realpath"]
-	path = sh-realpath
-	url = https://github.com/mkropat/sh-realpath
+[submodule "environment"]
+	path = environment
+	url = https://github.com/CosyVerif/environment.git
 [submodule "makeself"]
 	path = makeself
 	url = https://github.com/megastep/makeself.git
-[submodule "lua.vm.js"]
-	path = lua.vm.js
-	url = https://github.com/kripken/lua.vm.js.git
-[submodule "libev"]
-	path = libev
-	url = https://github.com/enki/libev.git

@@ -1,0 +1,11 @@
+box: cosyverif/environment:master
+build:
+  steps:
+    - script:
+        name: "Build server"
+        code: |
+          ./bin/build-server --prefix=/usr --in-ci
+    - script:
+        name: "Check server"
+        code: |
+          cosy-check --output=output --test-format=junit
