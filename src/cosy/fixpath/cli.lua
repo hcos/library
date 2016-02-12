@@ -10,6 +10,9 @@ local parser = Arguments () {
 parser:argument "prefix" {
   description = "cosy prefix directory",
 }
+parser:option "-q" "--quiet" {
+  description = "do not output anything",
+}
 
 local arguments = parser:parse ()
 
@@ -20,7 +23,9 @@ function string_mt.__mod (pattern, variables)
 end
 
 if Lfs.attributes (arguments.prefix, "mode") ~= "directory" then
-  print (Colors ("%{bright red blackbg}failure%{reset}"))
+  if not arguments.quiet then
+    print (Colors ("%{bright red blackbg}failure%{reset}"))
+  end
 end
 
 for filename in Lfs.dir (arguments.prefix .. "/bin") do
@@ -40,4 +45,6 @@ for filename in Lfs.dir (arguments.prefix .. "/bin") do
   end
 end
 
-print (Colors ("%{bright green blackbg}success%{reset}"))
+if not arguments.quiet then
+  print (Colors ("%{bright green blackbg}success%{reset}"))
+end
