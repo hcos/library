@@ -184,7 +184,8 @@ http {
       sethostname ()
     end
     local user
-    if Posix.geteuid () == 0 and os.getenv "USER" then
+    if (Posix.geteuid () == 0 and os.getenv "USER")
+    or Configuration.http.port < 1024 then
       user = "user " .. os.getenv "USER" .. ";"
     end
     local configuration = configuration_template % {
@@ -248,7 +249,14 @@ http {
   function Nginx.stop ()
     local pid = getpid ()
     if pid then
-      Posix.kill (pid, 15) -- term
+      if Configuration.http.port < 1024 then
+        Scheduler.execute ("sudo kill -{{{signal}}} {{{pid}}}" % {
+          signal = 15,
+          pid    = pid,
+        })
+      else
+        Posix.kill (pid, 15) -- term
+      end
       Posix.wait (pid)
     end
     os.remove (Configuration.http.configuration)
@@ -261,7 +269,14 @@ http {
     Nginx.configure ()
     local pid = getpid ()
     if pid then
-      Posix.kill (pid, 1) -- hup
+      if Configuration.http.port < 1024 then
+        Scheduler.execute ("sudo kill -{{{signal}}} {{{pid}}}" % {
+          signal = 1,
+          pid    = pid,
+        })
+      else
+        Posix.kill (pid, 1) -- hup
+      end
     end
   end
 
