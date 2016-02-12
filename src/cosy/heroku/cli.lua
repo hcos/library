@@ -8,7 +8,7 @@ local parser = Arguments () {
   name        = "cosy-heroku",
   description = "Generate configuration",
 }
-parser:option "where" {
+parser:option "--where" {
   description = "directory where the configuration will be",
   default     = os.getenv "PWD",
 }
