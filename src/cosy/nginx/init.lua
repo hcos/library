@@ -218,11 +218,20 @@ http {
       dir = Configuration.http.directory .. "/logs"
     })
     if Posix.fork () == 0 then
-      assert (Posix.execp (Configuration.http.nginx .. "/sbin/nginx", {
-        "-q",
-        "-p", Configuration.http.directory,
-        "-c", Configuration.http.configuration,
-      }))
+      if Configuration.http.port < 1024 then
+        assert (Posix.execp ("sudo", {
+          Configuration.http.nginx .. "/sbin/nginx",
+          "-q",
+          "-p", Configuration.http.directory,
+          "-c", Configuration.http.configuration,
+        }))
+      else
+        assert (Posix.execp (Configuration.http.nginx .. "/sbin/nginx", {
+          "-q",
+          "-p", Configuration.http.directory,
+          "-c", Configuration.http.configuration,
+        }))
+      end
     end
     Nginx.stopped = false
   end
