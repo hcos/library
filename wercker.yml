@@ -30,14 +30,15 @@ build:
           ./cosy-client-*.sh --target client
           ./tests/user.sh default ./client/bin/cosy --server=http://127.0.0.1:8080/
           /app/bin/cosy-server stop
+
+deploy:
+  steps:
     - script:
         name: "Install procfile"
         code: |
           cp Procfile /app/Procfile
           chown -R root.users /app
-
-deploy:
-  steps:
+          echo $WERCKER_OUTPUT_DIR
     - heroku-deploy:
         key: $HEROKU_KEY
         key-name: HEROKU_KEY_PAIR
