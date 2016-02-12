@@ -80,7 +80,9 @@ return function (loader)
       port      = Configuration.redis.port,
     })
     Posix.chmod (Configuration.redis.data, "0600")
+    local i = 0
     repeat
+      i = i+1
       Posix.nanosleep (0, 100000) -- sleep 100ms
       local socket = Rawsocket.tcp ()
       socket:connect (Configuration.redis.interface, Configuration.redis.port)
@@ -89,7 +91,7 @@ return function (loader)
       }
       local ok, err = pcall (client.ping, client)
       print (ok, err)
-    until ok
+    until ok or i >= 10
   end
 
   local function getpid ()
