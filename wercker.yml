@@ -45,7 +45,7 @@ deploy:
         hide-from-log: true
     - script:
         name: Stop
-        code: ssh -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no cosy@cosy.linard.fr "./install/bin/cosy-server stop"
+        code: ssh -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no cosy@cosy.linard.fr "./install/bin/cosy-server stop || true"
     - script:
         name: Build
         code: |
