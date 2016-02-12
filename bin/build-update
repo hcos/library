@@ -29,3 +29,5 @@ echo -n "Reinstalling cosy... "
 ) >> "${cosy_log}" 2>&1 \
   && echo -e "${green}success${nc}" \
   || echo -e "${red}failure${nc}"
+
+  "${cosy_prefix}/bin/cosy-fixpath" "${cosy_prefix}"

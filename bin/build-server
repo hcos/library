@@ -47,6 +47,8 @@ git submodule update
     || echo -e "${red}failure${nc}"
 }
 
+"${cosy_prefix}/bin/cosy-fixpath" "${cosy_prefix}"
+
 echo "You can now try the following commands:"
 echo "- ${cosy_prefix}/bin/cosy-server start [--clean] [--force] [--port=<port>]"
 echo "- ${cosy_prefix}/bin/cosy-server stop  [--force]"
