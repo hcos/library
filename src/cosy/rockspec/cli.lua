@@ -99,7 +99,7 @@ local rockspecs = {
       "lua >= 5.2",
       "ansicolors",
       "argparse",
-      "copas",
+      "copas-ev",
       "coronest",
       "hotswap",
       "hotswap-http",

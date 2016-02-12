@@ -20,6 +20,9 @@ do
   esac
 done
 
+git submodule init
+git submodule update
+
 lua_version=${lua_version:-5.2}
 
 if [ ! -z "${in_ci+x}" ]; then
@@ -48,6 +51,7 @@ function error ()
   fi
   exit 1
 }
+trap error ERR
 
 # Install dependencies:
 function install_dependencies ()
@@ -65,7 +69,6 @@ function install_dependencies ()
     echo -e "${green}skipped${nc}"
     return
   fi
-
   case "$(uname -s)" in
     "Linux")
       sudo apt-get update  --yes
@@ -94,8 +97,21 @@ function install_dependencies ()
        || echo -e "${red}failure${nc}"
 }
 
+# Install libev:
+{
+  export CC=clang
+  echo -n "Installing libev... "
+  (
+    cd libev
+    ./configure --prefix="${cosy_temp}"
+    make && make install
+  ) >> "${cosy_log}" 2>&1 \
+    && echo -e "${green}success${nc}" \
+    || echo -e "${red}failure${nc}"
+}
+
 # Install lua, luarocks and packages:
-function install_lua () {
+{
   export CC=clang
   echo -n "Installing lua ${lua_version} and luarocks... "
   hererocks "${cosy_temp}" -r^ --lua="${lua_version}" \
@@ -154,7 +170,8 @@ function fix_string ()
     | tr '[:upper:]' '[:lower:]'
 }
 
-function generate_archive () {
+# Create archive:
+{
   rm -f "${cosy_log}"
   version=$(fix_string "$(git describe)")
   os=$(fix_string "$(uname -s)")
@@ -190,13 +207,6 @@ EOF
     && echo -e "${green}success${nc}" \
     || echo -e "${red}failure${nc}"
 }
-
-git submodule init
-git submodule update
-trap error ERR
-install_dependencies
-install_lua
-generate_archive
 
 if [ ! -z "${in_ci+x}" ]; then
   cat "${cosy_log}"

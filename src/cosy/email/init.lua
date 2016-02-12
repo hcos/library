@@ -209,7 +209,7 @@ return function (loader)
         port     = Configuration.smtp.port,
         create   = Tcp [Configuration.smtp.method] (Configuration.smtp.protocol, make_socket.async),
       } then
-        local redis = Redis ()
+        local redis = Redis.client ()
         redis:rpush (Configuration.smtp.redis_key, Value.expression (localized))
       end
     end)

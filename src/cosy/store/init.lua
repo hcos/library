@@ -135,7 +135,7 @@ return function (loader)
 
   function Store.new ()
     local result     = {}
-    result.redis     = Redis ()
+    result.redis     = Redis.client ()
     result.documents = Documents.new (result)
     result.redis:unwatch ()
     return setmetatable (result, Store)

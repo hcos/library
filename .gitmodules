@@ -13,3 +13,6 @@
 [submodule "lua.vm.js"]
 	path = lua.vm.js
 	url = https://github.com/kripken/lua.vm.js.git
+[submodule "libev"]
+	path = libev
+	url = https://github.com/enki/libev.git
