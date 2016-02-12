@@ -223,6 +223,7 @@ http {
         "-p", Configuration.http.directory,
         "-c", Configuration.http.configuration,
       })
+      os.exit (0)
     end
     Nginx.stopped = false
   end
