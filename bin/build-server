@@ -22,17 +22,14 @@ git submodule update
   ) >> "${cosy_log}" 2>&1 \
     && echo -e "${green}success${nc}" \
     || echo -e "${red}failure${nc}"
-  echo -n "Installing cosy... "
-  ( ${sudo} "${cosy_prefix}/bin/luarocks" make rockspec/cosy-client-master-1.rockspec \
-      LIBEV_DIR="${cosy_prefix}"
-    ${sudo} "${cosy_prefix}/bin/luarocks" make rockspec/cosy-master-1.rockspec \
+  echo -n "  Installing lua-ev..."
+  ( ${sudo} "${cosy_prefix}/bin/luarocks" install lua-ev \
       LIBEV_DIR="${cosy_prefix}"
   ) >> "${cosy_log}" 2>&1 \
     && echo -e "${green}success${nc}" \
     || echo -e "${red}failure${nc}"
   echo -n "  Installing luasocket (dev version)..."
-  ( cd redis-lua
-    ${sudo} "${cosy_prefix}/bin/luarocks" install --server=https://luarocks.org/dev luasocket
+  ( ${sudo} "${cosy_prefix}/bin/luarocks" install --server=https://luarocks.org/dev luasocket
   ) >> "${cosy_log}" 2>&1 \
     && echo -e "${green}success${nc}" \
     || echo -e "${red}failure${nc}"
@@ -40,6 +37,20 @@ git submodule update
   ( cd redis-lua
     ${sudo} "${cosy_prefix}/bin/luarocks" make rockspec/redis-lua-scm-1.rockspec
   ) >> "${cosy_log}" 2>&1 \
+    && echo -e "${green}success${nc}" \
+    || echo -e "${red}failure${nc}"
+  echo -n "Installing cosy... "
+  ( ${sudo} "${cosy_prefix}/bin/luarocks" make rockspec/cosy-client-master-1.rockspec
+    ${sudo} "${cosy_prefix}/bin/luarocks" make rockspec/cosy-master-1.rockspec
+  ) >> "${cosy_log}" 2>&1 \
+    && echo -e "${green}success${nc}" \
+    || echo -e "${red}failure${nc}"
+}
+
+{
+  echo -n "Fixing PATHs... "
+  "${cosy_prefix}/bin/cosy-fixpath" --quiet "${cosy_prefix}" \
+    >> "${cosy_log}" 2>&1 \
     && echo -e "${green}success${nc}" \
     || echo -e "${red}failure${nc}"
 }

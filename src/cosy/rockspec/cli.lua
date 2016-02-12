@@ -119,8 +119,9 @@ local rockspecs = {
       modules = {},
       install = {
         bin = {
-          ["cosy"     ] = "src/cosy/client/bin.lua",
-          ["cosy-tool"] = "src/cosy/tool/bin.lua",
+          ["cosy"        ] = "src/cosy/client/bin.lua",
+          ["cosy-tool"   ] = "src/cosy/tool/bin.lua",
+          ["cosy-fixpath"] = "src/cosy/fixpath/bin.lua",
         },
       },
     },
