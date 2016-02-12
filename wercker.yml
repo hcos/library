@@ -30,3 +30,10 @@ build:
           ./cosy-client-*.sh --target client
           ./tests/user.sh default ./client/bin/cosy --server=http://127.0.0.1:8080/
           /home/cosy/install/bin/cosy-server stop
+deploy:
+  steps:
+    - heroku-deploy:
+        key: $HEROKU_KEY
+        key-name: HEROKU_KEY_PAIR
+        user: $HEROKU_USER
+        app-name: $HEROKU_APP_NAME
