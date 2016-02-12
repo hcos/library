@@ -74,6 +74,7 @@ local rockspecs = {
           ["cosy-server"  ] = "src/cosy/server/bin.lua",
           ["cosy-check"   ] = "src/cosy/check/bin.lua",
           ["cosy-rockspec"] = "src/cosy/rockspec/bin.lua",
+          ["cosy-heroku"  ] = "src/cosy/heroku/bin.lua",
         },
         conf = {},
       },
