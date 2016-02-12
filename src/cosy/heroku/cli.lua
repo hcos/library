@@ -28,6 +28,9 @@ end
 
 local configuration = {
   dev_mode  = false,
+  server    = {
+    log = true,
+  },
   recaptcha = {
     public_key  = os.getenv "RECAPTCHA_PUBLIC_KEY",
     private_key = os.getenv "RECAPTCHA_PRIVATE_KEY",
