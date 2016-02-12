@@ -52,10 +52,29 @@ do
 end
 
 do
-  local oldrequire = Layer.require
   Layer.require = function (name)
-    return oldrequire (name:gsub ("/", "."))
+    local package = name:gsub ("/", ".")
+    if Layer.loaded [package] then
+      return Layer.loaded [package]
+    else
+      local layer = Layer.new {
+        name = name,
+        data = {
+          [Layer.key.labels] = {
+            [name] = true,
+          }
+        }
+      }
+      local reference = Layer.reference (name)
+      layer = require (package) (Layer, layer, reference) or layer
+      return layer, reference
+    end
   end
+end
+
+local loaded     = {}
+for k in pairs (Layer.loaded) do
+  loaded [k] = true
 end
 
 local mytool     = toolname and Layer.require (toolname) or nil
@@ -128,9 +147,13 @@ for key in pairs (parameters) do
     elseif key.type == "function" then
       value = loadstring (value) ()
     elseif getmetatable (key.type) == Layer.Proxy then
-      value = {
-        [Layer.key.refines] = { Layer.require (value) }
-      }
+      if key.update then
+        value = Layer.require (value)
+      else
+        value = {
+          [Layer.key.refines] = { Layer.require (value) }
+        }
+      end
     else
       assert (false)
     end
@@ -153,11 +176,20 @@ end)
 Scheduler.loop ()
 
 do
-  local filename = os.tmpname ()
-  local file     = io.open (filename, "w")
-  file:write (Layer.encode (mytool))
-  file:close ()
+  local directory = os.tmpname ()
+  os.execute ([[
+    rm -rf {{{directory}}}
+    mkdir -p {{{directory}}}
+  ]] % { directory = directory })
+  for name, model in pairs (Layer.loaded) do
+    if not loaded [name] then
+      local package = name:gsub ("/", ".")
+      local file = assert (io.open (directory .. "/" .. package, "w"))
+      file:write (Layer.encode (model))
+      file:close ()
+    end
+  end
   print (Colors ("%{green blackbg}" .. i18n ["tool:model-output"] % {
-    filename = filename,
+    directory = directory,
   }))
 end

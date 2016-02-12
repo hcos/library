@@ -56,17 +56,30 @@ return function (t)
     parts [#parts+1] = part
   end
 
-  parts [#parts] = nil
-  parts [#parts] = nil
-  parts [#parts] = nil
+  for _ = 1, 3 do
+    parts [#parts] = nil
+  end
+  loader.lua_modules = (path:find "^/" and "/" or "") .. table.concat (parts, "/")
 
-  loader.source = (path:find "^/" and "/" or "") .. table.concat (parts, "/")
-
-  parts [#parts] = nil
-  parts [#parts] = nil
-  parts [#parts] = nil
-
+  for _ = 1, 3 do
+    parts [#parts] = nil
+  end
   loader.prefix = (path:find "^/" and "/" or "") .. table.concat (parts, "/")
+
+  if path:match "^/" then
+    local Lfs = loader.require "lfs"
+    local src = loader.prefix .. "/lib/luarocks/rocks/cosy/"
+    for subpath in Lfs.dir (src) do
+      if  subpath ~= "." and subpath ~= ".."
+      and Lfs.attributes (src .. "/" .. subpath, "mode") == "directory" then
+        src = src .. subpath .. "/src"
+        break
+      end
+    end
+    loader.source = src
+  else
+    loader.source = loader.lua_modules
+  end
 
   os.execute ([[ mkdir -p {{{home}}} ]] % {
     home = loader.home,

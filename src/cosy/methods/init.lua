@@ -30,6 +30,7 @@ return function (loader)
     "cosy.methods",
     "cosy.server",
     "cosy.library",
+    "cosy.parameters",
   }
   i18n._locale = Configuration.locale
 
@@ -278,30 +279,42 @@ return function (loader)
     user.type        = "user"
     local info = store / "info"
     info ["#user"] = (info ["#user"] or 0) + 1
+    if  not Configuration.dev_mode
+    and (request.captcha == nil or request.captcha == "")
+    and not request.administration then
+      error {
+        _ = i18n ["check:error"],
+        reasons = {
+          { _   = i18n ["captcha:missing"],
+            key = "captcha"
+          },
+        },
+      }
+    end
     if try_only then
       return true
     end
     -- Captcha validation must be done only once,
     -- so it must be __after__ the `try_only`.`
     if request.captcha then
-      local url  = "https://www.google.com/recaptcha/api/siteverify"
-      local body = "secret="    .. Configuration.recaptcha.private_key
-                .. "&response=" .. request.captcha
-                .. "&remoteip=" .. request.ip
-      local response, status = loader.request (url, body)
-      assert (status == 200)
-      response = Json.decode (response)
-      assert (response)
-      if not response.success then
-        error {
-          _          = i18n ["captcha:failure"],
-          identifier = request.identifier,
-        }
+      if not Configuration.dev_mode then
+        local url  = "https://www.google.com/recaptcha/api/siteverify"
+        local body = "secret="    .. Configuration.recaptcha.private_key
+                  .. "&response=" .. request.captcha
+                  .. "&remoteip=" .. request.ip
+        local response, status = loader.request (url, body)
+        assert (status == 200)
+        response = Json.decode (response)
+        assert (response)
+        if not response.success then
+          error {
+            _ = i18n ["captcha:failure"],
+          }
+        end
       end
     elseif not request.administration then
       error {
-        _          = i18n ["method:administration-only"],
-        identifier = request.identifier,
+        _ = i18n ["method:administration-only"],
       }
     end
     Email.send {
