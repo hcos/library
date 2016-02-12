@@ -39,6 +39,10 @@ deploy:
           cp Procfile /app/Procfile
           chown -R root.users /app
           echo $WERCKER_OUTPUT_DIR
+    - script:
+        name: "Build server"
+        code: |
+          ./bin/build-server --in-ci --prefix=/app
     - heroku-deploy:
         key: $HEROKU_KEY
         key-name: HEROKU_KEY_PAIR
