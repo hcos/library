@@ -126,7 +126,9 @@ if arguments.start then
     os.remove (Configuration.redis.append)
   end
 
-  os.remove (Configuration.server.log)
+  if type (Configuration.server.log) == "string" then
+    os.remove (Configuration.server.log)
+  end
   os.remove (Configuration.server.data)
 
   local pid = Posix.fork ()
