@@ -78,9 +78,9 @@ return function (t)
     loader.source = loader.lua_modules
   end
 
-  os.execute ([[ mkdir -p {{{home}}} ]] % {
+  assert (os.execute ([[ mkdir -p {{{home}}} ]] % {
     home = loader.home,
-  })
+  }))
 
   return loader
 end
