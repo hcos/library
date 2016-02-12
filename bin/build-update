@@ -30,4 +30,7 @@ echo -n "Reinstalling cosy... "
   && echo -e "${green}success${nc}" \
   || echo -e "${red}failure${nc}"
 
+{
+  echo -n "Fixing PATHs... "
   "${cosy_prefix}/bin/cosy-fixpath" "${cosy_prefix}"
+}

@@ -76,7 +76,7 @@ EOF
   chmod a+x "${cosy_temp}/archive/bin/cosy-setpath"
   echo -n -e "Packaging in ${green}${archive}${nc}... "
   {
-    "${cosy_prefix}/bin/cosy-fixpath" "${cosy_temp}/archive"
+    "${cosy_prefix}/bin/cosy-fixpath" --quiet "${cosy_temp}/archive"
     grep -rlI "${cosy_prefix}" "${cosy_temp}/archive" | while IFS= read -r file; do
       sed -i ${backup} -e "s|${cosy_prefix}|COSY_PREFIX|g" "${file}"
     done
