@@ -61,7 +61,6 @@ return function (loader)
       db        = Configuration.redis.db,
       append    = Configuration.redis.append,
     }
-    print ("REDIS CONFIG", configuration)
     local file = assert (io.open (Configuration.redis.configuration, "w"))
     file:write (configuration)
     file:close ()
@@ -89,8 +88,7 @@ return function (loader)
       local client = Redis_Client.connect {
         socket = socket,
       }
-      local ok, err = pcall (client.ping, client)
-      print (ok, err)
+      local ok = pcall (client.ping, client)
     until ok or i >= 10
   end
 
