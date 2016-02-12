@@ -49,7 +49,10 @@ git submodule update
 
 {
   echo -n "Fixing PATHs... "
-  "${cosy_prefix}/bin/cosy-fixpath" "${cosy_prefix}"
+  "${cosy_prefix}/bin/cosy-fixpath" --quiet "${cosy_prefix}" \
+    >> "${cosy_log}" 2>&1 \
+    && echo -e "${green}success${nc}" \
+    || echo -e "${red}failure${nc}"
 }
 
 echo "You can now try the following commands:"

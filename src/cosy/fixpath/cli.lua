@@ -10,7 +10,7 @@ local parser = Arguments () {
 parser:argument "prefix" {
   description = "cosy prefix directory",
 }
-parser:option "-q" "--quiet" {
+parser:flag "-q" "--quiet" {
   description = "do not output anything",
 }
 
@@ -26,6 +26,7 @@ if Lfs.attributes (arguments.prefix, "mode") ~= "directory" then
   if not arguments.quiet then
     print (Colors ("%{bright red blackbg}failure%{reset}"))
   end
+  os.exit (1)
 end
 
 for filename in Lfs.dir (arguments.prefix .. "/bin") do
@@ -48,3 +49,5 @@ end
 if not arguments.quiet then
   print (Colors ("%{bright green blackbg}success%{reset}"))
 end
+
+os.exit (0)
