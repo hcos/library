@@ -29,11 +29,11 @@ for filename in Lfs.dir (arguments.prefix .. "/bin") do
     for line in io.lines (arguments.prefix .. "/bin/" .. filename) do
       lines [#lines+1] = line
     end
-    table.insert (lines, 3, "")
-    table.insert (lines, 3, [[export CPATH="{{{prefix}}}/include:\${CPATH}"]] % { prefix = arguments.prefix })
-    table.insert (lines, 3, [[export LIBRARY_PATH="{{{prefix}}}/lib:\${LIBRARY_PATH}"]] % { prefix = arguments.prefix })
-    table.insert (lines, 3, [[export LD_LIBRARY_PATH="{{{prefix}}}/lib:\${LD_LIBRARY_PATH}"]] % { prefix = arguments.prefix })
-    table.insert (lines, 3, [[export DYLD_LIBRARY_PATH="{{{prefix}}}/lib:\${DYLD_LIBRARY_PATH}"]] % { prefix = arguments.prefix })
+    table.insert (lines, 3, [[export CPATH="{{{prefix}}}/include:${CPATH}"]] % { prefix = arguments.prefix })
+    table.insert (lines, 4, [[export LIBRARY_PATH="{{{prefix}}}/lib:${LIBRARY_PATH}"]] % { prefix = arguments.prefix })
+    table.insert (lines, 5, [[export LD_LIBRARY_PATH="{{{prefix}}}/lib:${LD_LIBRARY_PATH}"]] % { prefix = arguments.prefix })
+    table.insert (lines, 6, [[export DYLD_LIBRARY_PATH="{{{prefix}}}/lib:${DYLD_LIBRARY_PATH}"]] % { prefix = arguments.prefix })
+    table.insert (lines, 7, "")
     local file = io.open (arguments.prefix .. "/bin/" .. filename, "w")
     file:write (table.concat (lines, "\n") .. "\n")
     file:close ()
