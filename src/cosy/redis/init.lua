@@ -72,10 +72,9 @@ return function (loader)
     Redis.stop      ()
     Redis.configure ()
     if Posix.fork () == 0 then
-      Posix.execp ("redis-server", {
+      assert (Posix.execp ("redis-server", {
         Configuration.redis.configuration,
-      })
-      os.exit (0)
+      }))
     end
     File.encode (Configuration.redis.data, {
       interface = Configuration.redis.interface,

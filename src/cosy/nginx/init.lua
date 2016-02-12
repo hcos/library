@@ -218,12 +218,11 @@ http {
       dir = Configuration.http.directory .. "/logs"
     })
     if Posix.fork () == 0 then
-      Posix.execp (Configuration.http.nginx .. "/sbin/nginx", {
+      assert (Posix.execp (Configuration.http.nginx .. "/sbin/nginx", {
         "-q",
         "-p", Configuration.http.directory,
         "-c", Configuration.http.configuration,
-      })
-      os.exit (0)
+      }))
     end
     Nginx.stopped = false
   end
