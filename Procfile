@@ -1,1 +1,1 @@
-web: /home/cosy/install/bin/cosy-server start --port=$PORT
+web: /app/bin/cosy-server start --port=$PORT

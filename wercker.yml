@@ -4,32 +4,38 @@ build:
     - script:
         name: "Build server"
         code: |
-          ./bin/build-server --in-ci --prefix=/home/cosy/install
+          ./bin/build-server --in-ci --prefix=/app
     - script:
         name: "Build client"
         code: |
-          ./bin/build-client --in-ci --prefix=/home/cosy/install
+          ./bin/build-client --in-ci --prefix=/app
     - script:
         name: "Fix permissions"
         code: |
-          chown -R root.users /home/cosy/install
+          chown -R root.users /app
     - script:
         name: "Check server"
         code: |
-          export CPATH="/home/cosy/install/include:${CPATH}"
-          export LIBRARY_PATH="/home/cosy/install/lib:${LIBRARY_PATH}"
-          export LD_LIBRARY_PATH="/home/cosy/install/lib:${LD_LIBRARY_PATH}"
-          /home/cosy/install/bin/cosy-check --output=. --test-format=junit
+          export CPATH="/app/include:${CPATH}"
+          export LIBRARY_PATH="/app/lib:${LIBRARY_PATH}"
+          export LD_LIBRARY_PATH="/app/lib:${LD_LIBRARY_PATH}"
+          /app/bin/cosy-check --output=. --test-format=junit
     - script:
         name: "Check client"
         code: |
-          export CPATH="/home/cosy/install/include:${CPATH}"
-          export LIBRARY_PATH="/home/cosy/install/lib:${LIBRARY_PATH}"
-          export LD_LIBRARY_PATH="/home/cosy/install/lib:${LD_LIBRARY_PATH}"
-          /home/cosy/install/bin/cosy-server start --port=8080
+          export CPATH="/app/include:${CPATH}"
+          export LIBRARY_PATH="/app/lib:${LIBRARY_PATH}"
+          export LD_LIBRARY_PATH="/app/lib:${LD_LIBRARY_PATH}"
+          /app/bin/cosy-server start --port=8080
           ./cosy-client-*.sh --target client
           ./tests/user.sh default ./client/bin/cosy --server=http://127.0.0.1:8080/
-          /home/cosy/install/bin/cosy-server stop
+          /app/bin/cosy-server stop
+    - script:
+        name: "Install procfile"
+        code: |
+          cp Procfile /app/Procfile
+          chown -R root.users /app
+
 deploy:
   steps:
     - heroku-deploy:
@@ -37,3 +43,4 @@ deploy:
         key-name: HEROKU_KEY_PAIR
         user: $HEROKU_USER
         app-name: $HEROKU_APP_NAME
+        source_dir: /app
