@@ -49,7 +49,8 @@ deploy:
     - script:
         name: Build
         code: |
-          ssh -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no cosy@cosy.linard.fr "cd sources && git checkout $WERCKER_GIT_BRANCH && git pull"
+          ssh -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no cosy@cosy.linard.fr "rm -rf sources && git clone https://github.com/$WERCKER_GIT_OWNER/$WERCKER_GIT_REPOSITORY sources"
+          ssh -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no cosy@cosy.linard.fr "cd sources && git checkout $WERCKER_GIT_BRANCH"
           ssh -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no cosy@cosy.linard.fr "cd sources && ./bin/build-server --prefix=/home/cosy/install"
     - script:
         name: Start
