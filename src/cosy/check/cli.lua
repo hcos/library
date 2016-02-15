@@ -339,7 +339,7 @@ do
   if os.execute "command -v shellcheck > /dev/null 2>&1" then
     local s = os.execute ([[
       . "{{{prefix}}}/bin/realpath.sh"
-      shellcheck --exclude=SC2024 --exclude=SC1008 $(realpath "{{{source}}}")/../bin/*
+      shellcheck --exclude=SC2024 --exclude=SC1008 $(realpath "{{{source}}}")/../bin/* -x
     ]] % {
       prefix = loader.prefix,
       source = loader.source,

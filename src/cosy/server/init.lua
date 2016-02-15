@@ -247,8 +247,8 @@ return function (loader)
       })
     end)
 
-    Nginx.start ()
     Redis.start ()
+    Nginx.start ()
 
     Scheduler.addthread (function ()
       local store = Store.new ()

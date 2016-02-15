@@ -26,22 +26,57 @@ build:
           export CPATH="/app/include:${CPATH}"
           export LIBRARY_PATH="/app/lib:${LIBRARY_PATH}"
           export LD_LIBRARY_PATH="/app/lib:${LD_LIBRARY_PATH}"
-          /app/bin/cosy-server start --port=8080
+          /app/bin/cosy-server start --port=8080 --clean
           ./cosy-client-*.sh --target client
           ./tests/user.sh default ./client/bin/cosy --server=http://127.0.0.1:8080/
           /app/bin/cosy-server stop
 
 deploy:
   steps:
+    - add-to-known_hosts:
+      hostname: $DEPLOY_SERVER
+    - mktemp:
+        envvar: PRIVATEKEY_PATH
+    - create-file:
+        name: Write key
+        filename: $PRIVATEKEY_PATH
+        content: $KEYPAIR_PRIVATE
+        overwrite: true
+        hide-from-log: true
     - script:
-        name: "Install procfile"
+        name: Stop
         code: |
-          cp Procfile /app/Procfile
-          chown -R root.users /app
-          echo $WERCKER_OUTPUT_DIR
-    - heroku-deploy:
-        key: $HEROKU_KEY
-        key-name: HEROKU_KEY_PAIR
-        user: $HEROKU_USER
-        app-name: $HEROKU_APP_NAME
-        source_dir: /app
+          ssh -i $PRIVATEKEY_PATH $DEPLOY_USERNAME@$DEPLOY_SERVER <<EOF
+            "./install/$WERCKER_GIT_BRANCH/bin/cosy-server" stop --alias="$WERCKER_GIT_BRANCH" || true
+          EOF
+    - script:
+        name: Create directories
+        code: |
+          ssh -i $PRIVATEKEY_PATH $DEPLOY_USERNAME@$DEPLOY_SERVER <<EOF
+            mkdir -p "/home/cosy/sources"
+            mkdir -p "/home/cosy/install"
+            mkdir -p "/home/cosy/.cosy"
+            mkdir -p "/home/cosy/.cosy/$WERCKER_GIT_BRANCH"
+          EOF
+    - script:
+        name: Build
+        code: |
+          ssh -i $PRIVATEKEY_PATH $DEPLOY_USERNAME@$DEPLOY_SERVER <<EOF
+            rm -rf "sources/$WERCKER_GIT_BRANCH"
+            git clone "https://github.com/$WERCKER_GIT_OWNER/$WERCKER_GIT_REPOSITORY" "sources/$WERCKER_GIT_BRANCH"
+            cd "sources/$WERCKER_GIT_BRANCH"
+            git checkout "$WERCKER_GIT_BRANCH"
+            ./bin/build-server --prefix="/home/cosy/install/$WERCKER_GIT_BRANCH"
+          EOF
+    - script:
+        name: Copy database
+        code: |
+          if [ "$WERCKER_GIT_BRANCH" != "master" ]; then
+            ssh -i $PRIVATEKEY_PATH $DEPLOY_USERNAME@$DEPLOY_SERVER <<EOF
+              cp "/home/cosy/.cosy/master/redis.db" "/home/cosy/.cosy/$WERCKER_GIT_BRANCH/redis.db" || true
+          EOF
+          fi
+    - script:
+        name: Start
+        code: |
+          ssh -f -i $PRIVATEKEY_PATH $DEPLOY_USERNAME@$DEPLOY_SERVER "./install/$WERCKER_GIT_BRANCH/bin/cosy-server" start --alias="$WERCKER_GIT_BRANCH" --port="$DEPLOY_PORT"

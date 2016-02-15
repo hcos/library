@@ -20,12 +20,12 @@ return function (loader)
       function Logger.error (t)
         logger:log ("ERROR: "   .. i18n (t).message)
       end
-    elseif loader.logto == false then
+    elseif not loader.logto then
       function Logger.debug   () end
       function Logger.info    () end
       function Logger.warning () end
       function Logger.error   () end
-    elseif loader.logto then
+    elseif type (loader.logto) == "string" then
       local logging = loader.require "logging"
       logging.file  = loader.require "logging.file"
       local logger  = logging.file (loader.logto, "%Y-%m-%d")
@@ -41,7 +41,7 @@ return function (loader)
       function Logger.error (t)
         logger:error (i18n (t).message)
       end
-    else
+    elseif loader.logto then
       local logging   = loader.require "logging"
       logging.console = loader.require "logging.console"
       local logger    = logging.console "%message\n"

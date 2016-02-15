@@ -47,7 +47,9 @@ return function (loader)
 
   function Redis.configure ()
     if Configuration.redis.port == 0 then
-      local server  = Rawsocket.bind ("*", 0)
+      local server  = Rawsocket.bind (Configuration.redis.interface, 0)
+      server:setoption ("reuseaddr"  , true)
+      server:setoption ("tcp-nodelay", true)
       local _, port = server:getsockname ()
       server:close ()
       Configuration.redis.port = port
@@ -70,9 +72,9 @@ return function (loader)
     Redis.stop      ()
     Redis.configure ()
     if Posix.fork () == 0 then
-      Posix.execp ("redis-server", {
+      assert (Posix.execp ("redis-server", {
         Configuration.redis.configuration,
-      })
+      }))
     end
     File.encode (Configuration.redis.data, {
       interface = Configuration.redis.interface,

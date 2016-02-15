@@ -45,6 +45,9 @@ do
   start:flag "-f" "--force" {
     description = i18n ["flag:force"] % {},
   }
+  start:flag "-h" "--heroku" {
+    description = i18n ["flag:heroku"] % {},
+  }
   start:flag "-c" "--clean" {
     description = i18n ["flag:clean"] % {},
   }
@@ -123,10 +126,13 @@ if arguments.start then
     os.remove (Configuration.redis.append)
   end
 
-  os.remove (Configuration.server.log)
+  if type (Configuration.server.log) == "string" then
+    os.remove (Configuration.server.log)
+  end
   os.remove (Configuration.server.data)
 
- if Posix.fork () == 0 then
+  local pid = Posix.fork ()
+  if pid == 0 then
     local ev = require "ev"
     ev.Loop.default:fork ()
     File.encode (Configuration.server.data, {
@@ -147,6 +153,9 @@ if arguments.start then
   until (serverdata and nginxdata) or tries == 5
   if serverdata and nginxdata then
     print (Colors ("%{black greenbg}" .. i18n ["success"] % {}))
+    if arguments.heroku then
+      Posix.wait (pid)
+    end
     os.exit (0)
   else
     printerr (Colors ("%{black redbg}" .. i18n ["failure"] % {}),
