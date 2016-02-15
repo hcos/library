@@ -79,6 +79,4 @@ deploy:
     - script:
         name: Start
         code: |
-          ssh -f -i $PRIVATEKEY_PATH $DEPLOY_USERNAME@$DEPLOY_SERVER <<EOF
-            "./install/$WERCKER_GIT_BRANCH/bin/cosy-server" start --alias="$WERCKER_GIT_BRANCH" --port="$DEPLOY_PORT"
-          EOF
+          ssh -f -i $PRIVATEKEY_PATH $DEPLOY_USERNAME@$DEPLOY_SERVER "./install/$WERCKER_GIT_BRANCH/bin/cosy-server" start --alias="$WERCKER_GIT_BRANCH" --port="$DEPLOY_PORT"
