@@ -26,7 +26,7 @@ build:
           export CPATH="/app/include:${CPATH}"
           export LIBRARY_PATH="/app/lib:${LIBRARY_PATH}"
           export LD_LIBRARY_PATH="/app/lib:${LD_LIBRARY_PATH}"
-          /app/bin/cosy-server start --port=8080
+          /app/bin/cosy-server start --port=8080 --clean
           ./cosy-client-*.sh --target client
           ./tests/user.sh default ./client/bin/cosy --server=http://127.0.0.1:8080/
           /app/bin/cosy-server stop
