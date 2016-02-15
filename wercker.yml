@@ -34,7 +34,7 @@ build:
 deploy:
   steps:
     - add-to-known_hosts:
-      hostname: public.cosyverif.lsv.fr
+      hostname: $DEPLOY_SERVER
     - mktemp:
         envvar: PRIVATEKEY_PATH
     - create-file:
@@ -45,27 +45,23 @@ deploy:
         hide-from-log: true
     - script:
         name: Stop
-        code: ssh -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no cosy@public.cosyverif.lsv.fr "./install/$WERCKER_GIT_BRANCH/bin/cosy-server stop --alias="$WERCKER_GIT_BRANCH" || true"
+        code: |
+          ssh -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $DEPLOY_USERNAME@$DEPLOY_SERVER "./install/$WERCKER_GIT_BRANCH/bin/cosy-server stop --alias="$WERCKER_GIT_BRANCH" || true"
     - script:
         name: Build
         code: |
-          ssh -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no cosy@public.cosyverif.lsv.fr "rm -rf sources-$WERCKER_GIT_BRANCH"
-          ssh -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no cosy@public.cosyverif.lsv.fr "git clone https://github.com/$WERCKER_GIT_OWNER/$WERCKER_GIT_REPOSITORY sources-$WERCKER_GIT_BRANCH"
-          ssh -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no cosy@public.cosyverif.lsv.fr "cd sources-$WERCKER_GIT_BRANCH && git checkout $WERCKER_GIT_BRANCH"
-          ssh -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no cosy@public.cosyverif.lsv.fr "cd sources-$WERCKER_GIT_BRANCH && ./bin/build-server --prefix=/home/cosy/install/$WERCKER_GIT_BRANCH"
+          ssh -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $DEPLOY_USERNAME@$DEPLOY_SERVER "rm -rf sources-$WERCKER_GIT_BRANCH"
+          ssh -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $DEPLOY_USERNAME@$DEPLOY_SERVER "git clone https://github.com/$WERCKER_GIT_OWNER/$WERCKER_GIT_REPOSITORY sources-$WERCKER_GIT_BRANCH"
+          ssh -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $DEPLOY_USERNAME@$DEPLOY_SERVER "cd sources-$WERCKER_GIT_BRANCH && git checkout $WERCKER_GIT_BRANCH"
+          ssh -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $DEPLOY_USERNAME@$DEPLOY_SERVER "cd sources-$WERCKER_GIT_BRANCH && ./bin/build-server --prefix=/home/cosy/install/$WERCKER_GIT_BRANCH"
     - script:
         name: Copy database
         code: |
           if [ "$WERCKER_GIT_BRANCH" != "master" ]; then
-            ssh -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no cosy@public.cosyverif.lsv.fr "mkdir -p /home/cosy/.cosy/$WERCKER_GIT_BRANCH"
-            ssh -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no cosy@public.cosyverif.lsv.fr "cp /home/cosy/.cosy/master/redis.db /home/cosy/.cosy/$WERCKER_GIT_BRANCH/redis.db"
+            ssh -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $DEPLOY_USERNAME@$DEPLOY_SERVER "mkdir -p /home/cosy/.cosy/$WERCKER_GIT_BRANCH"
+            ssh -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $DEPLOY_USERNAME@$DEPLOY_SERVER "cp /home/cosy/.cosy/master/redis.db /home/cosy/.cosy/$WERCKER_GIT_BRANCH/redis.db || true"
           fi
     - script:
         name: Start
         code: |
-          if ["WERCKER_GIT_BRANCH" = "master" ]; then
-            PORT=8080
-          else
-            PORT=8181
-          fi
-          ssh -f -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no cosy@public.cosyverif.lsv.fr "./install/$WERCKER_GIT_BRANCH/bin/cosy-server start --alias="$WERCKER_GIT_BRANCH" --port=$PORT"
+          ssh -f -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $DEPLOY_USERNAME@$DEPLOY_SERVER "./install/$WERCKER_GIT_BRANCH/bin/cosy-server start --alias="$WERCKER_GIT_BRANCH" --port=$DEPLOY_PORT"
