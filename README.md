@@ -2,7 +2,6 @@
 [![Build Status](https://travis-ci.org/CosyVerif/library.svg?branch=master)](https://travis-ci.org/CosyVerif/library)
 [![Coverage Status](https://coveralls.io/repos/CosyVerif/library/badge.svg?branch=master&service=github)](https://coveralls.io/github/CosyVerif/library?branch=master)
 [![Join the chat at https://gitter.im/CosyVerif/library](https://badges.gitter.im/CosyVerif/library.svg)](https://gitter.im/CosyVerif/library?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Heroku](https://heroku-badge.herokuapp.com/?app=cosyverif&svg=1)]()
 
 # CosyVerif server, client and library
 
