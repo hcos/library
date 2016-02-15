@@ -46,28 +46,39 @@ deploy:
     - script:
         name: Stop
         code: |
-          ssh -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $DEPLOY_USERNAME@$DEPLOY_SERVER "./install/$WERCKER_GIT_BRANCH/bin/cosy-server stop --alias="$WERCKER_GIT_BRANCH" || true"
+          ssh -i $PRIVATEKEY_PATH $DEPLOY_USERNAME@$DEPLOY_SERVER <<EOF
+            "./install/$WERCKER_GIT_BRANCH/bin/cosy-server" stop --alias="$WERCKER_GIT_BRANCH" || true
+          EOF
     - script:
         name: Create directories
         code: |
-          ssh -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $DEPLOY_USERNAME@$DEPLOY_SERVER "mkdir -p /home/cosy/sources"
-          ssh -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $DEPLOY_USERNAME@$DEPLOY_SERVER "mkdir -p /home/cosy/install"
-          ssh -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $DEPLOY_USERNAME@$DEPLOY_SERVER "mkdir -p /home/cosy/.cosy"
-          ssh -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $DEPLOY_USERNAME@$DEPLOY_SERVER "mkdir -p /home/cosy/.cosy/$WERCKER_GIT_BRANCH"
+          ssh -i $PRIVATEKEY_PATH $DEPLOY_USERNAME@$DEPLOY_SERVER <<EOF
+            mkdir -p "/home/cosy/sources"
+            mkdir -p "/home/cosy/install"
+            mkdir -p "/home/cosy/.cosy"
+            mkdir -p "/home/cosy/.cosy/$WERCKER_GIT_BRANCH"
+          EOF
     - script:
         name: Build
         code: |
-          ssh -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $DEPLOY_USERNAME@$DEPLOY_SERVER "rm -rf sources/$WERCKER_GIT_BRANCH"
-          ssh -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $DEPLOY_USERNAME@$DEPLOY_SERVER "git clone https://github.com/$WERCKER_GIT_OWNER/$WERCKER_GIT_REPOSITORY sources/$WERCKER_GIT_BRANCH"
-          ssh -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $DEPLOY_USERNAME@$DEPLOY_SERVER "cd sources/$WERCKER_GIT_BRANCH && git checkout $WERCKER_GIT_BRANCH"
-          ssh -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $DEPLOY_USERNAME@$DEPLOY_SERVER "cd sources/$WERCKER_GIT_BRANCH && ./bin/build-server --prefix=/home/cosy/install/$WERCKER_GIT_BRANCH"
+          ssh -i $PRIVATEKEY_PATH $DEPLOY_USERNAME@$DEPLOY_SERVER <<EOF
+            rm -rf "sources/$WERCKER_GIT_BRANCH"
+            git clone "https://github.com/$WERCKER_GIT_OWNER/$WERCKER_GIT_REPOSITORY" "sources/$WERCKER_GIT_BRANCH"
+            cd "sources/$WERCKER_GIT_BRANCH"
+            git checkout "$WERCKER_GIT_BRANCH"
+            ./bin/build-server --prefix="/home/cosy/install/$WERCKER_GIT_BRANCH"
+          EOF
     - script:
         name: Copy database
         code: |
           if [ "$WERCKER_GIT_BRANCH" != "master" ]; then
-            ssh -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $DEPLOY_USERNAME@$DEPLOY_SERVER "cp /home/cosy/.cosy/master/redis.db /home/cosy/.cosy/$WERCKER_GIT_BRANCH/redis.db || true"
+            ssh -i $PRIVATEKEY_PATH $DEPLOY_USERNAME@$DEPLOY_SERVER <<EOF
+              cp "/home/cosy/.cosy/master/redis.db" "/home/cosy/.cosy/$WERCKER_GIT_BRANCH/redis.db" || true
+          EOF
           fi
     - script:
         name: Start
         code: |
-          ssh -f -i $PRIVATEKEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $DEPLOY_USERNAME@$DEPLOY_SERVER "./install/$WERCKER_GIT_BRANCH/bin/cosy-server start --alias="$WERCKER_GIT_BRANCH" --port=$DEPLOY_PORT"
+          ssh -f -i $PRIVATEKEY_PATH $DEPLOY_USERNAME@$DEPLOY_SERVER <<EOF
+            "./install/$WERCKER_GIT_BRANCH/bin/cosy-server" start --alias="$WERCKER_GIT_BRANCH" --port="$DEPLOY_PORT"
+          EOF
