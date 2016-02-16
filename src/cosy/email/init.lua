@@ -191,27 +191,30 @@ return function (loader)
       message.to      = localized.to     .message
       message.subject = localized.subject.message
       message.body    = localized.body   .message
-      if not Email.ready
-      or not Smtp.send {
-        from     = message.from:match (email_pattern),
-        rcpt     = message.to  :match (email_pattern),
-        source   = Smtp.message {
-          headers = {
-            from    = message.from,
-            to      = message.to,
-            subject = message.subject,
+      if Email.ready then
+        local ok, result = pcall (Smtp.send, {
+          from     = message.from:match (email_pattern),
+          rcpt     = message.to  :match (email_pattern),
+          source   = Smtp.message {
+            headers = {
+              from    = message.from,
+              to      = message.to,
+              subject = message.subject,
+            },
+            body = message.body
           },
-          body = message.body
-        },
-        user     = Configuration.smtp.username,
-        password = Configuration.smtp.password,
-        server   = Configuration.smtp.host,
-        port     = Configuration.smtp.port,
-        create   = Tcp [Configuration.smtp.method] (Configuration.smtp.protocol, make_socket.async),
-      } then
-        local redis = Redis.client ()
-        redis:rpush (Configuration.smtp.redis_key, Value.expression (localized))
+          user     = Configuration.smtp.username,
+          password = Configuration.smtp.password,
+          server   = Configuration.smtp.host,
+          port     = Configuration.smtp.port,
+          create   = Tcp [Configuration.smtp.method] (Configuration.smtp.protocol, make_socket.async),
+        })
+        if ok and result then
+          return
+        end
       end
+      local redis = Redis.client ()
+      redis:rpush (Configuration.smtp.redis_key, Value.expression (localized))
     end)
   end
 
