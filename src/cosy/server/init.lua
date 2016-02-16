@@ -71,9 +71,10 @@ return function (loader)
            and e._._key   ~= "redis:retry" then
           err = e
         else
+          local message = assert (Value.expression (e))
           Logger.debug {
             _      = i18n ["server:exception"],
-            reason = Value.expression (e) .. " => " .. debug.traceback (),
+            reason = message .. " => " .. debug.traceback (),
           }
         end
       end)
