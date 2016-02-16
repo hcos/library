@@ -73,7 +73,8 @@ deploy:
         code: |
           if [ "$WERCKER_GIT_BRANCH" != "master" ]; then
             ssh -i $PRIVATEKEY_PATH $DEPLOY_USERNAME@$DEPLOY_SERVER <<EOF
-              cp "/home/cosy/.cosy/master/redis.db" "/home/cosy/.cosy/$WERCKER_GIT_BRANCH/redis.db" || true
+              cp "/home/cosy/.cosy/master/redis.db"     "/home/cosy/.cosy/$WERCKER_GIT_BRANCH/redis.db"     || true
+              cp "/home/cosy/.cosy/master/redis.append" "/home/cosy/.cosy/$WERCKER_GIT_BRANCH/redis.append" || true
           EOF
           fi
     - script:
