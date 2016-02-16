@@ -237,9 +237,9 @@ return function (loader)
   function Methods.user.create (request, store, try_only)
     Parameters.check (store, request, {
       required = {
-        identifier = Parameters.resource.identifier,
+        identifier = Parameters.user.new_identifier,
         password   = Parameters.password.checked,
-        email      = Parameters.email,
+        email      = Parameters.user.new_email,
         tos_digest = Parameters.tos.digest,
         locale     = Parameters.locale,
       },
@@ -249,18 +249,6 @@ return function (loader)
         administration = Parameters.token.administration,
       },
     })
-    if store / "email" / request.email then
-      error {
-        _     = i18n ["email:exist"],
-        email = request.email,
-      }
-    end
-    if store / "data" / request.identifier then
-      error {
-        _        = i18n ["identifier:exist"],
-        identifier = request.identifier,
-      }
-    end
     local email = store / "email" + request.email
     email.identifier = request.identifier
     if request.locale == nil then
@@ -283,12 +271,8 @@ return function (loader)
     and (request.captcha == nil or request.captcha == "")
     and not request.administration then
       error {
-        _ = i18n ["check:error"],
-        reasons = {
-          { _   = i18n ["captcha:missing"],
-            key = "captcha"
-          },
-        },
+        _   = i18n ["captcha:missing"],
+        key = "captcha"
       }
     end
     if try_only then
@@ -444,7 +428,7 @@ return function (loader)
       },
       optional = {
         avatar       = Parameters.avatar,
-        email        = Parameters.email,
+        email        = Parameters.user.new_email,
         homepage     = Parameters.homepage,
         locale       = Parameters.locale,
         name         = Parameters.name,
@@ -454,13 +438,7 @@ return function (loader)
       },
     })
     local user = request.authentication.user
-    if request.email and user.email ~= request.email then
-      if store / "email" / request.email then
-        error {
-          _     = i18n ["email:exist"],
-          email = request.email,
-        }
-      end
+    if request.email then
       local oldemail      = store / "email" / user.email
       local newemail      = store / "email" + request.email
       newemail.identifier = oldemail.identifier

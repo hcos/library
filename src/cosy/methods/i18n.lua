@@ -95,9 +95,6 @@ return function (loader)
     ["identifier:exist"] = {
       en = "identifier {{{identifier}}} exists already",
     },
-    ["email:exist"] = {
-      en = "email {{{email}}} is already bound to an account",
-    },
     ["user:authenticate:failure"] = {
       en = "authentication failed",
     },
