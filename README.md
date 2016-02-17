@@ -8,7 +8,7 @@
 This repository contains the server, command-line client, web client, and
 library of the [CosyVerif](http://cosyverif.org) platform.
 
-[Master version is running here](http://cosyverif.herokuapp.com)
+[Running version here](http://public.cosyverif.lsv.fr)
 
 ## Install
 
