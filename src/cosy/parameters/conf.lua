@@ -348,6 +348,29 @@ return function (loader)
     end
   end
 
+  -- Email
+  -- -----
+  do
+    Default.data.email = {
+      max_size = 128,
+      [Layer.key.refines] = {
+        this.data.string.trimmed,
+      }
+    }
+    local checks = Default.data.email.checks
+    checks [#checks+1] = function (t)
+      local request = t.request
+      local key     = t.key
+      local value   = request [key]
+      local pattern = "^.*@[%w%.%%%+%-]+%.%w%w%w?%w?$"
+      return  value:find (pattern)
+          or  nil, {
+                _     = i18n ["check:email:pattern"],
+                email = value,
+              }
+    end
+  end
+
   -- Resource
   -- ----
   do
@@ -412,17 +435,55 @@ return function (loader)
       [Layer.key.refines] = {
         this.data.resource,
       },
+      new_identifier = {
+        [Layer.key.refines] = { this.data.resource.identifier },
+      },
+      new_email = {
+        [Layer.key.refines] = { this.data.email },
+      },
     }
-    local checks = Default.data.user.checks
-    checks [#checks+1] = function (t)
-      local request = t.request
-      local key     = t.key
-      local value   = request [key]
-      return request [key].type == "user"
-          or  nil, {
-                _    = i18n ["check:resource:not-user"],
-                name = value,
-              }
+    do
+      local checks = Default.data.user.checks
+      checks [#checks+1] = function (t)
+        local request = t.request
+        local key     = t.key
+        local value   = request [key]
+        return request [key].type == "user"
+            or  nil, {
+                  _    = i18n ["check:resource:not-user"],
+                  name = value,
+                }
+      end
+    end
+    do
+      local checks = Default.data.user.new_identifier.checks
+      checks [#checks+1] = function (t)
+        local store = t.store
+        local value = t.request [t.key]
+        if store / "data" / value then
+          return nil, {
+                   _          = i18n ["check:user:exist"],
+                   identifier = value,
+                 }
+        else
+          return true
+        end
+      end
+    end
+    do
+      local checks = Default.data.user.new_email.checks
+      checks [#checks+1] = function (t)
+        local store = t.store
+        local value = t.request [t.key]
+        if store / "email" / value then
+          return nil, {
+                   _     = i18n ["check:email:exist"],
+                   email = value,
+                 }
+        else
+          return true
+        end
+      end
     end
   end
 
@@ -525,29 +586,6 @@ return function (loader)
         this.data.password,
       }
     }
-  end
-
-  -- Email
-  -- -----
-  do
-    Default.data.email = {
-      max_size = 128,
-      [Layer.key.refines] = {
-        this.data.string.trimmed,
-      }
-    }
-    local checks = Default.data.email.checks
-    checks [#checks+1] = function (t)
-      local request = t.request
-      local key     = t.key
-      local value   = request [key]
-      local pattern = "^.*@[%w%.%%%+%-]+%.%w%w%w?%w?$"
-      return  value:find (pattern)
-          or  nil, {
-                _     = i18n ["check:email:pattern"],
-                email = value,
-              }
-    end
   end
 
   -- Name
