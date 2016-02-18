@@ -105,7 +105,7 @@ return function (loader)
       local ok, port = s:getsockname ()
       if ok then
         App.server.socket = s
-        App.server.port   = port
+        App.server.port   = tonumber (port)
       end
       addserver (s, f)
     end
