@@ -49,7 +49,7 @@ return function (loader)
       server:setoption ("tcp-nodelay", true)
       local _, port = server:getsockname ()
       server:close ()
-      Configuration.redis.port = port
+      Configuration.redis.port = tonumber (port)
     end
     local configuration = configuration_template % {
       home      = loader.home,
