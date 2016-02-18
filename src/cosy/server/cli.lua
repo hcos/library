@@ -41,12 +41,10 @@ do
     description = "network port",
     default     = tostring (Configuration.http.port),
     defmode     = "arg",
+    convert     = tonumber,
   }
   start:flag "-f" "--force" {
     description = i18n ["flag:force"] % {},
-  }
-  start:flag "-h" "--heroku" {
-    description = i18n ["flag:heroku"] % {},
   }
   start:flag "-c" "--clean" {
     description = i18n ["flag:clean"] % {},
@@ -103,7 +101,7 @@ if arguments.start then
     }
     local client = Library.connect (url)
     if client then
-      if arguments.force and data then
+      if arguments.force then
         local result = client.server.stop {
           administration = data.token,
         }
@@ -136,7 +134,9 @@ if arguments.start then
     ev.Loop.default:fork ()
     File.encode (Configuration.server.data, {
       alias     = arguments.alias,
-      http_port = tonumber (arguments.port) or data.port or Configuration.http.port,
+      http_port = arguments.port
+               or (data and data.port)
+               or Configuration.http.port,
     })
     local Server = loader.load "cosy.server"
     Server.start ()
@@ -171,7 +171,7 @@ elseif arguments.stop then
       port = data.port or Configuration.http.port,
     }
     local client = Library.connect (url)
-    if client and data then
+    if client then
       local result = client.server.stop {
         administration = data.token,
       }
