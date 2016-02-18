@@ -1,0 +1,39 @@
+#! /usr/bin/env bash
+
+if [ $# -eq 0 ]; then
+  echo "Usage: "
+  echo "  build-update [--prefix=PREFIX]"
+  exit 1;
+fi
+
+git submodule init
+git submodule update
+
+. environment/bin/install "$@"
+
+echo -n "Generating cosy rockspec... "
+( # shellcheck disable=SC2091
+  $("${cosy_prefix}/bin/luarocks" path | tr "'" ";")
+  export LUA_PATH="${LUA_PATH};./src/?.lua"
+  "${cosy_prefix}/bin/lua" src/cosy/rockspec/bin.lua
+) >> "${cosy_log}" 2>&1 \
+  && echo -e "${green}success${nc}" \
+  || echo -e "${red}failure${nc}"
+echo -n "Reinstalling cosy... "
+( "${cosy_prefix}/bin/luarocks" remove cosy
+  "${cosy_prefix}/bin/luarocks" remove cosy-client
+  "${cosy_prefix}/bin/luarocks" make rockspec/cosy-client-master-1.rockspec \
+    LIBEV_DIR="${cosy_prefix}"
+  "${cosy_prefix}/bin/luarocks" make rockspec/cosy-master-1.rockspec \
+    LIBEV_DIR="${cosy_prefix}"
+) >> "${cosy_log}" 2>&1 \
+  && echo -e "${green}success${nc}" \
+  || echo -e "${red}failure${nc}"
+
+{
+  echo -n "Fixing PATHs... "
+  "${cosy_prefix}/bin/cosy-fixpath" --quiet "${cosy_prefix}" \
+    >> "${cosy_log}" 2>&1 \
+    && echo -e "${green}success${nc}" \
+    || echo -e "${red}failure${nc}"
+}

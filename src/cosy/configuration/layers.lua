@@ -11,7 +11,7 @@ return function (loader)
     whole   = Layer.new { name = "whole"   },
   }
 
-  layers.whole.__refines__ = {
+  layers.whole [Layer.key.refines] = {
     layers.default,
     layers.etc,
     layers.home,

@@ -13,11 +13,11 @@ return function (--[[loader]])
     ["server:stop"] = {
       en = "Stop the server",
     },
-    ["server:version"] = {
-      en = "Show the server version",
-    },
     ["flag:clean"] = {
       en = "Clean database",
+    },
+    ["flag:heroku"] = {
+      en = "Run in Heroku",
     },
     ["server:no-operation"] = {
       en = "operation {{{operation}}} does not exist",

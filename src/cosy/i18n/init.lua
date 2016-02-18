@@ -31,7 +31,7 @@ return function (loader)
       depends [#depends+1] = layer
     end
     local all = Layer.new { name = "i18n", data = {
-        __refines__ = depends,
+        [Layer.key.refines] = depends,
       }
     }
     local store = setmetatable ({}, {
@@ -39,7 +39,7 @@ return function (loader)
         local path = all [key]
         if path then
           local result = {}
-          for k, p in Layer.pairs (path) do
+          for k, p in pairs (path) do
             result [k] = p
           end
           return result

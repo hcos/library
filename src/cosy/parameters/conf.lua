@@ -20,7 +20,7 @@ return function (loader)
 
   do
     Default.data.boolean = {
-      __refines__ = {
+      [Layer.key.refines] = {
         this.data,
       }
     }
@@ -36,7 +36,7 @@ return function (loader)
 
   do
     Default.data.is_private = {
-      __refines__ = {
+      [Layer.key.refines] = {
         this.data.boolean,
       }
     }
@@ -44,7 +44,7 @@ return function (loader)
 
   do
     Default.data.position = {
-      __refines__ = {
+      [Layer.key.refines] = {
         this.data,
       },
     }
@@ -75,7 +75,7 @@ return function (loader)
 
   do
     Default.data.string = {
-      __refines__ = {
+      [Layer.key.refines] = {
         this.data,
       },
       min_size = 0,
@@ -120,6 +120,9 @@ return function (loader)
 
   do
     Default.data.avatar = {
+      [Layer.key.refines] = {
+        this.data.string,
+      },
       normal = {
         width  = 400,
         height = 400,
@@ -128,8 +131,9 @@ return function (loader)
         width  = 32,
         height = 32,
       },
-      __refines__ = {
-        this.data.string,
+      ascii = {
+        width  = 64,
+        height = 16,
       },
     }
     local checks = Default.data.avatar.checks
@@ -145,27 +149,44 @@ return function (loader)
       request [key] = {}
       do
         Scheduler.execute ([[
-          convert {{{filename}}} -resize {{{width}}}x{{{height}}} png:{{{filename}}}
+          convert "{{{filename}}}" -resize {{{width}}}x{{{height}}} png:"{{{filename}}}-full"
         ]] % {
           filename = filename,
           height   = Configuration.data.avatar.normal.height,
           width    = Configuration.data.avatar.normal.width,
         })
-        file = io.open (filename, "rb")
+        file = io.open (filename .. "-full", "rb")
         request [key].normal = Mime.b64 (file:read "*all")
         file:close ()
+        os.remove (filename .. "-full")
       end
       do
         Scheduler.execute ([[
-          convert {{{filename}}} -resize {{{width}}}x{{{height}}} png:{{{filename}}}
+          convert "{{{filename}}}" -resize {{{width}}}x{{{height}}} png:"{{{filename}}}-icon"
         ]] % {
           filename = filename,
           height   = Configuration.data.avatar.icon.height,
           width    = Configuration.data.avatar.icon.width,
         })
-        file = io.open (filename, "rb")
+        file = io.open (filename .. "-icon", "rb")
         request [key].icon = Mime.b64 (file:read "*all")
         file:close ()
+        os.remove (filename .. "-icon")
+      end
+      do
+        Scheduler.execute ([[
+          convert "{{{filename}}}" bmp3:"{{{filename}}}.bmp"
+          img2txt --width="{{{width}}}" --height="{{{height}}}" --format=ansi "{{{filename}}}.bmp" > "{{{filename}}}-ascii"
+          rm -f "{{{filename}}}.bmp"
+        ]] % {
+          filename = filename,
+          height   = Configuration.data.avatar.ascii.height,
+          width    = Configuration.data.avatar.ascii.width,
+        })
+        file = io.open (filename .. "-ascii", "rb")
+        request [key].ascii = Mime.b64 (file:read "*all")
+        file:close ()
+        os.remove (filename .. "-ascii")
       end
       os.remove (filename)
       return true
@@ -174,7 +195,7 @@ return function (loader)
 
   do
     Default.data.string.trimmed = {
-      __refines__ = {
+      [Layer.key.refines] = {
         this.data.string,
       }
     }
@@ -190,7 +211,7 @@ return function (loader)
 
   do
     Default.data.ip = {
-      __refines__ = {
+      [Layer.key.refines] = {
         this.data.string.trimmed,
       }
     }
@@ -220,7 +241,7 @@ return function (loader)
         end
       end
     end
-    checks [Layer.size (checks)+1] = function (t)
+    checks [#checks+1] = function (t)
       local request = t.request
       local key     = t.key
       local value   = request [key]
@@ -234,7 +255,7 @@ return function (loader)
 
   do
     Default.data.captcha = {
-      __refines__ = {
+      [Layer.key.refines] = {
         this.data.string.trimmed,
       }
     }
@@ -242,12 +263,12 @@ return function (loader)
 
   do
     Default.data.locale = {
-      __refines__ = {
+      [Layer.key.refines] = {
         this.data.string.trimmed,
       }
     }
     local checks = Default.data.locale.checks
-    checks [Layer.size (checks)+1] = function (t)
+    checks [#checks+1] = function (t)
       local request = t.request
       local key     = t.key
       local value   = request [key]
@@ -266,12 +287,12 @@ return function (loader)
 
   do
     Default.data.iterator = {
-      __refines__ = {
+      [Layer.key.refines] = {
         this.data.string,
       },
     }
     local checks = Default.data.iterator.checks
-    checks [Layer.size (checks)+1] = function (t)
+    checks [#checks+1] = function (t)
       local request = t.request
       local key     = t.key
       local value   = request [key]
@@ -327,26 +348,49 @@ return function (loader)
     end
   end
 
+  -- Email
+  -- -----
+  do
+    Default.data.email = {
+      max_size = 128,
+      [Layer.key.refines] = {
+        this.data.string.trimmed,
+      }
+    }
+    local checks = Default.data.email.checks
+    checks [#checks+1] = function (t)
+      local request = t.request
+      local key     = t.key
+      local value   = request [key]
+      local pattern = "^.*@[%w%.%%%+%-]+%.%w%w%w?%w?$"
+      return  value:find (pattern)
+          or  nil, {
+                _     = i18n ["check:email:pattern"],
+                email = value,
+              }
+    end
+  end
+
   -- Resource
   -- ----
   do
     Default.data.resource = {
       min_size = 1,
       max_size = math.huge,
-      __refines__ = {
+      [Layer.key.refines] = {
         this.data.string.trimmed,
       },
       identifier = {
         min_size = 1,
         max_size = 32,
-        __refines__ = {
+        [Layer.key.refines] = {
           this.data.string.trimmed,
         }
       }
     }
 
     local checks = Default.data.resource.identifier.checks
-    checks [Layer.size (checks)+1] = function (t)
+    checks [#checks+1] = function (t)
       local request = t.request
       local key     = t.key
       local value   = request [key]
@@ -360,7 +404,7 @@ return function (loader)
 
   do
     local checks = Default.data.resource.checks
-    checks [Layer.size (checks)+1] = function (t)
+    checks [#checks+1] = function (t)
       local store   = t.store
       local request = t.request
       local key     = t.key
@@ -388,31 +432,69 @@ return function (loader)
 
   do
     Default.data.user = {
-      __refines__ = {
+      [Layer.key.refines] = {
         this.data.resource,
       },
+      new_identifier = {
+        [Layer.key.refines] = { this.data.resource.identifier },
+      },
+      new_email = {
+        [Layer.key.refines] = { this.data.email },
+      },
     }
-    local checks = Default.data.user.checks
-    checks [Layer.size (checks)+1] = function (t)
-      local request = t.request
-      local key     = t.key
-      local value   = request [key]
-      return request [key].type == "user"
-          or  nil, {
-                _    = i18n ["check:resource:not-user"],
-                name = value,
-              }
+    do
+      local checks = Default.data.user.checks
+      checks [#checks+1] = function (t)
+        local request = t.request
+        local key     = t.key
+        local value   = request [key]
+        return request [key].type == "user"
+            or  nil, {
+                  _    = i18n ["check:resource:not-user"],
+                  name = value,
+                }
+      end
+    end
+    do
+      local checks = Default.data.user.new_identifier.checks
+      checks [#checks+1] = function (t)
+        local store = t.store
+        local value = t.request [t.key]
+        if store / "data" / value then
+          return nil, {
+                   _          = i18n ["check:user:exist"],
+                   identifier = value,
+                 }
+        else
+          return true
+        end
+      end
+    end
+    do
+      local checks = Default.data.user.new_email.checks
+      checks [#checks+1] = function (t)
+        local store = t.store
+        local value = t.request [t.key]
+        if store / "email" / value then
+          return nil, {
+                   _     = i18n ["check:email:exist"],
+                   email = value,
+                 }
+        else
+          return true
+        end
+      end
     end
   end
 
   do
     Default.data.user.active = {
-      __refines__ = {
+      [Layer.key.refines] = {
         this.data.user,
       },
     }
     local checks = Default.data.user.active.checks
-    checks [Layer.size (checks)+1] = function (t)
+    checks [#checks+1] = function (t)
       local request = t.request
       local key     = t.key
       local user    = request [key]
@@ -426,12 +508,12 @@ return function (loader)
 
   do
     Default.data.user.suspended = {
-      __refines__ = {
+      [Layer.key.refines] = {
         this.data.user,
       },
     }
     local checks = Default.data.user.suspended.checks
-    checks [Layer.size (checks)+1] = function (t)
+    checks [#checks+1] = function (t)
       local request = t.request
       local key     = t.key
       local user    = request [key]
@@ -445,12 +527,12 @@ return function (loader)
 
   do
     Default.data.project = {
-      __refines__ = {
+      [Layer.key.refines] = {
         this.data.resource,
       },
     }
     local checks = Default.data.project.checks
-    checks [Layer.size (checks)+1] = function (t)
+    checks [#checks+1] = function (t)
       local request = t.request
       local key     = t.key
       local value   = request [key]
@@ -463,17 +545,17 @@ return function (loader)
     end
   end
 
-  for i = 1, Layer.size (Configuration.resource.project ["/"]) do
+  for i = 1, #(Configuration.resource.project ["/"]) do
     local data = Configuration.resource.project ["/"] [i]
     local id   = data.__keys [#data.__keys]
 
     Default.data [id] = {
-      __refines__ = {
+      [Layer.key.refines] = {
         this.data.resource,
       },
     }
     local checks = Default.data [id].checks
-    checks [Layer.size (checks)+1] = function (t)
+    checks [#checks+1] = function (t)
       local request = t.request
       local key     = t.key
       local value   = request [key]
@@ -492,7 +574,7 @@ return function (loader)
     Default.data.password = {
       min_size = 1,
       max_size = 128,
-      __refines__ = {
+      [Layer.key.refines] = {
         this.data.string.trimmed,
       }
     }
@@ -500,33 +582,10 @@ return function (loader)
 
   do
     Default.data.password.checked = {
-      __refines__ = {
+      [Layer.key.refines] = {
         this.data.password,
       }
     }
-  end
-
-  -- Email
-  -- -----
-  do
-    Default.data.email = {
-      max_size = 128,
-      __refines__ = {
-        this.data.string.trimmed,
-      }
-    }
-    local checks = Default.data.email.checks
-    checks [Layer.size (checks)+1] = function (t)
-      local request = t.request
-      local key     = t.key
-      local value   = request [key]
-      local pattern = "^.*@[%w%.%%%+%-]+%.%w%w%w?%w?$"
-      return  value:find (pattern)
-          or  nil, {
-                _     = i18n ["check:email:pattern"],
-                email = value,
-              }
-    end
   end
 
   -- Name
@@ -535,7 +594,7 @@ return function (loader)
     Default.data.name = {
       min_size = 1,
       max_size = 128,
-      __refines__ = {
+      [Layer.key.refines] = {
         this.data.string.trimmed,
       }
     }
@@ -547,7 +606,7 @@ return function (loader)
     Default.data.organization = {
       min_size = 1,
       max_size = 128,
-      __refines__ = {
+      [Layer.key.refines] = {
         this.data.string.trimmed,
       }
     }
@@ -559,7 +618,7 @@ return function (loader)
     Default.data.homepage = {
       min_size = 1,
       max_size = 128,
-      __refines__ = {
+      [Layer.key.refines] = {
         this.data.string.trimmed,
       }
     }
@@ -571,7 +630,7 @@ return function (loader)
     Default.data.description = {
       min_size = 1,
       max_size = 4096,
-      __refines__ = {
+      [Layer.key.refines] = {
         this.data.string.trimmed,
       }
     }
@@ -581,26 +640,26 @@ return function (loader)
   -- ------------------------
   do
     Default.data.tos = {
-      __refines__ = {
+      [Layer.key.refines] = {
         this.data.string.trimmed,
       },
     }
     Default.data.tos.digest = {
-      __refines__ = {
+      [Layer.key.refines] = {
         this.data.string.trimmed,
       },
       min_size = 64,
       max_size = 64,
     }
     local checks = Default.data.tos.digest.checks
-    checks [Layer.size (checks)+1] = function (t)
+    checks [#checks+1] = function (t)
       local request = t.request
       local key     = t.key
       local value   = request [key]
       request [key] = value:lower ()
       return  true
     end
-    checks [Layer.size (checks)+1] = function (t)
+    checks [#checks+1] = function (t)
       local request = t.request
       local key     = t.key
       local value   = request [key]
@@ -611,7 +670,7 @@ return function (loader)
                 tos_digest = value,
               }
     end
-    checks [Layer.size (checks)+1] = function (t)
+    checks [#checks+1] = function (t)
       local request = t.request
       local key     = t.key
       local value   = request [key]
@@ -629,12 +688,12 @@ return function (loader)
   -- -----
   do
     Default.data.token = {
-      __refines__ = {
+      [Layer.key.refines] = {
         this.data.string.trimmed,
       },
     }
     local checks = Default.data.token.checks
-    checks [Layer.size (checks)+1] = function (t)
+    checks [#checks+1] = function (t)
       local Token      = loader.load "cosy.token"
       local request    = t.request
       local key        = t.key
@@ -654,12 +713,12 @@ return function (loader)
   -- --------------------
   do
     Default.data.token.administration = {
-      __refines__ = {
+      [Layer.key.refines] = {
         this.data.token,
       },
     }
     local checks = Default.data.token.administration.checks
-    checks [Layer.size (checks)+1] = function (t)
+    checks [#checks+1] = function (t)
       local request = t.request
       local key     = t.key
       local value   = request [key]
@@ -668,7 +727,7 @@ return function (loader)
                 _ = i18n ["check:token:invalid"],
               }
     end
-    checks [Layer.size (checks)+1] = function (t)
+    checks [#checks+1] = function (t)
       local request = t.request
       local key     = t.key
       local value   = request [key]
@@ -683,12 +742,12 @@ return function (loader)
   -- --------------------
   do
     Default.data.token.identification = {
-      __refines__ = {
+      [Layer.key.refines] = {
         this.data.token,
       },
     }
     local checks = Default.data.token.identification.checks
-    checks [Layer.size (checks)+1] = function (t)
+    checks [#checks+1] = function (t)
       local request = t.request
       local key     = t.key
       local value   = request [key]
@@ -704,12 +763,12 @@ return function (loader)
   -- ----------------
   do
     Default.data.token.validation = {
-      __refines__ = {
+      [Layer.key.refines] = {
         this.data.token,
       },
     }
     local checks = Default.data.token.validation.checks
-    checks [Layer.size (checks)+1] = function (t)
+    checks [#checks+1] = function (t)
       local request = t.request
       local key     = t.key
       local value   = request [key]
@@ -718,7 +777,7 @@ return function (loader)
                 _ = i18n ["check:token:invalid"],
               }
     end
-    checks [Layer.size (checks)+1] = function (t)
+    checks [#checks+1] = function (t)
       local store      = t.store
       local request    = t.request
       local key        = t.key
@@ -737,12 +796,12 @@ return function (loader)
   -- --------------------
   do
     Default.data.token.authentication = {
-      __refines__ = {
+      [Layer.key.refines] = {
         this.data.token,
       },
     }
     local checks = Default.data.token.authentication.checks
-    checks [Layer.size (checks)+1] = function (t)
+    checks [#checks+1] = function (t)
       local request = t.request
       local key     = t.key
       local value   = request [key]
@@ -751,7 +810,7 @@ return function (loader)
                 _ = i18n ["check:token:invalid"],
               }
     end
-    checks [Layer.size (checks)+1] = function (t)
+    checks [#checks+1] = function (t)
       local store      = t.store
       local request    = t.request
       local key        = t.key

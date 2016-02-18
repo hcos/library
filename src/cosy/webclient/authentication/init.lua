@@ -1,8 +1,10 @@
 return function (loader)
 
-  local I18n          = loader.load "cosy.i18n"
-  local Scheduler     = loader.load "cosy.scheduler"
-  local Webclient     = loader.load "cosy.webclient"
+  local I18n      = loader.load "cosy.i18n"
+  local Scheduler = loader.load "cosy.scheduler"
+  local Webclient = loader.load "cosy.webclient"
+  local Dashboard = loader.load "cosy.webclient.dashboard"
+  local Profile   = loader.load "cosy.webclient.profile"
 
   local i18n = I18n.load {
     "cosy.webclient.authentication",
@@ -65,12 +67,6 @@ return function (loader)
         Webclient.jQuery "#password-error":html (text)
         result = false
       end
-      if not captcha or Webclient.window.grecaptcha:getResponse (captcha) == "" then
-        Webclient.jQuery "#captcha-group":addClass "has-error"
-        local text = i18n ["sign-up:no-captcha"] % {}
-        Webclient.jQuery "#captcha-error":html (text)
-        result = false
-      end
       if result then
         Webclient.jQuery "#accept":removeClass "disabled"
         return true
@@ -128,7 +124,7 @@ return function (loader)
                    and tos.digest,
           locale     = Webclient.locale,
         })
-        loader.load "cosy.webclient.profile" ()
+        Profile ()
         return
       end
     end
@@ -142,7 +138,6 @@ return function (loader)
       data     = {},
       i18n     = i18n,
     }
-
     Webclient.jQuery "#accept":click (function ()
       Scheduler.wakeup (co)
       return false
@@ -158,7 +153,7 @@ return function (loader)
         locale   = Webclient.locale,
       }
       if result then
-        loader.load "cosy.webclient.dashboard" ()
+        Dashboard ()
         return
       else
         Webclient.jQuery "#accept":removeClass "disabled"
@@ -172,8 +167,8 @@ return function (loader)
 
   function Authentication.log_out ()
     Webclient.storage:removeItem "cosy:client"
-    loader.load "cosy.webclient.dashboard" ()
     Webclient.init ()
+    Dashboard ()
   end
 
   local function register_events ()
@@ -199,9 +194,7 @@ return function (loader)
       return false
     end)
     Webclient.jQuery "#profile":click (function ()
-      loader.load "cosy.webclient.profile" {
-        where = "main",
-      }
+      Profile ()
       return false
     end)
   end

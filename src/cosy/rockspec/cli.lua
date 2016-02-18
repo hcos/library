@@ -24,7 +24,7 @@ local arguments = parser:parse ()
 
 local rockspecs = {
   full = {
-    package = "cosyverif",
+    package = "cosy",
     version = "master-1",
     source = {
       url = "git://github.com/cosyverif/library",
@@ -38,6 +38,7 @@ local rockspecs = {
     },
     dependencies = {
       "lua >= 5.2",
+      "cosy-client",
       "amalg",
       "ansicolors",
       "argparse",
@@ -70,10 +71,10 @@ local rockspecs = {
       modules = {},
       install = {
         bin = {
-          ["cosy"         ] = "src/cosy/client/bin.lua",
           ["cosy-server"  ] = "src/cosy/server/bin.lua",
           ["cosy-check"   ] = "src/cosy/check/bin.lua",
           ["cosy-rockspec"] = "src/cosy/rockspec/bin.lua",
+          ["cosy-heroku"  ] = "src/cosy/heroku/bin.lua",
         },
         conf = {},
       },
@@ -83,7 +84,7 @@ local rockspecs = {
     },
   },
   client = {
-    package = "cosyverif-client",
+    package = "cosy-client",
     version = "master-1",
     source = {
       url = "git://github.com/cosyverif/library",
@@ -99,7 +100,7 @@ local rockspecs = {
       "lua >= 5.2",
       "ansicolors",
       "argparse",
-      "copas",
+      "copas-ev",
       "coronest",
       "hotswap",
       "hotswap-http",
@@ -119,7 +120,9 @@ local rockspecs = {
       modules = {},
       install = {
         bin = {
-          ["cosy"] = "src/cosy/client/bin.lua",
+          ["cosy"        ] = "src/cosy/client/bin.lua",
+          ["cosy-tool"   ] = "src/cosy/tool/bin.lua",
+          ["cosy-fixpath"] = "src/cosy/fixpath/bin.lua",
         },
       },
     },
@@ -159,8 +162,7 @@ local function find (path, prefix)
 end
 
 find (arguments.source .. "/cosy", "cosy")
-rockspecs.client.build.modules          = modules
-rockspecs.full  .build.modules          = modules
+rockspecs.client.build.modules = modules
 
 local options = {
   indent   = "  ",
@@ -174,7 +176,7 @@ local options = {
 
 Lfs.mkdir (arguments.target)
 do
-  local file = io.open (arguments.target .. "/cosyverif-master-1.rockspec", "w")
+  local file = io.open (arguments.target .. "/cosy-master-1.rockspec", "w")
   for _, key in ipairs {
     "package",
     "version",
@@ -189,7 +191,7 @@ do
   file:close ()
 end
 do
-  local file = io.open (arguments.target .. "/cosyverif-client-master-1.rockspec", "w")
+  local file = io.open (arguments.target .. "/cosy-client-master-1.rockspec", "w")
   for _, key in ipairs {
     "package",
     "version",

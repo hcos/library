@@ -26,13 +26,7 @@ return function (t)
   loader.logto     = t.logto
   loader.scheduler = t.scheduler
   if not loader.scheduler then
-    local ok, s = pcall (loader.require, "copas.ev")
-    if ok then
-      loader.scheduler = s
-    else
-      loader.scheduler = loader.require "copas"
-      loader.scheduler.autoclose = false
-    end
+    loader.scheduler = loader.require "copas.ev"
   end
   loader.hotswap.loaded.copas = loader.scheduler
   package.loaded.copas        = loader.scheduler
@@ -56,21 +50,37 @@ return function (t)
     parts [#parts+1] = part
   end
 
-  parts [#parts] = nil
-  parts [#parts] = nil
-  parts [#parts] = nil
+  for _ = 1, 3 do
+    parts [#parts] = nil
+  end
+  loader.lua_modules = (path:find "^/" and "/" or "") .. table.concat (parts, "/")
 
-  loader.source = (path:find "^/" and "/" or "") .. table.concat (parts, "/")
-
-  parts [#parts] = nil
-  parts [#parts] = nil
-  parts [#parts] = nil
-
+  for _ = 1, 3 do
+    parts [#parts] = nil
+  end
   loader.prefix = (path:find "^/" and "/" or "") .. table.concat (parts, "/")
 
-  os.execute ([[ mkdir -p {{{home}}} ]] % {
+  if path:match "^/" then
+    local Lfs = loader.require "lfs"
+    local src = loader.prefix .. "/lib/luarocks/rocks/cosy/"
+    if Lfs.attributes (src, "mode") ~= "directory" then
+      src = loader.prefix .. "/lib/luarocks/rocks/cosy-client/"
+    end
+    for subpath in Lfs.dir (src) do
+      if  subpath ~= "." and subpath ~= ".."
+      and Lfs.attributes (src .. "/" .. subpath, "mode") == "directory" then
+        src = src .. subpath .. "/src"
+        break
+      end
+    end
+    loader.source = src
+  else
+    loader.source = loader.lua_modules
+  end
+
+  assert (os.execute ([[ mkdir -p {{{home}}} ]] % {
     home = loader.home,
-  })
+  }))
 
   return loader
 end

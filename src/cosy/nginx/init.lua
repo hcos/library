@@ -55,14 +55,14 @@ http {
 
     location / {
       add_header  Access-Control-Allow-Origin *;
-      root        {{{www}}};
+      root        {{{source}}}/cosy/www;
       index       index.html;
       try_files   $uri $uri.html $uri/ /fallback/$uri;
     }
 
     location /fallback {
       add_header  Access-Control-Allow-Origin *;
-      root        {{{www_fallback}}};
+      root        {{{prefix}}}/share/cosy/www;
       access_by_lua '
         ngx.var.target = ngx.var.uri:match "/fallback/(.*)"
       ';
@@ -82,13 +82,13 @@ http {
       root          /;
       set           $target   "";
       access_by_lua '
-        local name = ngx.var.uri:match "/template/(.*)"
-        local path = ("{{{path}}}"):gsub ("%.lua", "%.html")
-        local filename = package.searchpath (name, path)
+        local name     = ngx.var.uri:match "/template/(.*)"
+        local path     = "{{{source}}}/?.html;{{{source}}}/?/init.html"
+        local filename, err = package.searchpath (name, path)
         if filename then
           ngx.var.target = filename
         else
-          ngx.log (ngx.ERR, "failed to locate template: " .. name)
+          ngx.log (ngx.ERR, "failed to locate template: " .. name .. ", " .. tostring (err))
           return ngx.exit (404)
         end
       ';
@@ -161,24 +161,6 @@ http {
       proxy_set_header    Connection "upgrade";
     }
 
-    location /hook {
-      content_by_lua '
-        local temporary = os.tmpname ()
-        local file      = io.open (temporary, "w")
-        file:write [==[
-          git pull --quiet --force
-          luarocks install --local --force --only-deps cosyverif
-          for rock in $(luarocks list --outdated --porcelain | cut -f 1)
-          do
-          luarocks install --local --force ${rock}
-          done
-          rm --force $0
-        ]==]
-        file:close ()
-        os.execute ("bash " .. temporary .. " &")
-      ';
-    }
-
   }
 }
 ]]
@@ -201,19 +183,24 @@ http {
     if not Configuration.http.hostname then
       sethostname ()
     end
+    local user
+    if (Posix.geteuid () == 0 and os.getenv "USER")
+    or Configuration.http.port < 1024 then
+      user = "user " .. os.getenv "USER" .. ";"
+    end
     local configuration = configuration_template % {
+      prefix         = loader.prefix,
+      source         = loader.source,
       nginx          = Configuration.http.nginx,
       host           = Configuration.http.interface,
       port           = Configuration.http.port,
-      www            = Configuration.http.www,
-      www_fallback   = Configuration.http.www_fallback,
       pid            = Configuration.http.pid,
       wshost         = Configuration.server.interface,
       wsport         = Configuration.server.port,
       redis_host     = Configuration.redis.interface,
       redis_port     = Configuration.redis.port,
       redis_database = Configuration.redis.database,
-      user           = Posix.geteuid () == 0 and ("user " .. os.getenv "USER" .. ";") or "",
+      user           = user,
       path           = package. path:gsub ("5%.2", "5.1") .. ";" .. package. path,
       cpath          = package.cpath:gsub ("5%.2", "5.1") .. ";" .. package.cpath,
     }
@@ -232,11 +219,20 @@ http {
       dir = Configuration.http.directory .. "/logs"
     })
     if Posix.fork () == 0 then
-      Posix.execp (Configuration.http.nginx .. "/sbin/nginx", {
-        "-q",
-        "-p", Configuration.http.directory,
-        "-c", Configuration.http.configuration,
-      })
+      if Configuration.http.port < 1024 then
+        assert (Posix.execp ("sudo", {
+          Configuration.http.nginx .. "/sbin/nginx",
+          "-q",
+          "-p", Configuration.http.directory,
+          "-c", Configuration.http.configuration,
+        }))
+      else
+        assert (Posix.execp (Configuration.http.nginx .. "/sbin/nginx", {
+          "-q",
+          "-p", Configuration.http.directory,
+          "-c", Configuration.http.configuration,
+        }))
+      end
     end
     Nginx.stopped = false
   end
@@ -253,7 +249,14 @@ http {
   function Nginx.stop ()
     local pid = getpid ()
     if pid then
-      Posix.kill (pid, 15) -- term
+      if Configuration.http.port < 1024 then
+        Scheduler.execute ("sudo kill -{{{signal}}} {{{pid}}}" % {
+          signal = 15,
+          pid    = pid,
+        })
+      else
+        Posix.kill (pid, 15) -- term
+      end
       Posix.wait (pid)
     end
     os.remove (Configuration.http.configuration)
@@ -266,14 +269,21 @@ http {
     Nginx.configure ()
     local pid = getpid ()
     if pid then
-      Posix.kill (pid, 1) -- hup
+      if Configuration.http.port < 1024 then
+        Scheduler.execute ("sudo kill -{{{signal}}} {{{pid}}}" % {
+          signal = 1,
+          pid    = pid,
+        })
+      else
+        Posix.kill (pid, 1) -- hup
+      end
     end
   end
 
   function Nginx.bundle ()
     os.remove (Configuration.http.bundle)
     Scheduler.addthread (function ()
-      if Nginx.in_bundle then
+      if Nginx.in_bundle or Configuration.dev_mode then
         return
       end
       Nginx.in_bundle = true
@@ -307,7 +317,7 @@ http {
           end
         end
       end
-      find (loader.source)
+      find (loader.lua_modules)
       table.sort (modules)
       local temp = os.tmpname ()
       Scheduler.execute ([[

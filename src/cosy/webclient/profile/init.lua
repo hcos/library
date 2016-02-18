@@ -76,7 +76,8 @@ return function (loader)
     end
   end
 
-  function Profile.__call (options)
+  function Profile.__call (_, options)
+    options = options or {}
     Webclient (function ()
       local co   = Scheduler.running ()
       local user = Webclient.client.user.authentified_as {}
@@ -88,6 +89,7 @@ return function (loader)
           avatar   = nil,
         }
         local info = Webclient.client.user.update {}
+        info ["avatar-full"] = info.avatar and info.avatar.full or nil
         Webclient.show {
           where    = "main",
           template = Profile.template.edit,
