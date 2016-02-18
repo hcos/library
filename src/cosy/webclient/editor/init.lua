@@ -23,12 +23,12 @@ return function (loader)
       name = "my model",
       data = {},
     }
-    Editor.svg   = d3:select "#editor"
-                 : append "svg:svg"
-                 : attr ("class", "cosy-editor")
-                 : attr ("width" , width )
-                 : attr ("height", height)
-                 : style ("pointer-events", "all")
+    Editor.svg    = d3:select "#editor"
+                  : append "svg:svg"
+                  : attr ("class", "cosy-editor")
+                  : attr ("width" , width )
+                  : attr ("height", height)
+                  : style ("pointer-events", "all")
     Editor.outer  = Editor.svg
                   : append "g"
                   : attr ("class", "cosy-editor-outer")
