@@ -111,11 +111,44 @@ if mytool then
     description = mytool.description,
   }
   for key in pairs (parameters) do
+    local convert
+    if key.type == "number" then
+      convert = tonumber
+    elseif key.type == "string" then
+      convert = tostring
+    elseif key.type == "boolean" then
+      convert = function (x)
+        if x:lower () == "true" then
+          return true
+        elseif x:lower () == "false" then
+          return false
+        else
+          assert (false)
+        end
+      end
+    elseif key.type == "function" then
+      convert = function (x)
+        return assert (loadstring (x)) ()
+      end
+    elseif getmetatable (key.type) == Layer.Proxy then
+      convert = function (x)
+        if key.update then
+          return Layer.require (x)
+        else
+          return {
+            [Layer.key.refines] = { Layer.require (x) }
+          }
+        end
+      end
+    else
+      assert (false)
+    end
     command:option ("--" .. key.name) {
       description = key.description
                  .. (key.type and " (" .. tostring (key.type) .. ")" or ""),
       default     = key.default,
       required    = key.default and false or true,
+      convert     = convert,
     }
   end
   parser:require_command (true)
@@ -136,27 +169,6 @@ for key in pairs (parameters) do
     all_found = false
   else
     local value = arguments [key.name]
-    if key.type == "string" then
-      value = value
-    elseif key.type == "number" then
-      value = tonumber (value)
-    elseif key.type == "boolean" and key.type:lower () == "true" then
-      value = true
-    elseif key.type == "boolean" and key.type:lower () == "false" then
-      value = false
-    elseif key.type == "function" then
-      value = loadstring (value) ()
-    elseif getmetatable (key.type) == Layer.Proxy then
-      if key.update then
-        value = Layer.require (value)
-      else
-        value = {
-          [Layer.key.refines] = { Layer.require (value) }
-        }
-      end
-    else
-      assert (false)
-    end
     Layer.Proxy.replacewith (key, value)
   end
 end
