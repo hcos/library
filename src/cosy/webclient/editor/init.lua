@@ -10,12 +10,6 @@ return function (loader)
   Editor.template = Webclient.template "cosy.webclient.editor"
 
   function Editor.init ()
-    local css = Webclient.jQuery ("<link>", Webclient.tojs {
-      rel  = "stylesheet",
-      type = "text/css",
-      href = "/editor.css"
-    });
-    css:appendTo "head"
     local d3     = Webclient.window.d3
     local height = Webclient.jQuery (Webclient.window):height ()
     local width  = Webclient.jQuery (Webclient.window):width  ()
@@ -24,7 +18,7 @@ return function (loader)
       data = {},
     }
     Editor.svg    = d3:select "#editor"
-                  : append "svg:svg"
+                  : append "svg"
                   : attr ("class", "cosy-editor")
                   : attr ("width" , width )
                   : attr ("height", height)
