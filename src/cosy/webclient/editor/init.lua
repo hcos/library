@@ -43,8 +43,8 @@ return function (loader)
                   : attr  ("visibility", "hidden")
     Webclient.jQuery (Webclient.window):resize (function ()
       d3 : select "#editor"
-         : attr ("width" , width )
-         : attr ("height", height)
+         : attr ("width" , Webclient.jQuery (Webclient.window):width  ())
+         : attr ("height", Webclient.jQuery (Webclient.window):height ())
     end)
   end
 
