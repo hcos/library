@@ -17,6 +17,8 @@ return function (loader)
   local Websocket     = loader.require "websocket"
   local Time          = loader.require "socket".gettime
 
+  math.randomseed (Time ())
+
   Configuration.load {
     "cosy.server",
     "cosy.nginx",
@@ -96,9 +98,8 @@ return function (loader)
   end
 
   function Server.start ()
-    local random          = math.randomseed (Time ())
     App.server            = {}
-    App.server.passphrase = Digest (random ())
+    App.server.passphrase = Digest (math.random ())
     App.server.token      = Token.administration ()
     local addserver       = Scheduler.addserver
 
