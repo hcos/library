@@ -1,24 +1,30 @@
-build_image: shippableimages/ubuntu1404_python
+build_image: cosyverif/environment:master
 
 install:
-  - ./bin/build-server --in-ci --prefix=$HOME/cosy
-  - ./bin/build-client --in-ci
+  - ./bin/build-server --in-ci --prefix=/app
+  - ./bin/build-client --in-ci --prefix=/app
 
 before_script:
-  - rm -rf output && mkdir -p output
-  - redis-server & sleep 1
+  - mkdir -p output
 
 script:
-  - ${HOME}/cosy/bin/cosy-check --output=output --test-format=junit
+  - export CPATH="/app/include:${CPATH}"
+  - export LIBRARY_PATH="/app/lib:${LIBRARY_PATH}"
+  - export LD_LIBRARY_PATH="/app/lib:${LD_LIBRARY_PATH}"
+  - /app/bin/cosy-check --output=output --test-format=junit
+  - /app/bin/cosy-server start --port=8080
+  - ./cosy-client-*.sh --target client
+  - ./tests/user.sh default ./client/bin/cosy --server=http://127.0.0.1:8080/
+  - /app/bin/cosy-server stop
 
 after_failure:
-  - cat ${HOME}/.cosy/__busted__/nginx/access.log
-  - cat ${HOME}/.cosy/__busted__/nginx/error.log
-  - cat ${HOME}/.cosy/__scenario__/nginx/access.log
-  - cat ${HOME}/.cosy/__scenario__/nginx/error.log
+  - cat $HOME/.cosy/__busted__/nginx/access.log
+  - cat $HOME/.cosy/__busted__/nginx/error.log
+  - cat $HOME/.cosy/__scenario__/nginx/access.log
+  - cat $HOME/.cosy/__scenario__/nginx/error.log
 
 after_success:
-  - for file in output/test/*; do mv ${file} shippable/testresults/$(basename ${file}).xml; done
+  - mv output/test-results shippable/testresults/cosy.xml
 
 notifications:
   email:

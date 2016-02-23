@@ -8,6 +8,7 @@ return function (loader)
   local Methods       = loader.load "cosy.methods"
   local Nginx         = loader.load "cosy.nginx"
   local Random        = loader.load "cosy.random"
+  local Redis         = loader.load "cosy.redis"
   local Scheduler     = loader.load "cosy.scheduler"
   local Store         = loader.load "cosy.store"
   local Token         = loader.load "cosy.token"
@@ -70,9 +71,10 @@ return function (loader)
            and e._._key   ~= "redis:retry" then
           err = e
         else
+          local message = assert (Value.expression (e))
           Logger.debug {
             _      = i18n ["server:exception"],
-            reason = Value.expression (e) .. " => " .. debug.traceback (),
+            reason = message .. " => " .. debug.traceback (),
           }
         end
       end)
@@ -103,7 +105,7 @@ return function (loader)
       local ok, port = s:getsockname ()
       if ok then
         App.server.socket = s
-        App.server.port   = port
+        App.server.port   = tonumber (port)
       end
       addserver (s, f)
     end
@@ -246,6 +248,9 @@ return function (loader)
       })
     end)
 
+    Redis.start ()
+    Nginx.start ()
+
     Scheduler.addthread (function ()
       local store = Store.new ()
       local view  = Store.toview (store)
@@ -257,8 +262,6 @@ return function (loader)
       end
       Store.commit (store)
     end)
-
-   Nginx.start ()
 
     do
       File.encode (Configuration.server.data, {
@@ -282,6 +285,7 @@ return function (loader)
     os.remove (Configuration.server.data)
     Scheduler.removeserver (App.server.socket)
     Nginx.stop ()
+    Redis.stop ()
   end
 
   return Server

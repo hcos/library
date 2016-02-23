@@ -41,6 +41,7 @@ do
     description = "network port",
     default     = tostring (Configuration.http.port),
     defmode     = "arg",
+    convert     = tonumber,
   }
   start:flag "-f" "--force" {
     description = i18n ["flag:force"] % {},
@@ -57,9 +58,6 @@ do
   }
   stop:flag "-f" "--force" {
     description = i18n ["flag:force"] % {},
-  }
-  local _ = parser:command "version" {
-    description = i18n ["server:version"] % {},
   }
   arguments = parser:parse ()
 end
@@ -95,48 +93,50 @@ i18n._locale = Configuration.server.locale
 
 if arguments.start then
 
-  local data = File.decode (Configuration.server.data) or {}
-  local url = "http://{{{host}}}:{{{port}}}/" % {
-    host = "localhost",
-    port = data.port or Configuration.http.port,
-  }
-  local client = Library.connect (url)
-  if client then
-    if arguments.force and data then
-      local result = client.server.stop {
-        administration = data.token,
-      }
-      if not result then
-        pcall (Posix.kill, data.pid, 9) -- kill
+  local data = File.decode (Configuration.server.data)
+  if data then
+    local url = "http://{{{host}}}:{{{port}}}/" % {
+      host = "localhost",
+      port = data.port or Configuration.http.port,
+    }
+    local client = Library.connect (url)
+    if client then
+      if arguments.force then
+        local result = client.server.stop {
+          administration = data.token,
+        }
+        if not result then
+          pcall (Posix.kill, data.pid, 9) -- kill
+        end
+      else
+        printerr (Colors ("%{black redbg}" .. i18n ["failure"] % {}),
+                  Colors ("%{red blackbg}" .. i18n ["server:already-running"] % {}))
+        os.exit (1)
       end
-    else
-      printerr (Colors ("%{black redbg}" .. i18n ["failure"] % {}),
-                Colors ("%{red blackbg}" .. i18n ["server:already-running"] % {}))
-      os.exit (1)
     end
   end
 
   if arguments.clean then
     Configuration.load "cosy.redis"
-    local Redis     = loader.require "redis"
-    local host      = Configuration.redis.interface
-    local port      = Configuration.redis.port
-    local database  = Configuration.redis.database
-    local redis     = Redis.connect (host, port)
-    redis:select (database)
-    redis:flushdb ()
-    package.loaded ["redis"] = nil
+    os.remove (Configuration.redis.log)
+    os.remove (Configuration.redis.db)
+    os.remove (Configuration.redis.append)
   end
 
-  os.remove (Configuration.server.log )
+  if type (Configuration.server.log) == "string" then
+    os.remove (Configuration.server.log)
+  end
   os.remove (Configuration.server.data)
 
- if Posix.fork () == 0 then
+  local pid = Posix.fork ()
+  if pid == 0 then
     local ev = require "ev"
     ev.Loop.default:fork ()
     File.encode (Configuration.server.data, {
       alias     = arguments.alias,
-      http_port = tonumber (arguments.port) or data.port or Configuration.http.port,
+      http_port = arguments.port
+               or (data and data.port)
+               or Configuration.http.port,
     })
     local Server = loader.load "cosy.server"
     Server.start ()
@@ -152,6 +152,9 @@ if arguments.start then
   until (serverdata and nginxdata) or tries == 5
   if serverdata and nginxdata then
     print (Colors ("%{black greenbg}" .. i18n ["success"] % {}))
+    if arguments.heroku then
+      Posix.wait (pid)
+    end
     os.exit (0)
   else
     printerr (Colors ("%{black redbg}" .. i18n ["failure"] % {}),
@@ -161,74 +164,48 @@ if arguments.start then
 
 elseif arguments.stop then
 
-  local data = File.decode (Configuration.server.data) or {}
-  local url = "http://{{{host}}}:{{{port}}}/" % {
-    host = "localhost",
-    port = data.port or Configuration.http.port,
-  }
-  local client = Library.connect (url)
-  if client and data then
-    local result = client.server.stop {
-      administration = data.token,
+  local data = File.decode (Configuration.server.data)
+  if data then
+    local url = "http://{{{host}}}:{{{port}}}/" % {
+      host = "localhost",
+      port = data.port or Configuration.http.port,
     }
-    if result then
-      print (Colors ("%{black greenbg}" .. i18n ["success"] % {}))
-      os.exit (0)
-    end
-  end
-  if not client then
-    if arguments.force and data.pid then
-      Posix.kill (data.pid, 9) -- kill
-      local nginx_file = io.open (Configuration.http.pid, "r")
-      if nginx_file then
-        local nginx_pid  = nginx_file:read "*a"
-        nginx_file:close ()
-        Posix.kill (nginx_pid:match "%S+", 15) -- term
+    local client = Library.connect (url)
+    if client then
+      local result = client.server.stop {
+        administration = data.token,
+      }
+      if result then
         print (Colors ("%{black greenbg}" .. i18n ["success"] % {}))
         os.exit (0)
-      else
+      end
+    end
+    if not client then
+      if arguments.force and data.pid then
+        Posix.kill (data.pid, 9) -- kill
+        local nginx_file = io.open (Configuration.http.pid, "r")
+        if nginx_file then
+          local nginx_pid  = nginx_file:read "*a"
+          nginx_file:close ()
+          Posix.kill (nginx_pid:match "%S+", 15) -- term
+          print (Colors ("%{black greenbg}" .. i18n ["success"] % {}))
+          os.exit (0)
+        else
+          printerr (Colors ("%{black redbg}" .. i18n ["failure"] % {}))
+          os.exit (1)
+        end
+      elseif arguments.force then
         printerr (Colors ("%{black redbg}" .. i18n ["failure"] % {}))
         os.exit (1)
+      else
+        printerr (Colors ("%{black redbg}" .. i18n ["failure"] % {}),
+                  Colors ("%{red blackbg}" .. i18n ["server:unreachable"] % {}))
+        os.exit (1)
       end
-    elseif arguments.force then
-      printerr (Colors ("%{black redbg}" .. i18n ["failure"] % {}))
-      os.exit (1)
-    else
-      printerr (Colors ("%{black redbg}" .. i18n ["failure"] % {}),
-                Colors ("%{red blackbg}" .. i18n ["server:unreachable"] % {}))
-      os.exit (1)
     end
-
-  end
-
-elseif arguments.version then
-
-  local path  = package.searchpath ("cosy.server.cli", package.path)
-  local parts = {}
-  for part in path:gmatch "[^/]+" do
-    parts [#parts+1] = part
-  end
-  parts [#parts] = nil
-  parts [#parts] = nil
-  path = (path:find "^/" and "/" or "") .. table.concat (parts, "/")
-  local handler = assert (io.popen ([[
-    . "{{{prefix}}}/bin/realpath.sh"
-    cd $(realpath "{{{path}}}")
-    git describe
-  ]] % {
-    prefix = loader.prefix,
-    path   = path,
-  }, "r"))
-  local result, err = assert (handler:read "*a")
-  handler:close ()
-  if result then
-    print (result:match "%S+")
+  else
     print (Colors ("%{black greenbg}" .. i18n ["success"] % {}))
     os.exit (0)
-  else
-    printerr (Colors ("%{black redbg}" .. i18n ["failure"] % {}),
-              Colors ("%{red blackbg}" .. err))
-    os.exit (1)
   end
 
 else

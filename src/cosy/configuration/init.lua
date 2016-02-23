@@ -59,7 +59,7 @@ return function (loader)
           path   = name,
           locale = Configuration.locale or "en",
         }
-        Layer.replacewith (layers [key], result ())
+        Layer.Proxy.replacewith (layers [key], result ())
       else
         Logger.warning {
           _      = i18n ["skip"],

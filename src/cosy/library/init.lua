@@ -128,7 +128,7 @@ return function (loader)
   end
 
   function Receiver.__call (receiver, identifier)
-    local info    = Library.info [receiver.client.id]
+    local info = Library.info [receiver.client.id]
     if not info then
       return
     end
@@ -255,6 +255,7 @@ return function (loader)
       }
     elseif result.finished then
       info.results [iterator.identifier] = nil
+      iterator.identifier = -math.huge
       return nil
     else
       table.remove (results, 1)
@@ -268,7 +269,6 @@ return function (loader)
 
   function Iterator.__gc (iterator)
     local info = Library.info [iterator.client]
-    info.results [iterator.identifier] = nil
     if loader.js then
       Scheduler.addthread (function ()
         iterator.client.server.cancel {
@@ -283,6 +283,7 @@ return function (loader)
         filter = iterator.token,
       }
     end
+    info.results [iterator.identifier] = nil
   end
 
   function Operation.__call (operation, parameters, options)
@@ -311,7 +312,6 @@ return function (loader)
     local operator   = table.concat (path.keys, ":")
     local wrapper    = Client.methods [operator]
     local wrapperco  = wrapper and path.coroutine.create (wrapper) or nil
-    client._results [identifier] = {}
     if wrapperco then
       path.coroutine.resume (wrapperco, operation, parameters, options)
     end
@@ -324,6 +324,7 @@ return function (loader)
     })
     local result = info.receiver (identifier)
     if not result then
+      info.results [identifier] = nil
       return nil, {
         _ = i18n ["server:timeout"],
       }
@@ -335,7 +336,6 @@ return function (loader)
         identifier = result.identifier
       }
     end
-    info.results [identifier] = nil
     -- Special case: password size
     if password and #password < Configuration.library.password then
       local reason = i18n {
@@ -352,6 +352,12 @@ return function (loader)
         result.error.reasons [#result.error.reasons+1] = reason
       end
     end
+    info.results [identifier] = nil
+    local retry = Client.methods.fix_authentication (operation, parameters, result)
+    if retry and not info.retry then
+      info.retry = true
+      return operation (parameters, options)
+    end
     if wrapperco then
       path.coroutine.resume (wrapperco, result)
     end
@@ -363,6 +369,26 @@ return function (loader)
   end
 
   Client.methods = {}
+
+  Client.methods.fix_authentication = function (operation, parameters, result)
+    local path = Library.info [operation]
+    local info = Library.info [path.client]
+    if result.success then
+      return false
+    end
+    if result.error and result.error.reasons then
+      for _, reason in ipairs (result.error.reasons) do
+        if  reason._   == "check:token:invalid"
+        and reason.key == "authentication" then
+          parameters.authentication = nil
+          info.authentication       = nil
+          info.data.authentication  = nil
+          return true
+        end
+      end
+    end
+    return false
+  end
 
   Client.methods ["user:create"] = function (operation, parameters)
     local path = Library.info [operation]

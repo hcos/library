@@ -13,9 +13,6 @@ return function (--[[loader]])
     ["server:stop"] = {
       en = "Stop the server",
     },
-    ["server:version"] = {
-      en = "Show the server version",
-    },
     ["flag:clean"] = {
       en = "Clean database",
     },

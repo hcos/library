@@ -14,7 +14,6 @@ return function (loader)
   local Time          = loader.load "cosy.time"
   local Token         = loader.load "cosy.token"
   local Value         = loader.load "cosy.value"
-  local Layer         = loader.require "layeredata"
   local Posix         = loader.require "posix"
   local Websocket     = loader.require "websocket"
 
@@ -31,6 +30,7 @@ return function (loader)
     "cosy.methods",
     "cosy.server",
     "cosy.library",
+    "cosy.parameters",
   }
   i18n._locale = Configuration.locale
 
@@ -98,7 +98,7 @@ return function (loader)
     local info = store / "info"
     result ["#user"   ] = info ["#user"   ] or 0
     result ["#project"] = info ["#project"] or 0
-    for id in Layer.pairs (Configuration.resource.project ["/"]) do
+    for id in pairs (Configuration.resource.project ["/"]) do
       result ["#" .. id] = info ["#" .. id] or 0
     end
     return result
@@ -237,9 +237,9 @@ return function (loader)
   function Methods.user.create (request, store, try_only)
     Parameters.check (store, request, {
       required = {
-        identifier = Parameters.resource.identifier,
+        identifier = Parameters.user.new_identifier,
         password   = Parameters.password.checked,
-        email      = Parameters.email,
+        email      = Parameters.user.new_email,
         tos_digest = Parameters.tos.digest,
         locale     = Parameters.locale,
       },
@@ -249,18 +249,6 @@ return function (loader)
         administration = Parameters.token.administration,
       },
     })
-    if store / "email" / request.email then
-      error {
-        _     = i18n ["email:exist"],
-        email = request.email,
-      }
-    end
-    if store / "data" / request.identifier then
-      error {
-        _        = i18n ["identifier:exist"],
-        identifier = request.identifier,
-      }
-    end
     local email = store / "email" + request.email
     email.identifier = request.identifier
     if request.locale == nil then
@@ -279,30 +267,38 @@ return function (loader)
     user.type        = "user"
     local info = store / "info"
     info ["#user"] = (info ["#user"] or 0) + 1
+    if  not Configuration.dev_mode
+    and (request.captcha == nil or request.captcha == "")
+    and not request.administration then
+      error {
+        _   = i18n ["captcha:missing"],
+        key = "captcha"
+      }
+    end
     if try_only then
       return true
     end
     -- Captcha validation must be done only once,
     -- so it must be __after__ the `try_only`.`
     if request.captcha then
-      local url  = "https://www.google.com/recaptcha/api/siteverify"
-      local body = "secret="    .. Configuration.recaptcha.private_key
-                .. "&response=" .. request.captcha
-                .. "&remoteip=" .. request.ip
-      local response, status = loader.request (url, body)
-      assert (status == 200)
-      response = Json.decode (response)
-      assert (response)
-      if not response.success then
-        error {
-          _          = i18n ["captcha:failure"],
-          identifier = request.identifier,
-        }
+      if not Configuration.dev_mode then
+        local url  = "https://www.google.com/recaptcha/api/siteverify"
+        local body = "secret="    .. Configuration.recaptcha.private_key
+                  .. "&response=" .. request.captcha
+                  .. "&remoteip=" .. request.ip
+        local response, status = loader.request (url, body)
+        assert (status == 200)
+        response = Json.decode (response)
+        assert (response)
+        if not response.success then
+          error {
+            _ = i18n ["captcha:failure"],
+          }
+        end
       end
     elseif not request.administration then
       error {
-        _          = i18n ["method:administration-only"],
-        identifier = request.identifier,
+        _ = i18n ["method:administration-only"],
       }
     end
     Email.send {
@@ -432,7 +428,7 @@ return function (loader)
       },
       optional = {
         avatar       = Parameters.avatar,
-        email        = Parameters.email,
+        email        = Parameters.user.new_email,
         homepage     = Parameters.homepage,
         locale       = Parameters.locale,
         name         = Parameters.name,
@@ -442,13 +438,7 @@ return function (loader)
       },
     })
     local user = request.authentication.user
-    if request.email and user.email ~= request.email then
-      if store / "email" / request.email then
-        error {
-          _     = i18n ["email:exist"],
-          email = request.email,
-        }
-      end
+    if request.email then
       local oldemail      = store / "email" / user.email
       local newemail      = store / "email" + request.email
       newemail.identifier = oldemail.identifier
@@ -471,8 +461,11 @@ return function (loader)
       }
     end
     if request.avatar then
-      user.avatar = request.avatar.normal
-      user.icon   = request.avatar.icon
+      user.avatar = {
+        full  = request.avatar.normal,
+        icon  = request.avatar.icon,
+        ascii = request.avatar.ascii,
+      }
     end
     for _, key in ipairs { "name", "homepage", "organization", "locale" } do
       if request [key] then
@@ -695,7 +688,7 @@ return function (loader)
     info ["#project"] = info ["#project"] - 1
   end
 
-  for id in Layer.pairs (Configuration.resource.project ["/"]) do
+  for id in pairs (Configuration.resource.project ["/"]) do
 
     Methods [id] = {}
     local methods = Methods [id]
