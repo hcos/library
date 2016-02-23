@@ -1,12 +1,12 @@
 return function (loader)
 
   local Configuration = loader.load "cosy.configuration"
-  local CSocket       = loader.load "cosy.socket"
   local I18n          = loader.load "cosy.i18n"
   local Logger        = loader.load "cosy.logger"
   local Redis         = loader.load "cosy.redis"
   local Scheduler     = loader.load "cosy.scheduler"
   local Value         = loader.load "cosy.value"
+  local Socket        = loader.require "socket"
   local Smtp          = loader.require "socket.smtp"
   local Ssl           = loader.require "ssl"
   if not Ssl then
@@ -33,7 +33,7 @@ return function (loader)
   local make_socket = {}
 
   function make_socket.async ()
-    local result = CSocket ()
+    local result = Scheduler.wrap (Socket.tcp ())
     result:settimeout (Configuration.smtp.timeout)
     result:setoption ("keepalive"  , true)
     result:setoption ("reuseaddr"  , true)
