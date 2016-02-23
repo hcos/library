@@ -7,7 +7,6 @@ return function (loader)
   local I18n          = loader.load "cosy.i18n"
   local Logger        = loader.load "cosy.logger"
   local Parameters    = loader.load "cosy.parameters"
-  local Scheduler     = loader.load "cosy.scheduler"
   local Token         = loader.load "cosy.token"
   local Value         = loader.load "cosy.value"
   local Posix         = loader.require "posix"
@@ -133,10 +132,10 @@ return function (loader)
       }
     })
     local server_socket
-    local running       = Scheduler.running ()
+    local running       = loader.scheduler.running ()
     local results       = {}
-    local addserver     = Scheduler.addserver
-    Scheduler.addserver = function (s, f)
+    local addserver     = loader.scheduler.addserver
+    loader.scheduler.addserver = function (s, f)
       server_socket = s
       addserver (s, f)
     end
@@ -151,14 +150,14 @@ return function (loader)
             if message then
               local value = Value.decode (message)
               results [#results+1] = value
-              Scheduler.wakeup (running)
+              loader.scheduler.wakeup (running)
             end
           end
-          Scheduler.removeserver (server_socket)
+          loader.scheduler.removeserver (server_socket)
         end
       }
     }
-    Scheduler.addserver = addserver
+    loader.scheduler.addserver = addserver
     local pid = Posix.fork ()
     if pid == 0 then
       local ev = require "ev"
@@ -184,7 +183,7 @@ return function (loader)
       end
       local result = results [1]
       if not result then
-        Scheduler.sleep (Configuration.filter.timeout)
+        loader.scheduler.sleep (Configuration.filter.timeout)
         result = results [1]
       end
       if result then

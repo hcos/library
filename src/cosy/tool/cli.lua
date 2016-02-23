@@ -2,7 +2,6 @@ package.path    = package.path .. ";./?.lua"
 
 local Loader    = require "cosy.loader.lua" {}
 local I18n      = Loader.load "cosy.i18n"
-local Scheduler = Loader.load "cosy.scheduler"
 local Layer     = Loader.require "cosy.formalism.layer"
 local Arguments = Loader.require "argparse"
 local Colors    = Loader.require "ansicolors"
@@ -157,14 +156,14 @@ if not all_found then
   os.exit (1)
 end
 
-Scheduler.addthread (function ()
+Loader.scheduler.addthread (function ()
   mytool.run {
     model     = mytool,
-    scheduler = Scheduler,
+    scheduler = Loader.scheduler,
   }
 end)
 
-Scheduler.loop ()
+Loader.scheduler.loop ()
 
 do
   local directory = os.tmpname ()

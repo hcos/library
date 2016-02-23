@@ -1,7 +1,6 @@
 return function (loader)
 
   local I18n          = loader.load "cosy.i18n"
-  local Scheduler     = loader.load "cosy.scheduler"
   local Webclient     = loader.load "cosy.webclient"
 
   local i18n = I18n.load {
@@ -79,7 +78,7 @@ return function (loader)
   function Profile.__call (_, options)
     options = options or {}
     Webclient (function ()
-      local co   = Scheduler.running ()
+      local co   = loader.scheduler.running ()
       local user = Webclient.client.user.authentified_as {}
       options.username = options.username or user.identifier
       if user and options.username == user.identifier then
@@ -102,9 +101,9 @@ return function (loader)
               latitude  = p.coords.latitude,
               longitude = p.coords.longitude,
             }
-            Scheduler.wakeup (co)
+            loader.scheduler.wakeup (co)
           end)
-          Scheduler.sleep (-math.huge)
+          loader.scheduler.sleep (-math.huge)
         end
         Webclient.jQuery "#position":locationpicker (Webclient.tojs {
           location     = info.position,
@@ -149,7 +148,7 @@ return function (loader)
             reader:readAsDataURL (button:prop "files" [0])
           end)
           Webclient.jQuery "#accept":click (function ()
-            Scheduler.wakeup (co)
+            loader.scheduler.wakeup (co)
             return false
           end)
           Webclient.jQuery "#delete":click (function ()
@@ -164,7 +163,7 @@ return function (loader)
             end)
             return false
           end)
-          Scheduler.sleep (-math.huge)
+          loader.scheduler.sleep (-math.huge)
           local email        = Webclient.jQuery "#email":val ()
           local name         = Webclient.jQuery "#name":val ()
           local organization = Webclient.jQuery "#organization":val ()

@@ -8,7 +8,6 @@ return function (loader)
   local Methods       = loader.load "cosy.methods"
   local Nginx         = loader.load "cosy.nginx"
   local Redis         = loader.load "cosy.redis"
-  local Scheduler     = loader.load "cosy.scheduler"
   local Store         = loader.load "cosy.store"
   local Token         = loader.load "cosy.token"
   local Value         = loader.load "cosy.value"
@@ -101,9 +100,9 @@ return function (loader)
     App.server            = {}
     App.server.passphrase = Digest (math.random ())
     App.server.token      = Token.administration ()
-    local addserver       = Scheduler.addserver
+    local addserver       = loader.scheduler.addserver
 
-    Scheduler.addserver   = function (s, f)
+    loader.scheduler.addserver   = function (s, f)
       local ok, port = s:getsockname ()
       if ok then
         App.server.socket = s
@@ -135,7 +134,7 @@ return function (loader)
               request = message,
             }
             if message then
-              Scheduler.addthread (function ()
+              loader.scheduler.addthread (function ()
                 local result, err
                 local decoded, request = pcall (Value.decode, message)
                 if not decoded or type (request) ~= "table" then
@@ -234,7 +233,7 @@ return function (loader)
         end
       }
     }
-    Scheduler.addserver = addserver
+    loader.scheduler.addserver = addserver
 
     Logger.debug {
       _    = i18n ["websocket:listen"],
@@ -242,8 +241,8 @@ return function (loader)
       port = Configuration.server.port,
     }
 
-    Scheduler.addthread (function ()
-      Scheduler.execute ([[
+    loader.scheduler.addthread (function ()
+      loader.scheduler.execute ([[
         rm -rf {{{logs}}}
       ]] % {
         logs = Configuration.filter.log % { pid = "*" },
@@ -253,7 +252,7 @@ return function (loader)
     Redis.start ()
     Nginx.start ()
 
-    Scheduler.addthread (function ()
+    loader.scheduler.addthread (function ()
       local store = Store.new ()
       local view  = Store.toview (store)
       view = view % Configuration.server.token
@@ -280,12 +279,12 @@ return function (loader)
       Posix.chmod (Configuration.server.data, "0600")
     end
 
-    Scheduler.loop ()
+    loader.scheduler.loop ()
   end
 
   function Server.stop ()
     os.remove (Configuration.server.data)
-    Scheduler.removeserver (App.server.socket)
+    loader.scheduler.removeserver (App.server.socket)
     Nginx.stop ()
     Redis.stop ()
   end

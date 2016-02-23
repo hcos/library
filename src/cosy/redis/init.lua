@@ -6,7 +6,6 @@ return function (loader)
 
   local Configuration = loader.load "cosy.configuration"
   local File          = loader.load "cosy.file"
-  local Scheduler     = loader.load "cosy.scheduler"
   local Socket        = loader.require "socket"
   local Redis_Client  = loader.require "redis"
   local Posix         = loader.require "posix"
@@ -113,7 +112,7 @@ return function (loader)
     local host      = Configuration.redis.interface
     local port      = Configuration.redis.port
     local database  = Configuration.redis.database
-    local socket    = Scheduler.wrap (Socket.tcp ())
+    local socket    = loader.scheduler.wrap (Socket.tcp ())
     socket:connect (host, port)
     local client = Redis_Client.connect {
       socket    = socket,
