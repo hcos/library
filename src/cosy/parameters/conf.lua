@@ -5,7 +5,7 @@ return function (loader)
   local Scheduler     = loader.load "cosy.scheduler"
   local Default       = loader.load "cosy.configuration.layers".default
   local Layer         = loader.require "layeredata"
-  local this          = Layer.reference (false)
+  local this          = Layer.reference (Default)
 
   Configuration.load "cosy.methods"
 
