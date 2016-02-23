@@ -7,7 +7,7 @@ return function (loader)
   local Configuration = loader.load "cosy.configuration"
   local I18n          = loader.load "cosy.i18n"
   local Logger        = loader.load "cosy.logger"
-  local Time          = loader.load "cosy.time"
+  local Time          = loader.require "socket".gettime
   local Bcrypt        = loader.require "bcrypt"
 
   Configuration.load "cosy.password"

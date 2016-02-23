@@ -6,10 +6,10 @@ return function (loader)
 
   local Configuration = loader.load "cosy.configuration"
   local Digest        = loader.load "cosy.digest"
-  local Random        = loader.load "cosy.random"
-  local Time          = loader.load "cosy.time"
   local App           = loader.load "cosy.configuration.layers".app
   local Jwt           = loader.require "jwt"
+  local Time          = loader.require "socket".gettime
+  local Random        = math.randomseed (Time ())
 
   Configuration.load {
     "cosy.nginx",

@@ -7,7 +7,6 @@ return function (loader)
   local Logger        = loader.load "cosy.logger"
   local Methods       = loader.load "cosy.methods"
   local Nginx         = loader.load "cosy.nginx"
-  local Random        = loader.load "cosy.random"
   local Redis         = loader.load "cosy.redis"
   local Scheduler     = loader.load "cosy.scheduler"
   local Store         = loader.load "cosy.store"
@@ -16,6 +15,7 @@ return function (loader)
   local App           = loader.load "cosy.configuration.layers".app
   local Posix         = loader.require "posix"
   local Websocket     = loader.require "websocket"
+  local Time          = loader.require "socket".gettime
 
   Configuration.load {
     "cosy.server",
@@ -96,8 +96,9 @@ return function (loader)
   end
 
   function Server.start ()
+    local random          = math.randomseed (Time ())
     App.server            = {}
-    App.server.passphrase = Digest (Random ())
+    App.server.passphrase = Digest (random ())
     App.server.token      = Token.administration ()
     local addserver       = Scheduler.addserver
 
