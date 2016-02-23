@@ -16,10 +16,12 @@
     <link href="/css/font-awesome.min.css"
           rel="stylesheet"
           type="text/css" />
+    <link href="/editor.css"
+          rel="stylesheet"
+          type="text/css" />
     <title>CosyVerif</title>
   </head>
   <body>
-    <div id="headbar"></div>
     <div class="container-fluid main-content">
       <div class="row">
         <div id="main"></div>
@@ -46,8 +48,7 @@
           local Webclient = loader.load "cosy.webclient"
           loader.scheduler.addthread (function ()
             Webclient.init ()
-            loader.load "cosy.webclient.headbar"   ()
-            loader.load "cosy.webclient.dashboard" ()
+            loader.load "cosy.webclient.editor" ()
           end)
           loader.scheduler.loop ()
         end, function (err)
@@ -74,6 +75,10 @@
             async defer>
     </script>
     <script src="/js/lua.vm.js"
+            type="text/javascript"
+            async defer>
+    </script>
+    <script src="/js/d3.js"
             type="text/javascript"
             async defer>
     </script>

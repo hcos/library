@@ -57,16 +57,19 @@ return function (loader)
     Dashboard.map = nil
     while true do
       local info = Webclient.client.server.information {}
+      local data = {}
       for k, v in pairs (info) do
         local key = k:match "^#(.*)$"
         if key then
-          info ["count-" .. key] = i18n ["dashboard:count-" .. key] % { count = v }
+          data ["count-" .. key] = i18n ["dashboard:count-" .. key] % { count = v }
+        else
+          data [k] = v
         end
       end
       Webclient.show {
         where    = "main",
         template = Dashboard.template.anonymous,
-        data     = info,
+        data     = data,
         i18n     = i18n,
       }
       if not Dashboard.map then
