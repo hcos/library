@@ -6,6 +6,7 @@ return function (loader)
   local Logger        = loader.load "cosy.logger"
   local Scheduler     = loader.load "cosy.scheduler"
   local Lfs           = loader.require "lfs"
+  local Posix         = loader.require "posix"
 
   Configuration.load {
     "cosy.nginx",
@@ -20,6 +21,7 @@ return function (loader)
   local configuration_template = [[
 error_log   error.log;
 pid         {{{pid}}};
+{{{user}}}
 
 worker_processes 1;
 events {
@@ -33,7 +35,7 @@ http {
   types_hash_max_size   2048;
 
   proxy_temp_path       proxy;
-  proxy_cache_path      cache   keys_zone=foreign:10m;
+  proxy_cache_path      cache   keys_zone=foreign:10m max_size=1g inactive=1d use_temp_path=off;
   lua_package_path      "{{{path}}}";
   lua_package_cpath     "{{{cpath}}}";
 
@@ -53,8 +55,18 @@ http {
 
     location / {
       add_header  Access-Control-Allow-Origin *;
-      root        {{{www}}};
+      root        {{{source}}}/cosy/www;
       index       index.html;
+      try_files   $uri $uri.html $uri/ /fallback/$uri;
+    }
+
+    location /fallback {
+      add_header  Access-Control-Allow-Origin *;
+      root        {{{prefix}}}/share/cosy/www;
+      access_by_lua '
+        ngx.var.target = ngx.var.uri:match "/fallback/(.*)"
+      ';
+      try_files     $target =404;
     }
 
     location = /setup {
@@ -65,32 +77,22 @@ http {
       ';
     }
 
-    location /upload {
-      limit_except                POST { deny all; }
-      client_body_in_file_only    on;
-      client_body_temp_path       {{{uploads}}};
-      client_body_buffer_size     128K;
-      client_max_body_size        10240K;
-      proxy_pass_request_headers  on;
-      proxy_set_header            X-File $request_body_file;
-      proxy_set_body              off;
-      proxy_redirect              off;
-      proxy_pass                  http://localhost:{{{port}}}/uploaded;
-    }
-
-    location /uploaded {
-      content_by_lua '
-        local md5      = require "md5"
-        local filename = ngx.var.http_x_file
-        local file     = assert (io.open (filename))
-        local contents = file:read "*all"
-        file:close ()
-        local sum      = md5.sumhexa (contents)
-        ngx.log (ngx.ERR, filename)
-        ngx.log (ngx.ERR, filename:gsub ("([^/]+)$", sum))
-        os.rename (filename, filename:gsub ("([^/]+)$", sum))
-        ngx.say (sum)
+    location /template {
+      default_type  text/html;
+      root          /;
+      set           $target   "";
+      access_by_lua '
+        local name     = ngx.var.uri:match "/template/(.*)"
+        local path     = "{{{source}}}/?.html;{{{source}}}/?/init.html"
+        local filename, err = package.searchpath (name, path)
+        if filename then
+          ngx.var.target = filename
+        else
+          ngx.log (ngx.ERR, "failed to locate template: " .. name .. ", " .. tostring (err))
+          return ngx.exit (404)
+        end
       ';
+      try_files     $target =404;
     }
 
     location /lua {
@@ -155,36 +157,17 @@ http {
     location /ws {
       proxy_pass          http://{{{wshost}}}:{{{wsport}}};
       proxy_http_version  1.1;
-      proxy_set_header    Upgrade $http_upgrade;
+      proxy_set_header    Upgrade    "websocket";
       proxy_set_header    Connection "upgrade";
     }
 
-    location /hook {
-      content_by_lua '
-        local temporary = os.tmpname ()
-        local file      = io.open (temporary, "w")
-        file:write [==[
-          git pull --quiet --force
-          luarocks install --local --force --only-deps cosyverif
-          for rock in $(luarocks list --outdated --porcelain | cut -f 1)
-          do
-          luarocks install --local --force ${rock}
-          done
-          rm --force $0
-        ]==]
-        file:close ()
-        os.execute ("bash " .. temporary .. " &")
-      ';
-    }
-
-{{{redirects}}}
   }
 }
 ]]
 
   local function sethostname ()
     local handle = io.popen "hostname"
-    local result = handle:read "*all"
+    local result = handle:read "*l"
     handle:close()
     Default.http.hostname = result
     Logger.info {
@@ -194,76 +177,34 @@ http {
   end
 
   function Nginx.configure ()
-    local resolver
-    do
-      local file = io.open "/etc/resolv.conf"
-      if not file then
-        Logger.error {
-          _ = i18n ["nginx:no-resolver"],
-        }
-      end
-      local result = {}
-      for line in file:lines () do
-        local address = line:match "nameserver%s+(%S+)"
-        if address then
-          if address:find ":" then
-            address = "[{{{address}}}]" % { address = address }
-          end
-          result [#result+1] = address
-        end
-      end
-      file:close ()
-      resolver = table.concat (result, " ")
-    end
-    os.execute ([[
-if [ ! -d {{{directory}}} ]; then
-  mkdir -p {{{directory}}}
-fi
-if [ ! -d {{{uploads}}} ]; then
-  mkdir -p {{{uploads}}}
-fi
-    ]] % {
-      directory = Configuration.http.directory,
-      uploads   = Configuration.http.uploads,
-    })
-    local locations = {}
-    for url, remote in pairs (Configuration.dependencies) do
-      if type (remote) == "string" and remote:match "^http" then
-        locations [#locations+1] = [==[
-    location {{{url}}} {
-      proxy_cache foreign;
-      expires     modified  1d;
-      resolver    {{{resolver}}};
-      set         $target   "{{{remote}}}";
-      proxy_pass  $target$is_args$args;
-    }
-          ]==] % {
-            url      = url,
-            remote   = remote,
-            resolver = resolver,
-          }
-      end
+    if not Lfs.attributes (Configuration.http.directory, "mode") then
+      Lfs.mkdir (Configuration.http.directory)
     end
     if not Configuration.http.hostname then
       sethostname ()
     end
+    local user
+    if (Posix.geteuid () == 0 and os.getenv "USER")
+    or Configuration.http.port < 1024 then
+      user = "user " .. os.getenv "USER" .. ";"
+    end
     local configuration = configuration_template % {
+      prefix         = loader.prefix,
+      source         = loader.source,
       nginx          = Configuration.http.nginx,
       host           = Configuration.http.interface,
       port           = Configuration.http.port,
-      www            = Configuration.http.www,
-      uploads        = Configuration.http.uploads,
       pid            = Configuration.http.pid,
       wshost         = Configuration.server.interface,
       wsport         = Configuration.server.port,
       redis_host     = Configuration.redis.interface,
       redis_port     = Configuration.redis.port,
       redis_database = Configuration.redis.database,
-      path           = package.path,
-      cpath          = package.cpath,
-      redirects      = table.concat (locations, "\n"),
+      user           = user,
+      path           = package. path:gsub ("5%.2", "5.1") .. ";" .. package. path,
+      cpath          = package.cpath:gsub ("5%.2", "5.1") .. ";" .. package.cpath,
     }
-    local file = io.open (Configuration.http.configuration, "w")
+    local file = assert (io.open (Configuration.http.configuration, "w"))
     file:write (configuration)
     file:close ()
   end
@@ -271,67 +212,132 @@ fi
   function Nginx.start ()
     Nginx.stop      ()
     Nginx.configure ()
+    Nginx.bundle    ()
     os.execute ([[
-      {{{nginx}}} -p {{{directory}}} -c {{{configuration}}} 2> {{{error}}}
+      mkdir -p {{{dir}}}
     ]] % {
-      nginx         = Configuration.http.nginx .. "/sbin/nginx",
-      directory     = Configuration.http.directory,
-      configuration = Configuration.http.configuration,
-      error         = Configuration.http.error,
+      dir = Configuration.http.directory .. "/logs"
     })
+    if Posix.fork () == 0 then
+      if Configuration.http.port < 1024 then
+        assert (Posix.execp ("sudo", {
+          Configuration.http.nginx .. "/sbin/nginx",
+          "-q",
+          "-p", Configuration.http.directory,
+          "-c", Configuration.http.configuration,
+        }))
+      else
+        assert (Posix.execp (Configuration.http.nginx .. "/sbin/nginx", {
+          "-q",
+          "-p", Configuration.http.directory,
+          "-c", Configuration.http.configuration,
+        }))
+      end
+    end
     Nginx.stopped = false
   end
 
+  local function getpid ()
+    local nginx_file = io.open (Configuration.http.pid, "r")
+    if nginx_file then
+      local pid = nginx_file:read "*a"
+      nginx_file:close ()
+      return pid:match "%S+"
+    end
+  end
+
   function Nginx.stop ()
-    os.execute ([[
-      [ -f {{{pid}}} ] && {
-        kill -s QUIT $(cat {{{pid}}})
-      }
-      rm -rf {{{directory}}} {{{pid}}} {{{error}}} {{{configuration}}}
-    ]] % {
-      pid           = Configuration.http.pid,
-      configuration = Configuration.http.configuration,
-      error         = Configuration.http.error,
-      directory     = Configuration.http.directory,
-    })
+    local pid = getpid ()
+    if pid then
+      if Configuration.http.port < 1024 then
+        Scheduler.execute ("sudo kill -{{{signal}}} {{{pid}}}" % {
+          signal = 15,
+          pid    = pid,
+        })
+      else
+        Posix.kill (pid, 15) -- term
+      end
+      Posix.wait (pid)
+    end
+    os.remove (Configuration.http.configuration)
     Nginx.directory = nil
     Nginx.stopped   = true
+    os.remove (Configuration.http.bundle)
   end
 
   function Nginx.update ()
     Nginx.configure ()
-    os.execute ([[
-      [ -f {{{pidfile}}} ] && {
-        kill -s HUP $(cat {{{pidfile}}})
-      }
-    ]] % {
-      pidfile = Configuration.http.pid,
-    })
+    local pid = getpid ()
+    if pid then
+      if Configuration.http.port < 1024 then
+        Scheduler.execute ("sudo kill -{{{signal}}} {{{pid}}}" % {
+          signal = 1,
+          pid    = pid,
+        })
+      else
+        Posix.kill (pid, 1) -- hup
+      end
+    end
   end
 
-  loader.hotswap.on_change ["cosy:configuration"] = function ()
-    Nginx.update ()
-  end
-
-  Scheduler.addthread (function ()
-    repeat
-      local count = 0
-      for entry in Lfs.dir (Configuration.http.uploads) do
-        if entry ~= "." and entry ~= ".." then
-          local filename     = Configuration.http.uploads .. "/" .. entry
-          local modification = Lfs.attributes (filename, "modification")
-          if os.difftime (os.time (), modification) > 2 * Configuration.upload.timeout then
-            os.remove (filename)
+  function Nginx.bundle ()
+    os.remove (Configuration.http.bundle)
+    Scheduler.addthread (function ()
+      if Nginx.in_bundle or Configuration.dev_mode then
+        return
+      end
+      Nginx.in_bundle = true
+      local modules   = {}
+      local function find (path, prefix)
+        if path:match "%.$" then
+          return
+        end
+        if  Lfs.attributes (path, "mode") == "file"
+        and path:match "%.lua$"
+        then
+          local module = path:match "/([^/]+)%.lua$"
+          if module == "init" then
+            modules [#modules+1] = prefix
+          else
+            modules [#modules+1] = prefix and prefix .. "." .. module or module
           end
-          count = count + 1
-          Scheduler.sleep (Configuration.upload.timeout / count / 2)
+        elseif Lfs.attributes (path, "mode") == "directory"
+        then
+          local module = path:match "/([^/]+)$"
+          local subprefix
+          if prefix == nil then
+            subprefix = false
+          elseif prefix == false then
+            subprefix = module
+          else
+            subprefix = prefix .. "." .. module
+          end
+          for sub in Lfs.dir (path) do
+            find (path .. "/" ..sub, subprefix)
+          end
         end
       end
-      if count == 0 then
-        Scheduler.sleep (Configuration.upload.timeout)
-      end
-    until Nginx.stopped
-  end)
+      find (loader.lua_modules)
+      table.sort (modules)
+      local temp = os.tmpname ()
+      Scheduler.execute ([[
+        "{{{prefix}}}/bin/amalg.lua" -o "{{{temp}}}" -d {{{modules}}}
+        if "{{{prefix}}}/bin/lua" "{{{temp}}}"; then cp "{{{temp}}}" "{{{target}}}"; fi
+      ]] % {
+        prefix  = loader.prefix,
+        temp    = temp,
+        target  = Configuration.http.bundle,
+        modules = table.concat (modules, " "),
+      })
+      os.remove (temp)
+      Nginx.in_bundle = nil
+    end)
+  end
+
+  loader.hotswap.on_change.nginx = function ()
+    Nginx.update ()
+    Nginx.bundle ()
+  end
 
   return Nginx
 

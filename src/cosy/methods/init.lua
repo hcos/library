@@ -14,8 +14,7 @@ return function (loader)
   local Time          = loader.load "cosy.time"
   local Token         = loader.load "cosy.token"
   local Value         = loader.load "cosy.value"
-  local Http          = loader.require "copas.http"
-  local Layer         = loader.require "layeredata"
+  local Posix         = loader.require "posix"
   local Websocket     = loader.require "websocket"
 
   Configuration.load {
@@ -30,6 +29,8 @@ return function (loader)
   local i18n   = I18n.load {
     "cosy.methods",
     "cosy.server",
+    "cosy.library",
+    "cosy.parameters",
   }
   i18n._locale = Configuration.locale
 
@@ -90,10 +91,17 @@ return function (loader)
 
   function Methods.server.information (request, store)
     Parameters.check (store, request, {})
-    return {
+    local result = {
       name    = Configuration.http.hostname,
       captcha = Configuration.recaptcha.public_key,
     }
+    local info = store / "info"
+    result ["#user"   ] = info ["#user"   ] or 0
+    result ["#project"] = info ["#project"] or 0
+    for id in pairs (Configuration.resource.project ["/"]) do
+      result ["#" .. id] = info ["#" .. id] or 0
+    end
+    return result
   end
 
   function Methods.server.tos (request, store)
@@ -114,10 +122,12 @@ return function (loader)
       locale = locale,
     }
     return {
-      tos        = tos,
-      tos_digest = Digest (tos),
+      text   = tos,
+      digest = Digest (tos),
     }
   end
+
+  local filters = setmetatable ({}, { __mode = "v" })
 
   function Methods.server.filter (request, store)
     local back_request = {}
@@ -132,21 +142,19 @@ return function (loader)
         authentication = Parameters.token.authentication,
       }
     })
-    local server_socket, server_port
+    local server_socket
     local running       = Scheduler.running ()
     local results       = {}
     local addserver     = Scheduler.addserver
     Scheduler.addserver = function (s, f)
-      local _, port = assert (s:getsockname ())
       server_socket = s
-      server_port   = port
       addserver (s, f)
     end
     Websocket.server.copas.listen {
       interface = Configuration.server.interface,
       port      = 0,
       protocols = {
-        ["cosyfilter"] = function (ws)
+        ["cosy:filter"] = function (ws)
           ws:send (Value.expression (back_request))
           while ws.state == "OPEN" do
             local message = ws:receive ()
@@ -161,26 +169,63 @@ return function (loader)
       }
     }
     Scheduler.addserver = addserver
-    os.execute ([[luajit -e '_G.port = {{{port}}}; require "cosy.methods.filter"' &]] % {
-      port = server_port,
-    })
-    return function ()
-      repeat
-        local result = results [1]
-        if result then
-          table.remove (results, 1)
-          if result.success then
-            return result.response
-          else
-            return nil, {
-              _      = i18n ["server:filter:error"],
-              reason = result.error,
-            }
-          end
-        else
-          Scheduler.sleep (Configuration.filter.timeout)
+    local pid = Posix.fork ()
+    if pid == 0 then
+      local ev = require "ev"
+      ev.Loop.default:fork ()
+      local Filter  = loader.load "cosy.methods.filter"
+      local _, port = server_socket:getsockname ()
+      Filter.start {
+        url = "ws://{{{interface}}}:{{{port}}}" % {
+          interface = Configuration.server.interface,
+          port      = port,
+        },
+      }
+      os.exit (0)
+    end
+    local token = Token.identification {
+      pid = pid,
+    }
+    local iterator
+    iterator = function ()
+      if not filters [token] then
+        filters [token] = iterator
+        return token
+      end
+      local result = results [1]
+      if not result then
+        Scheduler.sleep (Configuration.filter.timeout)
+        result = results [1]
+      end
+      if result then
+        table.remove (results, 1)
+      end
+      if result and result.success then
+        if result.finished then
+          filters [token] = nil
         end
-      until result and result.finished
+        return result.response
+      else
+        filters [token] = nil
+        Posix.kill (pid, 9)
+        return nil, {
+          _      = i18n ["server:filter:error"],
+          reason = result and result.error or i18n ["server:timeout"] % {},
+        }
+      end
+    end
+    return iterator
+  end
+
+  function Methods.server.cancel (request, store)
+    local raw = request.filter
+    Parameters.check (store, request, {
+      required = {
+        filter = Parameters.token.identification,
+      },
+    })
+    if filters [raw] then
+      Posix.kill (request.filter.pid, 9)
     end
   end
 
@@ -192,9 +237,9 @@ return function (loader)
   function Methods.user.create (request, store, try_only)
     Parameters.check (store, request, {
       required = {
-        identifier = Parameters.resource.identifier,
+        identifier = Parameters.user.new_identifier,
         password   = Parameters.password.checked,
-        email      = Parameters.email,
+        email      = Parameters.user.new_email,
         tos_digest = Parameters.tos.digest,
         locale     = Parameters.locale,
       },
@@ -204,39 +249,6 @@ return function (loader)
         administration = Parameters.token.administration,
       },
     })
-    if store / "email" / request.email then
-      error {
-        _     = i18n ["email:exist"],
-        email = request.email,
-      }
-    end
-    if store / "data" / request.identifier then
-      error {
-        _        = i18n ["identifier:exist"],
-        identifier = request.identifier,
-      }
-    end
-    if request.captcha then
-      local url  = "https://www.google.com/recaptcha/api/siteverify"
-      local body = "secret="    .. Configuration.recaptcha.private_key
-                .. "&response=" .. request.captcha
-                .. "&remoteip=" .. request.ip
-      local response, status = Http.request (url, body)
-      assert (status == 200)
-      response = Json.decode (response)
-      assert (response)
-      if not response.success then
-        error {
-          _          = i18n ["captcha:failure"],
-          identifier = request.identifier,
-        }
-      end
-    elseif not request.administration then
-      error {
-        _          = i18n ["method:administration-only"],
-        identifier = request.identifier,
-      }
-    end
     local email = store / "email" + request.email
     email.identifier = request.identifier
     if request.locale == nil then
@@ -253,8 +265,41 @@ return function (loader)
     user.reputation  = Configuration.reputation.initial
     user.status      = "active"
     user.type        = "user"
+    local info = store / "info"
+    info ["#user"] = (info ["#user"] or 0) + 1
+    if  not Configuration.dev_mode
+    and (request.captcha == nil or request.captcha == "")
+    and not request.administration then
+      error {
+        _   = i18n ["captcha:missing"],
+        key = "captcha"
+      }
+    end
     if try_only then
       return true
+    end
+    -- Captcha validation must be done only once,
+    -- so it must be __after__ the `try_only`.`
+    if request.captcha then
+      if not Configuration.dev_mode then
+        local url  = "https://www.google.com/recaptcha/api/siteverify"
+        local body = "secret="    .. Configuration.recaptcha.private_key
+                  .. "&response=" .. request.captcha
+                  .. "&remoteip=" .. request.ip
+        local response, status = loader.request (url, body)
+        assert (status == 200)
+        response = Json.decode (response)
+        assert (response)
+        if not response.success then
+          error {
+            _ = i18n ["captcha:failure"],
+          }
+        end
+      end
+    elseif not request.administration then
+      error {
+        _ = i18n ["method:administration-only"],
+      }
     end
     Email.send {
       locale  = user.locale,
@@ -383,7 +428,7 @@ return function (loader)
       },
       optional = {
         avatar       = Parameters.avatar,
-        email        = Parameters.email,
+        email        = Parameters.user.new_email,
         homepage     = Parameters.homepage,
         locale       = Parameters.locale,
         name         = Parameters.name,
@@ -393,13 +438,7 @@ return function (loader)
       },
     })
     local user = request.authentication.user
-    if request.email and user.email ~= request.email then
-      if store / "email" / request.email then
-        error {
-          _     = i18n ["email:exist"],
-          email = request.email,
-        }
-      end
+    if request.email then
       local oldemail      = store / "email" / user.email
       local newemail      = store / "email" + request.email
       newemail.identifier = oldemail.identifier
@@ -416,17 +455,17 @@ return function (loader)
     end
     if request.position then
       user.position = {
-        country        = request.position.country,
-        city           = request.position.city,
-        latitude       = request.position.latitude,
-        longitude      = request.position.longitude,
-        continent_code = request.position.continent_code,
-        country_code   = request.position.country_code,
-        timezone       = request.position.timezone,
+        address   = request.position.address,
+        latitude  = request.position.latitude,
+        longitude = request.position.longitude,
       }
     end
     if request.avatar then
-      user.avatar = request.avatar
+      user.avatar = {
+        full  = request.avatar.normal,
+        icon  = request.avatar.icon,
+        ascii = request.avatar.ascii,
+      }
     end
     for _, key in ipairs { "name", "homepage", "organization", "locale" } do
       if request [key] then
@@ -588,6 +627,8 @@ return function (loader)
     local user = request.authentication.user
     local _ = store / "email" - user.email
     local _ = store / "data"  - user.identifier
+    local info = store / "info"
+    info ["#user"] = info ["#user"] - 1
   end
 
   -- Project
@@ -617,6 +658,8 @@ return function (loader)
     project.permissions = {}
     project.identifier  = request.identifier
     project.type        = "project"
+    local info = store / "info"
+    info ["#project"] = (info ["#project"] or 0) + 1
   end
 
   function Methods.project.delete (request, store)
@@ -641,9 +684,11 @@ return function (loader)
       }
     end
     local _ = - project
+    local info = store / "info"
+    info ["#project"] = info ["#project"] - 1
   end
 
-  for id in Layer.pairs (Configuration.resource.project ["/"]) do
+  for id in pairs (Configuration.resource.project ["/"]) do
 
     Methods [id] = {}
     local methods = Methods [id]
@@ -676,6 +721,8 @@ return function (loader)
       resource.type        = id
       resource.username    = user.username
       resource.projectname = project.projectname
+      local info = store / "info"
+      info ["#" .. id] = (info ["#" .. id] or 0) + 1
     end
 
     function methods.copy (request, store)
@@ -707,6 +754,8 @@ return function (loader)
       resource.type        = id
       resource.username    = user.username
       resource.projectname = project.projectname
+      local info = store / "info"
+      info ["#" .. id] = info ["#" .. id] + 1
     end
 
     function methods.delete (request, store)
@@ -731,6 +780,8 @@ return function (loader)
         }
       end
       local _ = user - resource.id
+      local info = store / "info"
+      info ["#" .. id] = info ["#" .. id] - 1
     end
   end
 

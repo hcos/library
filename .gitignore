@@ -1,8 +1,15 @@
-# Profiling stuff:
-ProFi.lua
+# Generated stuff:
+/cosy-client-*.sh
+/coverage/
+/dump.rdb
+/luacov.report.out
+/luacov.stats.out
+/node_modules/
+/output/
+/rockspec/
 
 # User configuration:
-src/cosy.conf
+cosy.conf
 
 # All swap files:
 *.swp

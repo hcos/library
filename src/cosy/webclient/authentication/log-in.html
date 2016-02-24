@@ -1,0 +1,42 @@
+<div class="col-md-4 col-md-offset-4 col-centered">
+  <form>
+    <h2>{{log-in:title}}</h2>
+    <div id="identifier-group"
+         class="form-group">
+      <label class="control-label"
+             for="identifier">{{log-in:identifier}}</label>
+      <div class="input-group">
+        <span class="input-group-addon"><i class="fa fa-user" ></i></span>
+        <input type="text"
+               id="identifier"
+               class="form-control has-feedback"
+               placeholder="{{sign-up:identifier}}"
+               required autofocus />
+        </div>
+      <div id="identifier-error"
+           class="help-block with-errors"></div>
+    </div>
+    <div id="password-group"
+         class="form-group">
+      <label class="control-label"
+             for="password">{{log-in:password}}</label>
+      <div class="input-group">
+        <span class="input-group-addon"><i class="fa fa-key" ></i></span>
+        <input type="password"
+               id="password"
+               class="form-control has-feedback"
+               placeholder="{{log-in:password}}"
+               required>
+      </div>
+    </div>
+    <div class="form-group">
+      <div class="col-md-6 col-md-offset-3 col-centered">
+        <button id="accept"
+                class="btn btn-lg btn-primary btn-block btn-success"
+                type="submit">
+          <i class="fa fa-check"></i>
+        </button>
+      </div>
+    </div>
+  </form>
+</div>

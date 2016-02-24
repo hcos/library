@@ -1,13 +1,15 @@
 return function (loader)
 
   local Configuration = loader.load "cosy.configuration"
-  local Layer         = loader.require "layeredata"
 
   Configuration.load "cosy.methods"
 
   local result = {
     ["captcha:failure"] = {
       en = "captcha verification failed",
+    },
+    ["captcha:missing"] = {
+      en = "captcha validation is missing",
     },
     ["method:administration-only"] = {
       en = "method is reserved to server administrator",
@@ -29,6 +31,9 @@ return function (loader)
     },
     ["server:filter:error"] = {
       en = "filtering has failed, because {{{reason}}}",
+    },
+    ["server:cancel"] = {
+      en = "cancel an iterator on the server",
     },
     ["user:create"] = {
       en = "create a user account on the server",
@@ -89,9 +94,6 @@ return function (loader)
     },
     ["identifier:exist"] = {
       en = "identifier {{{identifier}}} exists already",
-    },
-    ["email:exist"] = {
-      en = "email {{{email}}} is already bound to an account",
     },
     ["user:authenticate:failure"] = {
       en = "authentication failed",
@@ -164,7 +166,7 @@ return function (loader)
     },
   }
 
-  for id in Layer.pairs (Configuration.resource.project ["/"]) do
+  for id in pairs (Configuration.resource.project ["/"]) do
     local a = "a"
     if id:match "^[aeiou]" then
       a = "an"

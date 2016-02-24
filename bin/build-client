@@ -1,0 +1,98 @@
+#! /usr/bin/env bash
+
+for arg in "$@"; do
+  if [ "${arg}" = "-h" ] || [ "${arg}" = "--help" ]; then
+    echo "Usage: "
+    echo "  build-client [--lua=LUA_VERSION] [--in-ci]"
+    exit 1;
+  fi
+done
+
+git submodule init
+git submodule update
+
+. environment/bin/install "$@" --minimal
+
+# Install cosy modules::
+{
+  export CC=clang
+  echo -n "Generating cosy rockspec... "
+  ( # shellcheck disable=SC2091
+    $("${cosy_prefix}/bin/luarocks" path | tr "'" ";")
+    export LUA_PATH="${LUA_PATH};./src/?.lua"
+    "${cosy_prefix}/bin/lua" src/cosy/rockspec/bin.lua
+  ) >> "${cosy_log}" 2>&1 \
+    && echo -e "${green}success${nc}" \
+    || echo -e "${red}failure${nc}"
+  echo -n "  Installing lua-ev..."
+  ( ${sudo} "${cosy_prefix}/bin/luarocks" install lua-ev \
+      LIBEV_DIR="${cosy_prefix}"
+  ) >> "${cosy_log}" 2>&1 \
+    && echo -e "${green}success${nc}" \
+    || echo -e "${red}failure${nc}"
+  echo -n "  Installing luasocket (dev version)..."
+  ( ${sudo} "${cosy_prefix}/bin/luarocks" install --server=https://luarocks.org/dev luasocket
+  ) >> "${cosy_log}" 2>&1 \
+    && echo -e "${green}success${nc}" \
+    || echo -e "${red}failure${nc}"
+  echo -n "Installing cosy... "
+  { ${sudo} "${cosy_prefix}/bin/luarocks" make rockspec/cosy-client-master-1.rockspec
+  } >> "${cosy_log}" 2>&1 \
+    && echo -e "${green}success${nc}" \
+    || echo -e "${red}failure${nc}"
+}
+
+function fix_string ()
+{
+  echo "$1" \
+    | sed -e 's/^[[:space:]]+/ /' \
+    | sed -e 's/^[[:space:]]*//' \
+    | sed -e 's/[[:space:]]*$//' \
+    | tr '/' '-' \
+    | tr '[:upper:]' '[:lower:]'
+}
+
+# Generate archive:
+{
+  cp -r "${cosy_prefix}" "${cosy_temp}/archive"
+  version=$(fix_string "$(git describe)")
+  os=$(fix_string "$(uname -s)")
+  arch=$(fix_string "$(uname -m)")
+  archive="cosy-client-${version}-${os}-${arch}.sh"
+  case "${os}" in
+    linux)
+      backup="";;
+    darwin)
+      backup=".cosy-back";;
+  esac
+  cat > "${cosy_temp}/archive/bin/cosy-setpath" <<EOF
+#! /usr/bin/env sh
+
+grep -rlI "COSY_PREFIX" . | while IFS= read -r file; do
+  sed -i ${backup} -e "s|COSY_PREFIX|\$PWD|g" "\${file}"
+done
+find . -type f -name "*.cosy-back" -exec rm -f {} \;
+EOF
+  chmod a+x "${cosy_temp}/archive/bin/cosy-setpath"
+  echo -n -e "Packaging in ${green}${archive}${nc}... "
+  {
+    "${cosy_prefix}/bin/cosy-fixpath" --quiet "${cosy_temp}/archive"
+    grep -rlI "${cosy_prefix}" "${cosy_temp}/archive" | while IFS= read -r file; do
+      sed -i ${backup} -e "s|${cosy_prefix}|COSY_PREFIX|g" "${file}"
+    done
+    find "${cosy_temp}/archive" -type f -name "*.cosy-back" -exec rm -f {} \;
+    ./makeself/makeself.sh \
+      "${cosy_temp}/archive" \
+      "${archive}" \
+      "CosyVerif Client version ${version} for ${os}-${arch}" \
+      "./bin/cosy-setpath"
+  } >> "${cosy_log}" 2>&1 \
+    && echo -e "${green}success${nc}" \
+    || echo -e "${red}failure${nc}"
+}
+
+if [ ! -z "${in_ci+x}" ]; then
+  cat "${cosy_log}"
+else
+  rm -rf "${cosy_temp}"
+fi

@@ -34,7 +34,7 @@ return function (loader)
   setmetatable (Configuration, Metatable)
 
   local files = {
-    etc  = (os.getenv "COSY_PREFIX" or "") .. "/etc/cosy.conf",
+    etc  = loader.prefix .. "/etc/cosy.conf",
     home = os.getenv "HOME" .. "/.cosy/cosy.conf",
     pwd  = os.getenv "PWD"  .. "/cosy.conf",
   }
@@ -59,7 +59,7 @@ return function (loader)
           path   = name,
           locale = Configuration.locale or "en",
         }
-        Layer.replacewith (layers [key], result ())
+        Layer.Proxy.replacewith (layers [key], result ())
       else
         Logger.warning {
           _      = i18n ["skip"],

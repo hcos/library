@@ -41,7 +41,7 @@ return function (--[[loader]])
       en = "a {{{key}}} must be a boolean",
     },
     ["check:is-position"] = {
-      en = "{{{key}}} must contain a country, and city",
+      en = "{{{key}}} must contain a latitude and a longitude",
     },
     ["check:is-string"] = {
       en = "a {{{key}}} must be a string",
@@ -61,6 +61,9 @@ return function (--[[loader]])
     ["check:email:pattern"] = {
       en = "email address is not valid",
     },
+    ["check:email:exist"] = {
+      en = "email {{{email}}} is already bound to an account",
+    },
     ["check:locale:pattern"] = {
       en = "locale is not valid",
     },
@@ -76,14 +79,14 @@ return function (--[[loader]])
     ["check:user"] = {
       en = "a {{{key}}} must be like username",
     },
+    ["check:user:exist"] = {
+      en = "user {{{identifier}}} already exists",
+    },
     ["check:iterator:bytecode"] = {
       en = "an iterator cannot be bytecode",
     },
     ["check:iterator:function"] = {
       en = "invalid Lua function: {{{reason}}}",
-    },
-    ["check:avatar:expired"] = {
-      en = "avatar file has expired",
     },
     ["translation:failure"] = {
       en = "translation failed: {{{reason}}}",

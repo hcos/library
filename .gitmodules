@@ -1,0 +1,9 @@
+[submodule "redis-lua"]
+	path = redis-lua
+	url = https://github.com/CosyVerif/redis-lua.git
+[submodule "environment"]
+	path = environment
+	url = https://github.com/CosyVerif/environment.git
+[submodule "makeself"]
+	path = makeself
+	url = https://github.com/megastep/makeself.git

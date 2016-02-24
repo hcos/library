@@ -2,12 +2,25 @@
 require "busted.runner" ()
 local loader = require "cosy.loader.lua" {
   logto = false,
+  alias = "__busted__",
 }
 
-local Scheduler = loader.load "cosy.scheduler"
-local Store     = loader.load "cosy.store"
+local Configuration = loader.load "cosy.configuration"
+local File          = loader.load "cosy.file"
+local Scheduler     = loader.load "cosy.scheduler"
+local Store         = loader.load "cosy.store"
+
+Configuration.load {
+  "cosy.redis",
+}
 
 describe ("cosy.store", function ()
+
+  setup (function ()
+    local data = File.decode (Configuration.redis.data)
+    Configuration.redis.interface = data.interface
+    Configuration.redis.port      = data.port
+  end)
 
   before_each (function ()
     Scheduler.addthread (function ()

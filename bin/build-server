@@ -1,0 +1,69 @@
+#! /usr/bin/env bash
+
+if [ $# -eq 0 ]; then
+  echo "Usage: "
+  echo "  build-server [--prefix=PREFIX] [--lua=LUA_VERSION] [--in-ci]"
+  exit 1;
+fi
+
+git submodule init
+git submodule update
+
+. environment/bin/install "$@"
+
+# Cosy modules:
+{
+  export CC=clang
+  echo -n "Generating cosy rockspec... "
+  ( # shellcheck disable=SC2091
+    $("${cosy_prefix}/bin/luarocks" path | tr "'" ";")
+    export LUA_PATH="${LUA_PATH};./src/?.lua"
+    "${cosy_prefix}/bin/lua" src/cosy/rockspec/bin.lua
+  ) >> "${cosy_log}" 2>&1 \
+    && echo -e "${green}success${nc}" \
+    || echo -e "${red}failure${nc}"
+  echo -n "  Installing lua-ev..."
+  ( ${sudo} "${cosy_prefix}/bin/luarocks" install lua-ev \
+      LIBEV_DIR="${cosy_prefix}"
+  ) >> "${cosy_log}" 2>&1 \
+    && echo -e "${green}success${nc}" \
+    || echo -e "${red}failure${nc}"
+  echo -n "  Installing luasocket (dev version)..."
+  ( ${sudo} "${cosy_prefix}/bin/luarocks" install --server=https://luarocks.org/dev luasocket
+  ) >> "${cosy_log}" 2>&1 \
+    && echo -e "${green}success${nc}" \
+    || echo -e "${red}failure${nc}"
+  echo -n "  Installing redis-lua (patched for cosy)... "
+  ( cd redis-lua
+    ${sudo} "${cosy_prefix}/bin/luarocks" make rockspec/redis-lua-scm-1.rockspec
+  ) >> "${cosy_log}" 2>&1 \
+    && echo -e "${green}success${nc}" \
+    || echo -e "${red}failure${nc}"
+  echo -n "Installing cosy... "
+  ( ${sudo} "${cosy_prefix}/bin/luarocks" make rockspec/cosy-client-master-1.rockspec
+    ${sudo} "${cosy_prefix}/bin/luarocks" make rockspec/cosy-master-1.rockspec
+  ) >> "${cosy_log}" 2>&1 \
+    && echo -e "${green}success${nc}" \
+    || echo -e "${red}failure${nc}"
+}
+
+{
+  echo -n "Fixing PATHs... "
+  "${cosy_prefix}/bin/cosy-fixpath" --quiet "${cosy_prefix}" \
+    >> "${cosy_log}" 2>&1 \
+    && echo -e "${green}success${nc}" \
+    || echo -e "${red}failure${nc}"
+}
+
+echo "You can now try the following commands:"
+echo "- ${cosy_prefix}/bin/cosy-server start [--clean] [--force] [--port=<port>]"
+echo "- ${cosy_prefix}/bin/cosy-server stop  [--force]"
+echo "- ${cosy_prefix}/bin/cosy-server version"
+echo "- ${cosy_prefix}/bin/cosy"
+echo "- ${cosy_prefix}/bin/cosy-tool"
+echo "The development environment also provides two commands:"
+echo "- ${cosy_prefix}/bin/cosy-check"
+
+if [ ! -z "${in_ci+x}" ]; then
+  cat "${cosy_log}"
+fi

@@ -10,6 +10,7 @@ return function (loader)
 
   setmetatable (I18n, Metatable)
 
+  -- FIXME: remove
   function I18n.new (locale)
     return setmetatable ({
       _store  = {},
@@ -30,7 +31,7 @@ return function (loader)
       depends [#depends+1] = layer
     end
     local all = Layer.new { name = "i18n", data = {
-        __refines__ = depends,
+        [Layer.key.refines] = depends,
       }
     }
     local store = setmetatable ({}, {
@@ -38,7 +39,7 @@ return function (loader)
         local path = all [key]
         if path then
           local result = {}
-          for k, p in Layer.pairs (path) do
+          for k, p in pairs (path) do
             result [k] = p
           end
           return result
@@ -49,6 +50,10 @@ return function (loader)
       _store  = store,
       _locale = false,
     }, I18n)
+  end
+
+  function I18n.defines (i18n, key)
+    return i18n._store [key]
   end
 
   function I18n.__index (i18n, key)
@@ -121,10 +126,10 @@ return function (loader)
       t [k] = v
       if type (v) == "number" then
         assert (context ["~" .. k] == nil)
-        t ["~" .. k] = Plural.get (locale, v)
+        t [k .. "~" .. Plural.get (locale, v)] = true
       end
     end
-    return Lustache:render (result, context)
+    return Lustache:render (result, t)
   end
 
   return I18n
