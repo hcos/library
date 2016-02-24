@@ -178,6 +178,12 @@ return function (loader)
     result [id .. ":copy"] = {
       en = "copy " .. a .. id,
     }
+    result [id .. ":get"] = {
+      en = "get " .. a .. id,
+    }
+    result [id .. ":set"] = {
+      en = "set " .. a .. id,
+    }
     result [id .. ":delete"] = {
       en = "delete " .. a .. id,
     }

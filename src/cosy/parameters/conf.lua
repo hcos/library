@@ -2,10 +2,9 @@ return function (loader)
 
   local Configuration = loader.load "cosy.configuration"
   local I18n          = loader.load "cosy.i18n"
-  local Scheduler     = loader.load "cosy.scheduler"
   local Default       = loader.load "cosy.configuration.layers".default
   local Layer         = loader.require "layeredata"
-  local this          = Layer.reference (false)
+  local this          = Layer.reference (Default)
 
   Configuration.load "cosy.methods"
 
@@ -148,7 +147,7 @@ return function (loader)
       file:close ()
       request [key] = {}
       do
-        Scheduler.execute ([[
+        loader.scheduler.execute ([[
           convert "{{{filename}}}" -resize {{{width}}}x{{{height}}} png:"{{{filename}}}-full"
         ]] % {
           filename = filename,
@@ -161,7 +160,7 @@ return function (loader)
         os.remove (filename .. "-full")
       end
       do
-        Scheduler.execute ([[
+        loader.scheduler.execute ([[
           convert "{{{filename}}}" -resize {{{width}}}x{{{height}}} png:"{{{filename}}}-icon"
         ]] % {
           filename = filename,
@@ -174,7 +173,7 @@ return function (loader)
         os.remove (filename .. "-icon")
       end
       do
-        Scheduler.execute ([[
+        loader.scheduler.execute ([[
           convert "{{{filename}}}" bmp3:"{{{filename}}}.bmp"
           img2txt --width="{{{width}}}" --height="{{{height}}}" --format=ansi "{{{filename}}}.bmp" > "{{{filename}}}-ascii"
           rm -f "{{{filename}}}.bmp"

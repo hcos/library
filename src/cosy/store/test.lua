@@ -7,7 +7,6 @@ local loader = require "cosy.loader.lua" {
 
 local Configuration = loader.load "cosy.configuration"
 local File          = loader.load "cosy.file"
-local Scheduler     = loader.load "cosy.scheduler"
 local Store         = loader.load "cosy.store"
 
 Configuration.load {
@@ -23,80 +22,80 @@ describe ("cosy.store", function ()
   end)
 
   before_each (function ()
-    Scheduler.addthread (function ()
+    loader.scheduler.addthread (function ()
       local store = Store.new ()
       store.redis:flushall ()
     end)
-    Scheduler.loop ()
+    loader.scheduler.loop ()
   end)
 
   it ("can be instantiated", function ()
-    Scheduler.addthread (function ()
+    loader.scheduler.addthread (function ()
       local _ = Store.new ()
     end)
-    Scheduler.loop ()
+    loader.scheduler.loop ()
   end)
 
   it ("does not return a missing document", function ()
-    Scheduler.addthread (function ()
+    loader.scheduler.addthread (function ()
       local store = Store.new ()
       local view  = Store.toview (store)
       assert.is_nil (view / "a")
     end)
-    Scheduler.loop ()
+    loader.scheduler.loop ()
   end)
 
   it ("returns an iterator, even with no documents", function ()
-    Scheduler.addthread (function ()
+    loader.scheduler.addthread (function ()
       local store = Store.new ()
       local view  = Store.toview (store)
       assert.is_not_nil (view * "a")
     end)
-    Scheduler.loop ()
+    loader.scheduler.loop ()
   end)
 
   it ("allows to create a document", function ()
-    Scheduler.addthread (function ()
+    loader.scheduler.addthread (function ()
       local store = Store.new ()
       local view  = Store.toview (store)
       local _     = view + "key"
       assert.is_not_nil (view / "key")
     end)
-    Scheduler.loop ()
+    loader.scheduler.loop ()
   end)
 
   it ("allows set fields in a document", function ()
-    Scheduler.addthread (function ()
+    loader.scheduler.addthread (function ()
       local store = Store.new ()
       local view  = Store.toview (store)
       local document = view + "key"
       document.field = "value"
       assert.are.equal ((view / "key").field, "value")
     end)
-    Scheduler.loop ()
+    loader.scheduler.loop ()
   end)
 
   it ("stores documents on commit", function ()
-    Scheduler.addthread (function ()
+    loader.scheduler.addthread (function ()
       local store = Store.new ()
       local view  = Store.toview (store)
       local document = view + "key"
       document.field = "value"
       Store.commit (store)
     end)
-    Scheduler.loop ()
-    Scheduler.addthread (function ()
+    loader.scheduler.loop ()
+    loader.scheduler.addthread (function ()
       local store = Store.new ()
       local view  = Store.toview (store)
       assert.are.equal ((view / "key").field, "value")
     end)
-    Scheduler.loop ()
+    loader.scheduler.loop ()
   end)
 
 end)
 
 --[==[
-Scheduler.addthread (function ()
+loader.scheduler.addthread (function ()
   local store = Store.new ()
   store.redis:flushall ()
   local view  = Store.toview (store)
@@ -109,9 +108,9 @@ Scheduler.addthread (function ()
   Store.commit (store)
 end)
 
-Scheduler.loop ()
+loader.scheduler.loop ()
 
-Scheduler.addthread (function ()
+loader.scheduler.addthread (function ()
   local store = Store.new ()
   local view  = Store.toview (store)
   assert (view / "a")
@@ -129,9 +128,9 @@ Scheduler.addthread (function ()
   Store.cancel (store)
 end)
 
-Scheduler.loop ()
+loader.scheduler.loop ()
 
-Scheduler.addthread (function ()
+loader.scheduler.addthread (function ()
   local store = Store.new ()
   local view  = Store.toview (store)
   assert (view / "a")
@@ -144,14 +143,14 @@ Scheduler.addthread (function ()
   Store.commit (store)
 end)
 
-Scheduler.loop ()
+loader.scheduler.loop ()
 
-Scheduler.addthread (function ()
+loader.scheduler.addthread (function ()
   local store = Store.new ()
   local view  = Store.toview (store)
   assert (view / "a" == nil)
   assert (view / "b" == nil)
 end)
 
-Scheduler.loop ()
+loader.scheduler.loop ()
 --]==]

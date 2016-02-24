@@ -4,7 +4,6 @@ return function (loader)
   local Digest        = loader.load "cosy.digest"
   local I18n          = loader.load "cosy.i18n"
   local Value         = loader.load "cosy.value"
-  local Scheduler     = loader.load "cosy.scheduler"
   local Coromake      = loader.require "coroutine.make"
 
   Configuration.load "cosy.library"
@@ -39,25 +38,25 @@ return function (loader)
 
   function JsWs.connect (websocket, url, protocol, second_try)
     websocket.ws     = loader.js.new (loader.js.global.WebSocket, url, protocol)
-    websocket.co     = Scheduler.running ()
+    websocket.co     = loader.scheduler.running ()
     websocket.status = Status.closed
     websocket.ws.onopen = function ()
       websocket.status = Status.opened
-      Scheduler.wakeup (websocket.co)
+      loader.scheduler.wakeup (websocket.co)
     end
     websocket.ws.onclose = function ()
       websocket.status = Status.closed
-      Scheduler.wakeup (websocket.co)
+      loader.scheduler.wakeup (websocket.co)
     end
     websocket.ws.onmessage = function (_, event)
       websocket.message = event.data
-      Scheduler.wakeup (websocket.co)
+      loader.scheduler.wakeup (websocket.co)
     end
     websocket.ws.onerror = function ()
       websocket.status = Status.closed
-      Scheduler.wakeup (websocket.co)
+      loader.scheduler.wakeup (websocket.co)
     end
-    Scheduler.sleep (websocket.timeout)
+    loader.scheduler.sleep (websocket.timeout)
     if not second_try and websocket.status == Status.closed then
       websocket.ws:close ()
       return JsWs.connect (websocket, url, protocol, true)
@@ -70,8 +69,8 @@ return function (loader)
 
   function JsWs.receive (websocket)
     websocket.message = nil
-    websocket.co      = Scheduler.running ()
-    Scheduler.sleep (websocket.timeout)
+    websocket.co      = loader.scheduler.running ()
+    loader.scheduler.sleep (websocket.timeout)
     return websocket.message
   end
 
@@ -106,14 +105,14 @@ return function (loader)
       if results then
         results [#results+1] = message
         for co in pairs (receiver.waiting) do
-          Scheduler.wakeup (co)
+          loader.scheduler.wakeup (co)
         end
       end
     end
   end
 
   function Receiver.loop (receiver)
-    return Scheduler.addthread (function ()
+    return loader.scheduler.addthread (function ()
       while true do
         if not receiver.client.id then
           break
@@ -138,11 +137,11 @@ return function (loader)
         Receiver.step (receiver)
       until info.websocket.status ~= Status.opened or results [1]
     elseif info.asynchronous then
-      receiver.waiting [Scheduler.running ()] = true
+      receiver.waiting [loader.scheduler.running ()] = true
       repeat
-        Scheduler.sleep (-math.huge)
+        loader.scheduler.sleep (-math.huge)
       until info.websocket.status ~= Status.opened or results [1]
-      receiver.waiting [Scheduler.running ()] = nil
+      receiver.waiting [loader.scheduler.running ()] = nil
     end
     return results [1]
   end
@@ -270,13 +269,13 @@ return function (loader)
   function Iterator.__gc (iterator)
     local info = Library.info [iterator.client]
     if loader.js then
-      Scheduler.addthread (function ()
+      loader.scheduler.addthread (function ()
         iterator.client.server.cancel {
           filter = iterator.token,
         }
       end)
-      if not Scheduler.running () then
-        Scheduler.loop ()
+      if not loader.scheduler.running () then
+        loader.scheduler.loop ()
       end
     else
       iterator.client.server.cancel {
@@ -482,7 +481,7 @@ return function (loader)
         data       = data,
       }
     end
-    if Scheduler.running () then
+    if loader.scheduler.running () then
       parameters.asynchronous = true
     else
       parameters.synchronous  = true
