@@ -1,7 +1,6 @@
 return function (loader)
 
   local I18n          = loader.load "cosy.i18n"
-  local Scheduler     = loader.load "cosy.scheduler"
   local Webclient     = loader.load "cosy.webclient"
 
   local i18n = I18n.load {
@@ -57,22 +56,25 @@ return function (loader)
     Dashboard.map = nil
     while true do
       local info = Webclient.client.server.information {}
+      local data = {}
       for k, v in pairs (info) do
         local key = k:match "^#(.*)$"
         if key then
-          info ["count-" .. key] = i18n ["dashboard:count-" .. key] % { count = v }
+          data ["count-" .. key] = i18n ["dashboard:count-" .. key] % { count = v }
+        else
+          data [k] = v
         end
       end
       Webclient.show {
         where    = "main",
         template = Dashboard.template.anonymous,
-        data     = info,
+        data     = data,
         i18n     = i18n,
       }
       if not Dashboard.map then
         show_map ()
       end
-      Scheduler.sleep (-math.huge)
+      loader.scheduler.sleep (-math.huge)
     end
   end
 
@@ -84,7 +86,7 @@ return function (loader)
         data     = {},
         i18n     = i18n,
       }
-      Scheduler.sleep (-math.huge)
+      loader.scheduler.sleep (-math.huge)
     end
   end
 

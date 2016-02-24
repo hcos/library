@@ -4,7 +4,6 @@ return function (loader)
   local Default       = loader.load "cosy.configuration.layers".default
   local I18n          = loader.load "cosy.i18n"
   local Logger        = loader.load "cosy.logger"
-  local Scheduler     = loader.load "cosy.scheduler"
   local Lfs           = loader.require "lfs"
   local Posix         = loader.require "posix"
 
@@ -250,7 +249,7 @@ http {
     local pid = getpid ()
     if pid then
       if Configuration.http.port < 1024 then
-        Scheduler.execute ("sudo kill -{{{signal}}} {{{pid}}}" % {
+        loader.scheduler.execute ("sudo kill -{{{signal}}} {{{pid}}}" % {
           signal = 15,
           pid    = pid,
         })
@@ -270,7 +269,7 @@ http {
     local pid = getpid ()
     if pid then
       if Configuration.http.port < 1024 then
-        Scheduler.execute ("sudo kill -{{{signal}}} {{{pid}}}" % {
+        loader.scheduler.execute ("sudo kill -{{{signal}}} {{{pid}}}" % {
           signal = 1,
           pid    = pid,
         })
@@ -282,7 +281,7 @@ http {
 
   function Nginx.bundle ()
     os.remove (Configuration.http.bundle)
-    Scheduler.addthread (function ()
+    loader.scheduler.addthread (function ()
       if Nginx.in_bundle or Configuration.dev_mode then
         return
       end
@@ -320,7 +319,7 @@ http {
       find (loader.lua_modules)
       table.sort (modules)
       local temp = os.tmpname ()
-      Scheduler.execute ([[
+      loader.scheduler.execute ([[
         "{{{prefix}}}/bin/amalg.lua" -o "{{{temp}}}" -d {{{modules}}}
         if "{{{prefix}}}/bin/lua" "{{{temp}}}"; then cp "{{{temp}}}" "{{{target}}}"; fi
       ]] % {

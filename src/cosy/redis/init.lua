@@ -6,8 +6,7 @@ return function (loader)
 
   local Configuration = loader.load "cosy.configuration"
   local File          = loader.load "cosy.file"
-  local Socket        = loader.load "cosy.socket"
-  local Rawsocket     = loader.require "socket"
+  local Socket        = loader.require "socket"
   local Redis_Client  = loader.require "redis"
   local Posix         = loader.require "posix"
 
@@ -44,7 +43,7 @@ return function (loader)
 
   function Redis.configure ()
     if Configuration.redis.port == 0 then
-      local server  = Rawsocket.bind (Configuration.redis.interface, 0)
+      local server  = Socket.bind (Configuration.redis.interface, 0)
       server:setoption ("reuseaddr"  , true)
       server:setoption ("tcp-nodelay", true)
       local _, port = server:getsockname ()
@@ -80,7 +79,7 @@ return function (loader)
     Posix.chmod (Configuration.redis.data, "0600")
     repeat
       Posix.nanosleep (0, 100000) -- sleep 100ms
-      local socket = Rawsocket.tcp ()
+      local socket = Socket.tcp ()
       socket:connect (Configuration.redis.interface, Configuration.redis.port)
       local client = Redis_Client.connect {
         socket = socket,
@@ -113,7 +112,7 @@ return function (loader)
     local host      = Configuration.redis.interface
     local port      = Configuration.redis.port
     local database  = Configuration.redis.database
-    local socket    = Socket ()
+    local socket    = loader.scheduler.wrap (Socket.tcp ())
     socket:connect (host, port)
     local client = Redis_Client.connect {
       socket    = socket,

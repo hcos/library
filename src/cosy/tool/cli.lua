@@ -2,8 +2,7 @@ package.path    = package.path .. ";./?.lua"
 
 local Loader    = require "cosy.loader.lua" {}
 local I18n      = Loader.load "cosy.i18n"
-local Scheduler = Loader.load "cosy.scheduler"
-local Layer     = Loader.require "layeredata"
+local Layer     = Loader.require "cosy.formalism.layer"
 local Arguments = Loader.require "argparse"
 local Colors    = Loader.require "ansicolors"
 
@@ -49,27 +48,6 @@ do
   until ok
   -- End of UGLY hack.
   _G.os.exit = _exit
-end
-
-do
-  Layer.require = function (name)
-    local package = name:gsub ("/", ".")
-    if Layer.loaded [package] then
-      return Layer.loaded [package]
-    else
-      local layer = Layer.new {
-        name = name,
-        data = {
-          [Layer.key.labels] = {
-            [name] = true,
-          }
-        }
-      }
-      local reference = Layer.reference (name)
-      layer = require (package) (Layer, layer, reference) or layer
-      return layer, reference
-    end
-  end
 end
 
 local loaded     = {}
@@ -178,14 +156,14 @@ if not all_found then
   os.exit (1)
 end
 
-Scheduler.addthread (function ()
+Loader.scheduler.addthread (function ()
   mytool.run {
     model     = mytool,
-    scheduler = Scheduler,
+    scheduler = Loader.scheduler,
   }
 end)
 
-Scheduler.loop ()
+Loader.scheduler.loop ()
 
 do
   local directory = os.tmpname ()

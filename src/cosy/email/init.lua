@@ -1,12 +1,11 @@
 return function (loader)
 
   local Configuration = loader.load "cosy.configuration"
-  local CSocket       = loader.load "cosy.socket"
   local I18n          = loader.load "cosy.i18n"
   local Logger        = loader.load "cosy.logger"
   local Redis         = loader.load "cosy.redis"
-  local Scheduler     = loader.load "cosy.scheduler"
   local Value         = loader.load "cosy.value"
+  local Socket        = loader.require "socket"
   local Smtp          = loader.require "socket.smtp"
   local Ssl           = loader.require "ssl"
   if not Ssl then
@@ -33,7 +32,7 @@ return function (loader)
   local make_socket = {}
 
   function make_socket.async ()
-    local result = CSocket ()
+    local result = loader.scheduler.wrap (Socket.tcp ())
     result:settimeout (Configuration.smtp.timeout)
     result:setoption ("keepalive"  , true)
     result:setoption ("reuseaddr"  , true)
@@ -183,7 +182,7 @@ return function (loader)
   end
 
   function Email.send (message)
-    Scheduler.addthread (function ()
+    loader.scheduler.addthread (function ()
       local locale    = message.locale or Configuration.locale
       local si18n     = I18n.new (locale)
       local localized = si18n (message)
@@ -218,7 +217,7 @@ return function (loader)
     end)
   end
 
-  Scheduler.addthread (function ()
+  loader.scheduler.addthread (function ()
     local ok, result = pcall (Email.discover)
     if not ok or not result then
       Email.ready = false
