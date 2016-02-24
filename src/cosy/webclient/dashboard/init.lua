@@ -54,49 +54,65 @@ return function (loader)
 
   function Dashboard.anonymous ()
     Dashboard.map = nil
-    while true do
-      local info = Webclient.client.server.information {}
-      local data = {}
-      for k, v in pairs (info) do
-        local key = k:match "^#(.*)$"
-        if key then
-          data ["count-" .. key] = i18n ["dashboard:count-" .. key] % { count = v }
-        else
-          data [k] = v
-        end
+    local info = Webclient.client.server.information {}
+    local data = {}
+    for k, v in pairs (info) do
+      local key = k:match "^#(.*)$"
+      if key then
+        data ["count-" .. key] = i18n ["dashboard:count-" .. key] % { count = v }
+      else
+        data [k] = v
       end
-      Webclient.show {
-        where    = "main",
-        template = Dashboard.template.anonymous,
-        data     = data,
-        i18n     = i18n,
-      }
-      if not Dashboard.map then
-        show_map ()
-      end
-      loader.scheduler.sleep (-math.huge)
+    end
+    Webclient.show {
+      where    = "main",
+      template = Dashboard.template.anonymous,
+      data     = data,
+      i18n     = i18n,
+    }
+    if not Dashboard.map then
+      show_map ()
     end
   end
 
-  function Dashboard.user ()
-    while true do
-      Webclient.show {
-        where    = "main",
-        template = Dashboard.template.user,
-        data     = {},
-        i18n     = i18n,
-      }
-      loader.scheduler.sleep (-math.huge)
+  function Dashboard.user (user)
+    local projects = Webclient.client.server.filter {
+      iterator = [[return function (coroutine, store)
+          for project in store / "data" / "{{{user}}}" * ".*" do
+            coroutine.yield (project)
+          end
+        end
+      ]] % {
+        user = user.id,
+      },
+    }
+    local data = {
+      projects = {},
+    }
+    for project in projects do
+      data.projects [#data.projects+1] = project
     end
+    if #data.projects == 0 then
+      data.projects = nil
+    end
+    Webclient.show {
+      where    = "main",
+      template = Dashboard.template.user,
+      data     = data,
+      i18n     = i18n,
+    }
   end
 
   function Dashboard.__call ()
     Webclient (function ()
-      local user = Webclient.client.user.authentified_as {}
-      if user.identifier then
-        Dashboard.user ()
-      else
-        Dashboard.anonymous ()
+      while true do
+        local user = Webclient.client.user.authentified_as {}
+        if user.identifier then
+          Dashboard.user (user)
+        else
+          Dashboard.anonymous ()
+        end
+      loader.scheduler.sleep (-math.huge)
       end
     end)
   end

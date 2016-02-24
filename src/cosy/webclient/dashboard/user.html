@@ -1,0 +1,29 @@
+<row>
+  <div class="col-md-1">
+    <div class="panel panel-default">
+      <div class="panel-body">
+        <span class="fa-stack fa-lg">
+          <i class="fa fa-folder-o fa-stack-2x"></i>
+          <i class="fa fa-plus-circle fa-stack-1x"></i>
+        </span>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-1">
+  </div>
+  <div class="col-md-2">
+    <row>
+      {{#projects}}
+      <div class="col-md-3">
+        <div class="panel panel-default">
+          <div class="panel-body">
+            <h3>{{id}}</h3>
+            <p>{{name}}<i class="fa fa-arrow-circle-right"></i></p>
+            <p>{{description}}</p>
+          </div>
+        </div>
+      </div>
+      {{/projects}}
+    </row>
+  </div>
+</row>
