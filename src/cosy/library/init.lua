@@ -229,7 +229,9 @@ return function (loader)
     return result
   end
 
-  local Iterator = {}
+  local Iterator = setmetatable ({}, {
+    __tostring = function () return "Iterator" end,
+  })
 
   function Iterator.new (t)
     local info    = Library.info [t.client]
