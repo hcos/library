@@ -25,7 +25,7 @@ return function (loader)
 
   function Filter.start (options)
     local client  = Websocket.client.sync { timeout = 5 }
-    assert (client:connect (options.url, "cosy:filter"))
+    assert (client:connect (options.url, "cosy-filter"))
     local request = client:receive ()
     request       = Value.decode (request)
     local store   = Store.new ()
