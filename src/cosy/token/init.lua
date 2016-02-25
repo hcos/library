@@ -49,7 +49,7 @@ return function (loader)
     return result
   end
 
-  function Token.administration ()
+  function Token.administration (passphrase)
     local now    = Time ()
     local result = {
       iat      = now,
@@ -61,7 +61,7 @@ return function (loader)
       jti      = Digest (tostring (now + math.random ())),
       contents = {
         type       = "administration",
-        passphrase = Configuration.server.passphrase,
+        passphrase = passphrase,
       },
     }
     return Token.encode (result)

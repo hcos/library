@@ -99,7 +99,7 @@ return function (loader)
   function Server.start ()
     App.server            = {}
     App.server.passphrase = Digest (math.random ())
-    App.server.token      = Token.administration ()
+    App.server.token      = Token.administration (Configuration.server.passphrase)
     local addserver       = loader.scheduler.addserver
 
     loader.scheduler.addserver   = function (s, f)
