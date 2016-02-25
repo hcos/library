@@ -4,8 +4,10 @@ return function (loader)
   local ref     = loader.require "layeredata".reference (Default)
 
   Default.filter = {
-    timeout = 2, -- seconds
-    log     = loader.home .. "/filter-{{{pid}}}.log",
+    timeout   = 2, -- seconds
+    directory = loader.home .. "/filter",
+    data      = loader.home .. "/filter/{{{pid}}}.data",
+    log       = loader.home .. "/filter/{{{pid}}}.log",
   }
 
   Default.reputation = {

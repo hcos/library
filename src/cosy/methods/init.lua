@@ -5,10 +5,13 @@ end
 return function (loader)
 
   local Configuration = loader.load "cosy.configuration"
+  local Lfs           = loader.require "lfs"
 
   Configuration.load {
     "cosy.methods",
   }
+
+  Lfs.mkdir (Configuration.filter.directory)
 
   local Methods  = {}
 
