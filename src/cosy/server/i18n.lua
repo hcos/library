@@ -16,6 +16,12 @@ return function (--[[loader]])
     ["flag:clean"] = {
       en = "Clean database",
     },
+    ["server:alias"] = {
+      en = "configuration alias",
+    },
+    ["server:port"] = {
+      en = "network port to use",
+    },
     ["server:no-operation"] = {
       en = "operation {{{operation}}} does not exist",
     },

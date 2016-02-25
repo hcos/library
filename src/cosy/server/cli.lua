@@ -34,11 +34,11 @@ do
     description = i18n ["server:start"] % {},
   }
   start:option "-a" "--alias" {
-    description = "configuration name",
+    description = i18n ["server:alias"] % {},
     default     = "default",
   }
   start:option "-p" "--port" {
-    description = "network port",
+    description = i18n ["server:port"] % {},
     default     = tostring (Configuration.http.port),
     defmode     = "arg",
     convert     = tonumber,
@@ -53,7 +53,7 @@ do
     description = i18n ["server:stop"] % {},
   }
   stop:option "-a" "--alias" {
-    description = "configuration name",
+    description = i18n ["server:alias"] % {},
     default     = "default",
   }
   stop:flag "-f" "--force" {
