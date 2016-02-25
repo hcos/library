@@ -32,6 +32,17 @@ build:
           /app/bin/cosy-server stop
 
 deploy:
+  luarocks:
+    - script:
+      name: Upload to luarocks
+      code: |
+        tag=$(git describe --tags --abbrev=0)
+        count=$(git rev-list --count HEAD ^"${tag}")
+        cd rockspec
+        sed -e "s/master-1/${tag}-${count}/" cosy-client-master-1.rockspec > cosy-client-"${tag}"-"${count}".rockspec
+        sed -e "s/master-1/${tag}-${count}/" cosy-master-1.rockspec        > cosy-"${tag}"-"${count}".rockspec
+        /app/bin/luarocks upload cosy-client-"${tag}"-"${count}".rockspec --api-key=$LUAROCKS_API_KEY
+        /app/bin/luarocks upload cosy-"${tag}"-"${count}".rockspec        --api-key=$LUAROCKS_API_KEY
   steps:
     - add-to-known_hosts:
       hostname: $DEPLOY_SERVER
