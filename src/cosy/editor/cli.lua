@@ -5,6 +5,7 @@ do
   }
   local Configuration = loader.load "cosy.configuration"
   local I18n          = loader.load "cosy.i18n"
+  local Token         = loader.load "cosy.token"
   local Arguments     = loader.require "argparse"
 
   Configuration.load {
@@ -25,10 +26,9 @@ do
     description = i18n ["editor:alias"] % {},
     default     = "default",
   }
-  parser:option "-p" "--port" {
-    description = i18n ["editor:port"] % {},
-    default     = tostring (Configuration.editor.port),
-    convert     = tonumber,
+  parser:option "-t" "--token" {
+    description = i18n ["editor:token"] % {},
+    default     = Token.authentication {},
   }
   parser:argument "resource" {
     description = i18n ["editor:resource"] % {},
@@ -52,4 +52,4 @@ local loader    = require "cosy.loader.lua" {
 }
 local Editor    = loader.load "cosy.editor"
 
-Editor.start ()
+Editor.start (arguments)
