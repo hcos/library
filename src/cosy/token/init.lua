@@ -6,10 +6,11 @@ return function (loader)
 
   local Configuration = loader.load "cosy.configuration"
   local Digest        = loader.load "cosy.digest"
-  local Random        = loader.load "cosy.random"
-  local Time          = loader.load "cosy.time"
   local App           = loader.load "cosy.configuration.layers".app
   local Jwt           = loader.require "jwt"
+  local Time          = loader.require "socket".gettime
+
+  math.randomseed (Time ())
 
   Configuration.load {
     "cosy.nginx",
@@ -18,7 +19,7 @@ return function (loader)
 
   if Configuration.token.secret == nil then
     App.token = {
-      secret = Digest (Random ())
+      secret = Digest (math.random ())
     }
   end
 
@@ -57,7 +58,7 @@ return function (loader)
       iss      = Configuration.http.hostname,
       aud      = nil,
       sub      = "cosy:administration",
-      jti      = Digest (tostring (now + Random ())),
+      jti      = Digest (tostring (now + math.random ())),
       contents = {
         type       = "administration",
         passphrase = Configuration.server.passphrase,
@@ -75,7 +76,7 @@ return function (loader)
       iss      = Configuration.http.hostname,
       aud      = nil,
       sub      = "cosy:identification",
-      jti      = Digest (tostring (now + Random ())),
+      jti      = Digest (tostring (now + math.random ())),
       contents = {
         type = "identification",
         data = data,
@@ -93,7 +94,7 @@ return function (loader)
       iss      = Configuration.http.hostname,
       aud      = nil,
       sub      = "cosy:validation",
-      jti      = Digest (tostring (now + Random ())),
+      jti      = Digest (tostring (now + math.random ())),
       contents = {
         type       = "validation",
         identifier = data.identifier,
@@ -112,7 +113,7 @@ return function (loader)
       iss      = Configuration.http.hostname,
       aud      = nil,
       sub      = "cosy:authentication",
-      jti      = Digest (tostring (now + Random ())),
+      jti      = Digest (tostring (now + math.random ())),
       contents = {
         type       = "authentication",
         identifier = data.identifier,

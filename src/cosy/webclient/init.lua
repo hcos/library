@@ -1,7 +1,6 @@
 return function (loader)
 
   local I18n      = loader.load "cosy.i18n"
-  local Scheduler = loader.load "cosy.scheduler"
   local Layer     = loader.require "layeredata"
 
   local MT        = {}
@@ -24,7 +23,7 @@ return function (loader)
 
   function MT.__call (_, f, ...)
     local args = { ... }
-    Scheduler.addthread (function ()
+    loader.scheduler.addthread (function ()
       xpcall (function ()
         return f (table.unpack (args))
       end, function (err)
@@ -59,10 +58,10 @@ return function (loader)
         end
       end
     })
-    if shown and shown ~= Scheduler.running () then
-      Scheduler.removethread (shown)
+    if shown and shown ~= loader.scheduler.running () then
+      loader.scheduler.removethread (shown)
     end
-    Webclient.shown [where] = Scheduler.running ()
+    Webclient.shown [where] = loader.scheduler.running ()
     container:html (template % replacer)
   end
 

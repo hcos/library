@@ -1,7 +1,7 @@
 return function (loader)
 
   local Default = loader.load "cosy.configuration.layers".default
-  local ref     = loader.require "layeredata".reference (false)
+  local ref     = loader.require "layeredata".reference (Default)
 
   Default.filter = {
     timeout = 2, -- seconds

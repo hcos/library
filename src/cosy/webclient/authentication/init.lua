@@ -1,7 +1,6 @@
 return function (loader)
 
   local I18n      = loader.load "cosy.i18n"
-  local Scheduler = loader.load "cosy.scheduler"
   local Webclient = loader.load "cosy.webclient"
   local Dashboard = loader.load "cosy.webclient.dashboard"
   local Profile   = loader.load "cosy.webclient.profile"
@@ -22,7 +21,7 @@ return function (loader)
   Authentication.__index = Authentication
 
   function Authentication.sign_up ()
-    local co   = Scheduler.running ()
+    local co   = loader.scheduler.running ()
     local info = Webclient.client.server.information ()
     local tos  = Webclient.client.server.tos {
       locale = Webclient.window.navigator.language,
@@ -95,7 +94,7 @@ return function (loader)
       end)
     end
     Webclient.jQuery "#accept":click (function ()
-      Scheduler.wakeup (co)
+      loader.scheduler.wakeup (co)
       return false
     end)
 
@@ -110,7 +109,7 @@ return function (loader)
     })
 
     while true do
-      Scheduler.sleep (-math.huge)
+      loader.scheduler.sleep (-math.huge)
       if check () then
         Webclient.jQuery "#accept":addClass "disabled"
         Webclient.jQuery "#accept":html [[<i class="fa fa-spinner fa-pulse"></i>]]
@@ -131,7 +130,7 @@ return function (loader)
   end
 
   function Authentication.log_in ()
-    local co = Scheduler.running ()
+    local co = loader.scheduler.running ()
     Webclient.show {
       where    = "main",
       template = Authentication.template.log_in,
@@ -139,12 +138,12 @@ return function (loader)
       i18n     = i18n,
     }
     Webclient.jQuery "#accept":click (function ()
-      Scheduler.wakeup (co)
+      loader.scheduler.wakeup (co)
       return false
     end)
 
     while true do
-      Scheduler.sleep (-math.huge)
+      loader.scheduler.sleep (-math.huge)
       Webclient.jQuery "#accept":addClass "disabled"
       Webclient.jQuery "#accept":html [[<i class="fa fa-spinner fa-pulse"></i>]]
       local result, err = Webclient.client.user.authenticate {
@@ -175,21 +174,21 @@ return function (loader)
     Webclient.jQuery "#sign-up":click (function ()
       Webclient (function ()
         Authentication.sign_up ()
-        Scheduler.wakeup (Authentication.co)
+        loader.scheduler.wakeup (Authentication.co)
       end)
       return false
     end)
     Webclient.jQuery "#log-in":click (function ()
       Webclient (function ()
         Authentication.log_in ()
-        Scheduler.wakeup (Authentication.co)
+        loader.scheduler.wakeup (Authentication.co)
       end)
       return false
     end)
     Webclient.jQuery "#log-out":click (function ()
       Webclient (function ()
         Authentication.log_out ()
-        Scheduler.wakeup (Authentication.co)
+        loader.scheduler.wakeup (Authentication.co)
       end)
       return false
     end)
@@ -201,7 +200,7 @@ return function (loader)
 
   function Authentication.__call ()
     Webclient (function ()
-      Authentication.co = Scheduler.running ()
+      Authentication.co = loader.scheduler.running ()
       while true do
         local user = Webclient.client.user.authentified_as {}
         Webclient.show {
@@ -213,7 +212,7 @@ return function (loader)
           i18n     = i18n,
         }
         register_events ()
-        Scheduler.sleep (-math.huge)
+        loader.scheduler.sleep (-math.huge)
       end
     end)
   end

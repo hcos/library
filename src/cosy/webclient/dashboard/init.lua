@@ -1,7 +1,6 @@
 return function (loader)
 
   local I18n          = loader.load "cosy.i18n"
-  local Scheduler     = loader.load "cosy.scheduler"
   local Webclient     = loader.load "cosy.webclient"
 
   local i18n = I18n.load {
@@ -75,7 +74,7 @@ return function (loader)
       if not Dashboard.map then
         show_map ()
       end
-      Scheduler.sleep (-math.huge)
+      loader.scheduler.sleep (-math.huge)
     end
   end
 
@@ -87,7 +86,7 @@ return function (loader)
         data     = {},
         i18n     = i18n,
       }
-      Scheduler.sleep (-math.huge)
+      loader.scheduler.sleep (-math.huge)
     end
   end
 

@@ -97,6 +97,7 @@ local rockspecs = {
     },
     dependencies = {
       "lua >= 5.2",
+      "cosy-formalisms",
       "ansicolors",
       "argparse",
       "copas-ev",
