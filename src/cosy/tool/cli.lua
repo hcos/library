@@ -89,6 +89,8 @@ if mytool then
     description = mytool.description,
   }
   for key in pairs (parameters) do
+    key.key = key.key
+           or key.name:gsub ("%W", "-"):lower ()
     local convert
     if key.type == "number" then
       convert = tonumber
@@ -121,7 +123,7 @@ if mytool then
     else
       assert (false)
     end
-    command:option ("--" .. key.name) {
+    command:option ("--" .. key.key) {
       description = key.description
                  .. (key.type and " (" .. tostring (key.type) .. ")" or ""),
       default     = key.default,
@@ -142,11 +144,11 @@ end
 
 local all_found = true
 for key in pairs (parameters) do
-  if not arguments [key.name] then
-    print ("Argument " .. key.name .. " is mandatory.")
+  if not arguments [key.key] then
+    print ("Argument " .. key.key .. " is mandatory.")
     all_found = false
   else
-    local value = arguments [key.name]
+    local value = arguments [key.key]
     Layer.Proxy.replacewith (key, value)
   end
 end
