@@ -10,6 +10,16 @@ local i18n = I18n.load {
   "cosy.tool",
 }
 
+local function toboolean (x)
+  if x:lower () == "true" then
+    return true
+  elseif x:lower () == "false" then
+    return false
+  else
+    assert (false)
+  end
+end
+
 local parser = Arguments () {
   name        = "cosy-tool",
   description = i18n ["tool:description"] % {},
@@ -82,7 +92,7 @@ if mytool then
     name        = "cosy-tool",
     description = i18n ["tool:description"] % {},
     add_help    = {
-      action = function () print "here" end
+      action = function () end
     },
   }
   local command = parser:command (toolname) {
@@ -106,13 +116,8 @@ if mytool then
       convert = tostring
     elseif parameter.type == "boolean" then
       convert = function (x)
-        if x:lower () == "true" then
-          return true
-        elseif x:lower () == "false" then
-          return false
-        else
-          assert (false)
-        end
+        toboolean (x)
+        return x
       end
     elseif parameter.type == "function" then
       convert = function (x)
@@ -152,11 +157,14 @@ end
 
 local all_found = true
 for key in pairs (parameters) do
-  if not arguments [key.key] then
+  local value = arguments [key.key]
+  if not value then
     print ("Argument " .. key.key .. " is mandatory.")
     all_found = false
   else
-    local value = arguments [key.key]
+    if key.type == "boolean" then
+      value = toboolean (value)
+    end
     Layer.Proxy.replacewith (key, value)
   end
 end
