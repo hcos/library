@@ -121,7 +121,7 @@ if mytool then
       end
     elseif parameter.type == "function" then
       convert = function (x)
-        return assert (loadstring (x)) ()
+        return assert (load (x)) ()
       end
     elseif getmetatable (parameter.type) == Layer.Proxy then
       convert = function (x)
@@ -140,7 +140,7 @@ if mytool then
       description = parameter.description
                  .. (parameter.type and " (of type " .. tostring (parameter.type) .. ")" or ""),
       default     = parameter.default ~= nil and tostring (parameter.default),
-      required    = parameter.default and false or true,
+      required    = parameter.default == nil,
       convert     = convert,
     }
   end
