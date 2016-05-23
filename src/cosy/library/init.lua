@@ -348,6 +348,7 @@ return function (loader)
           reasons = { reason },
         }
       else
+        result.error.reasons = result.error.reasons or {}
         result.error.reasons [#result.error.reasons+1] = reason
       end
     end
