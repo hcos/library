@@ -17,9 +17,7 @@ return function (loader)
   Methods.project = loader.load "cosy.methods.project"
 
   for id in pairs (Configuration.resource.project ["/"]) do
-    local module = loader.require ("cosy.methods.resource" % {
-      id = id,
-    })
+    local module = loader.require ("cosy.methods.resource")
     Methods [id] = module (loader, id)
   end
 
