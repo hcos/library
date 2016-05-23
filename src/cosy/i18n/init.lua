@@ -25,15 +25,15 @@ return function (loader)
     local depends = {}
     for _, name in ipairs (t) do
       local layer = Layer.new {
-        name = name,
-        data = loader.load (name .. ".i18n")
+        name = name
       }
+      Layer.Proxy.replacewith (layer, loader.load (name .. ".i18n"))
       depends [#depends+1] = layer
     end
-    local all = Layer.new { name = "i18n", data = {
-        [Layer.key.refines] = depends,
-      }
+    local all = Layer.new {
+      name = "i18n"
     }
+    all [Layer.key.refines] = depends
     local store = setmetatable ({}, {
       __index = function (_, key)
         local path = all [key]
