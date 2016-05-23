@@ -40,6 +40,12 @@ git submodule update
   } >> "${cosy_log}" 2>&1 \
     && echo -e "${green}success${nc}" \
     || echo -e "${red}failure${nc}"
+  echo -n "Installing missing file... "
+  { ${sudo} cp "${cosy_prefix}/share/lua/5.2/cosy/loader/patches/client_sync.lua" \
+               "${cosy_prefix}/share/lua/5.2/websocket/"
+  } >> "${cosy_log}" 2>&1 \
+    && echo -e "${green}success${nc}" \
+    || echo -e "${red}failure${nc}"
 }
 
 function fix_string ()
